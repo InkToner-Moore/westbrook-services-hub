@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Phone, MapPin, Clock, ExternalLink, Search, Printer, Truck, Key, Recycle, Star, Shield, Award, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -305,7 +304,7 @@ const Index = () => {
                 left: `${Math.random() * 100}%`,
                 top: `${Math.random() * 100}%`,
                 animationDelay: `${Math.random() * 2}s`,
-                animationDuration: `${3 + Math.random() * 4}s`
+                animationDuration: `${6 + Math.random() * 8}s`
               }}
             />
           ))}
