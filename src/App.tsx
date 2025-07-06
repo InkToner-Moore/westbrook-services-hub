@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import PublicHome from "./pages/PublicHome";
 import StaffLogin from "./pages/StaffLogin";
 import StaffDashboard from "./pages/StaffDashboard";
+import StaffTracking from "./pages/StaffTracking";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./hooks/useAuth";
@@ -41,12 +42,7 @@ const AppRoutes = () => {
         path="/staff/tracking" 
         element={
           <ProtectedRoute>
-            <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-blue-900 to-purple-900 flex items-center justify-center">
-              <div className="text-center text-white">
-                <h1 className="text-4xl font-bold mb-4">Staff Tracking</h1>
-                <p className="text-xl text-blue-200">Coming Soon</p>
-              </div>
-            </div>
+            <StaffTracking />
           </ProtectedRoute>
         } 
       />

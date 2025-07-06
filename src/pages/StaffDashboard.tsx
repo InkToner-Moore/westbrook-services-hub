@@ -36,8 +36,8 @@ const StaffDashboard = () => {
 
   const dashboardItems = [
     {
-      title: "Smart Shipping Tracker",
-      description: "Auto-detect courier and track packages",
+      title: "Package Tracker",
+      description: "Same smart tracking system (shared with customers)",
       icon: Package,
       color: "from-blue-500 to-indigo-600",
       route: "/staff/tracking",
