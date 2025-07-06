@@ -42,7 +42,7 @@ interface StickyNote {
 }
 
 const StaffNotes = () => {
-  const { themeClasses } = useTheme();
+  const { isDarkMode, themeClasses } = useTheme();
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [editingNote, setEditingNote] = useState<string | null>(null);
@@ -301,12 +301,17 @@ const StaffNotes = () => {
                       <select 
                         {...noteForm.register('category', { required: true })}
                         className={`w-full p-2 rounded-md ${themeClasses.input}`}
+                        style={{
+                          backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                          color: isDarkMode ? '#ffffff' : '#111827',
+                          borderColor: isDarkMode ? '#475569' : '#9ca3af'
+                        }}
                       >
-                        <option value="general">General</option>
-                        <option value="customer">Customer</option>
-                        <option value="inventory">Inventory</option>
-                        <option value="shipping">Shipping</option>
-                        <option value="urgent">Urgent</option>
+                        <option value="general" style={{backgroundColor: isDarkMode ? '#1e293b' : '#ffffff', color: isDarkMode ? '#ffffff' : '#111827'}}>General</option>
+                        <option value="customer" style={{backgroundColor: isDarkMode ? '#1e293b' : '#ffffff', color: isDarkMode ? '#ffffff' : '#111827'}}>Customer</option>
+                        <option value="inventory" style={{backgroundColor: isDarkMode ? '#1e293b' : '#ffffff', color: isDarkMode ? '#ffffff' : '#111827'}}>Inventory</option>
+                        <option value="shipping" style={{backgroundColor: isDarkMode ? '#1e293b' : '#ffffff', color: isDarkMode ? '#ffffff' : '#111827'}}>Shipping</option>
+                        <option value="urgent" style={{backgroundColor: isDarkMode ? '#1e293b' : '#ffffff', color: isDarkMode ? '#ffffff' : '#111827'}}>Urgent</option>
                       </select>
                     </div>
                     

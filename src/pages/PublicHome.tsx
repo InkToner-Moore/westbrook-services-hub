@@ -86,8 +86,8 @@ const PublicHome = () => {
       <div className="fixed inset-0 -z-10">
         <div className={`absolute inset-0 transition-all duration-500 ${
           isDarkMode 
-            ? 'bg-gradient-to-br from-slate-900 via-gray-900 to-slate-800' 
-            : 'bg-gradient-to-br from-gray-50 via-white to-blue-50'
+            ? 'bg-slate-900' 
+            : 'bg-gray-50'
         }`}></div>
         <div className={`absolute top-0 left-0 w-full h-full transition-all duration-500 ${
           isDarkMode

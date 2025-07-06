@@ -1,14 +1,10 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
-  ArrowLeft, 
   Globe, 
-  User, 
-  LogOut, 
   Search,
   ExternalLink,
   Truck,
@@ -16,7 +12,8 @@ import {
   Settings,
   Shield
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
+import StaffLayout from "@/components/StaffLayout";
 
 interface WebsiteLink {
   id: string;
@@ -30,13 +27,9 @@ interface WebsiteLink {
 }
 
 const StaffDirectory = () => {
-  const { user, logout } = useAuth();
+  const { themeClasses } = useTheme();
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-
-  const handleLogout = async () => {
-    await logout();
-  };
 
   const websites: WebsiteLink[] = [
     {

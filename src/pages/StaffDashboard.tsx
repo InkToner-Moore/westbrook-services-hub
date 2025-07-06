@@ -233,19 +233,19 @@ const StaffDashboard = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Button
               onClick={() => navigate("/")}
-              className={`h-16 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white font-bold rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 border ${themeClasses.button.primary} ${themeClasses.interactive.focus}`}
+              className={`h-16 font-bold rounded-xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary} ${themeClasses.interactive.focus}`}
             >
               View Public Site
             </Button>
             <Button
               onClick={() => navigate("/staff/tracking")}
-              className={`h-16 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white font-bold rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 border ${themeClasses.button.success} ${themeClasses.interactive.focus}`}
+              className={`h-16 font-bold rounded-xl transition-all duration-300 hover:scale-105 ${themeClasses.button.success} ${themeClasses.interactive.focus}`}
             >
               Quick Package Track
             </Button>
             <Button
               onClick={() => navigate("/staff/receipts")}
-              className={`h-16 bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-400 hover:to-violet-500 text-white font-bold rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 border ${themeClasses.button.primary} ${themeClasses.interactive.focus}`}
+              className={`h-16 font-bold rounded-xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary} ${themeClasses.interactive.focus}`}
             >
               Generate Receipt
             </Button>
