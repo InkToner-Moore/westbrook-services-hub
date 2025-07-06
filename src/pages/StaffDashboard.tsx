@@ -22,6 +22,9 @@ const StaffDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isDarkMode] = useState(true); // Keep consistent with theme
+  
+  const isDev = import.meta.env.VITE_NODE_ENV === 'development';
+  const bypassAuth = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
 
   const handleLogout = async () => {
     const result = await logout();
@@ -154,6 +157,11 @@ const StaffDashboard = () => {
           <p className="text-xl text-blue-100 max-w-2xl mx-auto drop-shadow-lg">
             Access all your business tools and manage operations efficiently
           </p>
+          {isDev && bypassAuth && (
+            <div className="mt-4 inline-flex items-center px-4 py-2 bg-orange-500/20 border border-orange-400/50 rounded-full text-orange-200 text-sm">
+              🚧 Development Mode - Authentication Bypassed
+            </div>
+          )}
         </div>
 
         {/* Dashboard Grid */}
