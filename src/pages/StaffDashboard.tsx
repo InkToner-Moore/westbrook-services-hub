@@ -60,7 +60,7 @@ const StaffDashboard = () => {
       icon: Printer,
       color: "from-purple-500 to-violet-600",
       route: "/staff/cartridges",
-      status: "Coming Soon"
+      status: "Available"
     },
     {
       title: "Inventory System",

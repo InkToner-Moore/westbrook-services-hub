@@ -8,6 +8,7 @@ import StaffLogin from "./pages/StaffLogin";
 import StaffDashboard from "./pages/StaffDashboard";
 import StaffTracking from "./pages/StaffTracking";
 import StaffReceipts from "./pages/StaffReceipts";
+import StaffCartridges from "./pages/StaffCartridges";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./hooks/useAuth";
@@ -53,6 +54,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <StaffReceipts />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/staff/cartridges" 
+        element={
+          <ProtectedRoute>
+            <StaffCartridges />
           </ProtectedRoute>
         } 
       />
