@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,10 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  ArrowLeft, 
-  Printer, 
-  User, 
-  LogOut, 
   Receipt, 
   Package, 
   Key,
@@ -19,9 +14,10 @@ import {
   Plus,
   Trash2
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 import { toast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
+import StaffLayout from "@/components/StaffLayout";
 
 interface ShippingReceiptData {
   receiptNumber: string;
@@ -50,7 +46,7 @@ interface KeyReceiptData {
 }
 
 const StaffReceipts = () => {
-  const { user, logout } = useAuth();
+  const { themeClasses } = useTheme();
   const [activeTab, setActiveTab] = useState("shipping");
   
   const shippingForm = useForm<ShippingReceiptData>({
@@ -70,9 +66,6 @@ const StaffReceipts = () => {
     }
   });
 
-  const handleLogout = async () => {
-    await logout();
-  };
 
   const calculateTaxes = (subtotal: number, taxes: { name: string; percentage: number; amount: number }[]) => {
     return taxes.map(tax => ({
