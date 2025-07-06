@@ -86,8 +86,8 @@ const PublicHome = () => {
       <div className="fixed inset-0 -z-10">
         <div className={`absolute inset-0 transition-all duration-500 ${
           isDarkMode 
-            ? 'bg-gradient-to-br from-indigo-950 via-blue-900 to-purple-900' 
-            : 'bg-gradient-to-br from-blue-50 via-indigo-100 to-purple-200'
+            ? 'bg-gradient-to-br from-slate-900 via-gray-900 to-slate-800' 
+            : 'bg-gradient-to-br from-gray-50 via-white to-blue-50'
         }`}></div>
         <div className={`absolute top-0 left-0 w-full h-full transition-all duration-500 ${
           isDarkMode
@@ -124,10 +124,10 @@ const PublicHome = () => {
       </div>
 
       {/* Header with Staff Login Link */}
-      <header className={`backdrop-blur-xl border-b sticky top-0 z-50 shadow-2xl transition-all duration-500 ${
+      <header className={`backdrop-blur-xl border-b sticky top-0 z-50 shadow-lg transition-all duration-500 ${
         isDarkMode 
-          ? 'bg-white/10 border-white/20' 
-          : 'bg-white/50 border-gray-200/50'
+          ? 'bg-slate-800/80 border-slate-700/50' 
+          : 'bg-white/90 border-gray-200/60'
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">

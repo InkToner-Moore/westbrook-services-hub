@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,10 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  ArrowLeft, 
   StickyNote, 
-  User, 
-  LogOut, 
   Search,
   Plus,
   Trash2,
@@ -23,8 +19,9 @@ import {
   Pin,
   Calendar
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import { useTheme } from "@/hooks/useTheme";
+import StaffLayout from "@/components/StaffLayout";
 
 interface Note {
   id: string;
@@ -45,7 +42,7 @@ interface StickyNote {
 }
 
 const StaffNotes = () => {
-  const { user, logout } = useAuth();
+  const { themeClasses } = useTheme();
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [editingNote, setEditingNote] = useState<string | null>(null);
@@ -109,18 +106,14 @@ const StaffNotes = () => {
     }
   ]);
 
-  const handleLogout = async () => {
-    await logout();
-  };
-
   const getCategoryColor = (category: Note['category']) => {
     switch (category) {
-      case "urgent": return "bg-red-500/20 text-red-300 border-red-400/50";
-      case "customer": return "bg-blue-500/20 text-blue-300 border-blue-400/50";
-      case "inventory": return "bg-orange-500/20 text-orange-300 border-orange-400/50";
-      case "shipping": return "bg-green-500/20 text-green-300 border-green-400/50";
-      case "general": return "bg-purple-500/20 text-purple-300 border-purple-400/50";
-      default: return "bg-gray-500/20 text-gray-300 border-gray-400/50";
+      case "urgent": return themeClasses.status.error;
+      case "customer": return themeClasses.status.info;
+      case "inventory": return themeClasses.status.warning;
+      case "shipping": return themeClasses.status.success;
+      case "general": return themeClasses.status.info;
+      default: return themeClasses.status.info;
     }
   };
 
@@ -199,88 +192,33 @@ const StaffNotes = () => {
     return matchesSearch && matchesCategory;
   });
 
-  const isDev = import.meta.env.VITE_NODE_ENV === 'development';
-  const bypassAuth = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-blue-900 to-purple-900">
-      {/* Background elements */}
-      <div className="fixed inset-0 -z-10">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse delay-500"></div>
+    <StaffLayout 
+      title="Staff Notes"
+      icon={StickyNote}
+      iconColor="from-yellow-400 to-orange-600"
+    >
+      <div className="text-center mb-12">
+        <h2 className={`text-4xl font-bold mb-4 drop-shadow-2xl transition-all duration-500 ${themeClasses.text.primary}`}>
+          Notes & Reminders
+        </h2>
+        <p className={`text-xl max-w-2xl mx-auto drop-shadow-lg transition-all duration-500 ${themeClasses.text.secondary}`}>
+          Keep track of important information and quick reminders
+        </p>
       </div>
 
-      {/* Header */}
-      <header className="backdrop-blur-xl bg-white/10 border-b border-white/20 sticky top-0 z-50 shadow-2xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-3">
-              <Link 
-                to="/staff/dashboard"
-                className="text-blue-200 hover:text-white transition-colors mr-4 group"
-              >
-                <ArrowLeft className="h-6 w-6 group-hover:-translate-x-1 transition-transform inline mr-2" />
-                Back to Dashboard
-              </Link>
-              <div className="bg-gradient-to-br from-yellow-400 to-orange-600 p-3 rounded-xl shadow-2xl">
-                <StickyNote className="h-8 w-8 text-white drop-shadow-lg" />
-              </div>
-              <div>
-                <h1 className="text-xl lg:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-100 drop-shadow-lg">
-                  Staff Notes
-                </h1>
-                <p className="text-xs font-medium text-blue-200">Staff Portal</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              {isDev && bypassAuth && (
-                <div className="text-xs px-2 py-1 bg-orange-500/20 border border-orange-400/50 rounded text-orange-200">
-                  DEV MODE
-                </div>
-              )}
-              <div className="flex items-center space-x-2 text-blue-200">
-                <User className="h-4 w-4" />
-                <span className="text-sm font-medium">{user?.email}</span>
-              </div>
-              <Button
-                onClick={handleLogout}
-                variant="ghost"
-                size="sm"
-                className="bg-white/20 hover:bg-white/30 text-white rounded-full px-4 py-2 transition-all duration-300 hover:scale-110"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-white mb-4 drop-shadow-2xl">
-            Notes & Reminders
-          </h2>
-          <p className="text-xl text-blue-100 max-w-2xl mx-auto drop-shadow-lg">
-            Keep track of important information and quick reminders
-          </p>
-        </div>
-
         <Tabs defaultValue="notes" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-8 bg-white/20 backdrop-blur-sm">
+          <TabsList className={`grid w-full grid-cols-2 mb-8 ${themeClasses.card.secondary} backdrop-blur-sm`}>
             <TabsTrigger 
               value="notes" 
-              className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-600 data-[state=active]:text-white"
+              className={`flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-600 data-[state=active]:text-white ${themeClasses.text.secondary}`}
             >
               <FileText className="h-4 w-4" />
               <span>Notes</span>
             </TabsTrigger>
             <TabsTrigger 
               value="sticky" 
-              className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-500 data-[state=active]:to-orange-600 data-[state=active]:text-white"
+              className={`flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-500 data-[state=active]:to-orange-600 data-[state=active]:text-white ${themeClasses.text.secondary}`}
             >
               <StickyNote className="h-4 w-4" />
               <span>Sticky Notes</span>
@@ -291,47 +229,47 @@ const StaffNotes = () => {
             {/* Search and Filter */}
             <div className="mb-6 flex flex-col lg:flex-row gap-4">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-blue-200" />
+                <Search className={`absolute left-3 top-3 h-4 w-4 ${themeClasses.text.muted}`} />
                 <Input
                   placeholder="Search notes..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-white/10 border-white/30 text-white placeholder:text-blue-200"
+                  className={`pl-10 ${themeClasses.input}`}
                 />
               </div>
               <div className="flex gap-2 flex-wrap">
                 <Button
                   variant={categoryFilter === "all" ? "default" : "ghost"}
                   onClick={() => setCategoryFilter("all")}
-                  className="bg-white/20 hover:bg-white/30 text-white"
+                  className={`${categoryFilter === "all" ? themeClasses.button.primary : themeClasses.button.ghost} ${themeClasses.interactive.focus}`}
                 >
                   All
                 </Button>
                 <Button
                   variant={categoryFilter === "urgent" ? "default" : "ghost"}
                   onClick={() => setCategoryFilter("urgent")}
-                  className="bg-white/20 hover:bg-white/30 text-white"
+                  className={`${categoryFilter === "urgent" ? themeClasses.button.primary : themeClasses.button.ghost} ${themeClasses.interactive.focus}`}
                 >
                   Urgent
                 </Button>
                 <Button
                   variant={categoryFilter === "customer" ? "default" : "ghost"}
                   onClick={() => setCategoryFilter("customer")}
-                  className="bg-white/20 hover:bg-white/30 text-white"
+                  className={`${categoryFilter === "customer" ? themeClasses.button.primary : themeClasses.button.ghost} ${themeClasses.interactive.focus}`}
                 >
                   Customer
                 </Button>
                 <Button
                   variant={categoryFilter === "inventory" ? "default" : "ghost"}
                   onClick={() => setCategoryFilter("inventory")}
-                  className="bg-white/20 hover:bg-white/30 text-white"
+                  className={`${categoryFilter === "inventory" ? themeClasses.button.primary : themeClasses.button.ghost} ${themeClasses.interactive.focus}`}
                 >
                   Inventory
                 </Button>
                 <Button
                   variant={categoryFilter === "shipping" ? "default" : "ghost"}
                   onClick={() => setCategoryFilter("shipping")}
-                  className="bg-white/20 hover:bg-white/30 text-white"
+                  className={`${categoryFilter === "shipping" ? themeClasses.button.primary : themeClasses.button.ghost} ${themeClasses.interactive.focus}`}
                 >
                   Shipping
                 </Button>
@@ -340,9 +278,9 @@ const StaffNotes = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Add Note Form */}
-              <Card className="backdrop-blur-xl bg-white/15 border-white/30 shadow-2xl">
+              <Card className={`backdrop-blur-xl shadow-2xl ${themeClasses.card.primary}`}>
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center space-x-2">
+                  <CardTitle className={`${themeClasses.text.primary} flex items-center space-x-2`}>
                     <Plus className="h-5 w-5" />
                     <span>Add New Note</span>
                   </CardTitle>
@@ -350,19 +288,19 @@ const StaffNotes = () => {
                 <CardContent>
                   <form onSubmit={noteForm.handleSubmit(addNote)} className="space-y-4">
                     <div>
-                      <Label className="text-white font-medium">Title</Label>
+                      <Label className={`${themeClasses.text.primary} font-medium`}>Title</Label>
                       <Input
                         {...noteForm.register('title', { required: true })}
                         placeholder="Note title..."
-                        className="bg-white/10 border-white/30 text-white placeholder:text-blue-200"
+                        className={themeClasses.input}
                       />
                     </div>
                     
                     <div>
-                      <Label className="text-white font-medium">Category</Label>
+                      <Label className={`${themeClasses.text.primary} font-medium`}>Category</Label>
                       <select 
                         {...noteForm.register('category', { required: true })}
-                        className="w-full p-2 rounded-md bg-white/10 border border-white/30 text-white"
+                        className={`w-full p-2 rounded-md ${themeClasses.input}`}
                       >
                         <option value="general">General</option>
                         <option value="customer">Customer</option>
@@ -373,17 +311,17 @@ const StaffNotes = () => {
                     </div>
                     
                     <div>
-                      <Label className="text-white font-medium">Content</Label>
+                      <Label className={`${themeClasses.text.primary} font-medium`}>Content</Label>
                       <Textarea
                         {...noteForm.register('content', { required: true })}
                         placeholder="Write your note here..."
-                        className="bg-white/10 border-white/30 text-white placeholder:text-blue-200 min-h-[100px]"
+                        className={`${themeClasses.input} min-h-[100px]`}
                       />
                     </div>
                     
                     <Button
                       type="submit"
-                      className="w-full bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-400 hover:to-violet-500 text-white font-bold rounded-xl"
+                      className={`w-full bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-400 hover:to-violet-500 text-white font-bold rounded-xl ${themeClasses.interactive.focus}`}
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add Note
@@ -546,8 +484,7 @@ const StaffNotes = () => {
             </div>
           </TabsContent>
         </Tabs>
-      </main>
-    </div>
+    </StaffLayout>
   );
 };
 

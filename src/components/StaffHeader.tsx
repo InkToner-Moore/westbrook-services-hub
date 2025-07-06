@@ -32,7 +32,7 @@ const StaffHeader = ({
   const bypassAuth = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
 
   return (
-    <header className={`backdrop-blur-xl border-b sticky top-0 z-50 shadow-2xl transition-all duration-500 ${themeClasses.header}`}>
+    <header className={`border-b sticky top-0 z-50 shadow-lg transition-all duration-500 ${themeClasses.header}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-6">
           <div className="flex items-center space-x-3">
@@ -74,7 +74,7 @@ const StaffHeader = ({
               onClick={toggleTheme}
               variant="ghost"
               size="sm"
-              className={`p-2 rounded-full backdrop-blur-sm transition-all duration-300 hover:scale-110 ${themeClasses.button.ghost}`}
+              className={`p-2 rounded-lg transition-all duration-300 hover:scale-105 border ${themeClasses.button.secondary} ${themeClasses.interactive.focus}`}
             >
               {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
@@ -83,7 +83,7 @@ const StaffHeader = ({
               onClick={handleLogout}
               variant="ghost"
               size="sm"
-              className={`rounded-full px-4 py-2 transition-all duration-300 hover:scale-110 ${themeClasses.button.ghost}`}
+              className={`rounded-lg px-4 py-2 transition-all duration-300 hover:scale-105 border ${themeClasses.button.ghost} ${themeClasses.interactive.focus}`}
             >
               <LogOut className="h-4 w-4 mr-2" />
               Logout
