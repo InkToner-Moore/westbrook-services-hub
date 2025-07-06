@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { ValidatedInput } from "@/components/ui/validated-input";
+import { ValidatedTextarea } from "@/components/ui/validated-textarea";
+import { FormErrorSummary } from "@/components/ui/form-error-summary";
+import { FormSuccessMessage } from "@/components/ui/form-success-message";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,6 +22,8 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/useTheme";
+import { useValidation } from "@/hooks/useValidation";
+import { noteSchema } from "@/utils/validation";
 import StaffLayout from "@/components/StaffLayout";
 
 interface Note {
@@ -47,9 +50,11 @@ const StaffNotes = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [editingStickyNote, setEditingStickyNote] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
   
   const noteForm = useForm<Omit<Note, 'id' | 'createdAt' | 'updatedAt' | 'author'>>();
   const stickyForm = useForm<{ content: string; color: StickyNote['color'] }>();
+  const noteValidation = useValidation(noteSchema);
 
   // Mock data for development
   const [notes, setNotes] = useState<Note[]>([
@@ -129,21 +134,37 @@ const StaffNotes = () => {
   };
 
   const addNote = (data: Omit<Note, 'id' | 'createdAt' | 'updatedAt' | 'author'>) => {
+    const validationResult = noteValidation.validateForm(data);
+    
+    if (!validationResult.isValid) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the errors in the form",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     const newNote: Note = {
-      ...data,
+      ...validationResult.data!,
       id: `NOTE-${String(notes.length + 1).padStart(3, '0')}`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      author: user?.email || 'Unknown'
+      author: 'dev@inktonermoore.com'
     };
     
     setNotes(prevNotes => [newNote, ...prevNotes]);
     noteForm.reset();
+    noteValidation.clearErrors();
+    setShowSuccess(true);
     
     toast({
       title: "Note Added",
       description: `"${newNote.title}" has been saved`,
     });
+    
+    // Auto-hide success message
+    setTimeout(() => setShowSuccess(false), 3000);
   };
 
   const addStickyNote = (data: { content: string; color: StickyNote['color'] }) => {
@@ -286,47 +307,78 @@ const StaffNotes = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {showSuccess && (
+                    <FormSuccessMessage
+                      message="Note has been successfully added!"
+                      className="mb-4"
+                      onDismiss={() => setShowSuccess(false)}
+                      autoHide
+                    />
+                  )}
+                  
+                  {noteValidation.hasAttemptedSubmit && Object.keys(noteValidation.errors).length > 0 && (
+                    <FormErrorSummary
+                      errors={noteValidation.errors}
+                      className="mb-4"
+                      onDismiss={noteValidation.clearErrors}
+                      showDismiss
+                    />
+                  )}
+                  
                   <form onSubmit={noteForm.handleSubmit(addNote)} className="space-y-4">
-                    <div>
-                      <Label className={`${themeClasses.text.primary} font-medium`}>Title</Label>
-                      <Input
-                        {...noteForm.register('title', { required: true })}
-                        placeholder="Note title..."
-                        className={themeClasses.input}
-                      />
-                    </div>
+                    <ValidatedInput
+                      {...noteForm.register('title', { required: true })}
+                      label="Title"
+                      placeholder="Note title..."
+                      required
+                      error={noteValidation.errors.title}
+                      hint="Enter a descriptive title for your note (minimum 3 characters)"
+                    />
                     
                     <div>
-                      <Label className={`${themeClasses.text.primary} font-medium`}>Category</Label>
+                      <Label className={`${themeClasses.text.primary} font-medium`}>
+                        Category <span className="text-red-500">*</span>
+                      </Label>
                       <select 
                         {...noteForm.register('category', { required: true })}
-                        className={`w-full p-2 rounded-md ${themeClasses.input}`}
+                        className={`w-full p-2 rounded-md ${themeClasses.input} ${
+                          noteValidation.errors.category ? 'border-red-500 focus:border-red-500' : ''
+                        }`}
                         style={{
                           backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
                           color: isDarkMode ? '#ffffff' : '#111827',
                           borderColor: isDarkMode ? '#475569' : '#9ca3af'
                         }}
                       >
+                        <option value="">Select a category...</option>
                         <option value="general" style={{backgroundColor: isDarkMode ? '#1e293b' : '#ffffff', color: isDarkMode ? '#ffffff' : '#111827'}}>General</option>
                         <option value="customer" style={{backgroundColor: isDarkMode ? '#1e293b' : '#ffffff', color: isDarkMode ? '#ffffff' : '#111827'}}>Customer</option>
                         <option value="inventory" style={{backgroundColor: isDarkMode ? '#1e293b' : '#ffffff', color: isDarkMode ? '#ffffff' : '#111827'}}>Inventory</option>
                         <option value="shipping" style={{backgroundColor: isDarkMode ? '#1e293b' : '#ffffff', color: isDarkMode ? '#ffffff' : '#111827'}}>Shipping</option>
                         <option value="urgent" style={{backgroundColor: isDarkMode ? '#1e293b' : '#ffffff', color: isDarkMode ? '#ffffff' : '#111827'}}>Urgent</option>
                       </select>
+                      {noteValidation.errors.category && (
+                        <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
+                          {noteValidation.errors.category}
+                        </p>
+                      )}
                     </div>
                     
-                    <div>
-                      <Label className={`${themeClasses.text.primary} font-medium`}>Content</Label>
-                      <Textarea
-                        {...noteForm.register('content', { required: true })}
-                        placeholder="Write your note here..."
-                        className={`${themeClasses.input} min-h-[100px]`}
-                      />
-                    </div>
+                    <ValidatedTextarea
+                      {...noteForm.register('content', { required: true })}
+                      label="Content"
+                      placeholder="Write your note here..."
+                      required
+                      error={noteValidation.errors.content}
+                      hint="Provide detailed information (minimum 10 characters)"
+                      showCharacterCount
+                      maxLength={1000}
+                      className="min-h-[100px]"
+                    />
                     
                     <Button
                       type="submit"
-                      className={`w-full bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-400 hover:to-violet-500 text-white font-bold rounded-xl ${themeClasses.interactive.focus}`}
+                      className={`w-full font-bold rounded-xl ${themeClasses.button.primary} ${themeClasses.interactive.focus}`}
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add Note
