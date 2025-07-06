@@ -1,0 +1,53 @@
+[build]
+  publish = "dist"
+  command = "npm run build"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "18"
+  NPM_VERSION = "8"
+
+# Redirect all API calls to the Netlify function
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+# SPA fallback - redirect all other requests to index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Environment variables for production
+[context.production.environment]
+  NODE_ENV = "production"
+  VITE_NODE_ENV = "production"
+
+# Environment variables for branch deploys
+[context.branch-deploy.environment]
+  NODE_ENV = "development"
+  VITE_NODE_ENV = "development"
+  VITE_DEV_BYPASS_AUTH = "true"
+
+# Environment variables for deploy previews
+[context.deploy-preview.environment]
+  NODE_ENV = "development"
+  VITE_NODE_ENV = "development"
+  VITE_DEV_BYPASS_AUTH = "true"
+
+# Headers for security
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://sheets.googleapis.com https://identitytoolkit.googleapis.com;"
+
+# Cache static assets
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

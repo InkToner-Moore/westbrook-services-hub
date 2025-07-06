@@ -9,6 +9,11 @@ import StaffDashboard from "./pages/StaffDashboard";
 import StaffTracking from "./pages/StaffTracking";
 import StaffReceipts from "./pages/StaffReceipts";
 import StaffCartridges from "./pages/StaffCartridges";
+import StaffInventory from "./pages/StaffInventory";
+import StaffDirectory from "./pages/StaffDirectory";
+import StaffNotes from "./pages/StaffNotes";
+import StaffBlog from "./pages/StaffBlog";
+import StaffSettings from "./pages/StaffSettings";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./hooks/useAuth";
@@ -63,6 +68,51 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <StaffCartridges />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/staff/inventory" 
+        element={
+          <ProtectedRoute>
+            <StaffInventory />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/staff/directory" 
+        element={
+          <ProtectedRoute>
+            <StaffDirectory />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/staff/notes" 
+        element={
+          <ProtectedRoute>
+            <StaffNotes />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/staff/blog" 
+        element={
+          <ProtectedRoute>
+            <StaffBlog />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/staff/settings" 
+        element={
+          <ProtectedRoute>
+            <StaffSettings />
           </ProtectedRoute>
         } 
       />
