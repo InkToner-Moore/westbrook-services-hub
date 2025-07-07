@@ -19,11 +19,13 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { toast } from "@/hooks/use-toast";
 
 const StaffDashboard = () => {
   const { user, logout } = useAuth();
   const { isDarkMode, toggleTheme, themeClasses } = useTheme();
+  const { settings, isFeatureEnabled } = useSystemSettings();
   const navigate = useNavigate();
   
   const isDev = import.meta.env.VITE_NODE_ENV === 'development';
@@ -40,14 +42,16 @@ const StaffDashboard = () => {
     }
   };
 
-  const dashboardItems = [
+  // All dashboard items with their feature paths
+  const allDashboardItems = [
     {
       title: "Package Tracker",
       description: "Same smart tracking system (shared with customers)",
       icon: Package,
       color: "from-blue-500 to-indigo-600",
       route: "/staff/tracking",
-      status: "Available"
+      status: "Available",
+      featurePath: "modules.packageTracking.enabled"
     },
     {
       title: "Receipt Generator",
@@ -55,7 +59,8 @@ const StaffDashboard = () => {
       icon: Receipt,
       color: "from-green-500 to-emerald-600",
       route: "/staff/receipts",
-      status: "Available"
+      status: "Available",
+      featurePath: "modules.receiptGenerator.enabled"
     },
     {
       title: "Customer Cartridge Manager",
@@ -63,7 +68,8 @@ const StaffDashboard = () => {
       icon: Printer,
       color: "from-purple-500 to-violet-600",
       route: "/staff/cartridges",
-      status: "Available"
+      status: "Available",
+      featurePath: "modules.cartridgeManager.enabled"
     },
     {
       title: "Inventory System",
@@ -71,7 +77,8 @@ const StaffDashboard = () => {
       icon: BarChart3,
       color: "from-orange-500 to-red-600",
       route: "/staff/inventory",
-      status: "Available"
+      status: "Available",
+      featurePath: "modules.inventory.enabled"
     },
     {
       title: "Website Directory",
@@ -79,7 +86,8 @@ const StaffDashboard = () => {
       icon: Globe,
       color: "from-cyan-500 to-blue-600",
       route: "/staff/directory",
-      status: "Available"
+      status: "Available",
+      featurePath: "modules.directory.enabled"
     },
     {
       title: "Notes System",
@@ -87,7 +95,8 @@ const StaffDashboard = () => {
       icon: StickyNote,
       color: "from-yellow-500 to-orange-600",
       route: "/staff/notes",
-      status: "Available"
+      status: "Available",
+      featurePath: "modules.notes.enabled"
     },
     {
       title: "Blog & Announcements",
@@ -95,17 +104,24 @@ const StaffDashboard = () => {
       icon: Megaphone,
       color: "from-pink-500 to-rose-600",
       route: "/staff/blog",
-      status: "Available"
+      status: "Available",
+      featurePath: "modules.blog.enabled"
     },
     {
       title: "System Settings",
-      description: "Configure system preferences",
+      description: "Configure system preferences and features",
       icon: Wrench,
       color: "from-gray-500 to-slate-600",
       route: "/staff/settings",
-      status: "Available"
+      status: "Available",
+      featurePath: null // Always available
     }
   ];
+
+  // Filter dashboard items based on feature toggles
+  const dashboardItems = allDashboardItems.filter(item => 
+    item.featurePath === null || isFeatureEnabled(item.featurePath)
+  );
 
   return (
     <div className={`min-h-screen transition-all duration-500 ${themeClasses.background}`}>
@@ -139,14 +155,16 @@ const StaffDashboard = () => {
               </div>
               
               {/* Theme Toggle */}
-              <Button
-                onClick={toggleTheme}
-                variant="ghost"
-                size="sm"
-                className={`p-2 rounded-lg transition-all duration-300 hover:scale-105 border ${themeClasses.button.secondary} ${themeClasses.interactive.focus}`}
-              >
-                {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-              </Button>
+              {isFeatureEnabled('userInterface.darkModeToggle') && (
+                <Button
+                  onClick={toggleTheme}
+                  variant="ghost"
+                  size="sm"
+                  className={`p-2 rounded-lg transition-all duration-300 hover:scale-105 border ${themeClasses.button.secondary} ${themeClasses.interactive.focus}`}
+                >
+                  {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                </Button>
+              )}
               
               <Button
                 onClick={handleLogout}
@@ -226,31 +244,37 @@ const StaffDashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="mt-16">
-          <h3 className={`text-2xl font-bold mb-8 text-center drop-shadow-lg transition-all duration-500 ${themeClasses.text.primary}`}>
-            Quick Actions
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Button
-              onClick={() => navigate("/")}
-              className={`h-16 font-bold rounded-xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary} ${themeClasses.interactive.focus}`}
-            >
-              View Public Site
-            </Button>
-            <Button
-              onClick={() => navigate("/staff/tracking")}
-              className={`h-16 font-bold rounded-xl transition-all duration-300 hover:scale-105 ${themeClasses.button.success} ${themeClasses.interactive.focus}`}
-            >
-              Quick Package Track
-            </Button>
-            <Button
-              onClick={() => navigate("/staff/receipts")}
-              className={`h-16 font-bold rounded-xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary} ${themeClasses.interactive.focus}`}
-            >
-              Generate Receipt
-            </Button>
+        {isFeatureEnabled('dashboard.quickActions') && (
+          <div className="mt-16">
+            <h3 className={`text-2xl font-bold mb-8 text-center drop-shadow-lg transition-all duration-500 ${themeClasses.text.primary}`}>
+              Quick Actions
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Button
+                onClick={() => navigate("/")}
+                className={`h-16 font-bold rounded-xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary} ${themeClasses.interactive.focus}`}
+              >
+                View Public Site
+              </Button>
+              {isFeatureEnabled('modules.packageTracking.enabled') && (
+                <Button
+                  onClick={() => navigate("/staff/tracking")}
+                  className={`h-16 font-bold rounded-xl transition-all duration-300 hover:scale-105 ${themeClasses.button.success} ${themeClasses.interactive.focus}`}
+                >
+                  Quick Package Track
+                </Button>
+              )}
+              {isFeatureEnabled('modules.receiptGenerator.enabled') && (
+                <Button
+                  onClick={() => navigate("/staff/receipts")}
+                  className={`h-16 font-bold rounded-xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary} ${themeClasses.interactive.focus}`}
+                >
+                  Generate Receipt
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </main>
     </div>
   );

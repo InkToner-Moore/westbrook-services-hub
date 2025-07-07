@@ -5,9 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
+import { useSystemSettings } from "@/hooks/useSystemSettings";
 import SmartTracker from "@/components/SmartTracker";
 
 const PublicHome = () => {
+  const { isFeatureEnabled } = useSystemSettings();
   const [selectedBrand, setSelectedBrand] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
   const [selectedKeyType, setSelectedKeyType] = useState("");
@@ -250,7 +252,9 @@ const PublicHome = () => {
             </div>
             
             {/* Smart Tracker Component */}
-            <SmartTracker isDarkMode={isDarkMode} className="max-w-5xl mx-auto" />
+            {isFeatureEnabled('publicSite.packageTracking') && (
+              <SmartTracker isDarkMode={isDarkMode} className="max-w-5xl mx-auto" />
+            )}
           </div>
         </div>
       </section>

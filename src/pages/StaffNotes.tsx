@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/useTheme";
+import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { useValidation } from "@/hooks/useValidation";
 import { useListUndoRedo } from "@/hooks/useUndoRedo";
 import { noteSchema } from "@/utils/validation";
@@ -48,6 +49,7 @@ interface StickyNote {
 
 const StaffNotes = () => {
   const { isDarkMode, themeClasses } = useTheme();
+  const { isFeatureEnabled } = useSystemSettings();
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [editingNote, setEditingNote] = useState<string | null>(null);
@@ -240,21 +242,23 @@ const StaffNotes = () => {
       </div>
 
       {/* Undo/Redo Controls */}
-      <div className="flex justify-center mb-8">
-        <UndoRedoControls
-          canUndo={notesList.canUndo}
-          canRedo={notesList.canRedo}
-          onUndo={notesList.undo}
-          onRedo={notesList.redo}
-          onClearHistory={notesList.clearHistory}
-          showHistory={true}
-          history={notesList.history}
-          className="bg-white/10 backdrop-blur-sm rounded-lg p-2"
-        />
-      </div>
+      {isFeatureEnabled('modules.notes.features.undoRedo') && (
+        <div className="flex justify-center mb-8">
+          <UndoRedoControls
+            canUndo={notesList.canUndo}
+            canRedo={notesList.canRedo}
+            onUndo={notesList.undo}
+            onRedo={notesList.redo}
+            onClearHistory={notesList.clearHistory}
+            showHistory={true}
+            history={notesList.history}
+            className="bg-white/10 backdrop-blur-sm rounded-lg p-2"
+          />
+        </div>
+      )}
 
         <Tabs defaultValue="notes" className="w-full">
-          <TabsList className={`grid w-full grid-cols-2 mb-8 ${themeClasses.card.secondary} backdrop-blur-sm`}>
+          <TabsList className={`grid w-full ${isFeatureEnabled('modules.notes.features.stickyNotes') ? 'grid-cols-2' : 'grid-cols-1'} mb-8 ${themeClasses.card.secondary} backdrop-blur-sm`}>
             <TabsTrigger 
               value="notes" 
               className={`flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-600 data-[state=active]:text-white ${themeClasses.text.secondary}`}
@@ -262,13 +266,15 @@ const StaffNotes = () => {
               <FileText className="h-4 w-4" />
               <span>Notes</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="sticky" 
-              className={`flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-500 data-[state=active]:to-orange-600 data-[state=active]:text-white ${themeClasses.text.secondary}`}
-            >
-              <StickyNote className="h-4 w-4" />
-              <span>Sticky Notes</span>
-            </TabsTrigger>
+            {isFeatureEnabled('modules.notes.features.stickyNotes') && (
+              <TabsTrigger 
+                value="sticky" 
+                className={`flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-500 data-[state=active]:to-orange-600 data-[state=active]:text-white ${themeClasses.text.secondary}`}
+              >
+                <StickyNote className="h-4 w-4" />
+                <span>Sticky Notes</span>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="notes">
@@ -471,7 +477,8 @@ const StaffNotes = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="sticky">
+          {isFeatureEnabled('modules.notes.features.stickyNotes') && (
+            <TabsContent value="sticky">
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               {/* Add Sticky Note Form */}
               <Card className="backdrop-blur-xl bg-white/15 border-white/30 shadow-2xl">
@@ -565,6 +572,7 @@ const StaffNotes = () => {
               </div>
             </div>
           </TabsContent>
+          )}
         </Tabs>
     </StaffLayout>
   );
