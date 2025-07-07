@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/useTheme";
+import { useSystemSettings } from "@/hooks/useSystemSettings";
 import StaffLayout from "@/components/StaffLayout";
 
 interface InventoryItem {
@@ -42,11 +43,36 @@ interface InventoryItem {
 }
 
 const StaffInventory = () => {
+  const { themeClasses } = useTheme();
+  const { isFeatureEnabled } = useSystemSettings();
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [stockFilter, setStockFilter] = useState<string>("all");
   const [editingItem, setEditingItem] = useState<string | null>(null);
-  const { themeClasses } = useTheme();
+
+  // If inventory module is disabled, show disabled state
+  if (!isFeatureEnabled('modules.inventory.enabled')) {
+    return (
+      <StaffLayout 
+        title="Inventory Management"
+        icon={BarChart3}
+        iconColor="from-orange-400 to-red-600"
+      >
+        <div className="text-center py-16">
+          <BarChart3 className={`h-24 w-24 mx-auto mb-6 opacity-30 ${themeClasses.text.muted}`} />
+          <h2 className={`text-2xl font-bold mb-4 ${themeClasses.text.primary}`}>
+            Inventory Module Disabled
+          </h2>
+          <p className={`text-lg mb-6 ${themeClasses.text.secondary}`}>
+            The inventory management module is currently disabled in system settings.
+          </p>
+          <p className={`${themeClasses.text.muted}`}>
+            Contact your administrator to enable this feature.
+          </p>
+        </div>
+      </StaffLayout>
+    );
+  }
   
   const newItemForm = useForm<Omit<InventoryItem, 'id' | 'lastUpdated'>>();
   const editForm = useForm<InventoryItem>();
@@ -293,19 +319,21 @@ const StaffInventory = () => {
                 />
               </div>
               <div className="flex gap-4">
-                <div className="relative">
-                  <Filter className="absolute left-3 top-3 h-4 w-4 text-blue-200" />
-                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger className="pl-10 w-48 bg-white/10 border-white/30 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      <SelectItem value="cartridge">Cartridges</SelectItem>
-                      <SelectItem value="key">Keys</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {isFeatureEnabled('modules.inventory.features.categories') && (
+                  <div className="relative">
+                    <Filter className="absolute left-3 top-3 h-4 w-4 text-blue-200" />
+                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                      <SelectTrigger className="pl-10 w-48 bg-white/10 border-white/30 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Categories</SelectItem>
+                        <SelectItem value="cartridge">Cartridges</SelectItem>
+                        <SelectItem value="key">Keys</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <Select value={stockFilter} onValueChange={setStockFilter}>
                   <SelectTrigger className="w-48 bg-white/10 border-white/30 text-white">
                     <SelectValue placeholder="Stock Status" />

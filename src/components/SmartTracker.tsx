@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ExternalLink, Truck } from "lucide-react";
+import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { toast } from "@/hooks/use-toast";
 
 interface SmartTrackerProps {
@@ -10,8 +11,14 @@ interface SmartTrackerProps {
 }
 
 const SmartTracker = ({ isDarkMode = true, className = "" }: SmartTrackerProps) => {
+  const { isFeatureEnabled } = useSystemSettings();
   const [trackingNumber, setTrackingNumber] = useState("");
   const [courierDetection, setCourierDetection] = useState<any>(null);
+
+  // If package tracking is disabled, don't render the component
+  if (!isFeatureEnabled('modules.packageTracking.enabled')) {
+    return null;
+  }
 
   const detectCourierAdvanced = (trackingNumber: string) => {
     const clean = trackingNumber.replace(/[\s\-]/g, '').toUpperCase();
@@ -135,7 +142,9 @@ const SmartTracker = ({ isDarkMode = true, className = "" }: SmartTrackerProps) 
 
   const handleTrackingInput = (value: string) => {
     setTrackingNumber(value);
-    if (value.trim()) {
+    
+    // Only perform smart detection if feature is enabled
+    if (isFeatureEnabled('modules.packageTracking.features.smartDetection') && value.trim()) {
       const detection = validateAndDetectCourier(value);
       setCourierDetection(detection);
     } else {
@@ -182,11 +191,18 @@ const SmartTracker = ({ isDarkMode = true, className = "" }: SmartTrackerProps) 
     }
   };
 
+  // Filter tracking links based on feature settings
   const trackingLinks = [
     { name: "UPS", url: "https://www.ups.com/track", color: "bg-gradient-to-r from-amber-500 to-amber-600" },
     { name: "Purolator", url: "https://www.purolator.com/en/shipping/tracker", color: "bg-gradient-to-r from-blue-500 to-blue-600" },
     { name: "FedEx", url: "https://www.fedex.com/en-ca/tracking.html", color: "bg-gradient-to-r from-purple-500 to-purple-600" }
-  ];
+  ].filter((link) => {
+    // Only show if multi-courier feature is enabled
+    if (!isFeatureEnabled('modules.packageTracking.features.multiCourier')) {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div className={`backdrop-blur-xl rounded-3xl shadow-2xl p-8 border transform hover:scale-[1.02] transition-all duration-500 ${className} ${
