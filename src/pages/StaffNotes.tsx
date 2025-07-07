@@ -5,6 +5,7 @@ import { ValidatedInput } from "@/components/ui/validated-input";
 import { ValidatedTextarea } from "@/components/ui/validated-textarea";
 import { FormErrorSummary } from "@/components/ui/form-error-summary";
 import { FormSuccessMessage } from "@/components/ui/form-success-message";
+import { UndoRedoControls } from "@/components/ui/undo-redo-controls";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,6 +24,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/useTheme";
 import { useValidation } from "@/hooks/useValidation";
+import { useListUndoRedo } from "@/hooks/useUndoRedo";
 import { noteSchema } from "@/utils/validation";
 import StaffLayout from "@/components/StaffLayout";
 
@@ -56,8 +58,8 @@ const StaffNotes = () => {
   const stickyForm = useForm<{ content: string; color: StickyNote['color'] }>();
   const noteValidation = useValidation(noteSchema);
 
-  // Mock data for development
-  const [notes, setNotes] = useState<Note[]>([
+  // Mock data for development with undo/redo support
+  const initialNotes: Note[] = [
     {
       id: "NOTE-001",
       title: "Customer Follow-up: John Smith",
@@ -85,7 +87,12 @@ const StaffNotes = () => {
       updatedAt: "2024-01-18T11:00:00Z",
       author: "dev@inktonermoore.com"
     }
-  ]);
+  ];
+
+  const notesList = useListUndoRedo(initialNotes, {
+    maxHistorySize: 20,
+    enableShortcuts: true
+  });
 
   const [stickyNotes, setStickyNotes] = useState<StickyNote[]>([
     {
@@ -147,13 +154,13 @@ const StaffNotes = () => {
     
     const newNote: Note = {
       ...validationResult.data!,
-      id: `NOTE-${String(notes.length + 1).padStart(3, '0')}`,
+      id: `NOTE-${String(notesList.list.length + 1).padStart(3, '0')}`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       author: 'dev@inktonermoore.com'
     };
     
-    setNotes(prevNotes => [newNote, ...prevNotes]);
+    notesList.addItem(newNote, `Added note: "${newNote.title}"`);
     noteForm.reset();
     noteValidation.clearErrors();
     setShowSuccess(true);
@@ -189,11 +196,15 @@ const StaffNotes = () => {
   };
 
   const deleteNote = (noteId: string) => {
-    setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
-    toast({
-      title: "Note Deleted",
-      description: `Note ${noteId} has been removed`,
-    });
+    const noteIndex = notesList.list.findIndex(note => note.id === noteId);
+    if (noteIndex !== -1) {
+      const noteTitle = notesList.list[noteIndex].title;
+      notesList.removeItem(noteIndex, `Deleted note: "${noteTitle}"`);
+      toast({
+        title: "Note Deleted",
+        description: `"${noteTitle}" has been removed`,
+      });
+    }
   };
 
   const deleteStickyNote = (noteId: string) => {
@@ -204,7 +215,7 @@ const StaffNotes = () => {
     });
   };
 
-  const filteredNotes = notes.filter(note => {
+  const filteredNotes = notesList.list.filter(note => {
     const matchesSearch = note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          note.content.toLowerCase().includes(searchTerm.toLowerCase());
     
@@ -219,13 +230,27 @@ const StaffNotes = () => {
       icon={StickyNote}
       iconColor="from-yellow-400 to-orange-600"
     >
-      <div className="text-center mb-12">
+      <div className="text-center mb-8">
         <h2 className={`text-4xl font-bold mb-4 drop-shadow-2xl transition-all duration-500 ${themeClasses.text.primary}`}>
           Notes & Reminders
         </h2>
         <p className={`text-xl max-w-2xl mx-auto drop-shadow-lg transition-all duration-500 ${themeClasses.text.secondary}`}>
           Keep track of important information and quick reminders
         </p>
+      </div>
+
+      {/* Undo/Redo Controls */}
+      <div className="flex justify-center mb-8">
+        <UndoRedoControls
+          canUndo={notesList.canUndo}
+          canRedo={notesList.canRedo}
+          onUndo={notesList.undo}
+          onRedo={notesList.redo}
+          onClearHistory={notesList.clearHistory}
+          showHistory={true}
+          history={notesList.history}
+          className="bg-white/10 backdrop-blur-sm rounded-lg p-2"
+        />
       </div>
 
         <Tabs defaultValue="notes" className="w-full">
