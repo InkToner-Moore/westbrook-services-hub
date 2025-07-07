@@ -251,38 +251,38 @@ const StaffInventory = () => {
             </CardContent>
           </Card>
           
-          <Card className="backdrop-blur-xl bg-gradient-to-r from-yellow-500/20 to-orange-600/30 border-white/30 shadow-2xl">
+          <Card className={`backdrop-blur-xl shadow-2xl transition-all duration-500 ${themeClasses.card.secondary} border-yellow-500/30`}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-orange-200 text-sm font-medium">Low Stock</p>
-                  <p className="text-2xl font-bold text-white">{lowStockItems.length}</p>
+                  <p className={`text-sm font-medium transition-all duration-500 ${themeClasses.text.secondary}`}>Low Stock</p>
+                  <p className={`text-2xl font-bold transition-all duration-500 ${themeClasses.text.primary}`}>{lowStockItems.length}</p>
                 </div>
-                <TrendingDown className="h-8 w-8 text-orange-300" />
+                <TrendingDown className={`h-8 w-8 text-yellow-500 transition-all duration-500`} />
               </div>
             </CardContent>
           </Card>
           
-          <Card className="backdrop-blur-xl bg-gradient-to-r from-red-500/20 to-red-600/30 border-white/30 shadow-2xl">
+          <Card className={`backdrop-blur-xl shadow-2xl transition-all duration-500 ${themeClasses.card.secondary} border-red-500/30`}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-red-200 text-sm font-medium">Out of Stock</p>
-                  <p className="text-2xl font-bold text-white">{outOfStockItems.length}</p>
+                  <p className={`text-sm font-medium transition-all duration-500 ${themeClasses.text.secondary}`}>Out of Stock</p>
+                  <p className={`text-2xl font-bold transition-all duration-500 ${themeClasses.text.primary}`}>{outOfStockItems.length}</p>
                 </div>
-                <AlertTriangle className="h-8 w-8 text-red-300" />
+                <AlertTriangle className={`h-8 w-8 text-red-500 transition-all duration-500`} />
               </div>
             </CardContent>
           </Card>
           
-          <Card className="backdrop-blur-xl bg-gradient-to-r from-green-500/20 to-emerald-600/30 border-white/30 shadow-2xl">
+          <Card className={`backdrop-blur-xl shadow-2xl transition-all duration-500 ${themeClasses.card.secondary} border-green-500/30`}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-green-200 text-sm font-medium">Total Value</p>
-                  <p className="text-2xl font-bold text-white">${totalValue.toFixed(2)}</p>
+                  <p className={`text-sm font-medium transition-all duration-500 ${themeClasses.text.secondary}`}>Total Value</p>
+                  <p className={`text-2xl font-bold transition-all duration-500 ${themeClasses.text.primary}`}>${totalValue.toFixed(2)}</p>
                 </div>
-                <DollarSign className="h-8 w-8 text-green-300" />
+                <DollarSign className={`h-8 w-8 text-green-500 transition-all duration-500`} />
               </div>
             </CardContent>
           </Card>
