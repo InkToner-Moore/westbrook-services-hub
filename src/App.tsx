@@ -15,8 +15,10 @@ import StaffNotes from "./pages/StaffNotes";
 import StaffBlog from "./pages/StaffBlog";
 import StaffSettings from "./pages/StaffSettings";
 import ProtectedRoute from "./components/ProtectedRoute";
+import FeatureProtectedRoute from "./components/FeatureProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./hooks/useAuth";
+import { Package, Receipt, Printer, BarChart3, Globe, StickyNote, Megaphone } from "lucide-react";
 
 const queryClient = new QueryClient();
 
@@ -49,7 +51,13 @@ const AppRoutes = () => {
         path="/staff/tracking" 
         element={
           <ProtectedRoute>
-            <StaffTracking />
+            <FeatureProtectedRoute 
+              featurePath="modules.packageTracking.enabled"
+              moduleTitle="Package Tracking"
+              moduleIcon={<Package className="h-8 w-8 text-blue-500" />}
+            >
+              <StaffTracking />
+            </FeatureProtectedRoute>
           </ProtectedRoute>
         } 
       />
@@ -58,7 +66,13 @@ const AppRoutes = () => {
         path="/staff/receipts" 
         element={
           <ProtectedRoute>
-            <StaffReceipts />
+            <FeatureProtectedRoute 
+              featurePath="modules.receiptGenerator.enabled"
+              moduleTitle="Receipt Generator"
+              moduleIcon={<Receipt className="h-8 w-8 text-green-500" />}
+            >
+              <StaffReceipts />
+            </FeatureProtectedRoute>
           </ProtectedRoute>
         } 
       />
@@ -67,7 +81,13 @@ const AppRoutes = () => {
         path="/staff/cartridges" 
         element={
           <ProtectedRoute>
-            <StaffCartridges />
+            <FeatureProtectedRoute 
+              featurePath="modules.cartridgeManager.enabled"
+              moduleTitle="Cartridge Manager"
+              moduleIcon={<Printer className="h-8 w-8 text-purple-500" />}
+            >
+              <StaffCartridges />
+            </FeatureProtectedRoute>
           </ProtectedRoute>
         } 
       />
@@ -76,7 +96,13 @@ const AppRoutes = () => {
         path="/staff/inventory" 
         element={
           <ProtectedRoute>
-            <StaffInventory />
+            <FeatureProtectedRoute 
+              featurePath="modules.inventory.enabled"
+              moduleTitle="Inventory Management"
+              moduleIcon={<BarChart3 className="h-8 w-8 text-orange-500" />}
+            >
+              <StaffInventory />
+            </FeatureProtectedRoute>
           </ProtectedRoute>
         } 
       />
@@ -94,7 +120,13 @@ const AppRoutes = () => {
         path="/staff/notes" 
         element={
           <ProtectedRoute>
-            <StaffNotes />
+            <FeatureProtectedRoute 
+              featurePath="modules.notes.enabled"
+              moduleTitle="Notes System"
+              moduleIcon={<StickyNote className="h-8 w-8 text-yellow-500" />}
+            >
+              <StaffNotes />
+            </FeatureProtectedRoute>
           </ProtectedRoute>
         } 
       />
