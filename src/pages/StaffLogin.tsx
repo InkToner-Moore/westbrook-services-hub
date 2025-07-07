@@ -6,9 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Printer, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 import { toast } from "@/hooks/use-toast";
 
 const StaffLogin = () => {
+  const { themeClasses } = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -40,40 +42,40 @@ const StaffLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-blue-900 to-purple-900 flex items-center justify-center p-4">
+    <div className={`min-h-screen flex items-center justify-center p-4 transition-all duration-500 ${themeClasses.background}`}>
       {/* Background elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse delay-500"></div>
+        <div className={`absolute -top-40 -right-40 w-80 h-80 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse transition-all duration-500 ${themeClasses.backgroundFloating.purple}`}></div>
+        <div className={`absolute -bottom-40 -left-40 w-80 h-80 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-1000 transition-all duration-500 ${themeClasses.backgroundFloating.blue}`}></div>
+        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse delay-500 transition-all duration-500 ${themeClasses.backgroundFloating.indigo}`}></div>
       </div>
 
       <div className="relative z-10 w-full max-w-md">
         {/* Back to public site link */}
         <Link 
           to="/" 
-          className="inline-flex items-center space-x-2 text-blue-200 hover:text-white transition-colors mb-6 group"
+          className={`inline-flex items-center space-x-2 transition-colors mb-6 group ${themeClasses.text.secondary} hover:${themeClasses.text.primary}`}
         >
           <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
           <span>Back to public site</span>
         </Link>
 
-        <Card className="backdrop-blur-xl bg-white/15 border-white/30 shadow-2xl">
+        <Card className={`backdrop-blur-xl shadow-2xl transition-all duration-500 ${themeClasses.card.primary}`}>
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
               <div className="bg-gradient-to-br from-blue-400 to-indigo-600 p-4 rounded-xl shadow-2xl">
                 <Printer className="h-8 w-8 text-white" />
               </div>
             </div>
-            <CardTitle className="text-2xl font-bold text-white">Staff Portal</CardTitle>
-            <CardDescription className="text-blue-200">
+            <CardTitle className={`text-2xl font-bold transition-all duration-500 ${themeClasses.text.primary}`}>Staff Portal</CardTitle>
+            <CardDescription className={`transition-all duration-500 ${themeClasses.text.secondary}`}>
               Sign in to access the staff dashboard
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-white font-medium">Email</Label>
+                <Label htmlFor="email" className={`font-medium transition-all duration-500 ${themeClasses.text.primary}`}>Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -81,12 +83,12 @@ const StaffLogin = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
                   required
-                  className="bg-white/10 border-white/30 text-white placeholder:text-blue-200 focus:border-blue-400 h-12"
+                  className={`h-12 transition-all duration-500 ${themeClasses.input}`}
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-white font-medium">Password</Label>
+                <Label htmlFor="password" className={`font-medium transition-all duration-500 ${themeClasses.text.primary}`}>Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -95,14 +97,14 @@ const StaffLogin = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
                     required
-                    className="bg-white/10 border-white/30 text-white placeholder:text-blue-200 focus:border-blue-400 h-12 pr-12"
+                    className={`h-12 pr-12 transition-all duration-500 ${themeClasses.input}`}
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-1 top-1 h-10 w-10 text-blue-200 hover:text-white hover:bg-white/20"
+                    className={`absolute right-1 top-1 h-10 w-10 transition-all duration-300 ${themeClasses.button.ghost} ${themeClasses.interactive.focus}`}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
@@ -112,14 +114,14 @@ const StaffLogin = () => {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white font-bold rounded-xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105 border border-white/30"
+                className={`w-full h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary} ${themeClasses.interactive.focus}`}
               >
                 {loading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
 
             <div className="mt-6 text-center">
-              <p className="text-blue-200 text-sm">
+              <p className={`text-sm transition-all duration-500 ${themeClasses.text.secondary}`}>
                 Need help accessing your account? Contact the manager.
               </p>
             </div>
