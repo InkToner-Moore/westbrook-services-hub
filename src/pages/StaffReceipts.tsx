@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,9 +13,13 @@ import {
   Key,
   Download,
   Plus,
-  Trash2
+  Trash2,
+  ArrowLeft,
+  User,
+  LogOut
 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import StaffLayout from "@/components/StaffLayout";
@@ -46,6 +51,7 @@ interface KeyReceiptData {
 }
 
 const StaffReceipts = () => {
+  const { user, logout } = useAuth();
   const { themeClasses } = useTheme();
   const [activeTab, setActiveTab] = useState("shipping");
   
@@ -332,23 +338,27 @@ const StaffReceipts = () => {
     });
   };
 
+  const handleLogout = async () => {
+    await logout();
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-blue-900 to-purple-900">
+    <div className={`min-h-screen transition-colors duration-300 ${themeClasses.background}`}>
       {/* Background elements */}
       <div className="fixed inset-0 -z-10">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse delay-500"></div>
+        <div className={`absolute -top-40 -right-40 w-80 h-80 rounded-full mix-blend-multiply filter blur-xl animate-pulse transition-all duration-300 ${themeClasses.backgroundFloating.purple}`}></div>
+        <div className={`absolute -bottom-40 -left-40 w-80 h-80 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-1000 transition-all duration-300 ${themeClasses.backgroundFloating.blue}`}></div>
+        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-500 transition-all duration-300 ${themeClasses.backgroundFloating.indigo}`}></div>
       </div>
 
       {/* Header */}
-      <header className="backdrop-blur-xl bg-white/10 border-b border-white/20 sticky top-0 z-50 shadow-2xl">
+      <header className={`sticky top-0 z-50 shadow-2xl transition-colors duration-300 ${themeClasses.header}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-3">
               <Link 
                 to="/staff/dashboard"
-                className="text-blue-200 hover:text-white transition-colors mr-4 group"
+                className={`transition-colors mr-4 group ${themeClasses.link}`}
               >
                 <ArrowLeft className="h-6 w-6 group-hover:-translate-x-1 transition-transform inline mr-2" />
                 Back to Dashboard
@@ -357,15 +367,15 @@ const StaffReceipts = () => {
                 <Receipt className="h-8 w-8 text-white drop-shadow-lg" />
               </div>
               <div>
-                <h1 className="text-xl lg:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-100 drop-shadow-lg">
+                <h1 className={`text-xl lg:text-2xl font-bold bg-clip-text text-transparent drop-shadow-lg transition-all duration-300 ${themeClasses.gradient.title}`}>
                   Receipt Generator
                 </h1>
-                <p className="text-xs font-medium text-blue-200">Staff Portal</p>
+                <p className={`text-xs font-medium transition-colors duration-300 ${themeClasses.text.secondary}`}>Staff Portal</p>
               </div>
             </div>
             
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-blue-200">
+              <div className={`flex items-center space-x-2 transition-colors duration-300 ${themeClasses.text.secondary}`}>
                 <User className="h-4 w-4" />
                 <span className="text-sm font-medium">{user?.email}</span>
               </div>
@@ -373,7 +383,7 @@ const StaffReceipts = () => {
                 onClick={handleLogout}
                 variant="ghost"
                 size="sm"
-                className="bg-white/20 hover:bg-white/30 text-white rounded-full px-4 py-2 transition-all duration-300 hover:scale-110"
+                className={`rounded-full px-4 py-2 transition-all duration-300 hover:scale-110 ${themeClasses.button.ghost}`}
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
@@ -386,18 +396,18 @@ const StaffReceipts = () => {
       {/* Main Content */}
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-white mb-4 drop-shadow-2xl">
+          <h2 className={`text-4xl font-bold mb-4 drop-shadow-2xl transition-colors duration-300 ${themeClasses.text.primary}`}>
             Professional Receipt Generator
           </h2>
-          <p className="text-xl text-blue-100 max-w-2xl mx-auto drop-shadow-lg">
+          <p className={`text-xl max-w-2xl mx-auto drop-shadow-lg transition-colors duration-300 ${themeClasses.text.secondary}`}>
             Create custom PDF receipts for shipping and key cutting services
           </p>
         </div>
 
         {/* Receipt Type Tabs */}
-        <div className="backdrop-blur-xl bg-white/15 border-white/30 border rounded-3xl p-8 shadow-2xl">
+        <div className={`border rounded-3xl p-8 shadow-2xl transition-all duration-300 ${themeClasses.card.primary}`}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-8 bg-white/20 backdrop-blur-sm">
+            <TabsList className={`grid w-full grid-cols-2 mb-8 backdrop-blur-sm transition-all duration-300 ${themeClasses.card.secondary}`}>
               <TabsTrigger 
                 value="shipping" 
                 className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white"
@@ -419,44 +429,44 @@ const StaffReceipts = () => {
               <form onSubmit={shippingForm.handleSubmit(onSubmitShipping)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <Label htmlFor="receiptNumber" className="text-white font-medium">Receipt Number</Label>
+                    <Label htmlFor="receiptNumber" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Receipt Number</Label>
                     <Input
                       id="receiptNumber"
                       {...shippingForm.register('receiptNumber')}
-                      className="bg-white/10 border-white/30 text-white placeholder:text-blue-200"
+                      className={`transition-all duration-300 ${themeClasses.input}`}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="date" className="text-white font-medium">Date</Label>
+                    <Label htmlFor="date" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Date</Label>
                     <Input
                       id="date"
                       type="date"
                       {...shippingForm.register('date')}
-                      className="bg-white/10 border-white/30 text-white"
+                      className={`transition-all duration-300 ${themeClasses.input}`}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="customerName" className="text-white font-medium">Customer Name</Label>
+                    <Label htmlFor="customerName" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Name</Label>
                     <Input
                       id="customerName"
                       {...shippingForm.register('customerName')}
                       placeholder="Enter customer name"
-                      className="bg-white/10 border-white/30 text-white placeholder:text-blue-200"
+                      className={`transition-all duration-300 ${themeClasses.input}`}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="customerPhone" className="text-white font-medium">Customer Phone</Label>
+                    <Label htmlFor="customerPhone" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Phone</Label>
                     <Input
                       id="customerPhone"
                       {...shippingForm.register('customerPhone')}
                       placeholder="(403) 555-0123"
-                      className="bg-white/10 border-white/30 text-white placeholder:text-blue-200"
+                      className={`transition-all duration-300 ${themeClasses.input}`}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="courier" className="text-white font-medium">Courier</Label>
+                    <Label htmlFor="courier" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Courier</Label>
                     <Select onValueChange={(value) => shippingForm.setValue('courier', value)}>
-                      <SelectTrigger className="bg-white/10 border-white/30 text-white">
+                      <SelectTrigger className={`transition-all duration-300 ${themeClasses.input}`}>
                         <SelectValue placeholder="Select courier" />
                       </SelectTrigger>
                       <SelectContent>
@@ -468,75 +478,75 @@ const StaffReceipts = () => {
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="trackingNumber" className="text-white font-medium">Tracking Number</Label>
+                    <Label htmlFor="trackingNumber" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Tracking Number</Label>
                     <Input
                       id="trackingNumber"
                       {...shippingForm.register('trackingNumber')}
                       placeholder="Enter tracking number"
-                      className="bg-white/10 border-white/30 text-white placeholder:text-blue-200"
+                      className={`transition-all duration-300 ${themeClasses.input}`}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="destinationCity" className="text-white font-medium">Destination City</Label>
+                    <Label htmlFor="destinationCity" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Destination City</Label>
                     <Input
                       id="destinationCity"
                       {...shippingForm.register('destinationCity')}
                       placeholder="Enter city"
-                      className="bg-white/10 border-white/30 text-white placeholder:text-blue-200"
+                      className={`transition-all duration-300 ${themeClasses.input}`}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="destinationProvince" className="text-white font-medium">Province/State</Label>
+                    <Label htmlFor="destinationProvince" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Province/State</Label>
                     <Input
                       id="destinationProvince"
                       {...shippingForm.register('destinationProvince')}
                       placeholder="AB, BC, CA, etc."
-                      className="bg-white/10 border-white/30 text-white placeholder:text-blue-200"
+                      className={`transition-all duration-300 ${themeClasses.input}`}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="destinationCountry" className="text-white font-medium">Country</Label>
+                    <Label htmlFor="destinationCountry" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Country</Label>
                     <Input
                       id="destinationCountry"
                       {...shippingForm.register('destinationCountry')}
                       placeholder="Canada, USA, etc."
-                      className="bg-white/10 border-white/30 text-white placeholder:text-blue-200"
+                      className={`transition-all duration-300 ${themeClasses.input}`}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="subtotal" className="text-white font-medium">Subtotal ($)</Label>
+                    <Label htmlFor="subtotal" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Subtotal ($)</Label>
                     <Input
                       id="subtotal"
                       type="number"
                       step="0.01"
                       {...shippingForm.register('subtotal', { valueAsNumber: true })}
                       placeholder="0.00"
-                      className="bg-white/10 border-white/30 text-white placeholder:text-blue-200"
+                      className={`transition-all duration-300 ${themeClasses.input}`}
                     />
                   </div>
                 </div>
 
                 <div className="mt-8">
-                  <h3 className="text-white font-bold text-lg mb-4">Taxes</h3>
+                  <h3 className={`font-bold text-lg mb-4 transition-colors duration-300 ${themeClasses.text.primary}`}>Taxes</h3>
                   <div className="space-y-4">
                     {shippingForm.watch('taxes')?.map((_, index) => (
                       <div key={index} className="grid grid-cols-3 gap-4 items-end">
                         <div>
-                          <Label className="text-white font-medium">Tax Name</Label>
+                          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Tax Name</Label>
                           <Input
                             {...shippingForm.register(`taxes.${index}.name`)}
                             placeholder="GST, HST, PST, etc."
-                            className="bg-white/10 border-white/30 text-white placeholder:text-blue-200"
+                            className={`transition-all duration-300 ${themeClasses.input}`}
                           />
                         </div>
                         <div>
-                          <Label className="text-white font-medium">Percentage (%)</Label>
+                          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Percentage (%)</Label>
                           <Input
                             type="number"
                             step="0.01"
                             {...shippingForm.register(`taxes.${index}.percentage`, { valueAsNumber: true })}
                             placeholder="5.00"
-                            className="bg-white/10 border-white/30 text-white placeholder:text-blue-200"
+                            className={`transition-all duration-300 ${themeClasses.input}`}
                           />
                         </div>
                         <Button
@@ -548,7 +558,7 @@ const StaffReceipts = () => {
                             const newTaxes = currentTaxes.filter((_, i) => i !== index);
                             shippingForm.setValue('taxes', newTaxes);
                           }}
-                          className="text-red-300 hover:text-red-100 hover:bg-red-500/20"
+                          className={`transition-all duration-300 ${themeClasses.button.danger}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -561,7 +571,7 @@ const StaffReceipts = () => {
                         const currentTaxes = shippingForm.getValues('taxes') || [];
                         shippingForm.setValue('taxes', [...currentTaxes, { name: '', percentage: 0, amount: 0 }]);
                       }}
-                      className="text-blue-200 hover:text-white hover:bg-blue-500/20"
+                      className={`transition-all duration-300 ${themeClasses.button.ghost}`}
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add Tax
@@ -571,7 +581,7 @@ const StaffReceipts = () => {
 
                 <Button
                   type="submit"
-                  className="w-full h-12 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white font-bold rounded-xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105 border border-white/30"
+                  className={`w-full h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
                 >
                   <Download className="h-5 w-5 mr-2" />
                   Generate Shipping Receipt PDF
@@ -584,72 +594,72 @@ const StaffReceipts = () => {
               <form onSubmit={keyForm.handleSubmit(onSubmitKey)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <Label htmlFor="keyReceiptNumber" className="text-white font-medium">Receipt Number</Label>
+                    <Label htmlFor="keyReceiptNumber" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Receipt Number</Label>
                     <Input
                       id="keyReceiptNumber"
                       {...keyForm.register('receiptNumber')}
-                      className="bg-white/10 border-white/30 text-white placeholder:text-blue-200"
+                      className={`transition-all duration-300 ${themeClasses.input}`}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="keyDate" className="text-white font-medium">Date</Label>
+                    <Label htmlFor="keyDate" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Date</Label>
                     <Input
                       id="keyDate"
                       type="date"
                       {...keyForm.register('date')}
-                      className="bg-white/10 border-white/30 text-white"
+                      className={`transition-all duration-300 ${themeClasses.input}`}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="keyCustomerName" className="text-white font-medium">Customer Name</Label>
+                    <Label htmlFor="keyCustomerName" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Name</Label>
                     <Input
                       id="keyCustomerName"
                       {...keyForm.register('customerName')}
                       placeholder="Enter customer name"
-                      className="bg-white/10 border-white/30 text-white placeholder:text-blue-200"
+                      className={`transition-all duration-300 ${themeClasses.input}`}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="keyCustomerPhone" className="text-white font-medium">Customer Phone</Label>
+                    <Label htmlFor="keyCustomerPhone" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Phone</Label>
                     <Input
                       id="keyCustomerPhone"
                       {...keyForm.register('customerPhone')}
                       placeholder="(403) 555-0123"
-                      className="bg-white/10 border-white/30 text-white placeholder:text-blue-200"
+                      className={`transition-all duration-300 ${themeClasses.input}`}
                     />
                   </div>
                 </div>
 
                 <div className="mt-8">
-                  <h3 className="text-white font-bold text-lg mb-4">Key Items</h3>
+                  <h3 className={`font-bold text-lg mb-4 transition-colors duration-300 ${themeClasses.text.primary}`}>Key Items</h3>
                   <div className="space-y-4">
                     {keyForm.watch('keyItems')?.map((_, index) => (
                       <div key={index} className="grid grid-cols-4 gap-4 items-end">
                         <div>
-                          <Label className="text-white font-medium">Key Model</Label>
+                          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Key Model</Label>
                           <Input
                             {...keyForm.register(`keyItems.${index}.model`)}
                             placeholder="House Key, Mailbox, etc."
-                            className="bg-white/10 border-white/30 text-white placeholder:text-blue-200"
+                            className={`transition-all duration-300 ${themeClasses.input}`}
                           />
                         </div>
                         <div>
-                          <Label className="text-white font-medium">Quantity</Label>
+                          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Quantity</Label>
                           <Input
                             type="number"
                             min="1"
                             {...keyForm.register(`keyItems.${index}.quantity`, { valueAsNumber: true })}
-                            className="bg-white/10 border-white/30 text-white"
+                            className={`transition-all duration-300 ${themeClasses.input}`}
                           />
                         </div>
                         <div>
-                          <Label className="text-white font-medium">Price Each ($)</Label>
+                          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Price Each ($)</Label>
                           <Input
                             type="number"
                             step="0.01"
                             {...keyForm.register(`keyItems.${index}.priceEach`, { valueAsNumber: true })}
                             placeholder="0.00"
-                            className="bg-white/10 border-white/30 text-white placeholder:text-blue-200"
+                            className={`transition-all duration-300 ${themeClasses.input}`}
                           />
                         </div>
                         <Button
@@ -661,7 +671,7 @@ const StaffReceipts = () => {
                             const newItems = currentItems.filter((_, i) => i !== index);
                             keyForm.setValue('keyItems', newItems.length > 0 ? newItems : [{ model: '', quantity: 1, priceEach: 0, total: 0 }]);
                           }}
-                          className="text-red-300 hover:text-red-100 hover:bg-red-500/20"
+                          className={`transition-all duration-300 ${themeClasses.button.danger}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -674,7 +684,7 @@ const StaffReceipts = () => {
                         const currentItems = keyForm.getValues('keyItems') || [];
                         keyForm.setValue('keyItems', [...currentItems, { model: '', quantity: 1, priceEach: 0, total: 0 }]);
                       }}
-                      className="text-orange-200 hover:text-white hover:bg-orange-500/20"
+                      className={`transition-all duration-300 ${themeClasses.button.ghost}`}
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add Key Item
@@ -683,26 +693,26 @@ const StaffReceipts = () => {
                 </div>
 
                 <div className="mt-8">
-                  <h3 className="text-white font-bold text-lg mb-4">Taxes</h3>
+                  <h3 className={`font-bold text-lg mb-4 transition-colors duration-300 ${themeClasses.text.primary}`}>Taxes</h3>
                   <div className="space-y-4">
                     {keyForm.watch('taxes')?.map((_, index) => (
                       <div key={index} className="grid grid-cols-3 gap-4 items-end">
                         <div>
-                          <Label className="text-white font-medium">Tax Name</Label>
+                          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Tax Name</Label>
                           <Input
                             {...keyForm.register(`taxes.${index}.name`)}
                             placeholder="GST, HST, PST, etc."
-                            className="bg-white/10 border-white/30 text-white placeholder:text-blue-200"
+                            className={`transition-all duration-300 ${themeClasses.input}`}
                           />
                         </div>
                         <div>
-                          <Label className="text-white font-medium">Percentage (%)</Label>
+                          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Percentage (%)</Label>
                           <Input
                             type="number"
                             step="0.01"
                             {...keyForm.register(`taxes.${index}.percentage`, { valueAsNumber: true })}
                             placeholder="5.00"
-                            className="bg-white/10 border-white/30 text-white placeholder:text-blue-200"
+                            className={`transition-all duration-300 ${themeClasses.input}`}
                           />
                         </div>
                         <Button
@@ -714,7 +724,7 @@ const StaffReceipts = () => {
                             const newTaxes = currentTaxes.filter((_, i) => i !== index);
                             keyForm.setValue('taxes', newTaxes);
                           }}
-                          className="text-red-300 hover:text-red-100 hover:bg-red-500/20"
+                          className={`transition-all duration-300 ${themeClasses.button.danger}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -727,7 +737,7 @@ const StaffReceipts = () => {
                         const currentTaxes = keyForm.getValues('taxes') || [];
                         keyForm.setValue('taxes', [...currentTaxes, { name: '', percentage: 0, amount: 0 }]);
                       }}
-                      className="text-orange-200 hover:text-white hover:bg-orange-500/20"
+                      className={`transition-all duration-300 ${themeClasses.button.ghost}`}
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add Tax
@@ -737,7 +747,7 @@ const StaffReceipts = () => {
 
                 <Button
                   type="submit"
-                  className="w-full h-12 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 text-white font-bold rounded-xl shadow-2xl hover:shadow-orange-500/25 transition-all duration-300 hover:scale-105 border border-white/30"
+                  className={`w-full h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.secondary}`}
                 >
                   <Download className="h-5 w-5 mr-2" />
                   Generate Key Receipt PDF
