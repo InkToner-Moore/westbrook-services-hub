@@ -1,0 +1,425 @@
+/* Print-friendly styles for receipts, reports, and documents */
+
+@media print {
+  /* Reset common elements */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide non-essential elements when printing */
+  .no-print,
+  .print-hidden,
+  header nav,
+  .sidebar,
+  .floating-action,
+  .theme-toggle,
+  .logout-button,
+  .back-button,
+  .action-buttons,
+  .edit-buttons,
+  .delete-buttons,
+  .search-bar,
+  .filters,
+  .pagination,
+  .breadcrumbs,
+  .tooltips,
+  .modal-overlay,
+  button:not(.print-button),
+  .tabs-navigation,
+  .dropdown-menu {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Show print-only elements */
+  .print-only {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* Page setup */
+  @page {
+    margin: 0.75in;
+    size: letter;
+  }
+
+  @page :first {
+    margin-top: 1in;
+  }
+
+  /* Body and layout */
+  body {
+    font-family: 'Times New Roman', serif !important;
+    font-size: 12pt !important;
+    line-height: 1.4 !important;
+    color: #000 !important;
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Typography */
+  h1, h2, h3, h4, h5, h6 {
+    color: #000 !important;
+    page-break-after: avoid;
+    margin-bottom: 0.5em !important;
+    font-weight: bold !important;
+  }
+
+  h1 {
+    font-size: 18pt !important;
+    border-bottom: 2px solid #000 !important;
+    padding-bottom: 0.2em !important;
+  }
+
+  h2 {
+    font-size: 16pt !important;
+  }
+
+  h3 {
+    font-size: 14pt !important;
+  }
+
+  /* Prevent orphans and widows */
+  p, li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Tables */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 1em 0 !important;
+    page-break-inside: avoid;
+  }
+
+  table, th, td {
+    border: 1px solid #000 !important;
+  }
+
+  th, td {
+    padding: 0.3em !important;
+    text-align: left !important;
+    vertical-align: top !important;
+  }
+
+  th {
+    background-color: #f0f0f0 !important;
+    font-weight: bold !important;
+  }
+
+  /* Receipt-specific styles */
+  .receipt-container {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .receipt-header {
+    text-align: center !important;
+    margin-bottom: 1em !important;
+    border-bottom: 2px solid #000 !important;
+    padding-bottom: 0.5em !important;
+  }
+
+  .business-info {
+    font-size: 10pt !important;
+    line-height: 1.2 !important;
+  }
+
+  .receipt-number {
+    font-size: 14pt !important;
+    font-weight: bold !important;
+    margin: 0.5em 0 !important;
+  }
+
+  .receipt-details {
+    margin: 1em 0 !important;
+  }
+
+  .receipt-total {
+    border-top: 2px solid #000 !important;
+    margin-top: 1em !important;
+    padding-top: 0.5em !important;
+    font-weight: bold !important;
+    font-size: 14pt !important;
+  }
+
+  /* Invoice/receipt line items */
+  .line-items {
+    margin: 1em 0 !important;
+  }
+
+  .line-item {
+    display: flex !important;
+    justify-content: space-between !important;
+    padding: 0.2em 0 !important;
+    border-bottom: 1px dotted #999 !important;
+  }
+
+  .line-item:last-child {
+    border-bottom: none !important;
+  }
+
+  /* Customer information */
+  .customer-info {
+    margin: 1em 0 !important;
+    padding: 0.5em !important;
+    border: 1px solid #000 !important;
+    background-color: #f9f9f9 !important;
+  }
+
+  /* Notes and tracking info */
+  .notes-section,
+  .tracking-info {
+    margin: 1em 0 !important;
+    padding: 0.5em !important;
+    border: 1px dashed #666 !important;
+    background-color: #f5f5f5 !important;
+  }
+
+  /* QR codes and barcodes */
+  .qr-code,
+  .barcode {
+    display: block !important;
+    margin: 0.5em auto !important;
+    max-width: 2in !important;
+    height: auto !important;
+  }
+
+  /* Footer information */
+  .print-footer {
+    position: fixed;
+    bottom: 0.5in;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 10pt !important;
+    color: #666 !important;
+    border-top: 1px solid #ccc !important;
+    padding-top: 0.2em !important;
+  }
+
+  /* Page breaks */
+  .page-break-before {
+    page-break-before: always;
+  }
+
+  .page-break-after {
+    page-break-after: always;
+  }
+
+  .page-break-inside-avoid {
+    page-break-inside: avoid;
+  }
+
+  /* Inventory reports */
+  .inventory-report {
+    font-size: 11pt !important;
+  }
+
+  .inventory-item {
+    margin: 0.3em 0 !important;
+    padding: 0.2em !important;
+    border-bottom: 1px solid #ddd !important;
+  }
+
+  .stock-level {
+    font-weight: bold !important;
+  }
+
+  .low-stock {
+    background-color: #ffe6e6 !important;
+    border-left: 3px solid #ff0000 !important;
+  }
+
+  /* Notes printout */
+  .notes-printout {
+    font-size: 11pt !important;
+  }
+
+  .note-item {
+    margin: 1em 0 !important;
+    padding: 0.5em !important;
+    border: 1px solid #000 !important;
+    page-break-inside: avoid;
+  }
+
+  .note-header {
+    font-weight: bold !important;
+    margin-bottom: 0.3em !important;
+    border-bottom: 1px solid #ccc !important;
+    padding-bottom: 0.2em !important;
+  }
+
+  .note-meta {
+    font-size: 9pt !important;
+    color: #666 !important;
+    font-style: italic !important;
+  }
+
+  /* Package tracking printout */
+  .tracking-printout {
+    font-size: 12pt !important;
+  }
+
+  .tracking-number {
+    font-size: 16pt !important;
+    font-weight: bold !important;
+    text-align: center !important;
+    margin: 1em 0 !important;
+    padding: 0.5em !important;
+    border: 2px solid #000 !important;
+  }
+
+  /* Charts and graphs (convert to text when possible) */
+  .chart-container {
+    display: none !important;
+  }
+
+  .chart-data {
+    display: block !important;
+    font-family: monospace !important;
+    font-size: 10pt !important;
+  }
+
+  /* Form elements */
+  input[type="text"],
+  input[type="number"],
+  textarea,
+  select {
+    border: none !important;
+    border-bottom: 1px solid #000 !important;
+    background: transparent !important;
+    color: #000 !important;
+    padding: 0.1em !important;
+    font-size: inherit !important;
+  }
+
+  /* Checkboxes and radio buttons */
+  input[type="checkbox"],
+  input[type="radio"] {
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    width: 0.4em !important;
+    height: 0.4em !important;
+    border: 1px solid #000 !important;
+    margin-right: 0.2em !important;
+    display: inline-block !important;
+  }
+
+  input[type="checkbox"]:checked::after {
+    content: "✓" !important;
+    font-size: 0.3em !important;
+    color: #000 !important;
+  }
+
+  input[type="radio"] {
+    border-radius: 50% !important;
+  }
+
+  input[type="radio"]:checked::after {
+    content: "•" !important;
+    font-size: 0.6em !important;
+    color: #000 !important;
+    text-align: center !important;
+  }
+
+  /* Links */
+  a {
+    color: #000 !important;
+    text-decoration: underline !important;
+  }
+
+  a[href^="http"]:after {
+    content: " (" attr(href) ")" !important;
+    font-size: 0.8em !important;
+    color: #666 !important;
+  }
+
+  /* Utility classes */
+  .print-text-center {
+    text-align: center !important;
+  }
+
+  .print-text-right {
+    text-align: right !important;
+  }
+
+  .print-font-bold {
+    font-weight: bold !important;
+  }
+
+  .print-font-large {
+    font-size: 14pt !important;
+  }
+
+  .print-font-small {
+    font-size: 10pt !important;
+  }
+
+  .print-margin-top {
+    margin-top: 1em !important;
+  }
+
+  .print-no-margin {
+    margin: 0 !important;
+  }
+
+  .print-padding {
+    padding: 0.5em !important;
+  }
+
+  .print-border {
+    border: 1px solid #000 !important;
+  }
+
+  .print-border-top {
+    border-top: 1px solid #000 !important;
+  }
+
+  .print-border-bottom {
+    border-bottom: 1px solid #000 !important;
+  }
+
+  /* Signature lines */
+  .signature-line {
+    border-bottom: 1px solid #000 !important;
+    width: 3in !important;
+    height: 1em !important;
+    display: inline-block !important;
+    margin: 0 0.5em !important;
+  }
+
+  .signature-section {
+    margin: 2em 0 1em 0 !important;
+    page-break-inside: avoid;
+  }
+
+  /* Date stamps */
+  .date-stamp {
+    float: right !important;
+    font-size: 10pt !important;
+    border: 1px solid #000 !important;
+    padding: 0.2em !important;
+    margin: 0.5em 0 !important;
+  }
+
+  /* Watermarks */
+  .watermark {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) rotate(-45deg) !important;
+    font-size: 72pt !important;
+    color: #f0f0f0 !important;
+    z-index: -1 !important;
+    font-weight: bold !important;
+  }
+}
