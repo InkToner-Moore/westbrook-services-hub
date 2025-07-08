@@ -129,8 +129,7 @@ const PublicHome = () => {
         {isFeatureEnabled('publicSite.packageTracking') && (
           <section className="mb-16">
             <SmartTracker 
-              isDarkMode={isDarkMode} 
-              className={`max-w-4xl mx-auto ${themeClasses.card.primary}`} 
+              className="max-w-4xl mx-auto" 
             />
           </section>
         )}
@@ -144,8 +143,8 @@ const PublicHome = () => {
             {services.map((service, index) => (
               <Card key={index} className={`transition-all duration-200 hover:shadow-lg ${themeClasses.card.primary}`}>
                 <CardHeader className="text-center pb-4">
-                  <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg w-fit mx-auto mb-4">
-                    <service.icon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                  <div className={`p-3 rounded-lg w-fit mx-auto mb-4 ${themeClasses.card.secondary}`}>
+                    <service.icon className="h-8 w-8 text-blue-600" />
                   </div>
                   <CardTitle className={`text-lg ${themeClasses.text.primary}`}>
                     {service.title}

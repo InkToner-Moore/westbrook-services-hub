@@ -7,11 +7,10 @@ import { useTheme } from "@/hooks/useTheme";
 import { toast } from "@/hooks/use-toast";
 
 interface SmartTrackerProps {
-  isDarkMode?: boolean;
   className?: string;
 }
 
-const SmartTracker = ({ isDarkMode = true, className = "" }: SmartTrackerProps) => {
+const SmartTracker = ({ className = "" }: SmartTrackerProps) => {
   const { isFeatureEnabled } = useSystemSettings();
   const { themeClasses } = useTheme();
   const [trackingNumber, setTrackingNumber] = useState("");
@@ -221,12 +220,12 @@ const SmartTracker = ({ isDarkMode = true, className = "" }: SmartTrackerProps) 
           {courierDetection && (
             <div className={`absolute right-3 top-3 px-2 py-1 rounded text-xs font-medium transition-all duration-200 ${
               courierDetection.courier === 'Unknown'
-                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                ? themeClasses.status.error
                 : courierDetection.courier === 'UPS'
-                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                ? themeClasses.status.warning
                 : courierDetection.courier === 'FedEx'
-                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                ? themeClasses.status.info
+                : themeClasses.status.success
             }`}>
               {courierDetection.courier === 'Unknown' ? 'Invalid' : courierDetection.courier}
             </div>
