@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ExternalLink, Truck } from "lucide-react";
+import { Package } from "lucide-react";
 import { useSystemSettings } from "@/hooks/useSystemSettings";
+import { useTheme } from "@/hooks/useTheme";
 import { toast } from "@/hooks/use-toast";
 
 interface SmartTrackerProps {
@@ -12,6 +13,7 @@ interface SmartTrackerProps {
 
 const SmartTracker = ({ isDarkMode = true, className = "" }: SmartTrackerProps) => {
   const { isFeatureEnabled } = useSystemSettings();
+  const { themeClasses } = useTheme();
   const [trackingNumber, setTrackingNumber] = useState("");
   const [courierDetection, setCourierDetection] = useState<any>(null);
 
@@ -191,87 +193,59 @@ const SmartTracker = ({ isDarkMode = true, className = "" }: SmartTrackerProps) 
     }
   };
 
-  // Filter tracking links based on feature settings
-  const trackingLinks = [
-    { name: "UPS", url: "https://www.ups.com/track", color: "bg-gradient-to-r from-amber-500 to-amber-600" },
-    { name: "Purolator", url: "https://www.purolator.com/en/shipping/tracker", color: "bg-gradient-to-r from-blue-500 to-blue-600" },
-    { name: "FedEx", url: "https://www.fedex.com/en-ca/tracking.html", color: "bg-gradient-to-r from-purple-500 to-purple-600" }
-  ].filter((link) => {
-    // Only show if multi-courier feature is enabled
-    if (!isFeatureEnabled('modules.packageTracking.features.multiCourier')) {
-      return false;
-    }
-    return true;
-  });
-
   return (
-    <div className={`backdrop-blur-xl rounded-3xl shadow-2xl p-8 border transform hover:scale-[1.02] transition-all duration-500 ${className} ${
-      isDarkMode 
-        ? 'bg-white/15 border-white/30' 
-        : 'bg-white/25 border-gray-300/50'
-    }`}>
-      <h3 className={`text-3xl font-bold mb-8 flex items-center justify-center space-x-3 drop-shadow-lg transition-all duration-500 ${
-        isDarkMode ? 'text-white' : 'text-gray-800'
-      }`}>
-        <div className="bg-gradient-to-r from-blue-400 to-purple-500 p-2 rounded-xl animate-pulse">
-          <Truck className="h-6 w-6 text-white" />
+    <div className={`rounded-lg shadow-lg p-6 transition-all duration-200 ${className} ${themeClasses.card.primary}`}>
+      <div className="text-center mb-6">
+        <div className="flex items-center justify-center space-x-3 mb-4">
+          <div className="bg-blue-600 p-2 rounded-lg">
+            <Package className="h-6 w-6 text-white" />
+          </div>
+          <h3 className={`text-2xl font-bold ${themeClasses.text.primary}`}>
+            Package Tracker
+          </h3>
         </div>
-        <span>Smart Package Tracker</span>
-      </h3>
+        <p className={`${themeClasses.text.secondary}`}>
+          Enter your tracking number to get started
+        </p>
+      </div>
       
       {/* Smart Tracking Input */}
-      <div className="mb-8 max-w-2xl mx-auto">
+      <div className="max-w-md mx-auto space-y-4">
         <div className="relative">
           <Input
-            placeholder="Enter any tracking number..."
+            placeholder="Enter tracking number..."
             value={trackingNumber}
             onChange={(e) => handleTrackingInput(e.target.value)}
-            className={`h-14 text-lg rounded-2xl border-2 backdrop-blur-sm transition-all duration-300 ${
-              isDarkMode 
-                ? 'bg-white/10 border-white/30 text-white placeholder:text-blue-200 hover:border-blue-400 focus:border-blue-400' 
-                : 'bg-white/50 border-gray-300/50 text-gray-700 placeholder:text-gray-500 hover:border-blue-500 focus:border-blue-500'
-            }`}
+            className={`h-12 text-center transition-all duration-200 ${themeClasses.input}`}
           />
           {courierDetection && (
-            <div className={`absolute right-3 top-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+            <div className={`absolute right-3 top-3 px-2 py-1 rounded text-xs font-medium transition-all duration-200 ${
               courierDetection.courier === 'Unknown'
-                ? isDarkMode ? 'bg-red-500/20 text-red-300 border border-red-400/50' : 'bg-red-100 text-red-600 border border-red-300'
+                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
                 : courierDetection.courier === 'UPS'
-                ? isDarkMode ? 'bg-amber-500/20 text-amber-300 border border-amber-400/50' : 'bg-amber-100 text-amber-700 border border-amber-300'
+                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
                 : courierDetection.courier === 'FedEx'
-                ? isDarkMode ? 'bg-purple-500/20 text-purple-300 border border-purple-400/50' : 'bg-purple-100 text-purple-700 border border-purple-300'
-                : isDarkMode ? 'bg-blue-500/20 text-blue-300 border border-blue-400/50' : 'bg-blue-100 text-blue-700 border border-blue-300'
+                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
             }`}>
-              {courierDetection.courier === 'Unknown' ? '❌ Invalid' : `✅ ${courierDetection.courier}`}
+              {courierDetection.courier === 'Unknown' ? 'Invalid' : courierDetection.courier}
             </div>
           )}
         </div>
+        
         {courierDetection && courierDetection.courier !== 'Unknown' && (
-          <p className={`text-sm mt-2 text-center transition-all duration-500 ${
-            isDarkMode ? 'text-blue-200' : 'text-gray-600'
-          }`}>
+          <p className={`text-sm text-center ${themeClasses.text.muted}`}>
             Detected: {courierDetection.format} ({courierDetection.confidence}% confidence)
           </p>
         )}
+        
         <Button
           onClick={handleTrackPackage}
-          className="w-full mt-4 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white font-bold rounded-xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105 border border-white/30"
+          className={`w-full h-12 font-semibold transition-all duration-200 ${themeClasses.button.primary}`}
+          disabled={!trackingNumber.trim()}
         >
           Track Package
         </Button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {trackingLinks.map((link) => (
-          <Button
-            key={link.name}
-            onClick={() => window.open(link.url, '_blank')}
-            className={`${link.color} hover:opacity-90 text-white font-bold py-6 px-8 rounded-2xl transition-all duration-300 hover:scale-110 hover:shadow-2xl shadow-xl group border-2 border-white/20`}
-          >
-            <ExternalLink className="h-5 w-5 mr-3 group-hover:rotate-12 transition-transform duration-300" />
-            Track with {link.name}
-          </Button>
-        ))}
       </div>
     </div>
   );
