@@ -115,7 +115,7 @@ const SmartTracker = ({ className = "" }: SmartTrackerProps) => {
               <button
                 key={courier.id}
                 onClick={() => setSelectedCourier(courier.id)}
-                className={`p-4 rounded-lg border-2 transition-all duration-200 text-left hover:shadow-md ${
+                className={`p-3 rounded-lg border-2 transition-all duration-200 text-left hover:shadow-md ${
                   selectedCourier === courier.id
                     ? `${courier.color} text-white border-transparent shadow-lg`
                     : `${themeClasses.card.secondary} border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500`
@@ -123,7 +123,7 @@ const SmartTracker = ({ className = "" }: SmartTrackerProps) => {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    <div className={`w-20 h-12 rounded-lg flex items-center justify-center p-2 ${
+                    <div className={`w-18 h-10 rounded-lg flex items-center justify-center p-2 ${
                       selectedCourier === courier.id 
                         ? 'bg-white/20' 
                         : 'bg-white dark:bg-gray-100'
