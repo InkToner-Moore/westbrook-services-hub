@@ -26,21 +26,21 @@ const SmartTracker = ({ className = "" }: SmartTrackerProps) => {
       id: "ups",
       name: "UPS",
       url: "https://www.ups.com/track?tracknum=",
-      color: "bg-amber-600",
+      color: "bg-gradient-to-r from-amber-500 to-amber-800", // UPS brown/orange
       logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/United_Parcel_Service_logo_2014.svg/859px-United_Parcel_Service_logo_2014.svg.png"
     },
     {
       id: "fedex", 
       name: "FedEx",
       url: "https://www.fedex.com/wtrk/track/?trknbr=",
-      color: "bg-purple-600",
+      color: "bg-gradient-to-r from-purple-600 to-orange-500", // FedEx purple & orange
       logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/FedEx_Express.svg/1280px-FedEx_Express.svg.png"
     },
     {
       id: "purolator",
       name: "Purolator", 
       url: "https://www.purolator.com/en/shipping/tracker?pin=",
-      color: "bg-blue-600",
+      color: "bg-gradient-to-r from-blue-600 to-red-600", // Purolator blue & red
       logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Purolator_Courier_Logo_2006.svg/1280px-Purolator_Courier_Logo_2006.svg.png"
     }
   ];
