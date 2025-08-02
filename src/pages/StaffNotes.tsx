@@ -94,7 +94,7 @@ const StaffNotes = () => {
     }
   };
 
-  const filteredNotes = notesList.items.filter(note => {
+  const filteredNotes = notesList.list.filter(note => {
     const matchesSearch = note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          note.content.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === "all" || note.category === selectedCategory;
@@ -109,7 +109,7 @@ const StaffNotes = () => {
     }
 
     const newNote: Note = {
-      id: `NOTE-${String(notesList.items.length + 1).padStart(3, '0')}`,
+      id: `NOTE-${String(notesList.list.length + 1).padStart(3, '0')}`,
       ...data,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -135,15 +135,16 @@ const StaffNotes = () => {
       return;
     }
 
-    const existingNote = notesList.items.find(note => note.id === id);
-    if (existingNote) {
+    const existingNoteIndex = notesList.list.findIndex(note => note.id === id);
+    if (existingNoteIndex !== -1) {
+      const existingNote = notesList.list[existingNoteIndex];
       const updatedNote = {
         ...existingNote,
         ...data,
         updatedAt: new Date().toISOString()
       };
       
-      notesList.updateItem(id, updatedNote);
+      notesList.updateItem(existingNoteIndex, updatedNote);
       setEditingNote(null);
       noteForm.reset();
       
@@ -155,11 +156,14 @@ const StaffNotes = () => {
   };
 
   const deleteNote = (id: string) => {
-    notesList.removeItem(id);
-    toast({
-      title: "Note Deleted",
-      description: "Note has been removed",
-    });
+    const index = notesList.list.findIndex(note => note.id === id);
+    if (index !== -1) {
+      notesList.removeItem(index);
+      toast({
+        title: "Note Deleted",
+        description: "Note has been removed",
+      });
+    }
   };
 
   const startEditing = (note: Note) => {
