@@ -10,16 +10,13 @@ import StaffDashboard from "./pages/StaffDashboard";
 import StaffTracking from "./pages/StaffTracking";
 import StaffReceipts from "./pages/StaffReceipts";
 import StaffCartridges from "./pages/StaffCartridges";
-import StaffInventory from "./pages/StaffInventory";
 import StaffDirectory from "./pages/StaffDirectory";
 import StaffNotes from "./pages/StaffNotes";
-import StaffBlog from "./pages/StaffBlog";
-import StaffSettings from "./pages/StaffSettings";
 import ProtectedRoute from "./components/ProtectedRoute";
 import FeatureProtectedRoute from "./components/FeatureProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./hooks/useAuth";
-import { Package, Receipt, Printer, BarChart3, Globe, StickyNote, Megaphone } from "lucide-react";
+import { Package, Receipt, Printer, StickyNote } from "lucide-react";
 
 const queryClient = new QueryClient();
 
@@ -93,20 +90,6 @@ const AppRoutes = () => {
         } 
       />
       
-      <Route 
-        path="/staff/inventory" 
-        element={
-          <ProtectedRoute>
-            <FeatureProtectedRoute 
-              featurePath="modules.inventory.enabled"
-              moduleTitle="Inventory Management"
-              moduleIcon={<BarChart3 className="h-8 w-8 text-orange-500" />}
-            >
-              <StaffInventory />
-            </FeatureProtectedRoute>
-          </ProtectedRoute>
-        } 
-      />
       
       <Route 
         path="/staff/directory" 
@@ -132,23 +115,7 @@ const AppRoutes = () => {
         } 
       />
       
-      <Route 
-        path="/staff/blog" 
-        element={
-          <ProtectedRoute>
-            <StaffBlog />
-          </ProtectedRoute>
-        } 
-      />
       
-      <Route 
-        path="/staff/settings" 
-        element={
-          <ProtectedRoute>
-            <StaffSettings />
-          </ProtectedRoute>
-        } 
-      />
       
       {/* Catch-all route */}
       <Route path="*" element={<NotFound />} />

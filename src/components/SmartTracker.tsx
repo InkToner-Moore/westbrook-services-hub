@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Package, Truck, CheckCircle } from "lucide-react";
-import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { useTheme } from "@/hooks/useTheme";
 import { toast } from "@/hooks/use-toast";
 
@@ -11,15 +10,12 @@ interface SmartTrackerProps {
 }
 
 const SmartTracker = ({ className = "" }: SmartTrackerProps) => {
-  const { isFeatureEnabled } = useSystemSettings();
+  // Package tracking is always enabled since system settings was removed
   const { themeClasses } = useTheme();
   const [trackingNumber, setTrackingNumber] = useState("");
   const [selectedCourier, setSelectedCourier] = useState<string>("");
 
-  // If package tracking is disabled, don't render the component
-  if (!isFeatureEnabled('modules.packageTracking.enabled')) {
-    return null;
-  }
+  // Package tracking is always available
 
   const couriers = [
     {

@@ -1,6 +1,5 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { useTheme } from "@/hooks/useTheme";
 import { X, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,7 +19,8 @@ const FeatureProtectedRoute = ({
   moduleIcon 
 }: FeatureProtectedRouteProps) => {
   const { user, loading } = useAuth();
-  const { isFeatureEnabled } = useSystemSettings();
+  // All features are now enabled since system settings was removed
+  const isFeatureEnabled = () => true;
   const { themeClasses } = useTheme();
 
   if (loading) {
@@ -69,10 +69,10 @@ const FeatureProtectedRoute = ({
                 Go Back
               </Button>
               <Button
-                onClick={() => window.location.href = '/staff/settings'}
+                onClick={() => window.location.href = '/staff/dashboard'}
                 className={`flex-1 ${themeClasses.button.primary} ${themeClasses.interactive.focus}`}
               >
-                Settings
+                Dashboard
               </Button>
             </div>
           </CardContent>

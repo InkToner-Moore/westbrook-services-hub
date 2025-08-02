@@ -2,13 +2,12 @@ import { useState } from "react";
 import { Phone, MapPin, Clock, Printer, Key, Package, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { useTheme } from "@/hooks/useTheme";
 import SmartTracker from "@/components/SmartTracker";
 import { Link } from "react-router-dom";
 
 const PublicHome = () => {
-  const { isFeatureEnabled } = useSystemSettings();
+  // All public features are now always enabled since system settings was removed
   const { isDarkMode, toggleTheme, themeClasses } = useTheme();
 
   const businessHours = [
@@ -78,16 +77,14 @@ const PublicHome = () => {
                 <span className="hidden sm:inline">(403) 686-2835</span>
               </a>
               
-              {isFeatureEnabled('publicSite.themeToggle') && (
-                <Button
-                  onClick={toggleTheme}
-                  variant="ghost"
-                  size="sm"
-                  className={`p-2 rounded-lg ${themeClasses.button.ghost}`}
-                >
-                  {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                </Button>
-              )}
+              <Button
+                onClick={toggleTheme}
+                variant="ghost"
+                size="sm"
+                className={`p-2 rounded-lg ${themeClasses.button.ghost}`}
+              >
+                {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </Button>
               
               <Link
                 to="/staff"
@@ -126,13 +123,11 @@ const PublicHome = () => {
         </section>
 
         {/* Package Tracker */}
-        {isFeatureEnabled('publicSite.packageTracking') && (
-          <section className="mb-16">
-            <SmartTracker 
-              className="max-w-4xl mx-auto" 
-            />
-          </section>
-        )}
+        <section className="mb-16">
+          <SmartTracker 
+            className="max-w-4xl mx-auto" 
+          />
+        </section>
 
         {/* Services */}
         <section className="mb-16">
@@ -184,26 +179,24 @@ const PublicHome = () => {
         {/* Business Hours & Contact */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Business Hours */}
-          {isFeatureEnabled('publicSite.businessHours') && (
-            <Card className={themeClasses.card.primary}>
-              <CardHeader>
-                <CardTitle className={`flex items-center space-x-2 ${themeClasses.text.primary}`}>
-                  <Clock className="h-5 w-5" />
-                  <span>Business Hours</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {businessHours.map((schedule, index) => (
-                    <div key={index} className="flex justify-between">
-                      <span className={themeClasses.text.secondary}>{schedule.days}</span>
-                      <span className={`font-semibold ${themeClasses.text.primary}`}>{schedule.hours}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <Card className={themeClasses.card.primary}>
+            <CardHeader>
+              <CardTitle className={`flex items-center space-x-2 ${themeClasses.text.primary}`}>
+                <Clock className="h-5 w-5" />
+                <span>Business Hours</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {businessHours.map((schedule, index) => (
+                  <div key={index} className="flex justify-between">
+                    <span className={themeClasses.text.secondary}>{schedule.days}</span>
+                    <span className={`font-semibold ${themeClasses.text.primary}`}>{schedule.hours}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Contact Information */}
           <Card className={themeClasses.card.primary}>

@@ -9,23 +9,23 @@ import {
   Receipt, 
   Globe, 
   StickyNote, 
-  Megaphone, 
   LogOut, 
   User,
-  BarChart3,
-  Wrench,
   Sun,
   Moon
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
-import { useSystemSettings } from "@/hooks/useSystemSettings";
 import { toast } from "@/hooks/use-toast";
 
 const StaffDashboard = () => {
   const { user, logout } = useAuth();
   const { isDarkMode, toggleTheme, themeClasses } = useTheme();
-  const { settings, isFeatureEnabled } = useSystemSettings();
+  // Mock feature checking since system settings was removed
+  const isFeatureEnabled = (feature: string) => {
+    // All remaining features are enabled by default
+    return true;
+  };
   const navigate = useNavigate();
   
   const isDev = import.meta.env.VITE_NODE_ENV === 'development';
@@ -72,15 +72,6 @@ const StaffDashboard = () => {
       featurePath: "modules.cartridgeManager.enabled"
     },
     {
-      title: "Inventory System",
-      description: "Manage keys, cartridges, stock levels and prices",
-      icon: BarChart3,
-      color: "from-orange-500 to-red-600",
-      route: "/staff/inventory",
-      status: "Available",
-      featurePath: "modules.inventory.enabled"
-    },
-    {
       title: "Website Directory",
       description: "Quick access to commonly used websites",
       icon: Globe,
@@ -98,30 +89,10 @@ const StaffDashboard = () => {
       status: "Available",
       featurePath: "modules.notes.enabled"
     },
-    {
-      title: "Blog & Announcements",
-      description: "Manage customer-facing updates",
-      icon: Megaphone,
-      color: "from-pink-500 to-rose-600",
-      route: "/staff/blog",
-      status: "Available",
-      featurePath: "modules.blog.enabled"
-    },
-    {
-      title: "System Settings",
-      description: "Configure system preferences and features",
-      icon: Wrench,
-      color: "from-gray-500 to-slate-600",
-      route: "/staff/settings",
-      status: "Available",
-      featurePath: null // Always available
-    }
   ];
 
-  // Filter dashboard items based on feature toggles
-  const dashboardItems = allDashboardItems.filter(item => 
-    item.featurePath === null || isFeatureEnabled(item.featurePath)
-  );
+  // All remaining dashboard items are available
+  const dashboardItems = allDashboardItems;
 
   return (
     <div className={`min-h-screen transition-all duration-500 ${themeClasses.background}`}>
