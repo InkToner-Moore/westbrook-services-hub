@@ -32,22 +32,22 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const themeClasses = {
     background: isDarkMode 
       ? 'bg-slate-900' 
-      : 'bg-gray-50',
+      : 'bg-stone-100',
     
     backgroundFloating: {
-      purple: isDarkMode ? 'bg-purple-500/20 opacity-30' : 'bg-purple-300/30 opacity-50',
-      blue: isDarkMode ? 'bg-blue-500/20 opacity-30' : 'bg-blue-300/30 opacity-50',
-      indigo: isDarkMode ? 'bg-indigo-500/20 opacity-30' : 'bg-indigo-300/30 opacity-50',
+      purple: isDarkMode ? 'bg-purple-500/20 opacity-30' : 'bg-purple-300/20 opacity-40',
+      blue: isDarkMode ? 'bg-blue-500/20 opacity-30' : 'bg-blue-300/20 opacity-40',
+      indigo: isDarkMode ? 'bg-indigo-500/20 opacity-30' : 'bg-indigo-300/20 opacity-40',
     },
     
     header: isDarkMode 
       ? 'bg-slate-800 border-slate-700 backdrop-blur-xl' 
-      : 'bg-white border-gray-300 backdrop-blur-xl shadow-sm',
+      : 'bg-stone-200/80 border-stone-300 backdrop-blur-xl shadow-sm',
     
     text: {
-      primary: isDarkMode ? 'text-white' : 'text-gray-900',
-      secondary: isDarkMode ? 'text-gray-300' : 'text-gray-600',
-      muted: isDarkMode ? 'text-gray-400' : 'text-gray-500',
+      primary: isDarkMode ? 'text-white' : 'text-stone-800',
+      secondary: isDarkMode ? 'text-gray-300' : 'text-stone-600',
+      muted: isDarkMode ? 'text-gray-400' : 'text-stone-500',
       accent: isDarkMode ? 'text-blue-400' : 'text-blue-700',
       inverted: isDarkMode ? 'text-gray-900' : 'text-white',
     },
@@ -61,13 +61,13 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     card: {
       primary: isDarkMode 
         ? 'bg-slate-800 border-slate-700' 
-        : 'bg-white border-gray-300 shadow-sm',
+        : 'bg-stone-50/60 border-stone-300 shadow-sm',
       secondary: isDarkMode 
         ? 'bg-slate-700 border-slate-600' 
-        : 'bg-gray-100 border-gray-400',
+        : 'bg-stone-200/70 border-stone-400',
       accent: isDarkMode
         ? 'bg-slate-800 border-blue-600'
-        : 'bg-blue-50 border-blue-300',
+        : 'bg-blue-50/70 border-blue-300',
     },
     
     button: {
@@ -76,10 +76,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
         : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600 shadow-lg',
       secondary: isDarkMode 
         ? 'bg-slate-700 hover:bg-slate-600 text-white border-slate-600 shadow-md' 
-        : 'bg-gray-300 hover:bg-gray-400 text-gray-900 border-gray-400 shadow-md',
+        : 'bg-stone-300/80 hover:bg-stone-400/80 text-stone-800 border-stone-400 shadow-md',
       ghost: isDarkMode 
         ? 'bg-slate-700/70 hover:bg-slate-600 text-gray-200 border-slate-600 shadow-md' 
-        : 'bg-gray-200 hover:bg-gray-300 text-gray-800 border-gray-400 shadow-sm',
+        : 'bg-stone-200/60 hover:bg-stone-300/60 text-stone-700 border-stone-300 shadow-sm',
       danger: isDarkMode
         ? 'bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-lg'
         : 'bg-red-600 hover:bg-red-700 text-white border-red-600 shadow-lg',
@@ -90,7 +90,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     
     input: isDarkMode 
       ? 'bg-slate-800 border-slate-600 text-white placeholder:text-gray-400 focus:border-blue-400 focus:ring-blue-400/30' 
-      : 'bg-white border-gray-400 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500/30',
+      : 'bg-stone-50/80 border-stone-300 text-stone-800 placeholder:text-stone-500 focus:border-blue-500 focus:ring-blue-500/30',
     
     link: isDarkMode 
       ? 'text-blue-400 hover:text-blue-300' 

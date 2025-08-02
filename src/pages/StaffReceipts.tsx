@@ -16,7 +16,8 @@ import {
   Trash2,
   ArrowLeft,
   User,
-  LogOut
+  LogOut,
+  RefreshCw
 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,18 +25,33 @@ import { toast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import StaffLayout from "@/components/StaffLayout";
 
-interface ShippingReceiptData {
-  receiptNumber: string;
-  date: string;
-  customerName: string;
-  customerPhone: string;
+interface ShippingAddOn {
+  type: string;
+  customName?: string;
+  cost: number;
+  taxes: { name: string; percentage: number; amount: number }[];
+}
+
+interface ShippingItem {
+  id: string;
   courier: string;
   trackingNumber: string;
   destinationCity: string;
   destinationProvince: string;
   destinationCountry: string;
-  subtotal: number;
+  shippingCost: number;
+  addOns: ShippingAddOn[];
   taxes: { name: string; percentage: number; amount: number }[];
+}
+
+interface ShippingReceiptData {
+  receiptNumber: string;
+  date: string;
+  customerName: string;
+  customerPhone: string;
+  shippingItems: ShippingItem[];
+  subtotal: number;
+  totalTaxes: number;
   total: number;
 }
 
@@ -50,6 +66,41 @@ interface KeyReceiptData {
   total: number;
 }
 
+const generateReceiptNumber = (prefix: string) => {
+  const now = new Date();
+  const year = now.getFullYear().toString().slice(-2);
+  const month = (now.getMonth() + 1).toString().padStart(2, '0');
+  const day = now.getDate().toString().padStart(2, '0');
+  const hour = now.getHours().toString().padStart(2, '0');
+  const minute = now.getMinutes().toString().padStart(2, '0');
+  return `${prefix}${year}${month}${day}${hour}${minute}`;
+};
+
+const provincialTaxRates = {
+  'Alberta': [{ name: 'GST', percentage: 5 }],
+  'British Columbia': [{ name: 'GST', percentage: 5 }, { name: 'PST', percentage: 7 }],
+  'Manitoba': [{ name: 'GST', percentage: 5 }, { name: 'PST', percentage: 7 }],
+  'New Brunswick': [{ name: 'HST', percentage: 15 }],
+  'Newfoundland and Labrador': [{ name: 'HST', percentage: 15 }],
+  'Northwest Territories': [{ name: 'GST', percentage: 5 }],
+  'Nova Scotia': [{ name: 'HST', percentage: 14 }],
+  'Nunavut': [{ name: 'GST', percentage: 5 }],
+  'Ontario': [{ name: 'HST', percentage: 13 }],
+  'Prince Edward Island': [{ name: 'HST', percentage: 15 }],
+  'Quebec': [{ name: 'GST', percentage: 5 }, { name: 'PST', percentage: 9.975 }],
+  'Saskatchewan': [{ name: 'GST', percentage: 5 }, { name: 'PST', percentage: 6 }],
+  'Yukon': [{ name: 'GST', percentage: 5 }]
+};
+
+const shippingAddOns = [
+  { type: 'Small Box', cost: 5 },
+  { type: 'Medium Box', cost: 7 },
+  { type: 'Large Box', cost: 10 },
+  { type: 'Envelope', cost: 1 },
+  { type: 'Padded Envelope', cost: 3 },
+  { type: 'Custom', cost: 0 }
+];
+
 const StaffReceipts = () => {
   const { user, logout } = useAuth();
   const { themeClasses } = useTheme();
@@ -57,18 +108,28 @@ const StaffReceipts = () => {
   
   const shippingForm = useForm<ShippingReceiptData>({
     defaultValues: {
-      receiptNumber: `SH-${Date.now()}`,
+      receiptNumber: generateReceiptNumber('SH'),
       date: new Date().toISOString().split('T')[0],
-      taxes: [{ name: 'GST', percentage: 5, amount: 0 }]
+      shippingItems: [{
+        id: '1',
+        courier: '',
+        trackingNumber: '',
+        destinationCity: '',
+        destinationProvince: 'AB',
+        destinationCountry: 'Canada',
+        shippingCost: 0,
+        addOns: [],
+        taxes: provincialTaxRates['Alberta'].map(tax => ({ ...tax, amount: 0 }))
+      }]
     }
   });
 
   const keyForm = useForm<KeyReceiptData>({
     defaultValues: {
-      receiptNumber: `KEY-${Date.now()}`,
+      receiptNumber: generateReceiptNumber('KEY'),
       date: new Date().toISOString().split('T')[0],
       keyItems: [{ model: '', quantity: 1, priceEach: 0, total: 0 }],
-      taxes: [{ name: 'GST', percentage: 5, amount: 0 }]
+      taxes: provincialTaxRates['Alberta'].map(tax => ({ ...tax, amount: 0 }))
     }
   });
 
@@ -80,29 +141,43 @@ const StaffReceipts = () => {
     }));
   };
 
+  const generateNewReceiptNumber = (prefix: string, formType: 'shipping' | 'key') => {
+    const newNumber = generateReceiptNumber(prefix);
+    if (formType === 'shipping') {
+      shippingForm.setValue('receiptNumber', newNumber);
+    } else {
+      keyForm.setValue('receiptNumber', newNumber);
+    }
+  };
+
+  const setProvincialTax = (province: string, formType: 'shipping' | 'key', itemIndex?: number) => {
+    const taxes = provincialTaxRates[province as keyof typeof provincialTaxRates] || provincialTaxRates['Alberta'];
+    const taxesWithAmount = taxes.map(tax => ({ ...tax, amount: 0 }));
+    
+    if (formType === 'shipping' && itemIndex !== undefined) {
+      shippingForm.setValue(`shippingItems.${itemIndex}.taxes`, taxesWithAmount);
+    } else if (formType === 'key') {
+      keyForm.setValue('taxes', taxesWithAmount);
+    }
+  };
+
   const generateShippingPDF = (data: ShippingReceiptData) => {
     const pdf = new jsPDF();
     const pageWidth = pdf.internal.pageSize.getWidth();
     
-    // Header with business name and colors
-    pdf.setFillColor(34, 87, 149); // Blue
+    // Header with business name
+    pdf.setFillColor(220, 220, 220); // Light gray for print
     pdf.rect(0, 0, pageWidth, 25, 'F');
     
-    pdf.setTextColor(255, 255, 255);
+    pdf.setTextColor(0, 0, 0);
     pdf.setFontSize(20);
     pdf.setFont('helvetica', 'bold');
-    pdf.text('INK, TONER, & MOORE', 20, 16);
+    pdf.text('INK TONER & MOORE', 20, 16);
     
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text('Professional Office Services', 20, 21);
-    
-    // Orange accent line
-    pdf.setFillColor(255, 140, 0); // Orange
-    pdf.rect(0, 25, pageWidth, 2, 'F');
-    
-    // Reset text color
-    pdf.setTextColor(0, 0, 0);
+    // Black line
+    pdf.setDrawColor(0, 0, 0);
+    pdf.setLineWidth(1);
+    pdf.line(0, 25, pageWidth, 25);
     
     // Receipt title
     pdf.setFontSize(16);
@@ -115,8 +190,6 @@ const StaffReceipts = () => {
     pdf.text('1200 37 Street SW Unit 3b', 20, 50);
     pdf.text('Calgary, AB T3C 1S2', 20, 55);
     pdf.text('Phone: (403) 686-2835', 20, 60);
-    // TODO: Add GST/HST number here
-    pdf.text('GST/HST #: [TODO: Add business number]', 20, 65);
     
     // Receipt details (right side)
     pdf.text(`Receipt #: ${data.receiptNumber}`, 120, 50);
@@ -132,40 +205,107 @@ const StaffReceipts = () => {
     pdf.text(`Name: ${data.customerName}`, 20, 90);
     pdf.text(`Phone: ${data.customerPhone}`, 20, 95);
     
-    // Shipping details section
+    // Shipping items section
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
     pdf.text('SHIPPING DETAILS', 20, 110);
     
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(`Courier: ${data.courier}`, 20, 120);
-    pdf.text(`Tracking Number: ${data.trackingNumber}`, 20, 125);
-    pdf.text(`Destination: ${data.destinationCity}, ${data.destinationProvince}, ${data.destinationCountry}`, 20, 130);
+    let yPos = 120;
+    data.shippingItems.forEach((item, index) => {
+      // Package header with border
+      pdf.setFillColor(240, 240, 240);
+      pdf.rect(15, yPos - 3, 170, 8, 'F');
+      
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`Package ${index + 1}`, 20, yPos);
+      yPos += 12;
+      
+      // Create a structured layout
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Service:', 25, yPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(item.courier, 60, yPos);
+      
+      yPos += 7;
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Tracking #:', 25, yPos);
+      pdf.setFont('helvetica', 'bold');  // Make tracking number bold
+      pdf.text(item.trackingNumber, 60, yPos);
+      
+      yPos += 7;
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Destination:', 25, yPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`${item.destinationCity}, ${item.destinationProvince}`, 60, yPos);
+      
+      yPos += 7;
+      pdf.text(`${item.destinationCountry}`, 60, yPos);
+      
+      yPos += 7;
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Shipping Cost:', 25, yPos);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`$${item.shippingCost.toFixed(2)}`, 60, yPos);
+      
+      if (item.addOns.length > 0) {
+        yPos += 8;
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Add-ons:', 25, yPos);
+        item.addOns.forEach(addon => {
+          yPos += 6;
+          const addonName = addon.type === 'Custom' ? addon.customName : addon.type;
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(`• ${addonName}:`, 30, yPos);
+          pdf.text(`$${addon.cost.toFixed(2)}`, 150, yPos);
+          
+          if (addon.taxes.length > 0) {
+            addon.taxes.forEach(tax => {
+              yPos += 5;
+              pdf.setFontSize(8);
+              pdf.text(`    ${tax.name} (${tax.percentage}%):`, 35, yPos);
+              pdf.text(`$${tax.amount.toFixed(2)}`, 150, yPos);
+              pdf.setFontSize(9);
+            });
+          }
+        });
+      }
+      
+      if (item.taxes.length > 0) {
+        yPos += 8;
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Shipping Taxes:', 25, yPos);
+        item.taxes.forEach(tax => {
+          yPos += 6;
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(`• ${tax.name} (${tax.percentage}%):`, 30, yPos);
+          pdf.text(`$${tax.amount.toFixed(2)}`, 150, yPos);
+        });
+      }
+      
+      yPos += 10;
+    });
     
     // Pricing section
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
-    pdf.text('CHARGES', 20, 150);
+    pdf.text('TOTAL CHARGES', 20, yPos);
     
+    yPos += 10;
     pdf.setFontSize(10);
     pdf.setFont('helvetica', 'normal');
-    
-    let yPos = 160;
     pdf.text(`Subtotal:`, 20, yPos);
     pdf.text(`$${data.subtotal.toFixed(2)}`, 150, yPos);
     
-    // Taxes
-    data.taxes.forEach(tax => {
-      yPos += 8;
-      pdf.text(`${tax.name} (${tax.percentage}%):`, 20, yPos);
-      pdf.text(`$${tax.amount.toFixed(2)}`, 150, yPos);
-    });
+    yPos += 6;
+    pdf.text(`Total Taxes:`, 20, yPos);
+    pdf.text(`$${data.totalTaxes.toFixed(2)}`, 150, yPos);
     
-    // Total with orange background
-    yPos += 12;
-    pdf.setFillColor(255, 140, 0, 0.1); // Light orange
-    pdf.rect(15, yPos - 5, 160, 10, 'F');
+    // Total with light gray background for print
+    yPos += 10;
+    pdf.setFillColor(240, 240, 240);
+    pdf.rect(15, yPos - 4, 160, 8, 'F');
     
     pdf.setFont('helvetica', 'bold');
     pdf.text(`TOTAL:`, 20, yPos);
@@ -174,7 +314,7 @@ const StaffReceipts = () => {
     // Footer
     pdf.setFontSize(8);
     pdf.setFont('helvetica', 'normal');
-    pdf.text('Thank you for choosing Ink, Toner, & Moore!', 20, 280);
+    pdf.text('Thank you for choosing Ink Toner & Moore!', 20, 280);
     pdf.text('Located in Westbrook Mall - Your trusted office services provider', 20, 285);
     
     // Save the PDF
@@ -185,25 +325,19 @@ const StaffReceipts = () => {
     const pdf = new jsPDF();
     const pageWidth = pdf.internal.pageSize.getWidth();
     
-    // Header with business name and colors
-    pdf.setFillColor(34, 87, 149); // Blue
+    // Header with business name
+    pdf.setFillColor(220, 220, 220); // Light gray for print
     pdf.rect(0, 0, pageWidth, 25, 'F');
     
-    pdf.setTextColor(255, 255, 255);
+    pdf.setTextColor(0, 0, 0);
     pdf.setFontSize(20);
     pdf.setFont('helvetica', 'bold');
-    pdf.text('INK, TONER, & MOORE', 20, 16);
+    pdf.text('INK TONER & MOORE', 20, 16);
     
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text('Professional Office Services', 20, 21);
-    
-    // Orange accent line
-    pdf.setFillColor(255, 140, 0); // Orange
-    pdf.rect(0, 25, pageWidth, 2, 'F');
-    
-    // Reset text color
-    pdf.setTextColor(0, 0, 0);
+    // Black line
+    pdf.setDrawColor(0, 0, 0);
+    pdf.setLineWidth(1);
+    pdf.line(0, 25, pageWidth, 25);
     
     // Receipt title
     pdf.setFontSize(16);
@@ -216,8 +350,6 @@ const StaffReceipts = () => {
     pdf.text('1200 37 Street SW Unit 3b', 20, 50);
     pdf.text('Calgary, AB T3C 1S2', 20, 55);
     pdf.text('Phone: (403) 686-2835', 20, 60);
-    // TODO: Add GST/HST number here
-    pdf.text('GST/HST #: [TODO: Add business number]', 20, 65);
     
     // Receipt details (right side)
     pdf.text(`Receipt #: ${data.receiptNumber}`, 120, 50);
@@ -275,9 +407,9 @@ const StaffReceipts = () => {
       pdf.text(`$${tax.amount.toFixed(2)}`, 140, yPos);
     });
     
-    // Total with orange background
+    // Total with light gray background for print
     yPos += 12;
-    pdf.setFillColor(255, 140, 0, 0.1); // Light orange
+    pdf.setFillColor(240, 240, 240);
     pdf.rect(95, yPos - 5, 80, 10, 'F');
     
     pdf.setFont('helvetica', 'bold');
@@ -287,7 +419,7 @@ const StaffReceipts = () => {
     // Footer
     pdf.setFontSize(8);
     pdf.setFont('helvetica', 'normal');
-    pdf.text('Thank you for choosing Ink, Toner, & Moore!', 20, 280);
+    pdf.text('Thank you for choosing Ink Toner & Moore!', 20, 280);
     pdf.text('Located in Westbrook Mall - Your trusted office services provider', 20, 285);
     
     // Save the PDF
@@ -295,13 +427,48 @@ const StaffReceipts = () => {
   };
 
   const onSubmitShipping = (data: ShippingReceiptData) => {
-    // Calculate taxes and total
-    const calculatedTaxes = calculateTaxes(data.subtotal, data.taxes);
-    const totalTaxes = calculatedTaxes.reduce((sum, tax) => sum + tax.amount, 0);
+    // Calculate totals for each shipping item and their add-ons
+    const updatedItems = data.shippingItems.map(item => {
+      // Calculate shipping taxes
+      const calculatedShippingTaxes = calculateTaxes(item.shippingCost, item.taxes);
+      
+      // Calculate add-on taxes separately
+      const updatedAddOns = item.addOns.map(addon => {
+        const calculatedAddonTaxes = calculateTaxes(addon.cost, addon.taxes);
+        return {
+          ...addon,
+          taxes: calculatedAddonTaxes
+        };
+      });
+      
+      return {
+        ...item,
+        taxes: calculatedShippingTaxes,
+        addOns: updatedAddOns
+      };
+    });
+    
+    // Calculate overall totals
+    const subtotal = updatedItems.reduce((sum, item) => {
+      const addOnTotal = item.addOns.reduce((addOnSum, addon) => addOnSum + addon.cost, 0);
+      return sum + item.shippingCost + addOnTotal;
+    }, 0);
+    
+    // Calculate total taxes from shipping and add-ons separately
+    const totalTaxes = updatedItems.reduce((sum, item) => {
+      const shippingTaxTotal = item.taxes.reduce((taxSum, tax) => taxSum + tax.amount, 0);
+      const addOnTaxTotal = item.addOns.reduce((addOnSum, addon) => {
+        return addOnSum + addon.taxes.reduce((taxSum, tax) => taxSum + tax.amount, 0);
+      }, 0);
+      return sum + shippingTaxTotal + addOnTaxTotal;
+    }, 0);
+    
     const finalData = {
       ...data,
-      taxes: calculatedTaxes,
-      total: data.subtotal + totalTaxes
+      shippingItems: updatedItems,
+      subtotal,
+      totalTaxes,
+      total: subtotal + totalTaxes
     };
     
     generateShippingPDF(finalData);
@@ -430,11 +597,23 @@ const StaffReceipts = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="receiptNumber" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Receipt Number</Label>
-                    <Input
-                      id="receiptNumber"
-                      {...shippingForm.register('receiptNumber')}
-                      className={`transition-all duration-300 ${themeClasses.input}`}
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="receiptNumber"
+                        {...shippingForm.register('receiptNumber')}
+                        className={`transition-all duration-300 ${themeClasses.input}`}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => generateNewReceiptNumber('SH', 'shipping')}
+                        className={`px-3 transition-all duration-300 ${themeClasses.button.ghost}`}
+                        title="Generate new receipt number"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                   <div>
                     <Label htmlFor="date" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Date</Label>
@@ -463,119 +642,339 @@ const StaffReceipts = () => {
                       className={`transition-all duration-300 ${themeClasses.input}`}
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="courier" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Courier</Label>
-                    <Select onValueChange={(value) => shippingForm.setValue('courier', value)}>
-                      <SelectTrigger className={`transition-all duration-300 ${themeClasses.input}`}>
-                        <SelectValue placeholder="Select courier" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="UPS">UPS</SelectItem>
-                        <SelectItem value="FedEx">FedEx</SelectItem>
-                        <SelectItem value="Purolator">Purolator</SelectItem>
-                        <SelectItem value="Canada Post">Canada Post</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="trackingNumber" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Tracking Number</Label>
-                    <Input
-                      id="trackingNumber"
-                      {...shippingForm.register('trackingNumber')}
-                      placeholder="Enter tracking number"
-                      className={`transition-all duration-300 ${themeClasses.input}`}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="destinationCity" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Destination City</Label>
-                    <Input
-                      id="destinationCity"
-                      {...shippingForm.register('destinationCity')}
-                      placeholder="Enter city"
-                      className={`transition-all duration-300 ${themeClasses.input}`}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="destinationProvince" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Province/State</Label>
-                    <Input
-                      id="destinationProvince"
-                      {...shippingForm.register('destinationProvince')}
-                      placeholder="AB, BC, CA, etc."
-                      className={`transition-all duration-300 ${themeClasses.input}`}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="destinationCountry" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Country</Label>
-                    <Input
-                      id="destinationCountry"
-                      {...shippingForm.register('destinationCountry')}
-                      placeholder="Canada, USA, etc."
-                      className={`transition-all duration-300 ${themeClasses.input}`}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="subtotal" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Subtotal ($)</Label>
-                    <Input
-                      id="subtotal"
-                      type="number"
-                      step="0.01"
-                      {...shippingForm.register('subtotal', { valueAsNumber: true })}
-                      placeholder="0.00"
-                      className={`transition-all duration-300 ${themeClasses.input}`}
-                    />
-                  </div>
                 </div>
 
                 <div className="mt-8">
-                  <h3 className={`font-bold text-lg mb-4 transition-colors duration-300 ${themeClasses.text.primary}`}>Taxes</h3>
-                  <div className="space-y-4">
-                    {shippingForm.watch('taxes')?.map((_, index) => (
-                      <div key={index} className="grid grid-cols-3 gap-4 items-end">
-                        <div>
-                          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Tax Name</Label>
-                          <Input
-                            {...shippingForm.register(`taxes.${index}.name`)}
-                            placeholder="GST, HST, PST, etc."
-                            className={`transition-all duration-300 ${themeClasses.input}`}
-                          />
-                        </div>
-                        <div>
-                          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Percentage (%)</Label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            {...shippingForm.register(`taxes.${index}.percentage`, { valueAsNumber: true })}
-                            placeholder="5.00"
-                            className={`transition-all duration-300 ${themeClasses.input}`}
-                          />
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            const currentTaxes = shippingForm.getValues('taxes') || [];
-                            const newTaxes = currentTaxes.filter((_, i) => i !== index);
-                            shippingForm.setValue('taxes', newTaxes);
-                          }}
-                          className={`transition-all duration-300 ${themeClasses.button.danger}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className={`font-bold text-lg transition-colors duration-300 ${themeClasses.text.primary}`}>Shipping Items</h3>
                     <Button
                       type="button"
                       variant="ghost"
                       onClick={() => {
-                        const currentTaxes = shippingForm.getValues('taxes') || [];
-                        shippingForm.setValue('taxes', [...currentTaxes, { name: '', percentage: 0, amount: 0 }]);
+                        const currentItems = shippingForm.getValues('shippingItems') || [];
+                        const newItem: ShippingItem = {
+                          id: (currentItems.length + 1).toString(),
+                          courier: '',
+                          trackingNumber: '',
+                          destinationCity: '',
+                          destinationProvince: 'AB',
+                          destinationCountry: 'Canada',
+                          shippingCost: 0,
+                          addOns: [],
+                          taxes: provincialTaxRates['Alberta'].map(tax => ({ ...tax, amount: 0 }))
+                        };
+                        shippingForm.setValue('shippingItems', [...currentItems, newItem]);
                       }}
                       className={`transition-all duration-300 ${themeClasses.button.ghost}`}
                     >
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Tax
+                      Add Shipping Item
                     </Button>
+                  </div>
+                  
+                  <div className="space-y-8">
+                    {shippingForm.watch('shippingItems')?.map((_, itemIndex) => (
+                      <Card key={itemIndex} className={`p-6 ${themeClasses.card.secondary}`}>
+                        <div className="flex justify-between items-center mb-4">
+                          <h4 className={`font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>
+                            Package {itemIndex + 1}
+                          </h4>
+                          {shippingForm.watch('shippingItems')?.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const currentItems = shippingForm.getValues('shippingItems') || [];
+                                const newItems = currentItems.filter((_, i) => i !== itemIndex);
+                                shippingForm.setValue('shippingItems', newItems);
+                              }}
+                              className={`transition-all duration-300 ${themeClasses.button.danger}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Courier Service</Label>
+                            <Input
+                              {...shippingForm.register(`shippingItems.${itemIndex}.courier`)}
+                              placeholder="e.g., FedEx Priority Overnight, UPS Ground, Purolator Express"
+                              className={`transition-all duration-300 ${themeClasses.input}`}
+                            />
+                          </div>
+                          <div>
+                            <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Tracking Number</Label>
+                            <Input
+                              {...shippingForm.register(`shippingItems.${itemIndex}.trackingNumber`)}
+                              placeholder="Enter tracking number"
+                              className={`transition-all duration-300 ${themeClasses.input}`}
+                            />
+                          </div>
+                          <div>
+                            <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Destination City</Label>
+                            <Input
+                              {...shippingForm.register(`shippingItems.${itemIndex}.destinationCity`)}
+                              placeholder="Enter city"
+                              className={`transition-all duration-300 ${themeClasses.input}`}
+                            />
+                          </div>
+                          <div>
+                            <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Province/State</Label>
+                            <Input
+                              {...shippingForm.register(`shippingItems.${itemIndex}.destinationProvince`)}
+                              placeholder="AB, BC, ON, CA, etc."
+                              defaultValue="AB"
+                              className={`transition-all duration-300 ${themeClasses.input}`}
+                            />
+                          </div>
+                          <div>
+                            <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Country</Label>
+                            <Input
+                              {...shippingForm.register(`shippingItems.${itemIndex}.destinationCountry`)}
+                              placeholder="Canada, USA, etc."
+                              defaultValue="Canada"
+                              className={`transition-all duration-300 ${themeClasses.input}`}
+                            />
+                          </div>
+                          <div>
+                            <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Shipping Cost ($)</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              {...shippingForm.register(`shippingItems.${itemIndex}.shippingCost`, { valueAsNumber: true })}
+                              placeholder="0.00"
+                              className={`transition-all duration-300 ${themeClasses.input}`}
+                            />
+                          </div>
+                        </div>
+                        
+                        {/* Add-ons section */}
+                        <div className="mt-6">
+                          <div className="flex justify-between items-center mb-3">
+                            <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Add-ons</Label>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const currentAddOns = shippingForm.getValues(`shippingItems.${itemIndex}.addOns`) || [];
+                                const newAddOn: ShippingAddOn = {
+                                  type: 'Small Box',
+                                  cost: 5,
+                                  taxes: provincialTaxRates['Alberta'].map(tax => ({ ...tax, amount: 0 }))
+                                };
+                                shippingForm.setValue(`shippingItems.${itemIndex}.addOns`, [...currentAddOns, newAddOn]);
+                              }}
+                              className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Add
+                            </Button>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            {shippingForm.watch(`shippingItems.${itemIndex}.addOns`)?.map((_, addonIndex) => (
+                              <div key={addonIndex} className="grid grid-cols-3 gap-2 items-end">
+                                <div>
+                                  <Label className={`text-sm font-medium ${themeClasses.text.primary}`}>Add-on Type</Label>
+                                  <Select 
+                                    onValueChange={(value) => {
+                                      const addon = shippingAddOns.find(a => a.type === value);
+                                      if (addon) {
+                                        shippingForm.setValue(`shippingItems.${itemIndex}.addOns.${addonIndex}.type`, value);
+                                        shippingForm.setValue(`shippingItems.${itemIndex}.addOns.${addonIndex}.cost`, addon.cost);
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger className={`h-8 text-sm ${themeClasses.input}`}>
+                                      <SelectValue placeholder="Select add-on" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {shippingAddOns.map(addon => (
+                                        <SelectItem key={addon.type} value={addon.type}>
+                                          {addon.type}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                
+                                {shippingForm.watch(`shippingItems.${itemIndex}.addOns.${addonIndex}.type`) === 'Custom' && (
+                                  <div>
+                                    <Label className={`text-sm font-medium ${themeClasses.text.primary}`}>Custom Name</Label>
+                                    <Input
+                                      {...shippingForm.register(`shippingItems.${itemIndex}.addOns.${addonIndex}.customName`)}
+                                      placeholder="Custom item name"
+                                      className={`h-8 text-sm ${themeClasses.input}`}
+                                    />
+                                  </div>
+                                )}
+                                
+                                <div className="flex gap-1">
+                                  <div className="flex-1">
+                                    <Label className={`text-sm font-medium ${themeClasses.text.primary}`}>Price ($)</Label>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      {...shippingForm.register(`shippingItems.${itemIndex}.addOns.${addonIndex}.cost`, { valueAsNumber: true })}
+                                      placeholder="0.00"
+                                      className={`h-8 text-sm ${themeClasses.input}`}
+                                    />
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      const currentAddOns = shippingForm.getValues(`shippingItems.${itemIndex}.addOns`) || [];
+                                      const newAddOns = currentAddOns.filter((_, i) => i !== addonIndex);
+                                      shippingForm.setValue(`shippingItems.${itemIndex}.addOns`, newAddOns);
+                                    }}
+                                    className={`h-8 px-2 mt-5 ${themeClasses.button.danger}`}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                                
+                                {/* Add-on specific taxes */}
+                                <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-600">
+                                  <div className="flex justify-between items-center mb-2">
+                                    <Label className={`text-sm font-medium ${themeClasses.text.primary}`}>Add-on Taxes</Label>
+                                    <div className="flex gap-2">
+                                      <Select onValueChange={(province) => {
+                                        const taxes = provincialTaxRates[province as keyof typeof provincialTaxRates] || provincialTaxRates['Alberta'];
+                                        const taxesWithAmount = taxes.map(tax => ({ ...tax, amount: 0 }));
+                                        shippingForm.setValue(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes`, taxesWithAmount);
+                                      }}>
+                                        <SelectTrigger className={`w-32 h-7 text-xs ${themeClasses.input}`}>
+                                          <SelectValue placeholder="Alberta" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {Object.keys(provincialTaxRates).map(province => (
+                                            <SelectItem key={province} value={province}>{province}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          const currentTaxes = shippingForm.getValues(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes`) || [];
+                                          shippingForm.setValue(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes`, [...currentTaxes, { name: '', percentage: 0, amount: 0 }]);
+                                        }}
+                                        className={`h-7 px-2 text-xs ${themeClasses.button.ghost}`}
+                                      >
+                                        <Plus className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="space-y-1">
+                                    {shippingForm.watch(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes`)?.map((_, taxIndex) => (
+                                      <div key={taxIndex} className="grid grid-cols-3 gap-2 items-center">
+                                        <Input
+                                          {...shippingForm.register(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes.${taxIndex}.name`)}
+                                          placeholder="Tax name"
+                                          className={`h-7 text-xs ${themeClasses.input}`}
+                                        />
+                                        <Input
+                                          type="number"
+                                          step="0.01"
+                                          {...shippingForm.register(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes.${taxIndex}.percentage`, { valueAsNumber: true })}
+                                          placeholder="%"
+                                          className={`h-7 text-xs ${themeClasses.input}`}
+                                        />
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            const currentTaxes = shippingForm.getValues(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes`) || [];
+                                            const newTaxes = currentTaxes.filter((_, i) => i !== taxIndex);
+                                            shippingForm.setValue(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes`, newTaxes);
+                                          }}
+                                          className={`h-7 px-2 ${themeClasses.button.danger}`}
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        {/* Shipping taxes section */}
+                        <div className="mt-6">
+                          <div className="flex justify-between items-center mb-3">
+                            <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Shipping Taxes</Label>
+                            <div className="flex gap-2">
+                              <Select onValueChange={(province) => setProvincialTax(province, 'shipping', itemIndex)}>
+                                <SelectTrigger className={`w-32 h-8 text-sm ${themeClasses.input}`}>
+                                  <SelectValue placeholder="Alberta" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.keys(provincialTaxRates).map(province => (
+                                    <SelectItem key={province} value={province}>{province}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const currentTaxes = shippingForm.getValues(`shippingItems.${itemIndex}.taxes`) || [];
+                                  shippingForm.setValue(`shippingItems.${itemIndex}.taxes`, [...currentTaxes, { name: '', percentage: 0, amount: 0 }]);
+                                }}
+                                className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                Add Tax
+                              </Button>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            {shippingForm.watch(`shippingItems.${itemIndex}.taxes`)?.map((_, taxIndex) => (
+                              <div key={taxIndex} className="grid grid-cols-3 gap-2 items-end">
+                                <Input
+                                  {...shippingForm.register(`shippingItems.${itemIndex}.taxes.${taxIndex}.name`)}
+                                  placeholder="Tax name"
+                                  className={`h-8 text-sm ${themeClasses.input}`}
+                                />
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  {...shippingForm.register(`shippingItems.${itemIndex}.taxes.${taxIndex}.percentage`, { valueAsNumber: true })}
+                                  placeholder="%"
+                                  className={`h-8 text-sm ${themeClasses.input}`}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    const currentTaxes = shippingForm.getValues(`shippingItems.${itemIndex}.taxes`) || [];
+                                    const newTaxes = currentTaxes.filter((_, i) => i !== taxIndex);
+                                    shippingForm.setValue(`shippingItems.${itemIndex}.taxes`, newTaxes);
+                                  }}
+                                  className={`h-8 px-2 ${themeClasses.button.danger}`}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
                   </div>
                 </div>
 
@@ -595,11 +994,23 @@ const StaffReceipts = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="keyReceiptNumber" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Receipt Number</Label>
-                    <Input
-                      id="keyReceiptNumber"
-                      {...keyForm.register('receiptNumber')}
-                      className={`transition-all duration-300 ${themeClasses.input}`}
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="keyReceiptNumber"
+                        {...keyForm.register('receiptNumber')}
+                        className={`transition-all duration-300 ${themeClasses.input}`}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => generateNewReceiptNumber('KEY', 'key')}
+                        className={`px-3 transition-all duration-300 ${themeClasses.button.ghost}`}
+                        title="Generate new receipt number"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                   <div>
                     <Label htmlFor="keyDate" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Date</Label>
@@ -693,7 +1104,34 @@ const StaffReceipts = () => {
                 </div>
 
                 <div className="mt-8">
-                  <h3 className={`font-bold text-lg mb-4 transition-colors duration-300 ${themeClasses.text.primary}`}>Taxes</h3>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className={`font-bold text-lg transition-colors duration-300 ${themeClasses.text.primary}`}>Taxes</h3>
+                    <div className="flex gap-2">
+                      <Select onValueChange={(province) => setProvincialTax(province, 'key')}>
+                        <SelectTrigger className={`w-20 h-8 text-sm ${themeClasses.input}`}>
+                          <SelectValue placeholder="Alberta" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.keys(provincialTaxRates).map(province => (
+                            <SelectItem key={province} value={province}>{province}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const currentTaxes = keyForm.getValues('taxes') || [];
+                          keyForm.setValue('taxes', [...currentTaxes, { name: '', percentage: 0, amount: 0 }]);
+                        }}
+                        className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Tax
+                      </Button>
+                    </div>
+                  </div>
                   <div className="space-y-4">
                     {keyForm.watch('taxes')?.map((_, index) => (
                       <div key={index} className="grid grid-cols-3 gap-4 items-end">
@@ -730,18 +1168,6 @@ const StaffReceipts = () => {
                         </Button>
                       </div>
                     ))}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => {
-                        const currentTaxes = keyForm.getValues('taxes') || [];
-                        keyForm.setValue('taxes', [...currentTaxes, { name: '', percentage: 0, amount: 0 }]);
-                      }}
-                      className={`transition-all duration-300 ${themeClasses.button.ghost}`}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Tax
-                    </Button>
                   </div>
                 </div>
 
