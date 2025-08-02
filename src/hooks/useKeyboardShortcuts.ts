@@ -159,39 +159,19 @@ export const useKeyboardShortcuts = (isStaffPortal: boolean = false) => {
       })
       .join('\n');
 
+    const shortcutsText = shortcuts
+      .filter(s => isStaffPortal || s.key === 'h')
+      .map(s => {
+        const keys = [s.ctrl && 'Ctrl', s.alt && 'Alt', s.shift && 'Shift', s.key.toUpperCase()]
+          .filter(Boolean)
+          .join(' + ');
+        return `${keys}: ${s.description}`;
+      })
+      .join('\n');
+
     toast({
       title: "Keyboard Shortcuts",
-      description: (
-        <div className="space-y-2 max-h-64 overflow-y-auto">
-          <div className="text-sm font-semibold text-blue-300">Navigation:</div>
-          {shortcuts
-            .filter(s => s.category === 'navigation' && (isStaffPortal || s.key === 'h'))
-            .map((s, i) => (
-              <div key={i} className="text-xs">
-                <span className="font-mono bg-white/10 px-1 rounded">
-                  {[s.ctrl && 'Ctrl', s.alt && 'Alt', s.shift && 'Shift', s.key.toUpperCase()]
-                    .filter(Boolean)
-                    .join(' + ')}
-                </span>
-                <span className="ml-2">{s.description}</span>
-              </div>
-            ))}
-          
-          <div className="text-sm font-semibold text-blue-300 pt-2">Actions:</div>
-          {shortcuts
-            .filter(s => ['actions', 'search', 'system'].includes(s.category))
-            .map((s, i) => (
-              <div key={i} className="text-xs">
-                <span className="font-mono bg-white/10 px-1 rounded">
-                  {[s.ctrl && 'Ctrl', s.alt && 'Alt', s.shift && 'Shift', s.key.toUpperCase()]
-                    .filter(Boolean)
-                    .join(' + ')}
-                </span>
-                <span className="ml-2">{s.description}</span>
-              </div>
-            ))}
-        </div>
-      ),
+      description: shortcutsText,
       duration: 10000
     });
   }, [shortcuts, isStaffPortal]);

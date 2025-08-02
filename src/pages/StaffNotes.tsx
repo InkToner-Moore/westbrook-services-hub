@@ -230,8 +230,7 @@ const StaffNotes = () => {
                         <ValidatedInput
                           {...noteForm.register('title')}
                           placeholder="Enter note title..."
-                          validation={noteValidation}
-                          fieldName="title"
+                          error={noteValidation.errors.title}
                           className={`transition-all duration-300 ${themeClasses.input}`}
                         />
                       </div>
@@ -255,8 +254,7 @@ const StaffNotes = () => {
                         <ValidatedTextarea
                           {...noteForm.register('content')}
                           placeholder="Enter note content..."
-                          validation={noteValidation}
-                          fieldName="content"
+                          error={noteValidation.errors.content}
                           className={`min-h-[120px] transition-all duration-300 ${themeClasses.input}`}
                         />
                       </div>

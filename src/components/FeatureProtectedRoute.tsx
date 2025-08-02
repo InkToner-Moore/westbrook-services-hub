@@ -38,7 +38,7 @@ const FeatureProtectedRoute = ({
     return <Navigate to="/staff" replace />;
   }
 
-  if (!isFeatureEnabled(featurePath)) {
+  if (!isFeatureEnabled()) {
     return (
       <div className={`min-h-screen flex items-center justify-center p-4 transition-all duration-500 ${themeClasses.background}`}>
         <Card className={`max-w-md w-full transition-all duration-500 ${themeClasses.card.primary}`}>

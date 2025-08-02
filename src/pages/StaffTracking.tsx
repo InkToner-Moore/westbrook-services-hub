@@ -23,7 +23,7 @@ const StaffTracking = () => {
 
       {/* Smart Tracker Component */}
       <div className="max-w-5xl mx-auto">
-        <SmartTracker isDarkMode={isDarkMode} />
+        <SmartTracker />
       </div>
 
       {/* Help Section */}

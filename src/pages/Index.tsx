@@ -140,10 +140,8 @@ const Index = () => {
     if (result.courier === 'UPS' && result.format === '1Z Standard (18 chars)') {
         if (validateUPSChecksum(trackingNumber)) {
             result.confidence = 100;
-            result.validated = true;
         } else {
             result.confidence = 50;
-            result.validated = false;
         }
     }
     
