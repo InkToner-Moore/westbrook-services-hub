@@ -27,21 +27,21 @@ const SmartTracker = ({ className = "" }: SmartTrackerProps) => {
       name: "UPS",
       url: "https://www.ups.com/track?tracknum=",
       color: "bg-amber-600",
-      description: "Brown trucks, worldwide shipping"
+      logo: "https://logos-world.net/wp-content/uploads/2020/03/UPS-Logo.png"
     },
     {
       id: "fedex", 
       name: "FedEx",
       url: "https://www.fedex.com/wtrk/track/?trknbr=",
       color: "bg-purple-600",
-      description: "Purple & orange, overnight delivery"
+      logo: "https://logos-world.net/wp-content/uploads/2020/03/FedEx-Logo.png"
     },
     {
       id: "purolator",
       name: "Purolator", 
       url: "https://www.purolator.com/en/shipping/tracker?pin=",
       color: "bg-blue-600",
-      description: "Canadian courier service"
+      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Purolator_logo.svg/1280px-Purolator_logo.svg.png"
     }
   ];
 
@@ -108,7 +108,7 @@ const SmartTracker = ({ className = "" }: SmartTrackerProps) => {
         {/* Courier Selection */}
         <div>
           <label className={`block text-sm font-medium mb-3 ${themeClasses.text.primary}`}>
-            Shipping Company
+            Shipping Company - Choose one
           </label>
           <div className="grid grid-cols-1 gap-3">
             {couriers.map((courier) => (
@@ -122,33 +122,31 @@ const SmartTracker = ({ className = "" }: SmartTrackerProps) => {
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className={`p-2 rounded-lg ${
+                  <div className="flex items-center space-x-4">
+                    <div className={`w-16 h-10 rounded-lg flex items-center justify-center ${
                       selectedCourier === courier.id 
                         ? 'bg-white/20' 
-                        : courier.color
+                        : 'bg-white dark:bg-gray-100'
                     }`}>
-                      <Truck className={`h-5 w-5 ${
-                        selectedCourier === courier.id 
-                          ? 'text-white' 
-                          : 'text-white'
-                      }`} />
+                      <img 
+                        src={courier.logo} 
+                        alt={`${courier.name} logo`}
+                        className="h-6 w-auto object-contain"
+                        onError={(e) => {
+                          // Fallback to text if logo fails to load
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          target.nextElementSibling!.textContent = courier.name;
+                        }}
+                      />
+                      <span className="hidden text-xs font-bold text-gray-700"></span>
                     </div>
-                    <div>
-                      <div className={`font-bold text-lg ${
-                        selectedCourier === courier.id 
-                          ? 'text-white' 
-                          : themeClasses.text.primary
-                      }`}>
-                        {courier.name}
-                      </div>
-                      <div className={`text-sm ${
-                        selectedCourier === courier.id 
-                          ? 'text-white/80' 
-                          : themeClasses.text.secondary
-                      }`}>
-                        {courier.description}
-                      </div>
+                    <div className={`font-bold text-lg ${
+                      selectedCourier === courier.id 
+                        ? 'text-white' 
+                        : themeClasses.text.primary
+                    }`}>
+                      {courier.name}
                     </div>
                   </div>
                   {selectedCourier === courier.id && (
