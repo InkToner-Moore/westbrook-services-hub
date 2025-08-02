@@ -19,7 +19,7 @@ import {
   Clock,
   Tag,
   FileText,
-  Calendar
+  StickyNote
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/useTheme";
@@ -175,24 +175,20 @@ const StaffNotes = () => {
   };
 
   return (
-    <StaffLayout>
-      <div className={`min-h-screen transition-colors duration-300 ${themeClasses.background}`}>
-        {/* Background elements */}
-        <div className="fixed inset-0 -z-10">
-          <div className={`absolute -top-40 -right-40 w-80 h-80 rounded-full mix-blend-multiply filter blur-xl animate-pulse transition-all duration-300 ${themeClasses.backgroundFloating.purple}`}></div>
-          <div className={`absolute -bottom-40 -left-40 w-80 h-80 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-1000 transition-all duration-300 ${themeClasses.backgroundFloating.blue}`}></div>
-        </div>
-
-        {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center mb-12">
-            <h2 className={`text-4xl font-bold mb-4 drop-shadow-2xl transition-colors duration-300 ${themeClasses.text.primary}`}>
-              Staff Notes
-            </h2>
-            <p className={`text-xl max-w-2xl mx-auto drop-shadow-lg transition-colors duration-300 ${themeClasses.text.secondary}`}>
-              Keep track of important information and reminders
-            </p>
-          </div>
+    <StaffLayout 
+      title="Staff Notes" 
+      subtitle="Keep track of important information and reminders"
+      icon={StickyNote}
+      iconColor="from-yellow-500 to-orange-600"
+    >
+      <div className="text-center mb-12">
+        <h2 className={`text-4xl font-bold mb-4 drop-shadow-2xl transition-colors duration-300 ${themeClasses.text.primary}`}>
+          Staff Notes
+        </h2>
+        <p className={`text-xl max-w-2xl mx-auto drop-shadow-lg transition-colors duration-300 ${themeClasses.text.secondary}`}>
+          Keep track of important information and reminders
+        </p>
+      </div>
 
           {/* Success Message */}
           {showSuccess && (
@@ -398,8 +394,6 @@ const StaffNotes = () => {
                 </div>
               </div>
             </div>
-          </div>
-        </main>
       </div>
     </StaffLayout>
   );
