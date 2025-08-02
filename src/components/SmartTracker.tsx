@@ -27,21 +27,21 @@ const SmartTracker = ({ className = "" }: SmartTrackerProps) => {
       name: "UPS",
       url: "https://www.ups.com/track?tracknum=",
       color: "bg-amber-600",
-      logo: "https://logos-world.net/wp-content/uploads/2020/03/UPS-Logo.png"
+      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/United_Parcel_Service_logo_2014.svg/859px-United_Parcel_Service_logo_2014.svg.png"
     },
     {
       id: "fedex", 
       name: "FedEx",
       url: "https://www.fedex.com/wtrk/track/?trknbr=",
       color: "bg-purple-600",
-      logo: "https://logos-world.net/wp-content/uploads/2020/03/FedEx-Logo.png"
+      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/FedEx_Express.svg/1280px-FedEx_Express.svg.png"
     },
     {
       id: "purolator",
       name: "Purolator", 
       url: "https://www.purolator.com/en/shipping/tracker?pin=",
       color: "bg-blue-600",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/Purolator_logo.svg/1280px-Purolator_logo.svg.png"
+      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Purolator_Courier_Logo_2006.svg/1280px-Purolator_Courier_Logo_2006.svg.png"
     }
   ];
 
@@ -123,7 +123,7 @@ const SmartTracker = ({ className = "" }: SmartTrackerProps) => {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    <div className={`w-16 h-10 rounded-lg flex items-center justify-center ${
+                    <div className={`w-20 h-12 rounded-lg flex items-center justify-center p-2 ${
                       selectedCourier === courier.id 
                         ? 'bg-white/20' 
                         : 'bg-white dark:bg-gray-100'
@@ -131,7 +131,7 @@ const SmartTracker = ({ className = "" }: SmartTrackerProps) => {
                       <img 
                         src={courier.logo} 
                         alt={`${courier.name} logo`}
-                        className="h-6 w-auto object-contain"
+                        className="max-w-full max-h-full object-contain"
                         onError={(e) => {
                           // Fallback to text if logo fails to load
                           const target = e.target as HTMLImageElement;
