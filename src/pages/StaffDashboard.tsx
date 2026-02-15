@@ -21,11 +21,6 @@ import { toast } from "@/hooks/use-toast";
 const StaffDashboard = () => {
   const { user, logout } = useAuth();
   const { isDarkMode, toggleTheme, themeClasses } = useTheme();
-  // Mock feature checking since system settings was removed
-  const isFeatureEnabled = (feature: string) => {
-    // All remaining features are enabled by default
-    return true;
-  };
   const navigate = useNavigate();
   
   const handleLogout = async () => {
@@ -47,7 +42,7 @@ const StaffDashboard = () => {
       icon: Package,
       color: "from-blue-500 to-indigo-600",
       route: "/staff/tracking",
-      status: "Available",
+
       featurePath: "modules.packageTracking.enabled"
     },
     {
@@ -56,7 +51,7 @@ const StaffDashboard = () => {
       icon: Receipt,
       color: "from-green-500 to-emerald-600",
       route: "/staff/receipts",
-      status: "Available",
+
       featurePath: "modules.receiptGenerator.enabled"
     },
     {
@@ -65,7 +60,7 @@ const StaffDashboard = () => {
       icon: Printer,
       color: "from-purple-500 to-violet-600",
       route: "/staff/cartridges",
-      status: "Available",
+
       featurePath: "modules.cartridgeManager.enabled"
     },
     {
@@ -74,7 +69,7 @@ const StaffDashboard = () => {
       icon: Globe,
       color: "from-cyan-500 to-blue-600",
       route: "/staff/directory",
-      status: "Available",
+
       featurePath: "modules.directory.enabled"
     },
     {
@@ -83,7 +78,7 @@ const StaffDashboard = () => {
       icon: StickyNote,
       color: "from-yellow-500 to-orange-600",
       route: "/staff/notes",
-      status: "Available",
+
       featurePath: "modules.notes.enabled"
     },
   ];
@@ -123,16 +118,14 @@ const StaffDashboard = () => {
               </div>
               
               {/* Theme Toggle */}
-              {isFeatureEnabled('userInterface.darkModeToggle') && (
-                <Button
-                  onClick={toggleTheme}
-                  variant="ghost"
-                  size="sm"
-                  className={`p-2 rounded-lg transition-all duration-300 hover:scale-105 border ${themeClasses.button.secondary} ${themeClasses.interactive.focus}`}
-                >
-                  {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                </Button>
-              )}
+              <Button
+                onClick={toggleTheme}
+                variant="ghost"
+                size="sm"
+                className={`p-2 rounded-lg transition-all duration-300 hover:scale-105 border ${themeClasses.button.secondary} ${themeClasses.interactive.focus}`}
+              >
+                {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </Button>
               
               <Button
                 onClick={handleLogout}
@@ -168,32 +161,14 @@ const StaffDashboard = () => {
                 themeClasses.card.primary
               } ${
                 themeClasses.interactive.hover
-              } ${
-                item.status === 'Coming Soon' ? 'opacity-75' : ''
               }`}
-              onClick={() => {
-                if (item.status === 'Available') {
-                  navigate(item.route);
-                } else {
-                  toast({
-                    title: "Coming Soon",
-                    description: `${item.title} will be available in a future update`,
-                  });
-                }
-              }}
+              onClick={() => navigate(item.route)}
             >
               <CardHeader className="pb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className={`bg-gradient-to-r ${item.color} p-3 rounded-xl shadow-2xl group-hover:scale-110 transition-transform duration-300`}>
+                <div className="mb-2">
+                  <div className={`bg-gradient-to-r ${item.color} p-3 rounded-xl shadow-2xl group-hover:scale-110 transition-transform duration-300 w-fit`}>
                     <item.icon className="h-6 w-6 text-white" />
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded-full font-medium border ${
-                    item.status === 'Available' 
-                      ? themeClasses.status.success
-                      : themeClasses.status.warning
-                  }`}>
-                    {item.status}
-                  </span>
                 </div>
                 <CardTitle className={`text-lg drop-shadow-lg transition-colors ${themeClasses.text.primary} group-hover:${themeClasses.text.accent}`}>
                   {item.title}
@@ -206,38 +181,6 @@ const StaffDashboard = () => {
           ))}
         </div>
 
-        {/* Quick Actions */}
-        {isFeatureEnabled('dashboard.quickActions') && (
-          <div className="mt-16">
-            <h3 className={`text-2xl font-bold mb-8 text-center drop-shadow-lg transition-all duration-500 ${themeClasses.text.primary}`}>
-              Quick Actions
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Button
-                onClick={() => navigate("/")}
-                className={`h-16 font-bold rounded-xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary} ${themeClasses.interactive.focus}`}
-              >
-                View Public Site
-              </Button>
-              {isFeatureEnabled('modules.packageTracking.enabled') && (
-                <Button
-                  onClick={() => navigate("/staff/tracking")}
-                  className={`h-16 font-bold rounded-xl transition-all duration-300 hover:scale-105 ${themeClasses.button.success} ${themeClasses.interactive.focus}`}
-                >
-                  Quick Package Track
-                </Button>
-              )}
-              {isFeatureEnabled('modules.receiptGenerator.enabled') && (
-                <Button
-                  onClick={() => navigate("/staff/receipts")}
-                  className={`h-16 font-bold rounded-xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary} ${themeClasses.interactive.focus}`}
-                >
-                  Generate Receipt
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
       </main>
     </div>
   );
