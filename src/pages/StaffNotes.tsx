@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,10 +8,9 @@ import { ValidatedInput } from "@/components/ui/validated-input";
 import { ValidatedTextarea } from "@/components/ui/validated-textarea";
 import { FormErrorSummary } from "@/components/ui/form-error-summary";
 import { FormSuccessMessage } from "@/components/ui/form-success-message";
-import { UndoRedoControls } from "@/components/ui/undo-redo-controls";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
+import {
   Search,
   Plus,
   Trash2,
@@ -19,7 +18,8 @@ import {
   Clock,
   Tag,
   FileText,
-  StickyNote
+  StickyNote,
+  Loader2
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/useTheme";
@@ -27,6 +27,12 @@ import { useValidation } from "@/hooks/useValidation";
 import { useListUndoRedo } from "@/hooks/useUndoRedo";
 import { noteSchema } from "@/utils/validation";
 import StaffLayout from "@/components/StaffLayout";
+import {
+  getCollection,
+  setDocument,
+  deleteDocument,
+  generateNoteId,
+} from "@/lib/firestore";
 
 interface Note {
   id: string;
@@ -35,8 +41,9 @@ interface Note {
   category: "general" | "customer" | "inventory" | "shipping" | "urgent";
   createdAt: string;
   updatedAt: string;
-  author: string;
 }
+
+const NOTES_COLLECTION = 'notes';
 
 const StaffNotes = () => {
   const { themeClasses } = useTheme();
@@ -44,45 +51,32 @@ const StaffNotes = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
-  
-  const noteForm = useForm<Omit<Note, 'id' | 'createdAt' | 'updatedAt' | 'author'>>();
+  const [loading, setLoading] = useState(true);
+
+  const noteForm = useForm<Omit<Note, 'id' | 'createdAt' | 'updatedAt'>>();
   const noteValidation = useValidation(noteSchema);
 
-  // Mock data for development with undo/redo support
-  const initialNotes: Note[] = [
-    {
-      id: "NOTE-001",
-      title: "Daily Inventory Check",
-      content: "Check toner levels for HP, Canon, and Epson cartridges. Update low stock alerts in system.",
-      category: "inventory",
-      createdAt: "2024-01-15T09:30:00Z",
-      updatedAt: "2024-01-15T09:30:00Z",
-      author: "staff@example.com"
-    },
-    {
-      id: "NOTE-002", 
-      title: "Customer Follow-up",
-      content: "Call Mrs. Johnson about her special order. Tracking number: UPS123456789",
-      category: "customer",
-      createdAt: "2024-01-14T14:20:00Z",
-      updatedAt: "2024-01-14T14:20:00Z",
-      author: "staff@example.com"
-    },
-    {
-      id: "NOTE-003",
-      title: "Supplier Meeting Notes",
-      content: "Discussed bulk pricing for Q2. New discount structure: 10% on orders over $500, 15% over $1000.",
-      category: "general",
-      createdAt: "2024-01-13T11:45:00Z",
-      updatedAt: "2024-01-13T11:45:00Z",
-      author: "manager@example.com"
-    }
-  ];
-
-  const notesList = useListUndoRedo(initialNotes, {
+  const notesList = useListUndoRedo<Note>([], {
     maxHistorySize: 20,
     enableShortcuts: true
   });
+
+  // Load notes from Firestore on mount
+  useEffect(() => {
+    const loadNotes = async () => {
+      try {
+        const data = await getCollection<Note>(NOTES_COLLECTION, 'createdAt');
+        notesList.setList(data);
+        notesList.clearHistory();
+      } catch (error) {
+        console.error('Failed to load notes:', error);
+        toast({ title: "Error", description: "Failed to load notes from database" });
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadNotes();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -101,36 +95,42 @@ const StaffNotes = () => {
     return matchesSearch && matchesCategory;
   });
 
-  const addNote = (data: Omit<Note, 'id' | 'createdAt' | 'updatedAt' | 'author'>) => {
+  const addNote = async (data: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => {
     const validation = noteValidation.validateForm(data);
-    
+
     if (!validation.isValid) {
       return;
     }
 
+    const noteId = generateNoteId();
     const newNote: Note = {
-      id: `NOTE-${String(notesList.list.length + 1).padStart(3, '0')}`,
+      id: noteId,
       ...data,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      author: "current-user@example.com"
     };
-    
-    notesList.addItem(newNote);
-    noteForm.reset();
-    setShowSuccess(true);
-    
-    toast({
-      title: "Note Added",
-      description: `"${data.title}" has been saved`,
-    });
-    
-    setTimeout(() => setShowSuccess(false), 3000);
+
+    try {
+      await setDocument(NOTES_COLLECTION, noteId, newNote);
+      notesList.addItem(newNote);
+      noteForm.reset();
+      setShowSuccess(true);
+
+      toast({
+        title: "Note Added",
+        description: `"${data.title}" has been saved`,
+      });
+
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (error) {
+      console.error('Failed to add note:', error);
+      toast({ title: "Error", description: "Failed to save note to database" });
+    }
   };
 
-  const updateNote = (id: string, data: Omit<Note, 'id' | 'createdAt' | 'updatedAt' | 'author'>) => {
+  const updateNote = async (id: string, data: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => {
     const validation = noteValidation.validateForm(data);
-    
+
     if (!validation.isValid) {
       return;
     }
@@ -143,26 +143,38 @@ const StaffNotes = () => {
         ...data,
         updatedAt: new Date().toISOString()
       };
-      
-      notesList.updateItem(existingNoteIndex, updatedNote);
-      setEditingNote(null);
-      noteForm.reset();
-      
-      toast({
-        title: "Note Updated",
-        description: `"${data.title}" has been updated`,
-      });
+
+      try {
+        await setDocument(NOTES_COLLECTION, id, updatedNote);
+        notesList.updateItem(existingNoteIndex, updatedNote);
+        setEditingNote(null);
+        noteForm.reset();
+
+        toast({
+          title: "Note Updated",
+          description: `"${data.title}" has been updated`,
+        });
+      } catch (error) {
+        console.error('Failed to update note:', error);
+        toast({ title: "Error", description: "Failed to update note" });
+      }
     }
   };
 
-  const deleteNote = (id: string) => {
+  const deleteNote = async (id: string) => {
     const index = notesList.list.findIndex(note => note.id === id);
     if (index !== -1) {
-      notesList.removeItem(index);
-      toast({
-        title: "Note Deleted",
-        description: "Note has been removed",
-      });
+      try {
+        await deleteDocument(NOTES_COLLECTION, id);
+        notesList.removeItem(index);
+        toast({
+          title: "Note Deleted",
+          description: "Note has been removed",
+        });
+      } catch (error) {
+        console.error('Failed to delete note:', error);
+        toast({ title: "Error", description: "Failed to delete note" });
+      }
     }
   };
 
@@ -179,8 +191,8 @@ const StaffNotes = () => {
   };
 
   return (
-    <StaffLayout 
-      title="Staff Notes" 
+    <StaffLayout
+      title="Staff Notes"
       subtitle="Keep track of important information and reminders"
       icon={StickyNote}
       iconColor="from-yellow-500 to-orange-600"
@@ -197,7 +209,7 @@ const StaffNotes = () => {
           {/* Success Message */}
           {showSuccess && (
             <div className="mb-6">
-              <FormSuccessMessage 
+              <FormSuccessMessage
                 message="Note saved successfully!"
                 onDismiss={() => setShowSuccess(false)}
               />
@@ -216,15 +228,15 @@ const StaffNotes = () => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <form 
-                      onSubmit={noteForm.handleSubmit(editingNote ? 
-                        (data) => updateNote(editingNote, data) : 
+                    <form
+                      onSubmit={noteForm.handleSubmit(editingNote ?
+                        (data) => updateNote(editingNote, data) :
                         addNote
-                      )} 
+                      )}
                       className="space-y-6"
                     >
                       <FormErrorSummary errors={noteValidation.errors} />
-                      
+
                       <div>
                         <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Title</Label>
                         <ValidatedInput
@@ -234,10 +246,10 @@ const StaffNotes = () => {
                           className={`transition-all duration-300 ${themeClasses.input}`}
                         />
                       </div>
-                      
+
                       <div>
                         <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Category</Label>
-                        <select 
+                        <select
                           {...noteForm.register('category')}
                           className={`w-full p-3 rounded-lg transition-all duration-300 ${themeClasses.input}`}
                         >
@@ -248,7 +260,7 @@ const StaffNotes = () => {
                           <option value="urgent">Urgent</option>
                         </select>
                       </div>
-                      
+
                       <div>
                         <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Content</Label>
                         <ValidatedTextarea
@@ -258,17 +270,17 @@ const StaffNotes = () => {
                           className={`min-h-[120px] transition-all duration-300 ${themeClasses.input}`}
                         />
                       </div>
-                      
+
                       <div className="flex gap-3">
-                        <Button 
-                          type="submit" 
+                        <Button
+                          type="submit"
                           className={`flex-1 font-semibold transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
                         >
                           {editingNote ? 'Update Note' : 'Add Note'}
                         </Button>
-                        
+
                         {editingNote && (
-                          <Button 
+                          <Button
                             type="button"
                             variant="ghost"
                             onClick={cancelEditing}
@@ -298,8 +310,8 @@ const StaffNotes = () => {
                       />
                     </div>
                   </div>
-                  
-                  <select 
+
+                  <select
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
                     className={`px-4 py-2 rounded-lg transition-all duration-300 ${themeClasses.input}`}
@@ -311,89 +323,93 @@ const StaffNotes = () => {
                     <option value="shipping">Shipping</option>
                     <option value="urgent">Urgent</option>
                   </select>
-                  
-                  <UndoRedoControls 
-                    canUndo={notesList.canUndo}
-                    canRedo={notesList.canRedo}
-                    onUndo={notesList.undo}
-                    onRedo={notesList.redo}
-                    className={themeClasses.button.ghost}
-                  />
+
                 </div>
 
+                {/* Loading State */}
+                {loading && (
+                  <Card className={`${themeClasses.card.primary}`}>
+                    <CardContent className="p-12 text-center">
+                      <Loader2 className={`h-12 w-12 mx-auto mb-4 animate-spin transition-colors duration-300 ${themeClasses.text.muted}`} />
+                      <p className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>Loading notes...</p>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Notes */}
-                <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                  {filteredNotes.map((note) => (
-                    <Card key={note.id} className={`transition-all duration-200 hover:shadow-lg ${themeClasses.card.primary}`}>
-                      <CardContent className="p-6">
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="flex-1">
-                            <h3 className={`text-lg font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>
-                              {note.title}
-                            </h3>
-                            <div className="flex items-center space-x-3 mb-3">
-                              <Badge className={`${getCategoryColor(note.category)} transition-colors duration-300`}>
-                                <Tag className="h-3 w-3 mr-1" />
-                                {note.category}
-                              </Badge>
-                              <div className={`flex items-center text-sm transition-colors duration-300 ${themeClasses.text.muted}`}>
-                                <Clock className="h-3 w-3 mr-1" />
-                                {new Date(note.createdAt).toLocaleDateString()}
+                {!loading && (
+                  <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                    {filteredNotes.map((note) => (
+                      <Card key={note.id} className={`transition-all duration-200 hover:shadow-lg ${themeClasses.card.primary}`}>
+                        <CardContent className="p-6">
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="flex-1">
+                              <h3 className={`text-lg font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>
+                                {note.title}
+                              </h3>
+                              <div className="flex items-center space-x-3 mb-3">
+                                <Badge className={`${getCategoryColor(note.category)} transition-colors duration-300`}>
+                                  <Tag className="h-3 w-3 mr-1" />
+                                  {note.category}
+                                </Badge>
+                                <div className={`flex items-center text-sm transition-colors duration-300 ${themeClasses.text.muted}`}>
+                                  <Clock className="h-3 w-3 mr-1" />
+                                  {new Date(note.createdAt).toLocaleDateString()}
+                                </div>
                               </div>
                             </div>
+
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => startEditing(note)}
+                                className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteNote(note.id)}
+                                className={`transition-all duration-300 ${themeClasses.button.danger}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
-                          
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => startEditing(note)}
-                              className={`transition-all duration-300 ${themeClasses.button.ghost}`}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteNote(note.id)}
-                              className={`transition-all duration-300 ${themeClasses.button.danger}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        
-                        <p className={`leading-relaxed transition-colors duration-300 ${themeClasses.text.secondary}`}>
-                          {note.content}
-                        </p>
-                        
-                        <div className={`mt-4 pt-3 border-t flex justify-between text-xs transition-colors duration-300 ${themeClasses.text.muted}`}>
-                          <span>By: {note.author}</span>
+
+                          <p className={`leading-relaxed transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                            {note.content}
+                          </p>
+
                           {note.updatedAt !== note.createdAt && (
-                            <span>Updated: {new Date(note.updatedAt).toLocaleDateString()}</span>
+                            <div className={`mt-4 pt-3 border-t text-xs transition-colors duration-300 ${themeClasses.text.muted}`}>
+                              <span>Updated: {new Date(note.updatedAt).toLocaleDateString()}</span>
+                            </div>
                           )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  
-                  {filteredNotes.length === 0 && (
-                    <Card className={`${themeClasses.card.primary} border-dashed`}>
-                      <CardContent className="p-12 text-center">
-                        <FileText className={`h-16 w-16 mx-auto mb-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
-                        <h3 className={`text-xl font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>
-                          {searchQuery || selectedCategory !== "all" ? "No matching notes" : "No notes yet"}
-                        </h3>
-                        <p className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>
-                          {searchQuery || selectedCategory !== "all" ? 
-                            "Try adjusting your search or filter criteria" : 
-                            "Create your first note to get started"
-                          }
-                        </p>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+
+                    {filteredNotes.length === 0 && (
+                      <Card className={`${themeClasses.card.primary} border-dashed`}>
+                        <CardContent className="p-12 text-center">
+                          <FileText className={`h-16 w-16 mx-auto mb-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
+                          <h3 className={`text-xl font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>
+                            {searchQuery || selectedCategory !== "all" ? "No matching notes" : "No notes yet"}
+                          </h3>
+                          <p className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                            {searchQuery || selectedCategory !== "all" ?
+                              "Try adjusting your search or filter criteria" :
+                              "Create your first note to get started"
+                            }
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
       </div>

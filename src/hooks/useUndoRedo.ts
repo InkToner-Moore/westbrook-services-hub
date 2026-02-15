@@ -406,6 +406,14 @@ export function useListUndoRedo<T>(
     );
   }, [undoRedo]);
 
+  const setList = useCallback((newList: T[], description?: string) => {
+    undoRedo.setState(
+      newList,
+      'set-list',
+      description || 'Set list'
+    );
+  }, [undoRedo]);
+
   const clearList = useCallback((description?: string) => {
     undoRedo.setState(
       [],
@@ -416,6 +424,7 @@ export function useListUndoRedo<T>(
 
   return {
     list: undoRedo.state,
+    setList,
     addItem,
     removeItem,
     updateItem,

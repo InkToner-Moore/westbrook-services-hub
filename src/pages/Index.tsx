@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Phone, MapPin, Clock, ExternalLink, Search, Printer, Truck, Key, Recycle, Star, Shield, Award, Sun, Moon } from "lucide-react";
+import { Phone, MapPin, Clock, Search, Printer, Truck, Key, Recycle, Star, Shield, Award, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -193,11 +193,6 @@ const Index = () => {
     }
   };
 
-  const trackingLinks = [
-    { name: "UPS", url: "https://www.ups.com/track", color: "bg-gradient-to-r from-amber-500 to-amber-600", shadow: "shadow-amber-200" },
-    { name: "Purolator", url: "https://www.purolator.com/en/shipping/tracker", color: "bg-gradient-to-r from-blue-500 to-blue-600", shadow: "shadow-blue-200" },
-    { name: "FedEx", url: "https://www.fedex.com/en-ca/tracking.html", color: "bg-gradient-to-r from-purple-500 to-purple-600", shadow: "shadow-purple-200" }
-  ];
 
   const businessHours = [
     { days: "Monday & Tuesday", hours: "10 AM - 7 PM" },
@@ -216,19 +211,28 @@ const Index = () => {
     {
       icon: Search,
       title: "Ink Jet Refills",
-      description: "Professional refill services - call to verify cartridge compatibility",
+      description: "Professional refill services - call or visit to verify cartridge compatibility",
       color: "from-green-500 to-emerald-600"
     },
     {
       icon: Key,
       title: "Key Cutting & Accessories",
-      description: "House, mailbox, and automotive key cutting services",
+      description: "House, mailbox, and automotive key cutting services - call or visit to verify availability",
       color: "from-purple-500 to-violet-600"
     },
     {
       icon: Truck,
       title: "Shipping Services",
-      description: "UPS, FedEx, Purolator authorized center with competitive pricing",
+      description: (
+        <>
+          <span className="font-bold !text-amber-500">UPS</span>
+          {", "}
+          <span className="font-bold !text-purple-500">FedEx</span>
+          {", "}
+          <span className="font-bold !text-blue-400">Purolator</span>
+          {" authorized center"}
+        </>
+      ),
       color: "from-orange-500 to-red-600"
     }
   ];
@@ -271,9 +275,9 @@ const Index = () => {
       {/* Animated Background Elements */}
       <div className="fixed inset-0 -z-10">
         <div className={`absolute inset-0 transition-all duration-500 ${
-          isDarkMode 
-            ? 'bg-gradient-to-br from-indigo-950 via-blue-900 to-purple-900' 
-            : 'bg-gradient-to-br from-blue-50 via-indigo-100 to-purple-200'
+          isDarkMode
+            ? 'bg-gradient-to-br from-red-950 via-red-900 to-red-800'
+            : 'bg-gradient-to-br from-red-50 via-red-100 to-red-200'
         }`}></div>
         <div className={`absolute top-0 left-0 w-full h-full transition-all duration-500 ${
           isDarkMode
@@ -475,19 +479,6 @@ const Index = () => {
                 >
                   Track Package
                 </Button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {trackingLinks.map((link) => (
-                  <Button
-                    key={link.name}
-                    onClick={() => window.open(link.url, '_blank')}
-                    className={`${link.color} hover:opacity-90 text-white font-bold py-6 px-8 rounded-2xl transition-all duration-300 hover:scale-110 hover:shadow-2xl shadow-xl group border-2 border-white/20`}
-                  >
-                    <ExternalLink className="h-5 w-5 mr-3 group-hover:rotate-12 transition-transform duration-300" />
-                    Track with {link.name}
-                  </Button>
-                ))}
               </div>
             </div>
           </div>

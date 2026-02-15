@@ -122,9 +122,6 @@ const StaffDirectory = () => {
     await logout();
   };
 
-  const isDev = import.meta.env.VITE_NODE_ENV === 'development';
-  const bypassAuth = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
-
   return (
     <div className={`min-h-screen transition-colors duration-300 ${themeClasses.background}`}>
       {/* Background elements */}
@@ -158,11 +155,6 @@ const StaffDirectory = () => {
             </div>
             
             <div className="flex items-center space-x-4">
-              {isDev && bypassAuth && (
-                <div className="text-xs px-2 py-1 bg-orange-500/20 border border-orange-400/50 rounded text-orange-200">
-                  DEV MODE
-                </div>
-              )}
               <div className={`flex items-center space-x-2 transition-colors duration-300 ${themeClasses.text.secondary}`}>
                 <User className="h-4 w-4" />
                 <span className="text-sm font-medium">{user?.email}</span>

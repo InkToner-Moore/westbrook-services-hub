@@ -1,8 +1,8 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  // These will be environment variables in production
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "demo-key",
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "demo-project.firebaseapp.com",
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "demo-project",
@@ -13,4 +13,5 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const db = getFirestore(app);
 export default app;

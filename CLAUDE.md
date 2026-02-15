@@ -97,7 +97,7 @@ No test framework is currently configured in this project.
 - Email/SMS Notifications (optional) - Auto-remind customers when cartridges ready
 - Mobile Responsive - Works on phones/tablets as well as desktop
 - Fast & Reliable - No downtime, quick loading
-- Easy Content Management - Staff can update via Google Sheets
+- Easy Content Management - Staff can manage data through the staff portal (persisted in Firestore)
 - Secure - Staff login, API keys protected
 
 ### Cost Structure
@@ -118,10 +118,8 @@ No test framework is currently configured in this project.
 
 ### Backend/Database
 
-- Google Sheets API - Primary database (inventory, tracking, customers)
-- Google Sheets - Direct staff content management interface
-- Netlify Functions - Serverless API layer (hides API keys)
-- Firebase Auth - Staff authentication (free tier: 10k users)
+- Firebase Firestore - Primary database (cartridge orders, notes, public order status)
+- Firebase Auth - Staff authentication (email/password)
 
 ### Hosting & Deployment
 
@@ -133,7 +131,6 @@ No test framework is currently configured in this project.
 
 - EmailJS - Email notifications (free tier)
 - Twilio - SMS notifications (~$0.0075/message) (not for now)
-- Google Service Account - API access credentials
 
 ### Development Tools
 
@@ -141,23 +138,16 @@ No test framework is currently configured in this project.
 - Claude/AI Tools - Development assistance
 - Git/GitHub - Version control and deployment
 
-### Data Structure (Google Sheets)
+### Firestore Collections
 
-- Sheet 1: Inventory (keys, cartridges, stock, prices)
-- Sheet 2: Customer Orders (tracking, refill status)
-- Sheet 3: Website Directory (supplier links)
-- Sheet 4: Blog/Announcements (content)
-
-### API Endpoints (Netlify Functions)
-
-- /api/inventory - Get/update stock levels
-- /api/tracking - Shipping status updates
-- /api/customer - Refill status checks
-- /api/notifications - Send email/SMS reminders
+- `cartridgeOrders` - Full cartridge order data (staff-only read/write)
+- `notes` - Staff notes (staff-only read/write)
+- `orderStatus` - Minimal order status mirror (public read, staff write) containing only orderId, customerPhone, and status
 
 ### Security
 
-- Firebase Auth - Google/email login for staff
-- Environment Variables - API keys in Netlify
+- Firebase Auth - Email/password login for staff
+- Firestore Security Rules - Auth-gated writes, public read only on orderStatus
+- Environment Variables - Firebase config in .env
 - HTTPS - SSL certificates (free with GitHub Pages)
 - Input Validation - Form sanitization
