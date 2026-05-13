@@ -4,6 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Package, Truck, CheckCircle } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { toast } from "@/hooks/use-toast";
+import upsLogo from "@/assets/couriers/ups.png";
+import fedexLogo from "@/assets/couriers/fedex.png";
+import purolatorLogo from "@/assets/couriers/purolator.png";
 
 interface SmartTrackerProps {
   className?: string;
@@ -23,21 +26,21 @@ const SmartTracker = ({ className = "" }: SmartTrackerProps) => {
       name: "UPS",
       url: "https://www.ups.com/track?tracknum=",
       color: "bg-gradient-to-r from-amber-500 to-amber-800", // UPS brown/orange
-      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/United_Parcel_Service_logo_2014.svg/859px-United_Parcel_Service_logo_2014.svg.png"
+      logo: upsLogo
     },
     {
       id: "fedex", 
       name: "FedEx",
       url: "https://www.fedex.com/wtrk/track/?trknbr=",
       color: "bg-gradient-to-r from-purple-600 to-orange-500", // FedEx purple & orange
-      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/FedEx_Express.svg/1280px-FedEx_Express.svg.png"
+      logo: fedexLogo
     },
     {
       id: "purolator",
       name: "Purolator", 
       url: "https://www.purolator.com/en/shipping/tracker?pin=",
       color: "bg-gradient-to-r from-blue-600 to-red-600", // Purolator blue & red
-      logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Purolator_Courier_Logo_2006.svg/1280px-Purolator_Courier_Logo_2006.svg.png"
+      logo: purolatorLogo
     }
   ];
 

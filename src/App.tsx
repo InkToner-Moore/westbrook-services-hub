@@ -12,11 +12,12 @@ import StaffReceipts from "./pages/StaffReceipts";
 import StaffCartridges from "./pages/StaffCartridges";
 import StaffDirectory from "./pages/StaffDirectory";
 import StaffNotes from "./pages/StaffNotes";
+import StaffInventory from "./pages/StaffInventory";
 import ProtectedRoute from "./components/ProtectedRoute";
 import FeatureProtectedRoute from "./components/FeatureProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./hooks/useAuth";
-import { Package, Receipt, Printer, StickyNote } from "lucide-react";
+import { Package, Receipt, Printer, StickyNote, Boxes } from "lucide-react";
 
 const queryClient = new QueryClient();
 
@@ -100,11 +101,11 @@ const AppRoutes = () => {
         } 
       />
       
-      <Route 
-        path="/staff/notes" 
+      <Route
+        path="/staff/notes"
         element={
           <ProtectedRoute>
-            <FeatureProtectedRoute 
+            <FeatureProtectedRoute
               featurePath="modules.notes.enabled"
               moduleTitle="Notes System"
               moduleIcon={<StickyNote className="h-8 w-8 text-yellow-500" />}
@@ -112,7 +113,22 @@ const AppRoutes = () => {
               <StaffNotes />
             </FeatureProtectedRoute>
           </ProtectedRoute>
-        } 
+        }
+      />
+
+      <Route
+        path="/staff/inventory"
+        element={
+          <ProtectedRoute>
+            <FeatureProtectedRoute
+              featurePath="modules.inventory.enabled"
+              moduleTitle="Inventory"
+              moduleIcon={<Boxes className="h-8 w-8 text-amber-500" />}
+            >
+              <StaffInventory />
+            </FeatureProtectedRoute>
+          </ProtectedRoute>
+        }
       />
       
       

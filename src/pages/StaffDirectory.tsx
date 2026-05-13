@@ -19,6 +19,7 @@ import {
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
 import StaffLayout from "@/components/StaffLayout";
+import ThemeToggleButton from "@/components/ThemeToggleButton";
 
 interface WebsiteLink {
   id: string;
@@ -33,7 +34,7 @@ interface WebsiteLink {
 
 const StaffDirectory = () => {
   const { user, logout } = useAuth();
-  const { themeClasses } = useTheme();
+  const { themeClasses, isDarkMode } = useTheme();
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
@@ -106,15 +107,27 @@ const StaffDirectory = () => {
   });
 
   const getCategoryBadge = (category: string) => {
+    if (isDarkMode) {
+      switch (category) {
+        case "admin":
+          return "bg-red-500/20 text-red-300 border-red-400/50";
+        case "shipping":
+          return "bg-green-500/20 text-green-300 border-green-400/50";
+        case "courier":
+          return "bg-blue-500/20 text-blue-300 border-blue-400/50";
+        default:
+          return "bg-gray-500/20 text-gray-300 border-gray-400/50";
+      }
+    }
     switch (category) {
       case "admin":
-        return "bg-red-500/20 text-red-300 border-red-400/50";
+        return "bg-red-100 text-red-800 border-red-400";
       case "shipping":
-        return "bg-green-500/20 text-green-300 border-green-400/50";
+        return "bg-green-100 text-green-800 border-green-400";
       case "courier":
-        return "bg-blue-500/20 text-blue-300 border-blue-400/50";
+        return "bg-blue-100 text-blue-800 border-blue-400";
       default:
-        return "bg-gray-500/20 text-gray-300 border-gray-400/50";
+        return "bg-stone-200 text-stone-700 border-stone-400";
     }
   };
 
@@ -159,6 +172,7 @@ const StaffDirectory = () => {
                 <User className="h-4 w-4" />
                 <span className="text-sm font-medium">{user?.email}</span>
               </div>
+              <ThemeToggleButton />
               <Button
                 onClick={handleLogout}
                 variant="ghost"
@@ -242,7 +256,7 @@ const StaffDirectory = () => {
                   </div>
                   <div className="flex items-center space-x-2">
                     {website.isAdmin && (
-                      <Badge className="bg-red-500/20 text-red-300 border-red-400/50 border text-xs">
+                      <Badge variant="outline" className={`${getCategoryBadge("admin")} border text-xs`}>
                         Admin
                       </Badge>
                     )}
@@ -258,7 +272,7 @@ const StaffDirectory = () => {
                   {website.description}
                 </p>
                 <div className="flex items-center justify-between">
-                  <Badge className={`${getCategoryBadge(website.category)} border text-xs`}>
+                  <Badge variant="outline" className={`${getCategoryBadge(website.category)} border text-xs capitalize`}>
                     {website.category}
                   </Badge>
                   <div className={`text-xs font-mono truncate max-w-32 transition-colors duration-300 ${themeClasses.text.muted}`}>

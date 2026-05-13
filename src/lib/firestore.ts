@@ -69,3 +69,13 @@ export function generateNoteId(): string {
   }
   return result;
 }
+
+// Generate random inventory ID like "INV-Q9M2K7"
+export function generateInventoryId(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = 'INV-';
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}

@@ -44,6 +44,7 @@ interface Note {
 }
 
 const NOTES_COLLECTION = 'notes';
+const DELETED_NOTES_COLLECTION = 'deletedNotes';
 
 const StaffNotes = () => {
   const { themeClasses } = useTheme();
@@ -161,20 +162,27 @@ const StaffNotes = () => {
     }
   };
 
+  // Soft delete: archive the full note into `deletedNotes` before removing it
+  // from the active collection. Archived notes are never shown in the UI.
   const deleteNote = async (id: string) => {
     const index = notesList.list.findIndex(note => note.id === id);
-    if (index !== -1) {
-      try {
-        await deleteDocument(NOTES_COLLECTION, id);
-        notesList.removeItem(index);
-        toast({
-          title: "Note Deleted",
-          description: "Note has been removed",
-        });
-      } catch (error) {
-        console.error('Failed to delete note:', error);
-        toast({ title: "Error", description: "Failed to delete note" });
-      }
+    if (index === -1) return;
+
+    const note = notesList.list[index];
+    try {
+      await setDocument(DELETED_NOTES_COLLECTION, id, {
+        ...note,
+        deletedAt: new Date().toISOString(),
+      });
+      await deleteDocument(NOTES_COLLECTION, id);
+      notesList.removeItem(index);
+      toast({
+        title: "Note Removed",
+        description: "Note has been moved to deleted notes",
+      });
+    } catch (error) {
+      console.error('Failed to delete note:', error);
+      toast({ title: "Error", description: "Failed to delete note" });
     }
   };
 

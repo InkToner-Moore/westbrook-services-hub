@@ -7,7 +7,28 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   ArrowLeft,
   Printer,
@@ -23,8 +44,18 @@ import {
   CheckCircle,
   Clock,
   Filter,
-  Loader2
+  Loader2,
+  Receipt
 } from "lucide-react";
+import {
+  GST_RATE,
+  ReceiptSize,
+  formatReceiptDate,
+  generateSimpleReceiptPdf,
+  round2,
+} from "@/lib/simpleReceipt";
+import GstBreakdown from "@/components/GstBreakdown";
+import ThemeToggleButton from "@/components/ThemeToggleButton";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { toast } from "@/hooks/use-toast";
@@ -35,6 +66,7 @@ import {
   deleteDocument,
   generateOrderId,
 } from "@/lib/firestore";
+import { deleteField } from "firebase/firestore";
 
 interface CartridgeOrder {
   id: string;
@@ -51,12 +83,372 @@ interface CartridgeOrder {
   price?: number;
 }
 
+type EditableOrderFields = Pick<
+  CartridgeOrder,
+  | "customerName"
+  | "customerPhone"
+  | "customerEmail"
+  | "cartridgeBrand"
+  | "cartridgeModel"
+  | "cartridgeType"
+  | "notes"
+  | "price"
+>;
+
 const ORDERS_COLLECTION = 'cartridgeOrders';
 const STATUS_COLLECTION = 'orderStatus';
+const DELETED_ORDERS_COLLECTION = 'deletedOrders';
+
+const CARTRIDGE_BRANDS = ['HP', 'Canon', 'Epson', 'Brother', 'Lexmark'];
+const CARTRIDGE_TYPES: { value: string; label: string }[] = [
+  { value: 'Black', label: 'Black' },
+  { value: 'Color', label: 'Color (Tri-color)' },
+  { value: 'Cyan', label: 'Cyan' },
+  { value: 'Magenta', label: 'Magenta' },
+  { value: 'Yellow', label: 'Yellow' },
+  { value: 'Photo Black', label: 'Photo Black' },
+];
+
+const isFilledNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+// Marks a form field as required.
+const RequiredMark = () => (
+  <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>
+);
+
+// Renders a "Label: value" pair, falling back to a muted "Unspecified" when empty.
+const DetailField = ({
+  label,
+  value,
+  themeClasses,
+}: {
+  label: string;
+  value?: string | number | null;
+  themeClasses: any;
+}) => {
+  const isEmpty =
+    value === undefined ||
+    value === null ||
+    value === '' ||
+    (typeof value === 'number' && !Number.isFinite(value));
+
+  return (
+    <span className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>
+      {label}:{' '}
+      <span
+        className={`transition-colors duration-300 ${
+          isEmpty ? themeClasses.text.muted : themeClasses.text.primary
+        }`}
+      >
+        {isEmpty ? 'Unspecified' : value}
+      </span>
+    </span>
+  );
+};
+
+// ---- Cartridge refill receipt ----
+
+type ReceiptFormValues = {
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  cartridgeBrand: string;
+  cartridgeModel: string;
+  cartridgeType: string;
+  price?: number;
+  notes: string;
+};
+
+// Confirm/edit dialog shown before downloading a cartridge refill receipt.
+// Price is mandatory here even if the order doesn't have one yet.
+const ReceiptDialog = ({
+  order,
+  themeClasses,
+}: {
+  order: CartridgeOrder;
+  themeClasses: any;
+}) => {
+  const [open, setOpen] = useState(false);
+  const [addGst, setAddGst] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<ReceiptFormValues>();
+
+  const priceInput = watch('price');
+  const price = isFilledNumber(priceInput) && priceInput >= 0 ? priceInput : null;
+
+  const handleOpenChange = (next: boolean) => {
+    if (next) {
+      setAddGst(false);
+      reset({
+        customerName: order.customerName ?? '',
+        customerPhone: order.customerPhone ?? '',
+        customerEmail: order.customerEmail ?? '',
+        cartridgeBrand: order.cartridgeBrand ?? '',
+        cartridgeModel: order.cartridgeModel ?? '',
+        cartridgeType: order.cartridgeType ?? '',
+        price: isFilledNumber(order.price) ? order.price : undefined,
+        notes: order.notes ?? '',
+      });
+    }
+    setOpen(next);
+  };
+
+  const download = (values: ReceiptFormValues, size: ReceiptSize) => {
+    const finalPrice = values.price as number;
+    generateSimpleReceiptPdf(
+      {
+        title: 'Cartridge Refill Receipt',
+        identifierLabel: 'Order ID',
+        identifierValue: order.id,
+        date: formatReceiptDate(new Date().toISOString().split('T')[0]),
+        rows: [
+          { label: 'Name', value: values.customerName },
+          { label: 'Phone Number', value: values.customerPhone },
+          { label: 'Email', value: values.customerEmail },
+          { label: 'Brand', value: values.cartridgeBrand },
+          { label: 'Model', value: values.cartridgeModel },
+          { label: 'Type', value: values.cartridgeType },
+          { label: 'Received', value: formatReceiptDate(order.dateReceived) },
+          { label: 'Notes', value: values.notes },
+        ],
+        price: finalPrice,
+        gst: addGst ? round2(finalPrice * GST_RATE) : undefined,
+        fileNameBase: `cartridge-receipt-${order.id}`,
+      },
+      size,
+    );
+    setOpen(false);
+  };
+
+  const downloadAs = (size: ReceiptSize) => handleSubmit((values) => download(values, size));
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+          title="Download refill receipt"
+        >
+          <Receipt className="h-4 w-4" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Cartridge Refill Receipt</DialogTitle>
+          <DialogDescription>
+            Confirm the details below — blank fields are left off the printed receipt.
+            A price is required before you can download.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={downloadAs('4x6')} className="space-y-3">
+          <div>
+            <Label className="font-medium">Customer Name</Label>
+            <Input {...register('customerName')} />
+          </div>
+          <div>
+            <Label className="font-medium">Phone Number</Label>
+            <Input {...register('customerPhone')} />
+          </div>
+          <div>
+            <Label className="font-medium">Email</Label>
+            <Input type="email" {...register('customerEmail')} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="font-medium">Brand</Label>
+              <Input {...register('cartridgeBrand')} />
+            </div>
+            <div>
+              <Label className="font-medium">Type</Label>
+              <Input {...register('cartridgeType')} />
+            </div>
+          </div>
+          <div>
+            <Label className="font-medium">Model</Label>
+            <Input {...register('cartridgeModel')} />
+          </div>
+          <div>
+            <Label className="font-medium">Price ($)<RequiredMark /></Label>
+            <Input
+              type="number"
+              step="0.01"
+              placeholder="Enter the refill price"
+              {...register('price', {
+                valueAsNumber: true,
+                validate: (value) =>
+                  (isFilledNumber(value) && value >= 0) || 'A valid price is required',
+              })}
+            />
+            {errors.price && (
+              <p className="text-sm text-red-500 mt-1">{errors.price.message}</p>
+            )}
+            <label className="mt-2 flex items-center gap-2 text-sm font-medium cursor-pointer select-none">
+              <Checkbox checked={addGst} onCheckedChange={(checked) => setAddGst(checked === true)} />
+              Add GST ({(GST_RATE * 100).toFixed(0)}%)
+            </label>
+            {addGst && price != null && <GstBreakdown price={price} />}
+          </div>
+          <div>
+            <Label className="font-medium">Notes</Label>
+            <Textarea rows={2} {...register('notes')} />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={downloadAs('letter')}
+            >
+              Download Full Page
+            </Button>
+            <Button
+              type="submit"
+              className={`font-bold rounded-xl shadow-lg transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
+            >
+              Download 4×6
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Inline editor for an existing cartridge order.
+const EditOrderForm = ({
+  order,
+  themeClasses,
+  onSave,
+  onCancel,
+}: {
+  order: CartridgeOrder;
+  themeClasses: any;
+  onSave: (data: EditableOrderFields) => void;
+  onCancel: () => void;
+}) => {
+  const { register, handleSubmit, setValue, watch } = useForm<EditableOrderFields>({
+    defaultValues: {
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      customerEmail: order.customerEmail ?? '',
+      cartridgeBrand: order.cartridgeBrand ?? '',
+      cartridgeModel: order.cartridgeModel,
+      cartridgeType: order.cartridgeType ?? '',
+      notes: order.notes ?? '',
+      price: isFilledNumber(order.price) ? order.price : undefined,
+    },
+  });
+
+  const cartridgeBrand = watch('cartridgeBrand');
+  const cartridgeType = watch('cartridgeType');
+
+  return (
+    <form onSubmit={handleSubmit(onSave)} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Name<RequiredMark /></Label>
+          <Input
+            {...register('customerName', { required: true })}
+            className={`transition-all duration-300 ${themeClasses.input}`}
+          />
+        </div>
+        <div>
+          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Phone Number<RequiredMark /></Label>
+          <Input
+            {...register('customerPhone', { required: true })}
+            className={`transition-all duration-300 ${themeClasses.input}`}
+          />
+        </div>
+        <div>
+          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Email (Optional)</Label>
+          <Input
+            type="email"
+            {...register('customerEmail')}
+            className={`transition-all duration-300 ${themeClasses.input}`}
+          />
+        </div>
+        <div>
+          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Cartridge Brand</Label>
+          <Select value={cartridgeBrand || undefined} onValueChange={(value) => setValue('cartridgeBrand', value)}>
+            <SelectTrigger className={`transition-all duration-300 ${themeClasses.input}`}>
+              <SelectValue placeholder="Select brand" />
+            </SelectTrigger>
+            <SelectContent>
+              {CARTRIDGE_BRANDS.map((brand) => (
+                <SelectItem key={brand} value={brand}>{brand}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Cartridge Model<RequiredMark /></Label>
+          <Input
+            {...register('cartridgeModel', { required: true })}
+            className={`transition-all duration-300 ${themeClasses.input}`}
+          />
+        </div>
+        <div>
+          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Cartridge Type</Label>
+          <Select value={cartridgeType || undefined} onValueChange={(value) => setValue('cartridgeType', value)}>
+            <SelectTrigger className={`transition-all duration-300 ${themeClasses.input}`}>
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              {CARTRIDGE_TYPES.map((type) => (
+                <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Price ($)</Label>
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="Leave blank if unspecified"
+            {...register('price', { valueAsNumber: true })}
+            className={`transition-all duration-300 ${themeClasses.input}`}
+          />
+        </div>
+      </div>
+      <div>
+        <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Notes</Label>
+        <Textarea
+          {...register('notes')}
+          rows={3}
+          className={`transition-all duration-300 ${themeClasses.input}`}
+        />
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="submit"
+          className={`font-bold rounded-xl shadow-lg transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
+        >
+          Save Changes
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onCancel}
+          className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+        >
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+};
 
 const StaffCartridges = () => {
   const { user, logout } = useAuth();
-  const { themeClasses } = useTheme();
+  const { themeClasses, isDarkMode } = useTheme();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [editingOrder, setEditingOrder] = useState<string | null>(null);
@@ -86,11 +478,19 @@ const StaffCartridges = () => {
   };
 
   const getStatusColor = (status: string) => {
+    if (isDarkMode) {
+      switch (status) {
+        case "in_progress": return "bg-yellow-500/20 text-yellow-300 border-yellow-400/50";
+        case "ready": return "bg-green-500/20 text-green-300 border-green-400/50";
+        case "picked_up": return "bg-gray-500/20 text-gray-300 border-gray-400/50";
+        default: return "bg-gray-500/20 text-gray-300 border-gray-400/50";
+      }
+    }
     switch (status) {
-      case "in_progress": return "bg-yellow-500/20 text-yellow-300 border-yellow-400/50";
-      case "ready": return "bg-green-500/20 text-green-300 border-green-400/50";
-      case "picked_up": return "bg-gray-500/20 text-gray-300 border-gray-400/50";
-      default: return "bg-gray-500/20 text-gray-300 border-gray-400/50";
+      case "in_progress": return "bg-yellow-100 text-yellow-800 border-yellow-400";
+      case "ready": return "bg-green-100 text-green-800 border-green-400";
+      case "picked_up": return "bg-stone-200 text-stone-700 border-stone-400";
+      default: return "bg-stone-200 text-stone-700 border-stone-400";
     }
   };
 
@@ -150,12 +550,16 @@ const StaffCartridges = () => {
 
   const addNewOrder = async (data: Omit<CartridgeOrder, 'id' | 'dateReceived'>) => {
     const orderId = generateOrderId();
+    const { price, ...rest } = data;
     const newOrder: CartridgeOrder = {
-      ...data,
+      ...rest,
       id: orderId,
       dateReceived: new Date().toISOString().split('T')[0],
       status: 'in_progress'
     };
+    if (isFilledNumber(price)) {
+      newOrder.price = price;
+    }
 
     try {
       await setDocument(ORDERS_COLLECTION, orderId, newOrder);
@@ -174,15 +578,68 @@ const StaffCartridges = () => {
     }
   };
 
-  const deleteOrder = async (orderId: string) => {
+  const saveOrderEdits = async (orderId: string, data: EditableOrderFields) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    const hasPrice = isFilledNumber(data.price);
+    const fields = {
+      customerName: data.customerName.trim(),
+      customerPhone: data.customerPhone.trim(),
+      customerEmail: (data.customerEmail ?? '').trim(),
+      cartridgeBrand: data.cartridgeBrand ?? '',
+      cartridgeModel: data.cartridgeModel.trim(),
+      cartridgeType: data.cartridgeType ?? '',
+      notes: data.notes ?? '',
+    };
+
     try {
+      await updateDocument(ORDERS_COLLECTION, orderId, {
+        ...fields,
+        price: hasPrice ? data.price : deleteField(),
+      });
+
+      if (fields.customerPhone !== order.customerPhone) {
+        await syncOrderStatus(orderId, fields.customerPhone, order.status);
+      }
+
+      setOrders(prevOrders =>
+        prevOrders.map(o =>
+          o.id === orderId
+            ? { ...o, ...fields, price: hasPrice ? data.price : undefined }
+            : o
+        )
+      );
+      setEditingOrder(null);
+
+      toast({
+        title: "Order Updated",
+        description: `Order ${orderId} has been updated`,
+      });
+    } catch (error) {
+      console.error('Failed to update order:', error);
+      toast({ title: "Error", description: "Failed to update order" });
+    }
+  };
+
+  // Soft delete: archive the full order into `deletedOrders` before removing it
+  // from the active collection. Archived orders are never shown in the UI.
+  const deleteOrder = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    try {
+      await setDocument(DELETED_ORDERS_COLLECTION, orderId, {
+        ...order,
+        deletedAt: new Date().toISOString(),
+      });
       await deleteDocument(ORDERS_COLLECTION, orderId);
       await deleteDocument(STATUS_COLLECTION, orderId);
 
-      setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
+      setOrders(prevOrders => prevOrders.filter(o => o.id !== orderId));
       toast({
-        title: "Order Deleted",
-        description: `Order ${orderId} has been removed`,
+        title: "Order Removed",
+        description: `Order ${orderId} has been moved to deleted orders`,
       });
     } catch (error) {
       console.error('Failed to delete order:', error);
@@ -238,6 +695,7 @@ const StaffCartridges = () => {
                 <User className="h-4 w-4" />
                 <span className="text-sm font-medium">{user?.email}</span>
               </div>
+              <ThemeToggleButton />
               <Button
                 onClick={handleLogout}
                 variant="ghost"
@@ -276,7 +734,7 @@ const StaffCartridges = () => {
               <CardContent>
                 <form onSubmit={newOrderForm.handleSubmit(addNewOrder)} className="space-y-4">
                   <div>
-                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Name</Label>
+                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Name<RequiredMark /></Label>
                     <Input
                       {...newOrderForm.register('customerName', { required: true })}
                       placeholder="Enter customer name"
@@ -285,7 +743,7 @@ const StaffCartridges = () => {
                   </div>
 
                   <div>
-                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Phone Number</Label>
+                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Phone Number<RequiredMark /></Label>
                     <Input
                       {...newOrderForm.register('customerPhone', { required: true })}
                       placeholder="(403) 555-0123"
@@ -320,7 +778,7 @@ const StaffCartridges = () => {
                   </div>
 
                   <div>
-                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Cartridge Model</Label>
+                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Cartridge Model<RequiredMark /></Label>
                     <Input
                       {...newOrderForm.register('cartridgeModel', { required: true })}
                       placeholder="e.g. HP 564XL, Canon PG-245"
@@ -427,7 +885,7 @@ const StaffCartridges = () => {
                         <div>
                           <div className="flex items-center space-x-3 mb-2">
                             <h3 className={`text-lg font-bold transition-colors duration-300 ${themeClasses.text.primary}`}>{order.customerName}</h3>
-                            <Badge className={`${getStatusColor(order.status)} border flex items-center space-x-1`}>
+                            <Badge variant="outline" className={`${getStatusColor(order.status)} border flex items-center space-x-1`}>
                               {getStatusIcon(order.status)}
                               <span className="capitalize">{order.status.replace('_', ' ')}</span>
                             </Badge>
@@ -435,6 +893,7 @@ const StaffCartridges = () => {
                           <p className={`text-sm font-mono transition-colors duration-300 ${themeClasses.text.secondary}`}>{order.id}</p>
                         </div>
                         <div className="flex space-x-2">
+                          <ReceiptDialog order={order} themeClasses={themeClasses} />
                           <Button
                             variant="ghost"
                             size="sm"
@@ -443,85 +902,119 @@ const StaffCartridges = () => {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteOrder(order.id)}
-                            className={`transition-all duration-300 ${themeClasses.button.danger}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`transition-all duration-300 ${themeClasses.button.danger}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete this order?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete order {order.id} for {order.customerName}.
+                                  This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteOrder(order.id)}
+                                  className="bg-red-600 hover:bg-red-700 text-white"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-                        <div className={`flex items-center space-x-2 transition-colors duration-300 ${themeClasses.text.secondary}`}>
-                          <Phone className="h-4 w-4" />
-                          <span className="text-sm">{order.customerPhone}</span>
-                        </div>
-                        {order.customerEmail && (
-                          <div className={`flex items-center space-x-2 transition-colors duration-300 ${themeClasses.text.secondary}`}>
-                            <Mail className="h-4 w-4" />
-                            <span className="text-sm">{order.customerEmail}</span>
+                      {editingOrder === order.id ? (
+                        <EditOrderForm
+                          order={order}
+                          themeClasses={themeClasses}
+                          onSave={(data) => saveOrderEdits(order.id, data)}
+                          onCancel={() => setEditingOrder(null)}
+                        />
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                            <div className={`flex items-center space-x-2 transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                              <Phone className="h-4 w-4" />
+                              <span className="text-sm">{order.customerPhone}</span>
+                            </div>
+                            <div className={`flex items-center space-x-2 transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                              <Mail className="h-4 w-4" />
+                              <span className={`text-sm ${order.customerEmail ? '' : themeClasses.text.muted}`}>
+                                {order.customerEmail || 'Unspecified'}
+                              </span>
+                            </div>
+                            <div className={`flex items-center space-x-2 transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                              <Calendar className="h-4 w-4" />
+                              <span className="text-sm">Received: {order.dateReceived}</span>
+                            </div>
                           </div>
-                        )}
-                        <div className={`flex items-center space-x-2 transition-colors duration-300 ${themeClasses.text.secondary}`}>
-                          <Calendar className="h-4 w-4" />
-                          <span className="text-sm">Received: {order.dateReceived}</span>
-                        </div>
-                      </div>
 
-                      <div className={`rounded-xl p-4 mb-4 transition-all duration-300 ${themeClasses.card.secondary}`}>
-                        <h4 className={`font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>Cartridge Details</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                          <span className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>Brand: <span className={`transition-colors duration-300 ${themeClasses.text.primary}`}>{order.cartridgeBrand}</span></span>
-                          <span className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>Model: <span className={`transition-colors duration-300 ${themeClasses.text.primary}`}>{order.cartridgeModel}</span></span>
-                          <span className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>Type: <span className={`transition-colors duration-300 ${themeClasses.text.primary}`}>{order.cartridgeType}</span></span>
-                          {order.price && (
-                            <span className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>Price: <span className={`transition-colors duration-300 ${themeClasses.text.primary}`}>${order.price.toFixed(2)}</span></span>
+                          <div className={`rounded-xl p-4 mb-4 transition-all duration-300 ${themeClasses.card.secondary}`}>
+                            <h4 className={`font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>Cartridge Details</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                              <DetailField label="Brand" value={order.cartridgeBrand} themeClasses={themeClasses} />
+                              <DetailField label="Model" value={order.cartridgeModel} themeClasses={themeClasses} />
+                              <DetailField label="Type" value={order.cartridgeType} themeClasses={themeClasses} />
+                              <DetailField
+                                label="Price"
+                                value={isFilledNumber(order.price) ? `$${order.price.toFixed(2)}` : undefined}
+                                themeClasses={themeClasses}
+                              />
+                            </div>
+                          </div>
+
+                          {order.notes && (
+                            <div className={`rounded-xl p-3 mb-4 transition-all duration-300 ${themeClasses.status.info}`}>
+                              <p className="text-sm">{order.notes}</p>
+                            </div>
                           )}
-                        </div>
-                      </div>
 
-                      {order.notes && (
-                        <div className={`rounded-xl p-3 mb-4 transition-all duration-300 ${themeClasses.status.info}`}>
-                          <p className="text-sm">{order.notes}</p>
-                        </div>
+                          {/* Status Update Buttons */}
+                          <div className="flex flex-wrap gap-2">
+                            {order.status !== 'in_progress' && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => updateOrderStatus(order.id, 'in_progress')}
+                                className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+                              >
+                                Mark in Progress
+                              </Button>
+                            )}
+                            {order.status !== 'ready' && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => updateOrderStatus(order.id, 'ready')}
+                                className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+                              >
+                                Mark Ready
+                              </Button>
+                            )}
+                            {order.status !== 'picked_up' && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => updateOrderStatus(order.id, 'picked_up')}
+                                className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+                              >
+                                Mark Picked Up
+                              </Button>
+                            )}
+                          </div>
+                        </>
                       )}
-
-                      {/* Status Update Buttons */}
-                      <div className="flex flex-wrap gap-2">
-                        {order.status !== 'in_progress' && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => updateOrderStatus(order.id, 'in_progress')}
-                            className={`transition-all duration-300 ${themeClasses.button.ghost}`}
-                          >
-                            Mark in Progress
-                          </Button>
-                        )}
-                        {order.status !== 'ready' && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => updateOrderStatus(order.id, 'ready')}
-                            className={`transition-all duration-300 ${themeClasses.button.ghost}`}
-                          >
-                            Mark Ready
-                          </Button>
-                        )}
-                        {order.status !== 'picked_up' && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => updateOrderStatus(order.id, 'picked_up')}
-                            className={`transition-all duration-300 ${themeClasses.button.ghost}`}
-                          >
-                            Mark Picked Up
-                          </Button>
-                        )}
-                      </div>
                     </CardContent>
                   </Card>
                 ))}

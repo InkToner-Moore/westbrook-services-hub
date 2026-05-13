@@ -6,11 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Receipt, 
-  Package, 
+import {
+  Receipt,
+  Package,
   Key,
+  Printer,
+  Droplets,
   Download,
   Plus,
   Trash2,
@@ -24,6 +28,16 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import StaffLayout from "@/components/StaffLayout";
+import ThemeToggleButton from "@/components/ThemeToggleButton";
+import GstBreakdown from "@/components/GstBreakdown";
+import {
+  GST_RATE,
+  ReceiptSize,
+  formatReceiptDate,
+  generateReceiptNumber,
+  generateSimpleReceiptPdf,
+  round2,
+} from "@/lib/simpleReceipt";
 
 interface ShippingAddOn {
   type: string;
@@ -66,15 +80,30 @@ interface KeyReceiptData {
   total: number;
 }
 
-const generateReceiptNumber = (prefix: string) => {
-  const now = new Date();
-  const year = now.getFullYear().toString().slice(-2);
-  const month = (now.getMonth() + 1).toString().padStart(2, '0');
-  const day = now.getDate().toString().padStart(2, '0');
-  const hour = now.getHours().toString().padStart(2, '0');
-  const minute = now.getMinutes().toString().padStart(2, '0');
-  return `${prefix}${year}${month}${day}${hour}${minute}`;
-};
+interface CartridgeFormData {
+  receiptNumber: string;
+  date: string; // yyyy-mm-dd
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  cartridgeBrand: string;
+  cartridgeModel: string;
+  cartridgeType: string;
+  notes: string;
+  price?: number;
+}
+
+interface TonerFormData {
+  receiptNumber: string;
+  date: string; // yyyy-mm-dd
+  customerName: string;
+  customerPhone: string;
+  model: string;
+  price?: number;
+}
+
+const isFilledNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
 
 const provincialTaxRates = {
   'Alberta': [{ name: 'GST', percentage: 5 }],
@@ -103,7 +132,12 @@ const shippingAddOns = [
 
 const StaffReceipts = () => {
   const { user, logout } = useAuth();
-  const { themeClasses } = useTheme();
+  const { themeClasses, isDarkMode } = useTheme();
+  // The app's dialogs/inputs render against the light shadcn palette, so in dark
+  // mode the default checkbox (dark border, dark fill) nearly vanishes — invert it.
+  const checkboxClass = isDarkMode
+    ? "border-gray-300 data-[state=checked]:bg-white data-[state=checked]:text-slate-900"
+    : "";
   const [activeTab, setActiveTab] = useState("shipping");
   
   const shippingForm = useForm<ShippingReceiptData>({
@@ -133,6 +167,93 @@ const StaffReceipts = () => {
     }
   });
 
+  const today = new Date().toISOString().split('T')[0];
+
+  const cartridgeForm = useForm<CartridgeFormData>({
+    defaultValues: {
+      receiptNumber: generateReceiptNumber('CR'),
+      date: today,
+      customerName: '',
+      customerPhone: '',
+      customerEmail: '',
+      cartridgeBrand: '',
+      cartridgeModel: '',
+      cartridgeType: '',
+      notes: '',
+      price: undefined,
+    },
+  });
+  const [cartridgeAddGst, setCartridgeAddGst] = useState(false);
+  const cartridgePrice = cartridgeForm.watch('price');
+
+  const tonerForm = useForm<TonerFormData>({
+    defaultValues: {
+      receiptNumber: generateReceiptNumber('TON'),
+      date: today,
+      customerName: '',
+      customerPhone: '',
+      model: '',
+      price: undefined,
+    },
+  });
+  const [tonerAddGst, setTonerAddGst] = useState(false);
+  const tonerPrice = tonerForm.watch('price');
+
+  const onSubmitCartridge = (size: ReceiptSize) =>
+    cartridgeForm.handleSubmit((data) => {
+      const price = data.price as number;
+      generateSimpleReceiptPdf(
+        {
+          title: 'Cartridge Refill Receipt',
+          identifierLabel: 'Receipt #',
+          identifierValue: data.receiptNumber,
+          date: formatReceiptDate(data.date),
+          rows: [
+            { label: 'Name', value: data.customerName },
+            { label: 'Phone Number', value: data.customerPhone },
+            { label: 'Email', value: data.customerEmail },
+            { label: 'Brand', value: data.cartridgeBrand },
+            { label: 'Model', value: data.cartridgeModel },
+            { label: 'Type', value: data.cartridgeType },
+            { label: 'Notes', value: data.notes },
+          ],
+          price,
+          gst: cartridgeAddGst ? round2(price * GST_RATE) : undefined,
+          fileNameBase: `cartridge-receipt-${data.receiptNumber}`,
+        },
+        size,
+      );
+      toast({
+        title: 'Receipt Generated',
+        description: `Cartridge refill receipt ${data.receiptNumber} downloaded`,
+      });
+    });
+
+  const onSubmitToner = (size: ReceiptSize) =>
+    tonerForm.handleSubmit((data) => {
+      const price = data.price as number;
+      generateSimpleReceiptPdf(
+        {
+          title: 'Toner Sale Receipt',
+          identifierLabel: 'Receipt #',
+          identifierValue: data.receiptNumber,
+          date: formatReceiptDate(data.date),
+          rows: [
+            { label: 'Name', value: data.customerName },
+            { label: 'Phone Number', value: data.customerPhone },
+            { label: 'Model', value: data.model },
+          ],
+          price,
+          gst: tonerAddGst ? round2(price * GST_RATE) : undefined,
+          fileNameBase: `toner-receipt-${data.receiptNumber}`,
+        },
+        size,
+      );
+      toast({
+        title: 'Receipt Generated',
+        description: `Toner sale receipt ${data.receiptNumber} downloaded`,
+      });
+    });
 
   const calculateTaxes = (subtotal: number, taxes: { name: string; percentage: number; amount: number }[]) => {
     return taxes.map(tax => ({
@@ -546,6 +667,7 @@ const StaffReceipts = () => {
                 <User className="h-4 w-4" />
                 <span className="text-sm font-medium">{user?.email}</span>
               </div>
+              <ThemeToggleButton />
               <Button
                 onClick={handleLogout}
                 variant="ghost"
@@ -567,27 +689,41 @@ const StaffReceipts = () => {
             Professional Receipt Generator
           </h2>
           <p className={`text-xl max-w-2xl mx-auto drop-shadow-lg transition-colors duration-300 ${themeClasses.text.secondary}`}>
-            Create custom PDF receipts for shipping and key cutting services
+            Create custom PDF receipts for shipping, key cutting, cartridge refills, and toner sales
           </p>
         </div>
 
         {/* Receipt Type Tabs */}
         <div className={`border rounded-3xl p-8 shadow-2xl transition-all duration-300 ${themeClasses.card.primary}`}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className={`grid w-full grid-cols-2 mb-8 backdrop-blur-sm transition-all duration-300 ${themeClasses.card.secondary}`}>
-              <TabsTrigger 
-                value="shipping" 
+            <TabsList className={`grid w-full grid-cols-2 md:grid-cols-4 gap-2 mb-8 h-auto backdrop-blur-sm transition-all duration-300 ${themeClasses.card.secondary}`}>
+              <TabsTrigger
+                value="shipping"
                 className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white"
               >
                 <Package className="h-4 w-4" />
-                <span>Shipping Receipt</span>
+                <span>Shipping</span>
               </TabsTrigger>
-              <TabsTrigger 
-                value="key" 
+              <TabsTrigger
+                value="key"
                 className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white"
               >
                 <Key className="h-4 w-4" />
-                <span>Key Cutting Receipt</span>
+                <span>Key Cutting</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="cartridge"
+                className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white"
+              >
+                <Printer className="h-4 w-4" />
+                <span>Cartridge Refill</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="toner"
+                className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white"
+              >
+                <Droplets className="h-4 w-4" />
+                <span>Toner Sale</span>
               </TabsTrigger>
             </TabsList>
 
@@ -1178,6 +1314,223 @@ const StaffReceipts = () => {
                   <Download className="h-5 w-5 mr-2" />
                   Generate Key Receipt PDF
                 </Button>
+              </form>
+            </TabsContent>
+
+            {/* Cartridge Refill Receipt Form */}
+            <TabsContent value="cartridge">
+              <form onSubmit={onSubmitCartridge('4x6')} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="crReceiptNumber" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Receipt Number</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="crReceiptNumber"
+                        {...cartridgeForm.register('receiptNumber')}
+                        className={`transition-all duration-300 ${themeClasses.input}`}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => cartridgeForm.setValue('receiptNumber', generateReceiptNumber('CR'))}
+                        className={`px-3 transition-all duration-300 ${themeClasses.button.ghost}`}
+                        title="Generate new receipt number"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="crDate" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Date</Label>
+                    <Input id="crDate" type="date" {...cartridgeForm.register('date')} className={`transition-all duration-300 ${themeClasses.input}`} />
+                  </div>
+                  <div>
+                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Name</Label>
+                    <Input {...cartridgeForm.register('customerName')} placeholder="Enter customer name" className={`transition-all duration-300 ${themeClasses.input}`} />
+                  </div>
+                  <div>
+                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Phone</Label>
+                    <Input {...cartridgeForm.register('customerPhone')} placeholder="(403) 555-0123" className={`transition-all duration-300 ${themeClasses.input}`} />
+                  </div>
+                  <div>
+                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Email</Label>
+                    <Input type="email" {...cartridgeForm.register('customerEmail')} placeholder="customer@email.com" className={`transition-all duration-300 ${themeClasses.input}`} />
+                  </div>
+                  <div>
+                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Cartridge Brand</Label>
+                    <Input {...cartridgeForm.register('cartridgeBrand')} placeholder="HP, Canon, Epson, ..." className={`transition-all duration-300 ${themeClasses.input}`} />
+                  </div>
+                  <div>
+                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>
+                      Cartridge Model <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      {...cartridgeForm.register('cartridgeModel', { required: 'Model is required' })}
+                      placeholder="e.g. HP 564XL"
+                      className={`transition-all duration-300 ${themeClasses.input}`}
+                    />
+                    {cartridgeForm.formState.errors.cartridgeModel && (
+                      <p className="text-sm text-red-500 mt-1">{cartridgeForm.formState.errors.cartridgeModel.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Cartridge Type</Label>
+                    <Input {...cartridgeForm.register('cartridgeType')} placeholder="Black, Color, ..." className={`transition-all duration-300 ${themeClasses.input}`} />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>
+                    Price ($) <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Enter the refill price"
+                    {...cartridgeForm.register('price', {
+                      valueAsNumber: true,
+                      validate: (v) => (isFilledNumber(v) && v >= 0) || 'A valid price is required',
+                    })}
+                    className={`transition-all duration-300 ${themeClasses.input}`}
+                  />
+                  {cartridgeForm.formState.errors.price && (
+                    <p className="text-sm text-red-500 mt-1">{cartridgeForm.formState.errors.price.message}</p>
+                  )}
+                  <label className={`mt-2 flex items-center gap-2 text-sm font-medium cursor-pointer select-none transition-colors duration-300 ${themeClasses.text.primary}`}>
+                    <Checkbox checked={cartridgeAddGst} onCheckedChange={(c) => setCartridgeAddGst(c === true)} className={checkboxClass} />
+                    Add GST ({(GST_RATE * 100).toFixed(0)}%)
+                  </label>
+                  {cartridgeAddGst && isFilledNumber(cartridgePrice) && cartridgePrice >= 0 && (
+                    <GstBreakdown price={cartridgePrice} />
+                  )}
+                </div>
+
+                <div>
+                  <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Notes</Label>
+                  <Textarea rows={2} {...cartridgeForm.register('notes')} placeholder="Any special notes" className={`transition-all duration-300 ${themeClasses.input}`} />
+                </div>
+
+                <p className={`text-sm ${themeClasses.text.muted}`}>Blank fields are left off the printed receipt.</p>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    type="submit"
+                    className={`flex-1 h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
+                  >
+                    <Download className="h-5 w-5 mr-2" />
+                    Download 4×6
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={onSubmitCartridge('letter')}
+                    className={`flex-1 h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.secondary}`}
+                  >
+                    <Download className="h-5 w-5 mr-2" />
+                    Download Full Page
+                  </Button>
+                </div>
+              </form>
+            </TabsContent>
+
+            {/* Toner Sale Receipt Form */}
+            <TabsContent value="toner">
+              <form onSubmit={onSubmitToner('4x6')} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="tonReceiptNumber" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Receipt Number</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="tonReceiptNumber"
+                        {...tonerForm.register('receiptNumber')}
+                        className={`transition-all duration-300 ${themeClasses.input}`}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => tonerForm.setValue('receiptNumber', generateReceiptNumber('TON'))}
+                        className={`px-3 transition-all duration-300 ${themeClasses.button.ghost}`}
+                        title="Generate new receipt number"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="tonDate" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Date</Label>
+                    <Input id="tonDate" type="date" {...tonerForm.register('date')} className={`transition-all duration-300 ${themeClasses.input}`} />
+                  </div>
+                  <div>
+                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Name</Label>
+                    <Input {...tonerForm.register('customerName')} placeholder="Optional" className={`transition-all duration-300 ${themeClasses.input}`} />
+                  </div>
+                  <div>
+                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Phone</Label>
+                    <Input {...tonerForm.register('customerPhone')} placeholder="Optional" className={`transition-all duration-300 ${themeClasses.input}`} />
+                  </div>
+                  <div>
+                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>
+                      Model <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      {...tonerForm.register('model', { required: 'Model is required' })}
+                      placeholder="e.g. HP 26A, Brother TN660"
+                      className={`transition-all duration-300 ${themeClasses.input}`}
+                    />
+                    {tonerForm.formState.errors.model && (
+                      <p className="text-sm text-red-500 mt-1">{tonerForm.formState.errors.model.message}</p>
+                    )}
+                  </div>
+                  <div>
+                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>
+                      Price ($) <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="Enter the sale price"
+                      {...tonerForm.register('price', {
+                        valueAsNumber: true,
+                        validate: (v) => (isFilledNumber(v) && v >= 0) || 'A valid price is required',
+                      })}
+                      className={`transition-all duration-300 ${themeClasses.input}`}
+                    />
+                    {tonerForm.formState.errors.price && (
+                      <p className="text-sm text-red-500 mt-1">{tonerForm.formState.errors.price.message}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className={`flex items-center gap-2 text-sm font-medium cursor-pointer select-none transition-colors duration-300 ${themeClasses.text.primary}`}>
+                    <Checkbox checked={tonerAddGst} onCheckedChange={(c) => setTonerAddGst(c === true)} className={checkboxClass} />
+                    Add GST ({(GST_RATE * 100).toFixed(0)}%)
+                  </label>
+                  {tonerAddGst && isFilledNumber(tonerPrice) && tonerPrice >= 0 && (
+                    <GstBreakdown price={tonerPrice} />
+                  )}
+                </div>
+
+                <p className={`text-sm ${themeClasses.text.muted}`}>Blank fields are left off the printed receipt.</p>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    type="submit"
+                    className={`flex-1 h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
+                  >
+                    <Download className="h-5 w-5 mr-2" />
+                    Download 4×6
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={onSubmitToner('letter')}
+                    className={`flex-1 h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.secondary}`}
+                  >
+                    <Download className="h-5 w-5 mr-2" />
+                    Download Full Page
+                  </Button>
+                </div>
               </form>
             </TabsContent>
           </Tabs>

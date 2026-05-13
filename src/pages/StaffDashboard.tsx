@@ -2,14 +2,15 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Printer, 
-  Package, 
-  Key, 
-  Receipt, 
-  Globe, 
-  StickyNote, 
-  LogOut, 
+import {
+  Printer,
+  Package,
+  Key,
+  Receipt,
+  Globe,
+  StickyNote,
+  Boxes,
+  LogOut,
   User,
   Sun,
   Moon
@@ -80,6 +81,15 @@ const StaffDashboard = () => {
       route: "/staff/notes",
 
       featurePath: "modules.notes.enabled"
+    },
+    {
+      title: "Inventory",
+      description: "Track what's in stock — keys and more",
+      icon: Boxes,
+      color: "from-amber-500 to-orange-600",
+      route: "/staff/inventory",
+
+      featurePath: "modules.inventory.enabled"
     },
   ];
 
