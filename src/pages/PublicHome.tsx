@@ -25,16 +25,16 @@ const STATUS_COLORS: Record<string, string> = {
 const PublicHome = () => {
   const { isDarkMode, toggleTheme, themeClasses } = useTheme();
 
-  // Refill status checker state
+  // Refill status checker state. Order IDs are random (see generateOrderId)
+  // so the ID alone is enough to look up status — no phone match required.
   const [refillOrderId, setRefillOrderId] = useState("");
-  const [refillPhone, setRefillPhone] = useState("");
   const [refillStatus, setRefillStatus] = useState<string | null>(null);
   const [refillError, setRefillError] = useState<string | null>(null);
   const [refillLoading, setRefillLoading] = useState(false);
 
   const checkRefillStatus = async () => {
-    if (!refillOrderId.trim() || !refillPhone.trim()) {
-      setRefillError("Please enter both your Order ID and phone number.");
+    if (!refillOrderId.trim()) {
+      setRefillError("Please enter your Order ID.");
       setRefillStatus(null);
       return;
     }
@@ -49,10 +49,10 @@ const PublicHome = () => {
         refillOrderId.trim().toUpperCase()
       );
 
-      if (doc && doc.customerPhone === refillPhone.trim()) {
+      if (doc) {
         setRefillStatus(doc.status);
       } else {
-        setRefillError("No order found. Please check your Order ID and phone number.");
+        setRefillError("No order found. Please check your Order ID.");
       }
     } catch (error) {
       console.error('Failed to check refill status:', error);
@@ -190,29 +190,21 @@ const PublicHome = () => {
                 <span>Check Refill Status</span>
               </CardTitle>
               <p className={`text-center text-sm mt-2 ${themeClasses.text.secondary}`}>
-                Enter your Order ID and phone number to check the status of your cartridge refill
+                Enter your Order ID to check the status of your cartridge refill
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label className={themeClasses.text.primary}>Order ID</Label>
-                  <Input
-                    placeholder="e.g. ORD-A7K3M9"
-                    value={refillOrderId}
-                    onChange={(e) => setRefillOrderId(e.target.value)}
-                    className={themeClasses.input}
-                  />
-                </div>
-                <div>
-                  <Label className={themeClasses.text.primary}>Phone Number</Label>
-                  <Input
-                    placeholder="(403) 555-0123"
-                    value={refillPhone}
-                    onChange={(e) => setRefillPhone(e.target.value)}
-                    className={themeClasses.input}
-                  />
-                </div>
+              <div>
+                <Label className={themeClasses.text.primary}>Order ID</Label>
+                <Input
+                  placeholder="e.g. ORD-A7K3M9"
+                  value={refillOrderId}
+                  onChange={(e) => setRefillOrderId(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !refillLoading) checkRefillStatus();
+                  }}
+                  className={themeClasses.input}
+                />
               </div>
 
               <Button
