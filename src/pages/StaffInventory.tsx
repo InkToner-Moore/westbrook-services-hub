@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,8 @@ import {
   Plus,
   Trash2,
   Loader2,
+  Search,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
@@ -95,6 +97,7 @@ const StaffInventory = () => {
   const { themeClasses, isDarkMode } = useTheme();
   const [keys, setKeys] = useState<KeyInventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
   const newKeyForm = useForm<{ model: string }>({ defaultValues: { model: "" } });
 
   useEffect(() => {
@@ -111,6 +114,14 @@ const StaffInventory = () => {
     };
     load();
   }, []);
+
+  // Case-insensitive substring match on model name. Memoized so we don't
+  // re-filter on every unrelated re-render once the list gets large.
+  const filteredKeys = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return keys;
+    return keys.filter((k) => k.model.toLowerCase().includes(q));
+  }, [keys, searchTerm]);
 
   const handleLogout = async () => {
     await logout();
@@ -296,6 +307,36 @@ const StaffInventory = () => {
                 </CardContent>
               </Card>
 
+              {/* Search bar — hidden until there's something to search through. */}
+              {!loading && keys.length > 0 && (
+                <div className="relative mb-4">
+                  <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
+                  <Input
+                    placeholder="Search keys by model..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className={`pl-10 pr-10 transition-all duration-300 ${themeClasses.input}`}
+                  />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm("")}
+                      aria-label="Clear search"
+                      className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors duration-300 ${themeClasses.text.muted} hover:${themeClasses.text.primary}`}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Result count when searching, so staff know if there's more to scroll. */}
+              {!loading && keys.length > 0 && searchTerm && (
+                <p className={`text-sm mb-3 transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                  {filteredKeys.length} of {keys.length} {keys.length === 1 ? "key" : "keys"} match "{searchTerm}"
+                </p>
+              )}
+
               {/* List */}
               {loading ? (
                 <Card className={`shadow-2xl transition-all duration-300 ${themeClasses.card.primary}`}>
@@ -314,9 +355,26 @@ const StaffInventory = () => {
                     </p>
                   </CardContent>
                 </Card>
+              ) : filteredKeys.length === 0 ? (
+                <Card className={`shadow-2xl transition-all duration-300 ${themeClasses.card.primary}`}>
+                  <CardContent className="p-12 text-center">
+                    <Search className={`h-12 w-12 mx-auto mb-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
+                    <h3 className={`text-xl font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>No matches</h3>
+                    <p className={`mb-4 transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                      No keys match "{searchTerm}". Try a different search term.
+                    </p>
+                    <Button
+                      variant="ghost"
+                      onClick={() => setSearchTerm("")}
+                      className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+                    >
+                      Clear search
+                    </Button>
+                  </CardContent>
+                </Card>
               ) : (
                 <div className="space-y-3">
-                  {keys.map((item) => {
+                  {filteredKeys.map((item) => {
                     const { Icon, gradient } = getKeyIconStyle(item.model);
                     return (
                     <Card key={item.id} className={`shadow-lg transition-all duration-300 ${themeClasses.card.secondary}`}>
