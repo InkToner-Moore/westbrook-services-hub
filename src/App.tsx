@@ -145,7 +145,9 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter basename="/westbrook-services-hub">
+        {/* Match Vite's base path (set in vite.config.ts) so routing works
+            whether the app is served at the site root or under a subpath. */}
+        <BrowserRouter basename={import.meta.env.BASE_URL}>
           <AppRoutes />
         </BrowserRouter>
       </TooltipProvider>
