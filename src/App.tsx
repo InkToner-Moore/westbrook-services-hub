@@ -13,11 +13,12 @@ import StaffCartridges from "./pages/StaffCartridges";
 import StaffDirectory from "./pages/StaffDirectory";
 import StaffNotes from "./pages/StaffNotes";
 import StaffInventory from "./pages/StaffInventory";
+import StaffRequests from "./pages/StaffRequests";
 import ProtectedRoute from "./components/ProtectedRoute";
 import FeatureProtectedRoute from "./components/FeatureProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./hooks/useAuth";
-import { Package, Receipt, Printer, StickyNote, Boxes } from "lucide-react";
+import { Package, Receipt, Printer, StickyNote, Boxes, ClipboardList } from "lucide-react";
 
 const queryClient = new QueryClient();
 
@@ -126,6 +127,21 @@ const AppRoutes = () => {
               moduleIcon={<Boxes className="h-8 w-8 text-amber-500" />}
             >
               <StaffInventory />
+            </FeatureProtectedRoute>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/staff/requests"
+        element={
+          <ProtectedRoute>
+            <FeatureProtectedRoute
+              featurePath="modules.customerRequests.enabled"
+              moduleTitle="Customer Requests"
+              moduleIcon={<ClipboardList className="h-8 w-8 text-rose-500" />}
+            >
+              <StaffRequests />
             </FeatureProtectedRoute>
           </ProtectedRoute>
         }

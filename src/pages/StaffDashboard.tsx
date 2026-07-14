@@ -10,6 +10,7 @@ import {
   Globe,
   StickyNote,
   Boxes,
+  ClipboardList,
   LogOut,
   User,
   Sun,
@@ -90,6 +91,15 @@ const StaffDashboard = () => {
       route: "/staff/inventory",
 
       featurePath: "modules.inventory.enabled"
+    },
+    {
+      title: "Customer Requests",
+      description: "Items customers are waiting to hear back on",
+      icon: ClipboardList,
+      color: "from-rose-500 to-pink-600",
+      route: "/staff/requests",
+
+      featurePath: "modules.customerRequests.enabled"
     },
   ];
 
