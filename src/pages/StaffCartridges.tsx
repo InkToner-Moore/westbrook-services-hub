@@ -54,6 +54,16 @@ import {
   generateSimpleReceiptPdf,
   round2,
 } from "@/lib/simpleReceipt";
+import {
+  CartridgeLine,
+  cartridgesSubtotal,
+  describeCartridge,
+  emptyCartridgeLine,
+  isFilledNumber,
+  readCartridgeLines,
+  toStoredCartridge,
+} from "@/lib/cartridges";
+import CartridgeLineFields from "@/components/CartridgeLineFields";
 import GstBreakdown from "@/components/GstBreakdown";
 import ThemeToggleButton from "@/components/ThemeToggleButton";
 import { useAuth } from "@/hooks/useAuth";
@@ -66,51 +76,31 @@ import {
   deleteDocument,
   generateOrderId,
 } from "@/lib/firestore";
-import { deleteField } from "firebase/firestore";
 
 interface CartridgeOrder {
   id: string;
   customerName: string;
   customerPhone: string;
   customerEmail?: string;
-  cartridgeModel: string;
-  cartridgeBrand: string;
-  cartridgeType: string;
+  cartridges: CartridgeLine[];
   status: "in_progress" | "ready" | "picked_up";
   dateReceived: string;
   dateCompleted?: string;
   notes: string;
-  price?: number;
 }
 
-type EditableOrderFields = Pick<
-  CartridgeOrder,
-  | "customerName"
-  | "customerPhone"
-  | "customerEmail"
-  | "cartridgeBrand"
-  | "cartridgeModel"
-  | "cartridgeType"
-  | "notes"
-  | "price"
->;
+// Shape shared by the add, edit and receipt forms.
+interface OrderFormValues {
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  cartridges: CartridgeLine[];
+  notes: string;
+}
 
 const ORDERS_COLLECTION = 'cartridgeOrders';
 const STATUS_COLLECTION = 'orderStatus';
 const DELETED_ORDERS_COLLECTION = 'deletedOrders';
-
-const CARTRIDGE_BRANDS = ['HP', 'Canon', 'Epson', 'Brother', 'Lexmark'];
-const CARTRIDGE_TYPES: { value: string; label: string }[] = [
-  { value: 'Black', label: 'Black' },
-  { value: 'Color', label: 'Color (Tri-color)' },
-  { value: 'Cyan', label: 'Cyan' },
-  { value: 'Magenta', label: 'Magenta' },
-  { value: 'Yellow', label: 'Yellow' },
-  { value: 'Photo Black', label: 'Photo Black' },
-];
-
-const isFilledNumber = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isFinite(value);
 
 // Marks a form field as required.
 const RequiredMark = () => (
@@ -149,19 +139,8 @@ const DetailField = ({
 
 // ---- Cartridge refill receipt ----
 
-type ReceiptFormValues = {
-  customerName: string;
-  customerPhone: string;
-  customerEmail: string;
-  cartridgeBrand: string;
-  cartridgeModel: string;
-  cartridgeType: string;
-  price?: number;
-  notes: string;
-};
-
 // Confirm/edit dialog shown before downloading a cartridge refill receipt.
-// Price is mandatory here even if the order doesn't have one yet.
+// Every cartridge needs a price here, even if the order doesn't have one yet.
 const ReceiptDialog = ({
   order,
   themeClasses,
@@ -171,16 +150,16 @@ const ReceiptDialog = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [addGst, setAddGst] = useState(false);
+  const form = useForm<OrderFormValues>();
   const {
     register,
     handleSubmit,
     reset,
     watch,
     formState: { errors },
-  } = useForm<ReceiptFormValues>();
+  } = form;
 
-  const priceInput = watch('price');
-  const price = isFilledNumber(priceInput) && priceInput >= 0 ? priceInput : null;
+  const subtotal = cartridgesSubtotal(watch('cartridges') ?? []);
 
   const handleOpenChange = (next: boolean) => {
     if (next) {
@@ -189,18 +168,20 @@ const ReceiptDialog = ({
         customerName: order.customerName ?? '',
         customerPhone: order.customerPhone ?? '',
         customerEmail: order.customerEmail ?? '',
-        cartridgeBrand: order.cartridgeBrand ?? '',
-        cartridgeModel: order.cartridgeModel ?? '',
-        cartridgeType: order.cartridgeType ?? '',
-        price: isFilledNumber(order.price) ? order.price : undefined,
+        cartridges: order.cartridges.map((line) => ({ ...line })),
         notes: order.notes ?? '',
       });
     }
     setOpen(next);
   };
 
-  const download = (values: ReceiptFormValues, size: ReceiptSize) => {
-    const finalPrice = values.price as number;
+  const download = (values: OrderFormValues, size: ReceiptSize) => {
+    const items = values.cartridges.map((line) => ({
+      description: describeCartridge(line),
+      price: line.price as number,
+    }));
+    const total = cartridgesSubtotal(values.cartridges);
+
     generateSimpleReceiptPdf(
       {
         title: 'Cartridge Refill Receipt',
@@ -211,14 +192,12 @@ const ReceiptDialog = ({
           { label: 'Name', value: values.customerName },
           { label: 'Phone Number', value: values.customerPhone },
           { label: 'Email', value: values.customerEmail },
-          { label: 'Brand', value: values.cartridgeBrand },
-          { label: 'Model', value: values.cartridgeModel },
-          { label: 'Type', value: values.cartridgeType },
           { label: 'Received', value: formatReceiptDate(order.dateReceived) },
           { label: 'Notes', value: values.notes },
         ],
-        price: finalPrice,
-        gst: addGst ? round2(finalPrice * GST_RATE) : undefined,
+        items,
+        price: total,
+        gst: addGst ? round2(total * GST_RATE) : undefined,
         fileNameBase: `cartridge-receipt-${order.id}`,
       },
       size,
@@ -240,12 +219,12 @@ const ReceiptDialog = ({
           <Receipt className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Cartridge Refill Receipt</DialogTitle>
           <DialogDescription>
             Confirm the details below — blank fields are left off the printed receipt.
-            A price is required before you can download.
+            Every cartridge needs a price before you can download.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={downloadAs('4x6')} className="space-y-3">
@@ -261,41 +240,23 @@ const ReceiptDialog = ({
             <Label className="font-medium">Email</Label>
             <Input type="email" {...register('customerEmail')} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="font-medium">Brand</Label>
-              <Input {...register('cartridgeBrand')} />
-            </div>
-            <div>
-              <Label className="font-medium">Type</Label>
-              <Input {...register('cartridgeType')} />
-            </div>
-          </div>
-          <div>
-            <Label className="font-medium">Model</Label>
-            <Input {...register('cartridgeModel')} />
-          </div>
-          <div>
-            <Label className="font-medium">Price ($)<RequiredMark /></Label>
-            <Input
-              type="number"
-              step="0.01"
-              placeholder="Enter the refill price"
-              {...register('price', {
-                valueAsNumber: true,
-                validate: (value) =>
-                  (isFilledNumber(value) && value >= 0) || 'A valid price is required',
-              })}
-            />
-            {errors.price && (
-              <p className="text-sm text-red-500 mt-1">{errors.price.message}</p>
-            )}
-            <label className="mt-2 flex items-center gap-2 text-sm font-medium cursor-pointer select-none">
-              <Checkbox checked={addGst} onCheckedChange={(checked) => setAddGst(checked === true)} />
-              Add GST ({(GST_RATE * 100).toFixed(0)}%)
-            </label>
-            {addGst && price != null && <GstBreakdown price={price} />}
-          </div>
+
+          <CartridgeLineFields
+            form={form}
+            themeClasses={themeClasses}
+            requirePrice
+            compact
+          />
+          {errors.cartridges && (
+            <p className="text-sm text-red-500">Every cartridge needs a model and a valid price.</p>
+          )}
+
+          <label className="flex items-center gap-2 text-sm font-medium cursor-pointer select-none">
+            <Checkbox checked={addGst} onCheckedChange={(checked) => setAddGst(checked === true)} />
+            Add GST ({(GST_RATE * 100).toFixed(0)}%)
+          </label>
+          {addGst && subtotal > 0 && <GstBreakdown price={subtotal} />}
+
           <div>
             <Label className="font-medium">Notes</Label>
             <Textarea rows={2} {...register('notes')} />
@@ -330,24 +291,19 @@ const EditOrderForm = ({
 }: {
   order: CartridgeOrder;
   themeClasses: any;
-  onSave: (data: EditableOrderFields) => void;
+  onSave: (data: OrderFormValues) => void;
   onCancel: () => void;
 }) => {
-  const { register, handleSubmit, setValue, watch } = useForm<EditableOrderFields>({
+  const form = useForm<OrderFormValues>({
     defaultValues: {
       customerName: order.customerName,
       customerPhone: order.customerPhone,
       customerEmail: order.customerEmail ?? '',
-      cartridgeBrand: order.cartridgeBrand ?? '',
-      cartridgeModel: order.cartridgeModel,
-      cartridgeType: order.cartridgeType ?? '',
+      cartridges: order.cartridges.map((line) => ({ ...line })),
       notes: order.notes ?? '',
-      price: isFilledNumber(order.price) ? order.price : undefined,
     },
   });
-
-  const cartridgeBrand = watch('cartridgeBrand');
-  const cartridgeType = watch('cartridgeType');
+  const { register, handleSubmit } = form;
 
   return (
     <form onSubmit={handleSubmit(onSave)} className="space-y-4">
@@ -374,50 +330,10 @@ const EditOrderForm = ({
             className={`transition-all duration-300 ${themeClasses.input}`}
           />
         </div>
-        <div>
-          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Cartridge Brand</Label>
-          <Select value={cartridgeBrand || undefined} onValueChange={(value) => setValue('cartridgeBrand', value)}>
-            <SelectTrigger className={`transition-all duration-300 ${themeClasses.input}`}>
-              <SelectValue placeholder="Select brand" />
-            </SelectTrigger>
-            <SelectContent>
-              {CARTRIDGE_BRANDS.map((brand) => (
-                <SelectItem key={brand} value={brand}>{brand}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Cartridge Model<RequiredMark /></Label>
-          <Input
-            {...register('cartridgeModel', { required: true })}
-            className={`transition-all duration-300 ${themeClasses.input}`}
-          />
-        </div>
-        <div>
-          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Cartridge Type</Label>
-          <Select value={cartridgeType || undefined} onValueChange={(value) => setValue('cartridgeType', value)}>
-            <SelectTrigger className={`transition-all duration-300 ${themeClasses.input}`}>
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              {CARTRIDGE_TYPES.map((type) => (
-                <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Price ($)</Label>
-          <Input
-            type="number"
-            step="0.01"
-            placeholder="Leave blank if unspecified"
-            {...register('price', { valueAsNumber: true })}
-            className={`transition-all duration-300 ${themeClasses.input}`}
-          />
-        </div>
       </div>
+
+      <CartridgeLineFields form={form} themeClasses={themeClasses} />
+
       <div>
         <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Notes</Label>
         <Textarea
@@ -455,14 +371,22 @@ const StaffCartridges = () => {
   const [orders, setOrders] = useState<CartridgeOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const newOrderForm = useForm<Omit<CartridgeOrder, 'id' | 'dateReceived'>>();
+  const newOrderForm = useForm<OrderFormValues>({
+    defaultValues: {
+      customerName: '',
+      customerPhone: '',
+      customerEmail: '',
+      cartridges: [emptyCartridgeLine()],
+      notes: '',
+    },
+  });
 
   // Load orders from Firestore on mount
   useEffect(() => {
     const loadOrders = async () => {
       try {
         const data = await getCollection<CartridgeOrder>(ORDERS_COLLECTION, 'dateReceived');
-        setOrders(data);
+        setOrders(data.map(order => ({ ...order, cartridges: readCartridgeLines(order) })));
       } catch (error) {
         console.error('Failed to load orders:', error);
         toast({ title: "Error", description: "Failed to load orders from database" });
@@ -548,25 +472,31 @@ const StaffCartridges = () => {
     }
   };
 
-  const addNewOrder = async (data: Omit<CartridgeOrder, 'id' | 'dateReceived'>) => {
+  const addNewOrder = async (data: OrderFormValues) => {
     const orderId = generateOrderId();
-    const { price, ...rest } = data;
     const newOrder: CartridgeOrder = {
-      ...rest,
       id: orderId,
+      customerName: data.customerName.trim(),
+      customerPhone: data.customerPhone.trim(),
+      customerEmail: (data.customerEmail ?? '').trim(),
+      cartridges: data.cartridges.map(toStoredCartridge),
+      notes: data.notes ?? '',
       dateReceived: new Date().toISOString().split('T')[0],
-      status: 'in_progress'
+      status: 'in_progress',
     };
-    if (isFilledNumber(price)) {
-      newOrder.price = price;
-    }
 
     try {
       await setDocument(ORDERS_COLLECTION, orderId, newOrder);
       await syncOrderStatus(orderId, newOrder.customerPhone, 'in_progress');
 
       setOrders(prevOrders => [newOrder, ...prevOrders]);
-      newOrderForm.reset();
+      newOrderForm.reset({
+        customerName: '',
+        customerPhone: '',
+        customerEmail: '',
+        cartridges: [emptyCartridgeLine()],
+        notes: '',
+      });
 
       toast({
         title: "Order Added",
@@ -578,38 +508,29 @@ const StaffCartridges = () => {
     }
   };
 
-  const saveOrderEdits = async (orderId: string, data: EditableOrderFields) => {
+  const saveOrderEdits = async (orderId: string, data: OrderFormValues) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
 
-    const hasPrice = isFilledNumber(data.price);
-    const fields = {
+    // Written with setDocument rather than a partial update so orders created
+    // before multi-cartridge support drop their old inline cartridge fields.
+    const updatedOrder: CartridgeOrder = {
+      ...order,
       customerName: data.customerName.trim(),
       customerPhone: data.customerPhone.trim(),
       customerEmail: (data.customerEmail ?? '').trim(),
-      cartridgeBrand: data.cartridgeBrand ?? '',
-      cartridgeModel: data.cartridgeModel.trim(),
-      cartridgeType: data.cartridgeType ?? '',
+      cartridges: data.cartridges.map(toStoredCartridge),
       notes: data.notes ?? '',
     };
 
     try {
-      await updateDocument(ORDERS_COLLECTION, orderId, {
-        ...fields,
-        price: hasPrice ? data.price : deleteField(),
-      });
+      await setDocument(ORDERS_COLLECTION, orderId, updatedOrder);
 
-      if (fields.customerPhone !== order.customerPhone) {
-        await syncOrderStatus(orderId, fields.customerPhone, order.status);
+      if (updatedOrder.customerPhone !== order.customerPhone) {
+        await syncOrderStatus(orderId, updatedOrder.customerPhone, order.status);
       }
 
-      setOrders(prevOrders =>
-        prevOrders.map(o =>
-          o.id === orderId
-            ? { ...o, ...fields, price: hasPrice ? data.price : undefined }
-            : o
-        )
-      );
+      setOrders(prevOrders => prevOrders.map(o => (o.id === orderId ? updatedOrder : o)));
       setEditingOrder(null);
 
       toast({
@@ -648,10 +569,11 @@ const StaffCartridges = () => {
   };
 
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const term = searchTerm.toLowerCase();
+    const matchesSearch = order.customerName.toLowerCase().includes(term) ||
                          order.customerPhone.includes(searchTerm) ||
-                         order.cartridgeModel.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.id.toLowerCase().includes(searchTerm.toLowerCase());
+                         order.cartridges.some(c => c.model.toLowerCase().includes(term)) ||
+                         order.id.toLowerCase().includes(term);
 
     const matchesStatus = statusFilter === "all" || order.status === statusFilter;
 
@@ -761,58 +683,11 @@ const StaffCartridges = () => {
                     />
                   </div>
 
-                  <div>
-                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Cartridge Brand</Label>
-                    <Select onValueChange={(value) => newOrderForm.setValue('cartridgeBrand', value)}>
-                      <SelectTrigger className={`transition-all duration-300 ${themeClasses.input}`}>
-                        <SelectValue placeholder="Select brand" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="HP">HP</SelectItem>
-                        <SelectItem value="Canon">Canon</SelectItem>
-                        <SelectItem value="Epson">Epson</SelectItem>
-                        <SelectItem value="Brother">Brother</SelectItem>
-                        <SelectItem value="Lexmark">Lexmark</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Cartridge Model<RequiredMark /></Label>
-                    <Input
-                      {...newOrderForm.register('cartridgeModel', { required: true })}
-                      placeholder="e.g. HP 564XL, Canon PG-245"
-                      className={`transition-all duration-300 ${themeClasses.input}`}
-                    />
-                  </div>
-
-                  <div>
-                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Cartridge Type</Label>
-                    <Select onValueChange={(value) => newOrderForm.setValue('cartridgeType', value)}>
-                      <SelectTrigger className={`transition-all duration-300 ${themeClasses.input}`}>
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Black">Black</SelectItem>
-                        <SelectItem value="Color">Color (Tri-color)</SelectItem>
-                        <SelectItem value="Cyan">Cyan</SelectItem>
-                        <SelectItem value="Magenta">Magenta</SelectItem>
-                        <SelectItem value="Yellow">Yellow</SelectItem>
-                        <SelectItem value="Photo Black">Photo Black</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Price ($)</Label>
-                    <Input
-                      {...newOrderForm.register('price', { valueAsNumber: true })}
-                      type="number"
-                      step="0.01"
-                      placeholder="25.99"
-                      className={`transition-all duration-300 ${themeClasses.input}`}
-                    />
-                  </div>
+                  <CartridgeLineFields
+                    form={newOrderForm}
+                    themeClasses={themeClasses}
+                    compact
+                  />
 
                   <div>
                     <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Notes</Label>
@@ -961,17 +836,35 @@ const StaffCartridges = () => {
                           </div>
 
                           <div className={`rounded-xl p-4 mb-4 transition-all duration-300 ${themeClasses.card.secondary}`}>
-                            <h4 className={`font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>Cartridge Details</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                              <DetailField label="Brand" value={order.cartridgeBrand} themeClasses={themeClasses} />
-                              <DetailField label="Model" value={order.cartridgeModel} themeClasses={themeClasses} />
-                              <DetailField label="Type" value={order.cartridgeType} themeClasses={themeClasses} />
-                              <DetailField
-                                label="Price"
-                                value={isFilledNumber(order.price) ? `$${order.price.toFixed(2)}` : undefined}
-                                themeClasses={themeClasses}
-                              />
+                            <h4 className={`font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>
+                              {order.cartridges.length > 1
+                                ? `Cartridge Details (${order.cartridges.length})`
+                                : 'Cartridge Details'}
+                            </h4>
+                            <div className="space-y-3">
+                              {order.cartridges.map((cartridge, index) => (
+                                <div
+                                  key={index}
+                                  className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm"
+                                >
+                                  <DetailField label="Brand" value={cartridge.brand} themeClasses={themeClasses} />
+                                  <DetailField label="Model" value={cartridge.model} themeClasses={themeClasses} />
+                                  <DetailField label="Type" value={cartridge.type} themeClasses={themeClasses} />
+                                  <DetailField
+                                    label="Price"
+                                    value={isFilledNumber(cartridge.price) ? `$${cartridge.price.toFixed(2)}` : undefined}
+                                    themeClasses={themeClasses}
+                                  />
+                                </div>
+                              ))}
                             </div>
+
+                            {order.cartridges.length > 1 && (
+                              <div className={`mt-3 pt-3 border-t flex justify-between text-sm font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>
+                                <span>Subtotal</span>
+                                <span>${cartridgesSubtotal(order.cartridges).toFixed(2)}</span>
+                              </div>
+                            )}
                           </div>
 
                           {order.notes && (

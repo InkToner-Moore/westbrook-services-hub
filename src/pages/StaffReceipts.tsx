@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +30,7 @@ import jsPDF from 'jspdf';
 import StaffLayout from "@/components/StaffLayout";
 import ThemeToggleButton from "@/components/ThemeToggleButton";
 import GstBreakdown from "@/components/GstBreakdown";
+import CartridgeLineFields from "@/components/CartridgeLineFields";
 import {
   GST_RATE,
   ReceiptSize,
@@ -38,6 +39,13 @@ import {
   generateSimpleReceiptPdf,
   round2,
 } from "@/lib/simpleReceipt";
+import {
+  CartridgeLine,
+  cartridgesSubtotal,
+  describeCartridge,
+  emptyCartridgeLine,
+  isFilledNumber,
+} from "@/lib/cartridges";
 
 interface ShippingAddOn {
   type: string;
@@ -86,10 +94,12 @@ interface CartridgeFormData {
   customerName: string;
   customerPhone: string;
   customerEmail: string;
-  cartridgeBrand: string;
-  cartridgeModel: string;
-  cartridgeType: string;
+  cartridges: CartridgeLine[];
   notes: string;
+}
+
+interface TonerLine {
+  model: string;
   price?: number;
 }
 
@@ -98,12 +108,13 @@ interface TonerFormData {
   date: string; // yyyy-mm-dd
   customerName: string;
   customerPhone: string;
-  model: string;
-  price?: number;
+  toners: TonerLine[];
 }
 
-const isFilledNumber = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isFinite(value);
+const emptyTonerLine = (): TonerLine => ({ model: '', price: undefined });
+
+const tonersSubtotal = (lines: TonerLine[]) =>
+  round2(lines.reduce((sum, line) => sum + (isFilledNumber(line.price) ? line.price : 0), 0));
 
 const provincialTaxRates = {
   'Alberta': [{ name: 'GST', percentage: 5 }],
@@ -176,15 +187,12 @@ const StaffReceipts = () => {
       customerName: '',
       customerPhone: '',
       customerEmail: '',
-      cartridgeBrand: '',
-      cartridgeModel: '',
-      cartridgeType: '',
+      cartridges: [emptyCartridgeLine()],
       notes: '',
-      price: undefined,
     },
   });
   const [cartridgeAddGst, setCartridgeAddGst] = useState(false);
-  const cartridgePrice = cartridgeForm.watch('price');
+  const cartridgeSubtotal = cartridgesSubtotal(cartridgeForm.watch('cartridges') ?? []);
 
   const tonerForm = useForm<TonerFormData>({
     defaultValues: {
@@ -192,16 +200,16 @@ const StaffReceipts = () => {
       date: today,
       customerName: '',
       customerPhone: '',
-      model: '',
-      price: undefined,
+      toners: [emptyTonerLine()],
     },
   });
+  const tonerLines = useFieldArray({ control: tonerForm.control, name: 'toners' });
   const [tonerAddGst, setTonerAddGst] = useState(false);
-  const tonerPrice = tonerForm.watch('price');
+  const tonerSubtotal = tonersSubtotal(tonerForm.watch('toners') ?? []);
 
   const onSubmitCartridge = (size: ReceiptSize) =>
     cartridgeForm.handleSubmit((data) => {
-      const price = data.price as number;
+      const subtotal = cartridgesSubtotal(data.cartridges);
       generateSimpleReceiptPdf(
         {
           title: 'Cartridge Refill Receipt',
@@ -212,13 +220,14 @@ const StaffReceipts = () => {
             { label: 'Name', value: data.customerName },
             { label: 'Phone Number', value: data.customerPhone },
             { label: 'Email', value: data.customerEmail },
-            { label: 'Brand', value: data.cartridgeBrand },
-            { label: 'Model', value: data.cartridgeModel },
-            { label: 'Type', value: data.cartridgeType },
             { label: 'Notes', value: data.notes },
           ],
-          price,
-          gst: cartridgeAddGst ? round2(price * GST_RATE) : undefined,
+          items: data.cartridges.map((line) => ({
+            description: describeCartridge(line),
+            price: line.price as number,
+          })),
+          price: subtotal,
+          gst: cartridgeAddGst ? round2(subtotal * GST_RATE) : undefined,
           fileNameBase: `cartridge-receipt-${data.receiptNumber}`,
         },
         size,
@@ -231,7 +240,7 @@ const StaffReceipts = () => {
 
   const onSubmitToner = (size: ReceiptSize) =>
     tonerForm.handleSubmit((data) => {
-      const price = data.price as number;
+      const subtotal = tonersSubtotal(data.toners);
       generateSimpleReceiptPdf(
         {
           title: 'Toner Sale Receipt',
@@ -241,10 +250,13 @@ const StaffReceipts = () => {
           rows: [
             { label: 'Name', value: data.customerName },
             { label: 'Phone Number', value: data.customerPhone },
-            { label: 'Model', value: data.model },
           ],
-          price,
-          gst: tonerAddGst ? round2(price * GST_RATE) : undefined,
+          items: data.toners.map((line) => ({
+            description: line.model,
+            price: line.price as number,
+          })),
+          price: subtotal,
+          gst: tonerAddGst ? round2(subtotal * GST_RATE) : undefined,
           fileNameBase: `toner-receipt-${data.receiptNumber}`,
         },
         size,
@@ -1357,52 +1369,24 @@ const StaffReceipts = () => {
                     <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Email</Label>
                     <Input type="email" {...cartridgeForm.register('customerEmail')} placeholder="customer@email.com" className={`transition-all duration-300 ${themeClasses.input}`} />
                   </div>
-                  <div>
-                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Cartridge Brand</Label>
-                    <Input {...cartridgeForm.register('cartridgeBrand')} placeholder="HP, Canon, Epson, ..." className={`transition-all duration-300 ${themeClasses.input}`} />
-                  </div>
-                  <div>
-                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>
-                      Cartridge Model <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      {...cartridgeForm.register('cartridgeModel', { required: 'Model is required' })}
-                      placeholder="e.g. HP 564XL"
-                      className={`transition-all duration-300 ${themeClasses.input}`}
-                    />
-                    {cartridgeForm.formState.errors.cartridgeModel && (
-                      <p className="text-sm text-red-500 mt-1">{cartridgeForm.formState.errors.cartridgeModel.message}</p>
-                    )}
-                  </div>
-                  <div>
-                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Cartridge Type</Label>
-                    <Input {...cartridgeForm.register('cartridgeType')} placeholder="Black, Color, ..." className={`transition-all duration-300 ${themeClasses.input}`} />
-                  </div>
                 </div>
 
+                <CartridgeLineFields
+                  form={cartridgeForm}
+                  themeClasses={themeClasses}
+                  requirePrice
+                />
+                {cartridgeForm.formState.errors.cartridges && (
+                  <p className="text-sm text-red-500">Every cartridge needs a model and a valid price.</p>
+                )}
+
                 <div>
-                  <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>
-                    Price ($) <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="Enter the refill price"
-                    {...cartridgeForm.register('price', {
-                      valueAsNumber: true,
-                      validate: (v) => (isFilledNumber(v) && v >= 0) || 'A valid price is required',
-                    })}
-                    className={`transition-all duration-300 ${themeClasses.input}`}
-                  />
-                  {cartridgeForm.formState.errors.price && (
-                    <p className="text-sm text-red-500 mt-1">{cartridgeForm.formState.errors.price.message}</p>
-                  )}
-                  <label className={`mt-2 flex items-center gap-2 text-sm font-medium cursor-pointer select-none transition-colors duration-300 ${themeClasses.text.primary}`}>
+                  <label className={`flex items-center gap-2 text-sm font-medium cursor-pointer select-none transition-colors duration-300 ${themeClasses.text.primary}`}>
                     <Checkbox checked={cartridgeAddGst} onCheckedChange={(c) => setCartridgeAddGst(c === true)} className={checkboxClass} />
                     Add GST ({(GST_RATE * 100).toFixed(0)}%)
                   </label>
-                  {cartridgeAddGst && isFilledNumber(cartridgePrice) && cartridgePrice >= 0 && (
-                    <GstBreakdown price={cartridgePrice} />
+                  {cartridgeAddGst && cartridgeSubtotal > 0 && (
+                    <GstBreakdown price={cartridgeSubtotal} />
                   )}
                 </div>
 
@@ -1469,37 +1453,77 @@ const StaffReceipts = () => {
                     <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Phone</Label>
                     <Input {...tonerForm.register('customerPhone')} placeholder="Optional" className={`transition-all duration-300 ${themeClasses.input}`} />
                   </div>
-                  <div>
-                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>
-                      Model <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      {...tonerForm.register('model', { required: 'Model is required' })}
-                      placeholder="e.g. HP 26A, Brother TN660"
-                      className={`transition-all duration-300 ${themeClasses.input}`}
-                    />
-                    {tonerForm.formState.errors.model && (
-                      <p className="text-sm text-red-500 mt-1">{tonerForm.formState.errors.model.message}</p>
-                    )}
+                </div>
+
+                {/* Toners — one line per toner sold, so a single sale can cover several. */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Toners</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => tonerLines.append(emptyTonerLine())}
+                      className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Toner
+                    </Button>
                   </div>
-                  <div>
-                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>
-                      Price ($) <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="Enter the sale price"
-                      {...tonerForm.register('price', {
-                        valueAsNumber: true,
-                        validate: (v) => (isFilledNumber(v) && v >= 0) || 'A valid price is required',
-                      })}
-                      className={`transition-all duration-300 ${themeClasses.input}`}
-                    />
-                    {tonerForm.formState.errors.price && (
-                      <p className="text-sm text-red-500 mt-1">{tonerForm.formState.errors.price.message}</p>
-                    )}
-                  </div>
+
+                  {tonerLines.fields.map((field, index) => (
+                    <div key={field.id} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+                      <div>
+                        <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>
+                          Model <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          {...tonerForm.register(`toners.${index}.model`, { required: 'Model is required' })}
+                          placeholder="e.g. HP 26A, Brother TN660"
+                          className={`transition-all duration-300 ${themeClasses.input}`}
+                        />
+                      </div>
+                      <div>
+                        <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>
+                          Price ($) <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="Enter the sale price"
+                          {...tonerForm.register(`toners.${index}.price`, {
+                            valueAsNumber: true,
+                            validate: (v) => (isFilledNumber(v) && v >= 0) || 'A valid price is required',
+                          })}
+                          className={`transition-all duration-300 ${themeClasses.input}`}
+                        />
+                      </div>
+                      {tonerLines.fields.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => tonerLines.remove(index)}
+                          className={`transition-all duration-300 ${themeClasses.button.danger}`}
+                          title="Remove this toner"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+
+                  {tonerForm.formState.errors.toners && (
+                    <p className="text-sm text-red-500">Every toner needs a model and a valid price.</p>
+                  )}
+
+                  {/* Only worth showing once there's more than one line to add up. */}
+                  {tonerLines.fields.length > 1 && (
+                    <div className={`flex justify-between text-sm font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>
+                      <span>Subtotal</span>
+                      <span>${tonerSubtotal.toFixed(2)}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -1507,8 +1531,8 @@ const StaffReceipts = () => {
                     <Checkbox checked={tonerAddGst} onCheckedChange={(c) => setTonerAddGst(c === true)} className={checkboxClass} />
                     Add GST ({(GST_RATE * 100).toFixed(0)}%)
                   </label>
-                  {tonerAddGst && isFilledNumber(tonerPrice) && tonerPrice >= 0 && (
-                    <GstBreakdown price={tonerPrice} />
+                  {tonerAddGst && tonerSubtotal > 0 && (
+                    <GstBreakdown price={tonerSubtotal} />
                   )}
                 </div>
 

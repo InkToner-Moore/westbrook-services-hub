@@ -32,12 +32,18 @@ export interface ReceiptRow {
   value?: string | number | null;
 }
 
+export interface ReceiptItem {
+  description: string;
+  price: number;
+}
+
 export interface SimpleReceiptOptions {
   title: string;             // e.g. "Cartridge Refill Receipt"
   identifierLabel: string;   // "Order ID" or "Receipt #"
   identifierValue: string;
   date: string;              // already formatted for display
   rows: ReceiptRow[];        // blank values are skipped
+  items?: ReceiptItem[];     // itemized lines; `price` must be their subtotal
   price: number;
   gst?: number;              // present => GST/Subtotal/Total lines are shown
   fileNameBase: string;      // e.g. "cartridge-receipt-ORD-AB12"
@@ -114,6 +120,27 @@ export const generateSimpleReceiptPdf = (opts: SimpleReceiptOptions, size: Recei
   addRow(opts.identifierLabel, opts.identifierValue);
   opts.rows.forEach((row) => addRow(row.label, row.value));
 
+  // Itemized lines: description on the left, price right-aligned.
+  if (opts.items?.length) {
+    y += isLetter ? 0.14 : 0.1;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Items', margin, y);
+    y += lineHeight;
+
+    doc.setFont('helvetica', 'normal');
+    opts.items.forEach((item, index) => {
+      const priceText = `$${item.price.toFixed(2)}`;
+      const priceWidth = doc.getTextWidth(priceText);
+      const wrapped = doc.splitTextToSize(
+        `${index + 1}. ${item.description}`,
+        contentWidth - priceWidth - 0.15,
+      ) as string[];
+      doc.text(wrapped, margin, y);
+      doc.text(priceText, pageWidth - margin, y, { align: 'right' });
+      y += lineHeight * wrapped.length;
+    });
+  }
+
   // Pricing block
   y += isLetter ? 0.1 : 0.06;
   doc.setLineWidth(0.008);
@@ -125,7 +152,7 @@ export const generateSimpleReceiptPdf = (opts: SimpleReceiptOptions, size: Recei
     addRow(`GST (${(GST_RATE * 100).toFixed(0)}%)`, `$${opts.gst.toFixed(2)}`);
     addRow('Total', `$${round2(opts.price + opts.gst).toFixed(2)}`, true);
   } else {
-    addRow('Price', `$${opts.price.toFixed(2)}`, true);
+    addRow(opts.items?.length ? 'Total' : 'Price', `$${opts.price.toFixed(2)}`, true);
   }
 
   // Footer (full-page only)
