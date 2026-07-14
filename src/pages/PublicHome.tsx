@@ -8,7 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { useTheme } from "@/hooks/useTheme";
 import SmartTracker from "@/components/SmartTracker";
 import { Link } from "react-router-dom";
-import { getDocument } from "@/lib/firestore";
+import { queryCollection } from "@/lib/firestore";
+import {
+  ORDER_STATUS_COLLECTION,
+  OrderStatusDoc,
+  normalizeLastName,
+} from "@/lib/orderStatus";
 
 const STATUS_LABELS: Record<string, string> = {
   in_progress: "In Progress",
@@ -25,34 +30,37 @@ const STATUS_COLORS: Record<string, string> = {
 const PublicHome = () => {
   const { isDarkMode, toggleTheme, themeClasses } = useTheme();
 
-  // Refill status checker state. Order IDs are random (see generateOrderId)
-  // so the ID alone is enough to look up status — no phone match required.
-  const [refillOrderId, setRefillOrderId] = useState("");
-  const [refillStatus, setRefillStatus] = useState<string | null>(null);
+  // Refill status checker state. Customers rarely hang on to the order ID, so
+  // they look themselves up by last name instead — which can match more than
+  // one refill, hence a list of results rather than a single status.
+  const [refillLastName, setRefillLastName] = useState("");
+  const [refillResults, setRefillResults] = useState<OrderStatusDoc[] | null>(null);
   const [refillError, setRefillError] = useState<string | null>(null);
   const [refillLoading, setRefillLoading] = useState(false);
 
   const checkRefillStatus = async () => {
-    if (!refillOrderId.trim()) {
-      setRefillError("Please enter your Order ID.");
-      setRefillStatus(null);
+    const lastName = normalizeLastName(refillLastName);
+    if (!lastName) {
+      setRefillError("Please enter your last name.");
+      setRefillResults(null);
       return;
     }
 
     setRefillLoading(true);
     setRefillError(null);
-    setRefillStatus(null);
+    setRefillResults(null);
 
     try {
-      const doc = await getDocument<{ orderId: string; customerPhone: string; status: string }>(
-        'orderStatus',
-        refillOrderId.trim().toUpperCase()
+      const matches = await queryCollection<OrderStatusDoc>(
+        ORDER_STATUS_COLLECTION,
+        'customerLastName',
+        lastName
       );
 
-      if (doc) {
-        setRefillStatus(doc.status);
+      if (matches.length > 0) {
+        setRefillResults(matches);
       } else {
-        setRefillError("No order found. Please check your Order ID.");
+        setRefillError("No refills found under that last name. Please give us a call and we'll look it up.");
       }
     } catch (error) {
       console.error('Failed to check refill status:', error);
@@ -190,16 +198,16 @@ const PublicHome = () => {
                 <span>Check Refill Status</span>
               </CardTitle>
               <p className={`text-center text-sm mt-2 ${themeClasses.text.secondary}`}>
-                Enter your Order ID to check the status of your cartridge refill
+                Enter your last name to check the status of your cartridge refill
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label className={themeClasses.text.primary}>Order ID</Label>
+                <Label className={themeClasses.text.primary}>Last Name</Label>
                 <Input
-                  placeholder="e.g. ORD-A7K3M9"
-                  value={refillOrderId}
-                  onChange={(e) => setRefillOrderId(e.target.value)}
+                  placeholder="e.g. Smith"
+                  value={refillLastName}
+                  onChange={(e) => setRefillLastName(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !refillLoading) checkRefillStatus();
                   }}
@@ -220,17 +228,32 @@ const PublicHome = () => {
                 Check Status
               </Button>
 
-              {refillStatus && (
-                <div className={`rounded-lg p-4 text-center ${themeClasses.card.secondary}`}>
-                  <p className={`text-sm mb-2 ${themeClasses.text.secondary}`}>Your refill status:</p>
-                  <Badge className={`text-base px-4 py-1 ${STATUS_COLORS[refillStatus] || STATUS_COLORS.received}`}>
-                    {refillStatus === 'ready' ? (
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                    ) : (
-                      <Clock className="h-4 w-4 mr-2" />
-                    )}
-                    {STATUS_LABELS[refillStatus] || refillStatus}
-                  </Badge>
+              {refillResults && (
+                <div className={`rounded-lg p-4 text-center space-y-3 ${themeClasses.card.secondary}`}>
+                  <p className={`text-sm ${themeClasses.text.secondary}`}>
+                    {refillResults.length === 1
+                      ? "Your refill status:"
+                      : `We found ${refillResults.length} refills under that name:`}
+                  </p>
+
+                  {refillResults.map((result) => (
+                    <div key={result.orderId} className="flex flex-col items-center gap-1">
+                      <Badge className={`text-base px-4 py-1 ${STATUS_COLORS[result.status] || STATUS_COLORS.in_progress}`}>
+                        {result.status === 'ready' ? (
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                        ) : (
+                          <Clock className="h-4 w-4 mr-2" />
+                        )}
+                        {STATUS_LABELS[result.status] || result.status}
+                      </Badge>
+                      {/* Only useful for telling several refills apart. */}
+                      {refillResults.length > 1 && (
+                        <span className={`text-xs font-mono ${themeClasses.text.muted}`}>
+                          {result.orderId}
+                        </span>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
 

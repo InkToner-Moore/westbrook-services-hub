@@ -8,6 +8,7 @@ import {
   deleteDoc,
   query,
   orderBy,
+  where,
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -17,6 +18,17 @@ export async function getCollection<T>(collectionName: string, orderField?: stri
   const ref = collection(db, collectionName);
   const q = orderField ? query(ref, orderBy(orderField, 'desc')) : query(ref);
   const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ ...d.data(), id: d.id } as T));
+}
+
+// Fetch every doc where `field` equals `value`.
+export async function queryCollection<T>(
+  collectionName: string,
+  field: string,
+  value: unknown
+): Promise<T[]> {
+  const ref = collection(db, collectionName);
+  const snapshot = await getDocs(query(ref, where(field, '==', value)));
   return snapshot.docs.map(d => ({ ...d.data(), id: d.id } as T));
 }
 

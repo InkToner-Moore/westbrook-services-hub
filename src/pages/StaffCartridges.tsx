@@ -63,6 +63,11 @@ import {
   readCartridgeLines,
   toStoredCartridge,
 } from "@/lib/cartridges";
+import {
+  ORDER_STATUS_COLLECTION,
+  OrderStatusDoc,
+  lastNameOf,
+} from "@/lib/orderStatus";
 import CartridgeLineFields from "@/components/CartridgeLineFields";
 import GstBreakdown from "@/components/GstBreakdown";
 import ThemeToggleButton from "@/components/ThemeToggleButton";
@@ -99,7 +104,7 @@ interface OrderFormValues {
 }
 
 const ORDERS_COLLECTION = 'cartridgeOrders';
-const STATUS_COLLECTION = 'orderStatus';
+const STATUS_COLLECTION = ORDER_STATUS_COLLECTION;
 const DELETED_ORDERS_COLLECTION = 'deletedOrders';
 
 // Marks a form field as required.
@@ -428,14 +433,19 @@ const StaffCartridges = () => {
     }
   };
 
-  // Sync minimal order status to the public-facing orderStatus collection
-  const syncOrderStatus = async (orderId: string, customerPhone: string, status: string) => {
+  // Sync minimal order status to the public-facing orderStatus collection.
+  // The last name goes along for the ride so customers can look their refill up
+  // without having to keep hold of the order ID.
+  const syncOrderStatus = async (order: CartridgeOrder, status: string) => {
+    const mirror: OrderStatusDoc = {
+      orderId: order.id,
+      customerPhone: order.customerPhone,
+      customerLastName: lastNameOf(order.customerName),
+      status,
+    };
+
     try {
-      await setDocument(STATUS_COLLECTION, orderId, {
-        orderId,
-        customerPhone,
-        status,
-      });
+      await setDocument(STATUS_COLLECTION, order.id, mirror);
     } catch (error) {
       console.error('Failed to sync order status:', error);
     }
@@ -452,7 +462,7 @@ const StaffCartridges = () => {
 
     try {
       await updateDocument(ORDERS_COLLECTION, orderId, updates);
-      await syncOrderStatus(orderId, order.customerPhone, newStatus);
+      await syncOrderStatus(order, newStatus);
 
       setOrders(prevOrders =>
         prevOrders.map(o => {
@@ -488,7 +498,7 @@ const StaffCartridges = () => {
 
     try {
       await setDocument(ORDERS_COLLECTION, orderId, newOrder);
-      await syncOrderStatus(orderId, newOrder.customerPhone, 'in_progress');
+      await syncOrderStatus(newOrder, 'in_progress');
 
       setOrders(prevOrders => [newOrder, ...prevOrders]);
       newOrderForm.reset({
@@ -526,10 +536,9 @@ const StaffCartridges = () => {
 
     try {
       await setDocument(ORDERS_COLLECTION, orderId, updatedOrder);
-
-      if (updatedOrder.customerPhone !== order.customerPhone) {
-        await syncOrderStatus(orderId, updatedOrder.customerPhone, order.status);
-      }
+      // Re-synced unconditionally: an edit can change the name or phone the
+      // public mirror is keyed on.
+      await syncOrderStatus(updatedOrder, order.status);
 
       setOrders(prevOrders => prevOrders.map(o => (o.id === orderId ? updatedOrder : o)));
       setEditingOrder(null);
