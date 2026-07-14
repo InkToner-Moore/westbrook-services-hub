@@ -50,30 +50,30 @@ class ErrorBoundary extends Component<Props, State> {
       const isDev = import.meta.env.VITE_NODE_ENV === 'development';
 
       return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-blue-900 to-purple-900 flex items-center justify-center p-4">
-          <Card className="backdrop-blur-xl bg-white/15 border-white/30 shadow-2xl max-w-2xl w-full">
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <Card className="shadow-lg max-w-2xl w-full">
             <CardHeader className="text-center pb-4">
-              <div className="mx-auto mb-4 w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center">
-                <AlertTriangle className="h-8 w-8 text-red-400" />
+              <div className="mx-auto mb-4 w-16 h-16 bg-red-100 dark:bg-red-950 rounded-full flex items-center justify-center">
+                <AlertTriangle className="h-8 w-8 text-red-600 dark:text-red-400" />
               </div>
-              <CardTitle className="text-white text-2xl mb-2">
+              <CardTitle className="text-2xl mb-2">
                 Oops! Something went wrong
               </CardTitle>
-              <p className="text-blue-200">
+              <p className="text-muted-foreground">
                 We encountered an unexpected error. Don't worry, your data is safe.
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
               {isDev && this.state.error && (
-                <div className="bg-red-500/10 border border-red-400/30 rounded-lg p-4">
-                  <h4 className="text-red-300 font-semibold mb-2">Error Details (Development Mode)</h4>
-                  <pre className="text-xs text-red-200 overflow-auto max-h-32">
+                <div className="bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                  <h4 className="text-red-700 dark:text-red-300 font-semibold mb-2">Error Details (Development Mode)</h4>
+                  <pre className="text-xs text-red-800 dark:text-red-200 overflow-auto max-h-32">
                     {this.state.error.toString()}
                   </pre>
                   {this.state.errorInfo && (
                     <details className="mt-2">
-                      <summary className="text-red-300 text-sm cursor-pointer">Stack Trace</summary>
-                      <pre className="text-xs text-red-200 mt-2 overflow-auto max-h-40">
+                      <summary className="text-red-700 dark:text-red-300 text-sm cursor-pointer">Stack Trace</summary>
+                      <pre className="text-xs text-red-800 dark:text-red-200 mt-2 overflow-auto max-h-40">
                         {this.state.errorInfo.componentStack}
                       </pre>
                     </details>
@@ -91,15 +91,15 @@ class ErrorBoundary extends Component<Props, State> {
                 </Button>
                 <Button
                   onClick={this.handleGoHome}
-                  variant="ghost"
-                  className="flex-1 bg-white/20 hover:bg-white/30 text-white border border-white/30 rounded-xl"
+                  variant="outline"
+                  className="flex-1 rounded-xl"
                 >
                   <Home className="h-4 w-4 mr-2" />
                   Go Home
                 </Button>
               </div>
 
-              <div className="text-center text-sm text-blue-300">
+              <div className="text-center text-sm text-muted-foreground">
                 <p>If this problem persists, please contact support:</p>
                 <p className="font-semibold">(403) 686-2835</p>
               </div>

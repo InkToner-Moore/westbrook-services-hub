@@ -22,9 +22,9 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  in_progress: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  ready: "bg-green-100 text-green-800 border-green-300",
-  picked_up: "bg-gray-100 text-gray-800 border-gray-300",
+  in_progress: "bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800",
+  ready: "bg-green-100 text-green-800 border-green-300 dark:bg-green-950 dark:text-green-200 dark:border-green-800",
+  picked_up: "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600",
 };
 
 const PublicHome = () => {
@@ -141,14 +141,14 @@ const PublicHome = () => {
                 onClick={toggleTheme}
                 variant="ghost"
                 size="sm"
-                className={`p-2 rounded-lg ${themeClasses.button.ghost}`}
+                className={`p-2 rounded-lg border ${themeClasses.button.ghost}`}
               >
                 {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </Button>
 
               <Link
                 to="/staff"
-                className={`hidden sm:block px-4 py-2 rounded-lg transition-colors text-sm ${themeClasses.button.secondary}`}
+                className={`hidden sm:block px-4 py-2 rounded-lg border transition-colors text-sm ${themeClasses.button.secondary}`}
               >
                 Staff Login
               </Link>
@@ -175,7 +175,7 @@ const PublicHome = () => {
             >
               Call Now: (403) 686-2835
             </a>
-            <div className={`px-8 py-3 rounded-lg border ${themeClasses.card.secondary} ${themeClasses.text.secondary}`}>
+            <div className={`px-8 py-3 rounded-lg border-2 ${themeClasses.card.secondary} ${themeClasses.text.secondary}`}>
               <MapPin className="h-5 w-5 inline mr-2" />
               Westbrook Mall, Calgary
             </div>
@@ -258,8 +258,8 @@ const PublicHome = () => {
               )}
 
               {refillError && (
-                <div className="rounded-lg p-4 text-center bg-red-50 border border-red-200">
-                  <div className="flex items-center justify-center space-x-2 text-red-700">
+                <div className="rounded-lg p-4 text-center bg-red-50 border border-red-200 dark:bg-red-950/50 dark:border-red-800">
+                  <div className="flex items-center justify-center space-x-2 text-red-700 dark:text-red-200">
                     <AlertCircle className="h-4 w-4" />
                     <p className="text-sm">{refillError}</p>
                   </div>

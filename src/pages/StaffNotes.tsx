@@ -81,11 +81,11 @@ const StaffNotes = () => {
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'urgent': return 'bg-red-100 text-red-800 border-red-300';
-      case 'customer': return 'bg-blue-100 text-blue-800 border-blue-300';
-      case 'inventory': return 'bg-purple-100 text-purple-800 border-purple-300';
-      case 'shipping': return 'bg-green-100 text-green-800 border-green-300';
-      default: return 'bg-gray-100 text-gray-800 border-gray-300';
+      case 'urgent': return 'bg-red-100 text-red-800 border-red-300 dark:bg-red-950 dark:text-red-200 dark:border-red-800';
+      case 'customer': return 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-200 dark:border-blue-800';
+      case 'inventory': return 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950 dark:text-purple-200 dark:border-purple-800';
+      case 'shipping': return 'bg-green-100 text-green-800 border-green-300 dark:bg-green-950 dark:text-green-200 dark:border-green-800';
+      default: return 'bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:border-slate-600';
     }
   };
 

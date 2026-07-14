@@ -60,7 +60,7 @@ const CartridgeLineFields = ({
       {fields.map((field, index) => (
         <div
           key={field.id}
-          className={`rounded-xl p-4 space-y-3 transition-all duration-300 ${themeClasses.card.secondary}`}
+          className={`rounded-xl border p-4 space-y-3 transition-all duration-300 ${themeClasses.card.secondary}`}
         >
           <div className="flex justify-between items-center">
             <span className={`text-sm font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>

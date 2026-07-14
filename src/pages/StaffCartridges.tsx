@@ -419,8 +419,8 @@ const StaffCartridges = () => {
     switch (status) {
       case "in_progress": return "bg-yellow-100 text-yellow-800 border-yellow-400";
       case "ready": return "bg-green-100 text-green-800 border-green-400";
-      case "picked_up": return "bg-stone-200 text-stone-700 border-stone-400";
-      default: return "bg-stone-200 text-stone-700 border-stone-400";
+      case "picked_up": return "bg-slate-200 text-slate-700 border-slate-400";
+      default: return "bg-slate-200 text-slate-700 border-slate-400";
     }
   };
 

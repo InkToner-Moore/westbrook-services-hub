@@ -107,14 +107,14 @@ const AdvancedSearch = ({
   const activeFiltersCount = getActiveFiltersCount();
 
   return (
-    <Card className={`backdrop-blur-xl shadow-2xl transition-all duration-500 ${themeClasses.card}`}>
+    <Card className={`backdrop-blur-xl shadow-2xl transition-all duration-500 ${themeClasses.card.primary}`}>
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className={`flex items-center space-x-2 transition-all duration-500 ${themeClasses.text.primary}`}>
             <Search className="h-5 w-5" />
             <span>Search & Filter</span>
             {activeFiltersCount > 0 && (
-              <Badge className="bg-blue-500/20 text-blue-300 border-blue-400/50 border text-xs">
+              <Badge className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-500/20 dark:text-blue-200 dark:border-blue-400/50 border text-xs">
                 {activeFiltersCount} active
               </Badge>
             )}
@@ -287,8 +287,8 @@ const AdvancedSearch = ({
                         variant="outline"
                         className={`cursor-pointer transition-all duration-300 ${
                           filters.tags?.includes(tag)
-                            ? 'bg-blue-500/20 text-blue-300 border-blue-400/50'
-                            : 'hover:bg-white/10'
+                            ? 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-500/20 dark:text-blue-200 dark:border-blue-400/50'
+                            : 'hover:bg-slate-100 dark:hover:bg-white/10'
                         }`}
                         onClick={() => {
                           if (filters.tags?.includes(tag)) {
@@ -308,7 +308,7 @@ const AdvancedSearch = ({
                       {filters.tags.map(tag => (
                         <Badge
                           key={tag}
-                          className="bg-blue-500/20 text-blue-300 border-blue-400/50 border"
+                          className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-500/20 dark:text-blue-200 dark:border-blue-400/50 border"
                         >
                           {tag}
                           <X 

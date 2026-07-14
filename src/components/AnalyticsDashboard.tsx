@@ -173,7 +173,7 @@ const AnalyticsDashboard = ({ data, className = "" }: AnalyticsDashboardProps) =
     trend?: 'up' | 'down' | 'neutral';
     trendValue?: string;
   }) => (
-    <Card className={`backdrop-blur-xl shadow-2xl transition-all duration-500 hover:scale-105 ${themeClasses.card}`}>
+    <Card className={`backdrop-blur-xl shadow-2xl transition-all duration-500 hover:scale-105 ${themeClasses.card.primary}`}>
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div>
@@ -333,7 +333,7 @@ const AnalyticsDashboard = ({ data, className = "" }: AnalyticsDashboardProps) =
       )}
 
       {/* Quick Insights */}
-      <Card className={`backdrop-blur-xl shadow-2xl transition-all duration-500 ${themeClasses.card}`}>
+      <Card className={`backdrop-blur-xl shadow-2xl transition-all duration-500 ${themeClasses.card.primary}`}>
         <CardHeader>
           <CardTitle className={`flex items-center space-x-2 transition-all duration-500 ${themeClasses.text.primary}`}>
             <BarChart3 className="h-5 w-5" />

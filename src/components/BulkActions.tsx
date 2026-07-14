@@ -120,7 +120,7 @@ const BulkActions = ({
     <div className={`space-y-4 ${className}`}>
       {/* Bulk Actions Header */}
       {items.length > 0 && (
-        <Card className={`backdrop-blur-xl shadow-2xl transition-all duration-500 ${themeClasses.card}`}>
+        <Card className={`backdrop-blur-xl shadow-2xl transition-all duration-500 ${themeClasses.card.primary}`}>
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -164,7 +164,7 @@ const BulkActions = ({
 
             {selectedIds.length > 0 && (
               <div className="flex items-center space-x-2 pt-2">
-                <Badge className="bg-blue-500/20 text-blue-300 border-blue-400/50 border">
+                <Badge className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-500/20 dark:text-blue-200 dark:border-blue-400/50 border">
                   {selectedIds.length} selected
                 </Badge>
                 <Button
@@ -183,7 +183,7 @@ const BulkActions = ({
 
       {/* Confirmation Dialog */}
       {confirmingAction && (
-        <Card className={`backdrop-blur-xl shadow-2xl border-red-400/50 transition-all duration-500 ${themeClasses.card}`}>
+        <Card className={`backdrop-blur-xl shadow-2xl border-red-400/50 transition-all duration-500 ${themeClasses.card.primary}`}>
           <CardContent className="p-6">
             <div className="flex items-start space-x-4">
               <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center">

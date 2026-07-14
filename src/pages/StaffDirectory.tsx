@@ -286,7 +286,7 @@ const StaffDirectory = () => {
       case "courier":
         return "bg-blue-100 text-blue-800 border-blue-400";
       default:
-        return "bg-stone-200 text-stone-700 border-stone-400";
+        return "bg-slate-200 text-slate-700 border-slate-400";
     }
   };
 
@@ -739,7 +739,7 @@ const LinkForm = ({ initial, themeInputClass, onSubmit, onCancel }: LinkFormProp
                 className={`h-12 w-full rounded-lg border-2 flex items-center justify-center transition-all ${
                   selected
                     ? "border-blue-500 bg-blue-500/10"
-                    : "border-transparent bg-stone-500/10 hover:bg-stone-500/20"
+                    : "border-transparent bg-slate-500/10 hover:bg-slate-500/20"
                 }`}
               >
                 <Icon className="h-5 w-5" />
@@ -773,7 +773,7 @@ const LinkForm = ({ initial, themeInputClass, onSubmit, onCancel }: LinkFormProp
       {/* Live preview so staff can see the tile look before saving. */}
       <div>
         <Label className="mb-2 block">Preview</Label>
-        <div className="flex items-center gap-3 p-3 rounded-xl border border-stone-500/20">
+        <div className="flex items-center gap-3 p-3 rounded-xl border border-slate-500/20">
           <div className={`bg-gradient-to-r ${gradientFor(colorKey)} p-3 rounded-xl shadow-lg`}>
             {(() => {
               const { Icon } = ICON_OPTIONS[iconKey] ?? ICON_OPTIONS.link;
@@ -782,7 +782,7 @@ const LinkForm = ({ initial, themeInputClass, onSubmit, onCancel }: LinkFormProp
           </div>
           <div className="min-w-0">
             <div className="font-semibold truncate">{watch("name") || "Title"}</div>
-            <div className="text-xs text-stone-500 truncate">{watch("url") || "https://…"}</div>
+            <div className="text-xs text-muted-foreground truncate">{watch("url") || "https://…"}</div>
           </div>
         </div>
       </div>
