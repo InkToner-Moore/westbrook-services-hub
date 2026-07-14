@@ -14,9 +14,9 @@ interface ThemeProviderProps {
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    // Check localStorage for saved preference, default to true (dark mode)
+    // Check localStorage for saved preference, default to false (light mode)
     const saved = localStorage.getItem('staff-theme');
-    return saved !== null ? JSON.parse(saved) : true;
+    return saved !== null ? JSON.parse(saved) : false;
   });
 
   useEffect(() => {

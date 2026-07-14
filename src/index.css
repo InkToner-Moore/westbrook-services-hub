@@ -16,7 +16,11 @@ All colors MUST be HSL.
    ThemeContext toggles the `.dark` class on <html> to switch between them. */
 @layer base {
   :root {
-    --background: 210 40% 96.1%;
+    /* White, not the slate page tint: shadcn's DialogContent/Input/SelectTrigger
+       are built on `bg-background`, so tinting it would make a dialog the same
+       shade as the `card.secondary` panels sitting inside it. The page tint
+       comes from themeClasses.background instead. */
+    --background: 0 0% 100%;
     --foreground: 222.2 47.4% 11.2%;
 
     --card: 0 0% 100%;
