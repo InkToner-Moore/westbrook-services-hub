@@ -149,7 +149,8 @@ const ReceiptDialog = ({
   themeClasses: any;
 }) => {
   const [open, setOpen] = useState(false);
-  const [addGst, setAddGst] = useState(false);
+  // GST applies to almost every sale, so it's on unless staff opt out.
+  const [addGst, setAddGst] = useState(true);
   const form = useForm<OrderFormValues>();
   const {
     register,
@@ -163,7 +164,7 @@ const ReceiptDialog = ({
 
   const handleOpenChange = (next: boolean) => {
     if (next) {
-      setAddGst(false);
+      setAddGst(true);
       reset({
         customerName: order.customerName ?? '',
         customerPhone: order.customerPhone ?? '',

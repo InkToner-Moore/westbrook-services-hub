@@ -191,7 +191,8 @@ const StaffReceipts = () => {
       notes: '',
     },
   });
-  const [cartridgeAddGst, setCartridgeAddGst] = useState(false);
+  // GST applies to almost every sale, so it's on unless staff opt out.
+  const [cartridgeAddGst, setCartridgeAddGst] = useState(true);
   const cartridgeSubtotal = cartridgesSubtotal(cartridgeForm.watch('cartridges') ?? []);
 
   const tonerForm = useForm<TonerFormData>({
@@ -204,7 +205,7 @@ const StaffReceipts = () => {
     },
   });
   const tonerLines = useFieldArray({ control: tonerForm.control, name: 'toners' });
-  const [tonerAddGst, setTonerAddGst] = useState(false);
+  const [tonerAddGst, setTonerAddGst] = useState(true);
   const tonerSubtotal = tonersSubtotal(tonerForm.watch('toners') ?? []);
 
   const onSubmitCartridge = (size: ReceiptSize) =>
