@@ -238,7 +238,6 @@ const Index = () => {
   ];
 
   const additionalServices = [
-    "Amazon Returns Accepted",
     "Printing, Faxing, Scanning",
     "Photocopying Services", 
     "Card Lamination",
