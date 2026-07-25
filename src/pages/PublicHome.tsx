@@ -203,7 +203,7 @@ const PublicHome = () => {
 
         {/* Refill Status Checker */}
         <section className="mb-16">
-          <Card className={`max-w-2xl mx-auto ${themeClasses.card.primary}`}>
+          <Card className={`max-w-4xl mx-auto py-4 ${themeClasses.card.primary}`}>
             <CardHeader>
               <CardTitle className={`flex items-center space-x-2 text-center justify-center ${themeClasses.text.primary}`}>
                 <Printer className="h-5 w-5" />
@@ -213,9 +213,9 @@ const PublicHome = () => {
                 Enter your last name to check the status of your cartridge refill
               </p>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="max-w-md mx-auto space-y-4">
               <div>
-                <Label className={themeClasses.text.primary}>Last Name</Label>
+                <Label className={`block mb-2 ${themeClasses.text.primary}`}>Last Name</Label>
                 <Input
                   placeholder="e.g. Smith"
                   value={refillLastName}
@@ -223,14 +223,14 @@ const PublicHome = () => {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !refillLoading) checkRefillStatus();
                   }}
-                  className={themeClasses.input}
+                  className={`h-12 text-center ${themeClasses.input}`}
                 />
               </div>
 
               <Button
                 onClick={checkRefillStatus}
                 disabled={refillLoading}
-                className={`w-full font-semibold ${themeClasses.button.primary}`}
+                className={`w-full h-12 font-semibold ${themeClasses.button.primary}`}
               >
                 {refillLoading ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
