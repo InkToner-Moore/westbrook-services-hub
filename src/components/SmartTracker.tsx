@@ -1,7 +1,6 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Package, Truck, CheckCircle } from "lucide-react";
+import { Package, Loader2, ExternalLink } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { toast } from "@/hooks/use-toast";
 import upsLogo from "@/assets/couriers/ups.png";
@@ -17,6 +16,14 @@ const SmartTracker = ({ className = "" }: SmartTrackerProps) => {
   const { themeClasses } = useTheme();
   const [trackingNumber, setTrackingNumber] = useState("");
   const [selectedCourier, setSelectedCourier] = useState<string>("");
+  const [transferringTo, setTransferringTo] = useState<string>("");
+  const timerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) window.clearTimeout(timerRef.current);
+    };
+  }, []);
 
   // Package tracking is always available
 
@@ -44,34 +51,29 @@ const SmartTracker = ({ className = "" }: SmartTrackerProps) => {
     }
   ];
 
-  const handleTrackPackage = () => {
+  const handleCourierClick = (courierId: string) => {
+    if (transferringTo) return;
+
     if (!trackingNumber.trim()) {
+      setSelectedCourier(courierId);
       toast({
         title: "Missing tracking number",
-        description: "Please enter your tracking number",
+        description: "Please enter your tracking number first",
         variant: "destructive"
       });
       return;
     }
 
-    if (!selectedCourier) {
-      toast({
-        title: "Select courier",
-        description: "Please choose your shipping company",
-        variant: "destructive"
-      });
-      return;
-    }
+    const courier = couriers.find(c => c.id === courierId);
+    if (!courier) return;
 
-    const courier = couriers.find(c => c.id === selectedCourier);
-    if (courier) {
-      const trackingUrl = `${courier.url}${trackingNumber}`;
-      window.open(trackingUrl, '_blank');
-      toast({
-        title: "Tracking opened",
-        description: `Opened ${courier.name} tracking in new tab`,
-      });
-    }
+    setSelectedCourier(courierId);
+    setTransferringTo(courier.name);
+
+    const trackingUrl = `${courier.url}${encodeURIComponent(trackingNumber.trim())}`;
+    timerRef.current = window.setTimeout(() => {
+      window.location.href = trackingUrl;
+    }, 1100);
   };
 
   return (
@@ -86,7 +88,7 @@ const SmartTracker = ({ className = "" }: SmartTrackerProps) => {
           </h3>
         </div>
         <p className={`${themeClasses.text.secondary}`}>
-          Enter your tracking number and select your shipping company
+          Enter your tracking number, then tap your shipping company
         </p>
       </div>
       
@@ -106,18 +108,39 @@ const SmartTracker = ({ className = "" }: SmartTrackerProps) => {
 
         {/* Courier Selection */}
         <div>
-          <label className={`block text-sm font-medium mb-3 ${themeClasses.text.primary}`}>
-            Shipping Company - Choose one
-          </label>
+          {transferringTo ? (
+            <div
+              role="status"
+              className="mb-3 flex items-center justify-center space-x-3 rounded-lg border-2 border-blue-500/40 bg-blue-500/10 px-4 py-3"
+            >
+              <Loader2 className="h-5 w-5 shrink-0 animate-spin text-blue-500" />
+              <span className={`font-semibold ${themeClasses.text.primary}`}>
+                Taking you to {transferringTo} tracking...
+              </span>
+            </div>
+          ) : (
+            <label className={`block text-sm font-medium mb-3 ${themeClasses.text.primary}`}>
+              Shipping Company - Tap to track
+            </label>
+          )}
           <div className="grid grid-cols-1 gap-3">
             {couriers.map((courier) => (
               <button
                 key={courier.id}
-                onClick={() => setSelectedCourier(courier.id)}
-                className={`p-4 rounded-lg border-2 transition-all duration-200 text-left hover:shadow-md ${
+                onClick={() => handleCourierClick(courier.id)}
+                disabled={!!transferringTo}
+                className={`p-4 rounded-lg border-2 transition-all duration-300 text-left hover:shadow-md ${
                   selectedCourier === courier.id
                     ? `${courier.color} text-white border-transparent shadow-lg`
                     : `${themeClasses.card.secondary} border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500`
+                } ${
+                  transferringTo && selectedCourier !== courier.id
+                    ? "opacity-40"
+                    : ""
+                } ${
+                  transferringTo && selectedCourier === courier.id
+                    ? "scale-[1.02]"
+                    : ""
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -148,23 +171,16 @@ const SmartTracker = ({ className = "" }: SmartTrackerProps) => {
                       {courier.name}
                     </div>
                   </div>
-                  {selectedCourier === courier.id && (
-                    <CheckCircle className="h-6 w-6 text-white" />
-                  )}
+                  {transferringTo && selectedCourier === courier.id ? (
+                    <Loader2 className="h-6 w-6 text-white animate-spin" />
+                  ) : selectedCourier === courier.id ? (
+                    <ExternalLink className="h-6 w-6 text-white" />
+                  ) : null}
                 </div>
               </button>
             ))}
           </div>
         </div>
-        
-        {/* Track Button */}
-        <Button
-          onClick={handleTrackPackage}
-          className={`w-full h-12 font-semibold transition-all duration-200 ${themeClasses.button.primary}`}
-          disabled={!trackingNumber.trim() || !selectedCourier}
-        >
-          Track My Package
-        </Button>
       </div>
     </div>
   );
