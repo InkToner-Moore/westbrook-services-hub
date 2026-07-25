@@ -393,7 +393,7 @@ const PublicHome = () => {
               </div>
 
               {/* Map — tap to open directions in Google Maps */}
-              <div className="w-full max-w-[16rem] shrink-0 space-y-2 sm:w-64">
+              <div className="w-full max-w-[14rem] shrink-0 space-y-2 sm:w-56">
                 <a
                   href={MAPS_URL}
                   target="_blank"
