@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Phone, MapPin, Clock, Printer, Key, Package, Sun, Moon, Search, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Phone, MapPin, ExternalLink, Clock, Printer, Key, Package, Sun, Moon, Search, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,11 +9,14 @@ import { useTheme } from "@/hooks/useTheme";
 import SmartTracker from "@/components/SmartTracker";
 import { Link } from "react-router-dom";
 import { queryCollection } from "@/lib/firestore";
+import storeMap from "@/assets/store-map.png";
 import {
   ORDER_STATUS_COLLECTION,
   OrderStatusDoc,
   normalizeLastName,
 } from "@/lib/orderStatus";
+
+const MAPS_URL = "https://www.google.com/maps/search/?api=1&query=Westbrook+Mall+Calgary";
 
 const STATUS_LABELS: Record<string, string> = {
   in_progress: "In Progress",
@@ -120,11 +123,16 @@ const PublicHome = () => {
               </div>
               <div className="min-w-0">
                 <h1 className={`text-sm sm:text-xl font-bold leading-tight ${themeClasses.text.primary}`}>
-                  Ink, Toner, & Moore
+                  Ink, Toner & Moore
                 </h1>
-                <p className={`text-xs sm:text-sm ${themeClasses.text.secondary}`}>
+                <a
+                  href={MAPS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`text-xs sm:text-sm hover:underline ${themeClasses.text.secondary}`}
+                >
                   Westbrook Mall, Calgary
-                </p>
+                </a>
               </div>
             </div>
 
@@ -175,10 +183,15 @@ const PublicHome = () => {
             >
               Call Now: (403) 686-2835
             </a>
-            <div className={`px-8 py-3 rounded-lg border-2 ${themeClasses.card.secondary} ${themeClasses.text.secondary}`}>
+            <a
+              href={MAPS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`px-8 py-3 rounded-lg border-2 transition-colors hover:border-blue-500 ${themeClasses.card.secondary} ${themeClasses.text.secondary}`}
+            >
               <MapPin className="h-5 w-5 inline mr-2" />
               Westbrook Mall, Calgary
-            </div>
+            </a>
           </div>
         </section>
 
@@ -346,28 +359,70 @@ const PublicHome = () => {
                 <span>Contact & Location</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className={`font-semibold ${themeClasses.text.primary}`}>Address</p>
-                <p className={themeClasses.text.secondary}>Westbrook Mall, Calgary, AB</p>
+            <CardContent className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
+              <div className="min-w-0 flex-1 space-y-4">
+                <div>
+                  <p className={`font-semibold ${themeClasses.text.primary}`}>Address</p>
+                  <a
+                    href={MAPS_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`hover:underline ${themeClasses.text.accent}`}
+                  >
+                    Westbrook Mall, Calgary
+                  </a>
+                </div>
+                <div>
+                  <p className={`font-semibold ${themeClasses.text.primary}`}>Phone</p>
+                  <a
+                    href="tel:4036862835"
+                    className={`hover:underline ${themeClasses.text.accent}`}
+                  >
+                    (403) 686-2835
+                  </a>
+                </div>
+                <div>
+                  <p className={`font-semibold ${themeClasses.text.primary}`}>Email</p>
+                  <a
+                    href="mailto:inktonerandmoore@gmail.com"
+                    className={`hover:underline ${themeClasses.text.accent}`}
+                  >
+                    inktonerandmoore@gmail.com
+                  </a>
+                </div>
               </div>
-              <div>
-                <p className={`font-semibold ${themeClasses.text.primary}`}>Phone</p>
-                <a 
-                  href="tel:4036862835" 
-                  className={`hover:underline ${themeClasses.text.accent}`}
+
+              {/* Map — tap to open directions in Google Maps */}
+              <div className="w-full max-w-[16rem] shrink-0 space-y-2 sm:w-64">
+                <a
+                  href={MAPS_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Open our location in Google Maps"
+                  className="group relative block overflow-hidden rounded-xl ring-1 ring-black/10 transition-all duration-300 hover:ring-2 hover:ring-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:ring-white/15"
                 >
-                  (403) 686-2835
+                  <img
+                    src={storeMap}
+                    alt="Map showing Ink, Toner & Moore inside Westbrook Mall, Calgary"
+                    className="block aspect-[817/700] w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+                    loading="lazy"
+                  />
+                  <span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-gradient-to-t from-black/75 via-black/45 to-transparent px-3 pb-2 pt-6 text-xs font-semibold text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Open in Google Maps
+                  </span>
                 </a>
-              </div>
-              <div>
-                <p className={`font-semibold ${themeClasses.text.primary}`}>Email</p>
-                <a 
-                  href="mailto:info@inktonermoore.com" 
-                  className={`hover:underline ${themeClasses.text.accent}`}
-                >
-                  info@inktonermoore.com
-                </a>
+                <p className={`text-xs leading-relaxed ${themeClasses.text.secondary}`}>
+                  Inside Westbrook Mall, in front of AMA.{" "}
+                  <a
+                    href={MAPS_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`font-medium hover:underline ${themeClasses.text.accent}`}
+                  >
+                    Get directions
+                  </a>
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -378,7 +433,7 @@ const PublicHome = () => {
       <footer className={`border-t mt-16 py-8 ${themeClasses.header}`}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <p className={themeClasses.text.secondary}>
-            © 2024 Ink, Toner, & Moore. All rights reserved.
+            © 2024 Ink, Toner & Moore. All rights reserved.
           </p>
         </div>
       </footer>
