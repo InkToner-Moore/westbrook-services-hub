@@ -127,7 +127,7 @@ const StaffDashboard = () => {
                 <h1 className={`text-xl lg:text-2xl font-bold bg-clip-text text-transparent drop-shadow-lg transition-all duration-500 ${themeClasses.gradient.title}`}>
                   Staff Portal
                 </h1>
-                <p className={`text-xs font-medium transition-all duration-500 ${themeClasses.text.secondary}`}>Ink, Toner, & Moore</p>
+                <p className={`text-xs font-medium transition-all duration-500 ${themeClasses.text.secondary}`}>Ink, Toner & Moore</p>
               </div>
             </div>
             

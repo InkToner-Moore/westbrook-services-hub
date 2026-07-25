@@ -118,7 +118,7 @@ export function usePrint(): UsePrintReturn {
           <!-- Print footer -->
           <div class="print-footer">
             <p>Printed on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
-            <p>Ink, Toner, & Moore - Professional Printing Services</p>
+            <p>Ink, Toner & Moore - Professional Printing Services</p>
           </div>
         </body>
       </html>
@@ -250,7 +250,7 @@ export function createReceiptContent(data: {
 }): string {
   const businessInfo = `
     <div class="business-info">
-      <h1>Ink, Toner, & Moore</h1>
+      <h1>Ink, Toner & Moore</h1>
       <p>Professional Printing Services</p>
       <p>Westbrook Mall, Calgary, AB</p>
       <p>Phone: (403) 686-2835</p>

@@ -66,7 +66,7 @@ export const exportToPDF = (data: ExportData): void => {
   // Add business info
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text('Ink, Toner, & Moore', 20, 30);
+  doc.text('Ink, Toner & Moore', 20, 30);
   doc.text('1200 37 Street SW Unit 3b, Calgary, AB T3C 1S2', 20, 35);
   doc.text('(403) 686-2835', 20, 40);
   
@@ -240,7 +240,7 @@ export const exportAllData = async (googleSheetsService: any): Promise<void> => 
       blogPosts,
       exportDate: new Date().toISOString(),
       businessInfo: {
-        name: 'Ink, Toner, & Moore',
+        name: 'Ink, Toner & Moore',
         phone: '(403) 686-2835',
         address: '1200 37 Street SW Unit 3b, Calgary, AB T3C 1S2'
       }

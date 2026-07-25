@@ -331,7 +331,7 @@ const Index = () => {
                     ? 'bg-gradient-to-r from-white to-blue-100' 
                     : 'bg-gradient-to-r from-gray-800 to-blue-600'
                 }`}>
-                  Ink, Toner, & Moore
+                  Ink, Toner & Moore
                 </h1>
                 <p className={`text-xs font-medium transition-all duration-500 ${
                   isDarkMode ? 'text-blue-200' : 'text-blue-600'
@@ -970,7 +970,7 @@ const Index = () => {
                   <Printer className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <span className="font-bold text-xl drop-shadow-lg">Ink, Toner, & Moore</span>
+                  <span className="font-bold text-xl drop-shadow-lg">Ink, Toner & Moore</span>
                   <p className={`text-xs transition-all duration-500 ${
                     isDarkMode ? 'text-blue-300' : 'text-blue-600'
                   }`}>Professional Office Services</p>
@@ -1021,7 +1021,7 @@ const Index = () => {
           }`}>
             <p className={`drop-shadow-sm transition-all duration-500 ${
               isDarkMode ? 'text-blue-300' : 'text-gray-500'
-            }`}>&copy; 2024 Ink, Toner, & Moore. All rights reserved.</p>
+            }`}>&copy; 2024 Ink, Toner & Moore. All rights reserved.</p>
           </div>
         </div>
       </footer>

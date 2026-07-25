@@ -156,7 +156,7 @@ export const ReceiptPrintButton: React.FC<ReceiptPrintButtonProps> = ({
         <div class="receipt-container">
           <div class="receipt-header">
             <div class="business-info">
-              <h1>Ink, Toner, & Moore</h1>
+              <h1>Ink, Toner & Moore</h1>
               <p>Professional Printing Services</p>
               <p>Westbrook Mall, Calgary, AB</p>
               <p>Phone: (403) 686-2835</p>
@@ -274,7 +274,7 @@ export const ReceiptPrintButton: React.FC<ReceiptPrintButtonProps> = ({
             ${receiptData ? `
               <div class="receipt-header">
                 <div class="business-info">
-                  <h1>Ink, Toner, & Moore</h1>
+                  <h1>Ink, Toner & Moore</h1>
                   <p>Professional Printing Services</p>
                   <p>Westbrook Mall, Calgary, AB</p>
                   <p>Phone: (403) 686-2835</p>
