@@ -7,11 +7,82 @@ import {
   formatReceiptDate,
   generateReceiptNumber,
   round2,
+  type ReceiptItem,
   type ReceiptRow,
   type SimpleReceiptOptions,
 } from '@/lib/simpleReceipt';
 import type { Intent, ReceiptSubtype } from '../types';
 import type { ActionResult } from './types';
+import {
+  aggregateTaxLines,
+  isItemComplete,
+  itemsSubtotal,
+  toShipmentItems,
+  type ShipmentItem,
+} from '../shipping';
+
+// Small print printed on every shipping receipt (brief: final-sale terms).
+const SHIPPING_FOOTNOTE: string[] = [
+  'All shipping sales are final. There are no refunds once a shipment is dropped off with the carrier.',
+  "It is the customer's responsibility to make sure their shipping information is correct and checked, including names, addresses, and any commercial invoices or customs paperwork.",
+  'Ink, Toner & Moore is not responsible for shipments once they are handed to the carrier and has no refund policy. If something goes wrong, we will do our best to work with the carrier (for example Purolator, FedEx, or UPS) to help however we can.',
+];
+
+// One shipment item as a printed line: courier and destination stacked under the
+// description, cost on the right.
+function shipmentItemLine(item: ShipmentItem, index: number): ReceiptItem {
+  const parts = [item.courier.trim() || 'Shipment'];
+  if (item.trackingNumber.trim()) parts.push(`Tracking: ${item.trackingNumber.trim()}`);
+  const dest = [item.city.trim(), item.province.trim(), item.country.trim()].filter(Boolean).join(', ');
+  if (dest) parts.push(`To: ${dest}`);
+  return { description: parts.join('\n'), price: round2(item.cost ?? 0) };
+}
+
+function executeShipping(intent: Intent): ActionResult {
+  const items = toShipmentItems(intent.fields.shipmentItems?.value).filter(isItemComplete);
+  if (items.length === 0) {
+    return {
+      message: 'A shipping receipt needs at least one item with a courier and a cost. Add one and try again.',
+    };
+  }
+
+  const gstOn = intent.fields.gst?.value === true;
+  const subtotal = itemsSubtotal(items);
+  const taxLines = gstOn ? aggregateTaxLines(items) : [];
+  const taxTotal = taxLines.reduce((sum, t) => round2(sum + t.amount), 0);
+  const total = round2(subtotal + taxTotal);
+  const receiptNumber = generateReceiptNumber('SH');
+  const dateIso = intent.fields.date?.value ? String(intent.fields.date.value) : '';
+  const who = intent.fields.customerName?.value ? String(intent.fields.customerName.value).trim() : '';
+  const phone = intent.fields.customerPhone?.value ? String(intent.fields.customerPhone.value).trim() : '';
+  const email = intent.fields.customerEmail?.value ? String(intent.fields.customerEmail.value).trim() : '';
+
+  const opts: SimpleReceiptOptions = {
+    title: 'Shipping Receipt',
+    identifierLabel: 'Receipt #',
+    identifierValue: receiptNumber,
+    date: formatReceiptDate(dateIso) || dateIso,
+    rows: [
+      { label: 'Customer', value: who },
+      { label: 'Phone', value: phone },
+      { label: 'Email', value: email },
+    ],
+    items: items.map(shipmentItemLine),
+    price: subtotal,
+    taxLines: taxLines.length ? taxLines : undefined,
+    footnote: SHIPPING_FOOTNOTE,
+    fileNameBase: `shipping-receipt-${receiptNumber}`,
+  };
+
+  const count = items.length === 1 ? 'shipping receipt' : `shipping receipt with ${items.length} items`;
+  const message = `Here is the ${count}${who ? ` for ${who}` : ''}, total $${total.toFixed(2)}. Download or print it below.`;
+
+  return {
+    message,
+    artifact: { kind: 'receipt', title: opts.title, data: { opts } },
+    receipt: { opts },
+  };
+}
 
 // Read a field's value as a trimmed string ('' when absent).
 function str(intent: Intent, key: string): string {
@@ -83,10 +154,7 @@ export function executeReceipt(intent: Intent): ActionResult {
   const subtype = (intent.subtype ?? 'refill') as ReceiptSubtype;
 
   if (subtype === 'shipping') {
-    return {
-      message:
-        "Shipping receipts take one or more shipment items (courier, tracking, destination, cost). That builder is coming next; for now use the Receipts page for shipping.",
-    };
+    return executeShipping(intent);
   }
 
   const price = round2(num(intent, 'price'));

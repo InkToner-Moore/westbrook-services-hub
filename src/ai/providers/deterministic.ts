@@ -16,12 +16,14 @@ import {
   extractName,
   extractOrderId,
   extractPhone,
+  extractProvince,
   extractQuantity,
   extractTracking,
   extractType,
   extractUrl,
   todayIso,
 } from '../extract';
+import { emptyShipmentItem } from '../shipping';
 
 // Keyword groups per action. First match wins. Explicit noun-intents (orders,
 // notes, inventory, directory, follow-ups) are checked before the receipt subtypes
@@ -36,7 +38,10 @@ const ROUTES: Array<{ action: AiAction; subtype?: ReceiptSubtype; words: string[
   { action: 'inventory', words: ['inventory', 'in stock', 'out of stock', 'restock', 'key model'] },
   { action: 'followup', words: ['follow up', 'follow-up', 'call back', 'waiting list', 'customer request'] },
   { action: 'note', words: ['note', 'remember', 'jot'] },
-  { action: 'track', words: ['track', 'tracking', 'where is', 'fedex', 'ups', 'purolator', 'canada post', 'dhl'] },
+  // Only explicit tracking verbs route here. A bare courier name (from a Track
+  // pill) or a lone tracking number falls back to track after the receipt routes,
+  // so a shipping receipt that names its courier is not mistaken for a lookup.
+  { action: 'track', words: ['track', 'where is', 'trace'] },
   { action: 'receipt', subtype: 'refill', words: ['refill', 'refilled', 'toner refill'] },
   { action: 'receipt', subtype: 'shipping', words: ['ship', 'shipment', 'courier', 'parcel', 'drop off', 'dropoff'] },
   { action: 'receipt', subtype: 'key', words: ['key cut', 'key cutting', 'cut a key', 'key copy', 'copy a key'] },
@@ -167,12 +172,39 @@ export class DeterministicProvider implements AiProvider {
       confidence = 0.4;
     }
 
+    // Bare courier name or lone tracking number, with no other intent: a lookup.
+    // This is what a Track pill (which prepends just the courier) relies on.
+    if (action === 'unknown') {
+      const { courier, trackingNumber } = extractTracking(text);
+      if (courier || trackingNumber) {
+        action = 'track';
+        confidence = 0.5;
+      }
+    }
+
     const intent: Intent = { action, subtype, fields: {}, confidence };
 
     // Fill fields for actions that have a confirmation spec.
     const specs = getFieldSpecs(intent);
     if (specs) {
       intent.fields = fillFields(specs.map((s) => s.key), text);
+    }
+
+    // Shipping carries a repeated item block. Seed one item from whatever the
+    // utterance names (courier, tracking, province, cost); the rest is confirmed
+    // in the item editor.
+    if (action === 'receipt' && subtype === 'shipping') {
+      const { courier, trackingNumber } = extractTracking(text);
+      const cost = extractMoney(text);
+      const province = extractProvince(text);
+      const item = {
+        ...emptyShipmentItem(),
+        courier: courier ?? '',
+        trackingNumber: trackingNumber ?? '',
+        province: province ?? emptyShipmentItem().province,
+        cost: cost ?? null,
+      };
+      intent.fields.shipmentItems = { value: [item], source: 'explicit' };
     }
 
     // Tracking has no confirmation spec; fill courier + number directly.

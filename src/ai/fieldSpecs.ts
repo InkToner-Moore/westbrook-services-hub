@@ -71,13 +71,15 @@ export const FIELD_SPECS: Record<string, FieldSpec[]> = {
     ...RECEIPT_SHARED_TAIL,
   ],
   // Shipping's per-item fields (courier, tracking, city, province, country, cost,
-  // taxes) are modeled as a repeated item block in Phase 4 alongside the generator.
+  // taxes) live in a repeated item block (ShipmentItemsEditor), not flat fields.
+  // "Charge Tax" is the master toggle; per-item tax defaults to the destination
+  // province's rate (GST/PST/HST) and stays editable in the item block.
   'receipt:shipping': [
     DATE_FIELD,
     { key: 'customerName', label: 'Customer Name', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
     { key: 'customerPhone', label: 'Customer Phone', marker: 'required', alwaysShown: true, kind: 'phone' },
     { key: 'customerEmail', label: 'Customer Email', marker: 'required', alwaysShown: false, kind: 'email' },
-    { key: 'gst', label: 'GST (5%)', marker: 'required', alwaysShown: true, kind: 'toggle' },
+    { key: 'gst', label: 'Charge Tax', marker: 'required', alwaysShown: true, kind: 'toggle' },
   ],
   'cartridge_create': [
     { key: 'customerName', label: 'Customer Name', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },

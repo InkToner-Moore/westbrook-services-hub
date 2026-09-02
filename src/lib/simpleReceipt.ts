@@ -46,6 +46,10 @@ export interface SimpleReceiptOptions {
   items?: ReceiptItem[];     // itemized lines; `price` must be their subtotal
   price: number;
   gst?: number;              // present => GST/Subtotal/Total lines are shown
+  // Multi-line tax breakdown (e.g. GST + PST, or HST). When present it replaces
+  // the single `gst` line: Subtotal, each tax line, then Total. Used by shipping
+  // receipts where tax depends on the destination province.
+  taxLines?: { label: string; amount: number }[];
   fileNameBase: string;      // e.g. "cartridge-receipt-ORD-AB12"
   footnote?: string[];       // small print at the foot (e.g. shipping final-sale terms)
 }
@@ -155,7 +159,12 @@ export const buildSimpleReceiptPdf = (opts: SimpleReceiptOptions, size: ReceiptS
   doc.line(margin, y, pageWidth - margin, y);
   y += isLetter ? 0.3 : 0.24;
 
-  if (opts.gst != null) {
+  if (opts.taxLines?.length) {
+    const taxTotal = opts.taxLines.reduce((sum, t) => round2(sum + t.amount), 0);
+    addRow('Subtotal', `$${opts.price.toFixed(2)}`);
+    opts.taxLines.forEach((t) => addRow(t.label, `$${t.amount.toFixed(2)}`));
+    addRow('Total', `$${round2(opts.price + taxTotal).toFixed(2)}`, true);
+  } else if (opts.gst != null) {
     addRow('Subtotal', `$${opts.price.toFixed(2)}`);
     addRow(`GST (${(GST_RATE * 100).toFixed(0)}%)`, `$${opts.gst.toFixed(2)}`);
     addRow('Total', `$${round2(opts.price + opts.gst).toFixed(2)}`, true);

@@ -8,6 +8,8 @@ import { Check, Pencil } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { FieldValue, Intent } from '@/ai/types';
 import { type FieldSpec, isFieldVisible, missingRequired } from '@/ai/fieldSpecs';
+import { isItemComplete, toShipmentItems, type ShipmentItem } from '@/ai/shipping';
+import ShipmentItemsEditor from './ShipmentItemsEditor';
 
 interface ConfirmationCheckProps {
   intent: Intent;
@@ -60,7 +62,15 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({
 
   const workingIntent = useMemo<Intent>(() => ({ ...intent, fields }), [intent, fields]);
   const missing = useMemo(() => missingRequired(specs, workingIntent), [specs, workingIntent]);
-  const canConfirm = missing.length === 0;
+
+  // Shipping carries a repeated item block instead of flat item fields.
+  const isShipping = intent.action === 'receipt' && intent.subtype === 'shipping';
+  const shipmentItems = useMemo<ShipmentItem[]>(
+    () => (isShipping ? toShipmentItems(fields.shipmentItems?.value) : []),
+    [isShipping, fields.shipmentItems],
+  );
+  const shipmentReady = !isShipping || shipmentItems.some(isItemComplete);
+  const canConfirm = missing.length === 0 && shipmentReady;
 
   const setValue = (key: string, value: unknown) => {
     setFields((prev) => ({ ...prev, [key]: { value, source: 'explicit' } }));
@@ -166,10 +176,26 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({
         })}
       </ul>
 
+      {isShipping && (
+        <div className="mt-3">
+          <p className={`mb-1.5 text-xs font-medium ${themeClasses.text.secondary}`}>Shipment items</p>
+          <ShipmentItemsEditor
+            items={shipmentItems}
+            taxEnabled={fields.gst?.value === true}
+            readOnly={readOnly}
+            onChange={(items) => setValue('shipmentItems', items)}
+          />
+        </div>
+      )}
+
       {!readOnly && (
         <div className="mt-3 flex items-center justify-between gap-2">
           <span className={`text-xs ${themeClasses.text.muted}`}>
-            {canConfirm ? 'Ready when you are.' : `Add ${missing.map((m) => m.label).join(', ')} to continue.`}
+            {canConfirm
+              ? 'Ready when you are.'
+              : missing.length > 0
+                ? `Add ${missing.map((m) => m.label).join(', ')} to continue.`
+                : 'Add a courier and cost to at least one item to continue.'}
           </span>
           <div className="flex items-center gap-2">
             {onDismiss && (
