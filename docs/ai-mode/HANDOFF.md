@@ -4,7 +4,7 @@ Update this at the end of every phase and before any context handoff. To resume,
 read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this file.
 
 ## Where we are
-- **Phase:** 0 and 1 DONE. Phase 2 (deterministic extractors + confirmation check) next.
+- **Phase:** 0, 1, 2 DONE and browser-verified. Phase 3 (quick-action pills) next.
 - **Branch:** ai-mode-overhaul (session branch, off main via GitButler).
 - **Prod:** untouched by design. Do not modify `deploy.yml` or `public/CNAME`.
 - **Build/lint:** `yarn build` green. New AI files lint-clean (one benign
@@ -28,13 +28,29 @@ read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this fi
   `src/ai/providers/deterministic.ts` (keyword router) + `providers/index.ts` (selector).
   Mounted once in `App.tsx` inside BrowserRouter, outside Routes. Non-breaking.
 
+## Phase 2 (done)
+- `src/ai/extract.ts`: pure extractors (email, phone, money, quantity, brand, type,
+  model, name, tracking+courier, province, todayIso).
+- `src/ai/fieldSpecs.ts`: confirmation field specs encoding the brief's tables
+  (refill/supplies/key/shipping-toplevel/cartridge_create) with marker + alwaysShown;
+  helpers isFieldVisible, missingRequired, specIdFor, getFieldSpecs.
+- `src/ai/providers/deterministic.ts`: routes + fills fields with provenance
+  (explicit/guessed/not_provided) and guessed defaults (date=today, gst=on, qty=1).
+- `src/components/ai/ConfirmationCheck.tsx`: renders visible fields, "?"/"i" markers,
+  guessed=amber/dashed + tag, inline Edit, toggle for GST, Confirm gated on
+  always-shown required fields. Wired into AiOverlay for pending intents.
+- Also fixed overlay/dock z-index: overlay z-[60] (above staff sticky headers at
+  z-50), dock z-[70] (above overlay so the AI toggle stays clickable).
+- Browser-verified end to end: "refill for Sarah Chen, HP 65XL black, $34,
+  403-555-1212" routes to refill, extracts fields, marks date/gst guessed, hides
+  blank email/notes, Confirm -> done + read-only. Classic pages render untouched.
+
 ## Next
-- Phase 2: flesh out `deterministic.ts` field extractors (phone, email, money, date,
-  courier+tracking, brand/model, qty, city/province/country) with provenance +
-  guessed defaults. Build `src/components/ai/ConfirmationCheck.tsx` (?/i markers,
-  Always-shown vs No-show-if-blank, guessed=amber/dashed, inline Edit, gated Confirm)
-  and render it in AiOverlay for pending intents.
-- Then Phases 3-9 per `02-implementation-plan.md`.
+- Phase 3: `src/components/ai/QuickActions.tsx` (tracking group FedEx/Purolator/UPS
+  with hover-to-type tracking#; action group Receipt/Refill/Purchase/Note/Inventory
+  as chips) wired into Composer. Then Phases 4-9 per `02-implementation-plan.md`.
+- NOTE for Phase 2 follow-up: shipping multi-item block and receipt generation are
+  Phase 4; ConfirmationCheck currently only renders flat specs.
 
 ## Open questions / watch-outs
 - Exact staging host (Cloudflare Pages vs Firebase Hosting vs separate gh-pages

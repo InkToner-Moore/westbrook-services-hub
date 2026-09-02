@@ -7,8 +7,10 @@ import { X, Eraser, Sparkles } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAiMode } from '@/ai/context';
 import { getProvider } from '@/ai/providers';
+import { getFieldSpecs } from '@/ai/fieldSpecs';
 import type { Intent } from '@/ai/types';
 import Composer from './Composer';
+import ConfirmationCheck from './ConfirmationCheck';
 
 // A short, warm line describing what the engine understood. Real confirmation
 // checks replace this in Phase 2.
@@ -43,7 +45,8 @@ function describeIntent(intent: Intent): string {
 
 const AiOverlay: React.FC = () => {
   const { themeClasses } = useTheme();
-  const { isOpen, close, turns, addUserTurn, addAssistantTurn, clear } = useAiMode();
+  const { isOpen, close, turns, addUserTurn, addAssistantTurn, updateTurnIntent, setTurnStatus, clear } =
+    useAiMode();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Keep the newest turn in view.
@@ -63,7 +66,7 @@ const AiOverlay: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-30 flex justify-center print:hidden">
+    <div className="fixed inset-0 z-[60] flex justify-center print:hidden">
       {/* Backdrop over the classic page. */}
       <div className={`absolute inset-0 backdrop-blur-sm ${themeClasses.background} opacity-95`} />
 
@@ -107,22 +110,40 @@ const AiOverlay: React.FC = () => {
             </div>
           )}
 
-          {turns.map((turn) => (
-            <div
-              key={turn.id}
-              className={turn.role === 'user' ? 'flex justify-end' : 'flex justify-start'}
-            >
-              <div
-                className={`max-w-[85%] rounded-2xl border px-4 py-2.5 text-sm ${
-                  turn.role === 'user'
-                    ? themeClasses.button.primary
-                    : `${themeClasses.card.primary} ${themeClasses.text.primary}`
-                }`}
-              >
-                {turn.text}
+          {turns.map((turn) => {
+            const specs = turn.intent ? getFieldSpecs(turn.intent) : null;
+            return (
+              <div key={turn.id} className="space-y-2">
+                <div className={turn.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
+                  <div
+                    className={`max-w-[85%] rounded-2xl border px-4 py-2.5 text-sm ${
+                      turn.role === 'user'
+                        ? themeClasses.button.primary
+                        : `${themeClasses.card.primary} ${themeClasses.text.primary}`
+                    }`}
+                  >
+                    {turn.text}
+                  </div>
+                </div>
+
+                {turn.intent && specs && (
+                  <ConfirmationCheck
+                    intent={turn.intent}
+                    specs={specs}
+                    readOnly={turn.status !== 'pending'}
+                    onConfirm={(finalIntent) => {
+                      updateTurnIntent(turn.id, finalIntent);
+                      setTurnStatus(turn.id, 'confirmed');
+                      // Action execution (PDF generation, Firestore writes) is
+                      // wired per feature in later phases. For now, acknowledge.
+                      addAssistantTurn('Done. That is all set.');
+                    }}
+                    onDismiss={() => setTurnStatus(turn.id, 'dismissed')}
+                  />
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="mt-3">

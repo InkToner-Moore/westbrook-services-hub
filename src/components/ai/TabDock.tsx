@@ -49,7 +49,7 @@ const TabDock: React.FC = () => {
   if (!user || !onStaffPage) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pb-3 pointer-events-none print:hidden">
+    <div className="fixed inset-x-0 bottom-0 z-[70] flex justify-center px-3 pb-3 pointer-events-none print:hidden">
       <div
         className={`pointer-events-auto flex items-center gap-1 rounded-2xl border px-2 py-1.5 backdrop-blur-xl ${themeClasses.header} shadow-lg`}
       >

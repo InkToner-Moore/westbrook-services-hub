@@ -22,6 +22,7 @@ interface AiModeContextValue {
   addUserTurn: (text: string) => ChatTurn;
   addAssistantTurn: (text: string, intent?: Intent) => ChatTurn;
   setTurnStatus: (id: string, status: ChatTurn['status']) => void;
+  updateTurnIntent: (id: string, intent: Intent) => void;
   clear: () => void;
 
   // The single Artifact panel.
@@ -64,6 +65,10 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
   }, []);
 
+  const updateTurnIntent = useCallback((id: string, intent: Intent) => {
+    setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, intent } : t)));
+  }, []);
+
   const clear = useCallback(() => {
     setTurns([]);
     setArtifact(null);
@@ -82,6 +87,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       addUserTurn,
       addAssistantTurn,
       setTurnStatus,
+      updateTurnIntent,
       clear,
       artifact,
       showArtifact,
@@ -96,6 +102,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       addUserTurn,
       addAssistantTurn,
       setTurnStatus,
+      updateTurnIntent,
       clear,
       artifact,
       showArtifact,

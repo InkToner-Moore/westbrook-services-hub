@@ -1,0 +1,115 @@
+// Field specifications for the in-chat confirmation check. These encode the
+// brief's field tables exactly: which fields show, their necessity marker, and
+// whether they show when blank. The confirmation UI renders from these specs; the
+// deterministic/LLM providers fill values into the matching keys.
+//
+// Marker legend (from the brief):
+//   'required' -> shown as "?"  = needed. If it is always-shown and still blank,
+//                 Confirm is blocked until it is filled.
+//   'optional' -> shown as "i"  = nice to have, never blocks.
+//
+// Visibility:
+//   alwaysShown true  -> always in the check, even blank (an invitation to fill).
+//   alwaysShown false -> "No-show if blank": only appears once it has a value.
+import type { AiAction, Intent, ReceiptSubtype } from './types';
+
+export type FieldKind = 'text' | 'phone' | 'email' | 'money' | 'date' | 'quantity' | 'toggle';
+
+export interface FieldSpec {
+  key: string;
+  label: string;
+  marker: 'required' | 'optional';
+  alwaysShown: boolean;
+  kind: FieldKind;
+  // Optional hint shown as placeholder when the field is empty and editable.
+  hint?: string;
+}
+
+// Shared across all four receipt types. Receipt Number is deliberately absent:
+// it is system-generated and system-checked only, never shown for user check.
+const RECEIPT_SHARED_TAIL: FieldSpec[] = [
+  { key: 'notes', label: 'Notes', marker: 'required', alwaysShown: false, kind: 'text' },
+  { key: 'gst', label: 'GST (5%)', marker: 'required', alwaysShown: true, kind: 'toggle' },
+];
+
+const CUSTOMER_FIELDS_NOSHOW: FieldSpec[] = [
+  { key: 'customerName', label: 'Customer Name', marker: 'required', alwaysShown: false, kind: 'text' },
+  { key: 'customerPhone', label: 'Customer Phone', marker: 'required', alwaysShown: false, kind: 'phone' },
+  { key: 'customerEmail', label: 'Customer Email', marker: 'required', alwaysShown: false, kind: 'email' },
+];
+
+const DATE_FIELD: FieldSpec = { key: 'date', label: 'Date', marker: 'required', alwaysShown: true, kind: 'date' };
+
+// Keyed by a spec id derived from action (+ receipt subtype).
+export const FIELD_SPECS: Record<string, FieldSpec[]> = {
+  'receipt:refill': [
+    DATE_FIELD,
+    { key: 'model', label: 'Model', marker: 'required', alwaysShown: true, kind: 'text' },
+    { key: 'brand', label: 'Brand', marker: 'required', alwaysShown: true, kind: 'text' },
+    { key: 'price', label: 'Price', marker: 'required', alwaysShown: true, kind: 'money' },
+    ...CUSTOMER_FIELDS_NOSHOW,
+    ...RECEIPT_SHARED_TAIL,
+  ],
+  'receipt:supplies': [
+    DATE_FIELD,
+    { key: 'supply', label: 'Supply', marker: 'required', alwaysShown: true, kind: 'text' },
+    { key: 'quantity', label: 'Quantity', marker: 'optional', alwaysShown: true, kind: 'quantity' },
+    { key: 'model', label: 'Model', marker: 'required', alwaysShown: true, kind: 'text' },
+    { key: 'price', label: 'Price', marker: 'required', alwaysShown: true, kind: 'money' },
+    ...CUSTOMER_FIELDS_NOSHOW,
+    ...RECEIPT_SHARED_TAIL,
+  ],
+  'receipt:key': [
+    DATE_FIELD,
+    { key: 'keyModel', label: 'Key Model / Description', marker: 'required', alwaysShown: true, kind: 'text' },
+    { key: 'price', label: 'Price', marker: 'required', alwaysShown: true, kind: 'money' },
+    ...CUSTOMER_FIELDS_NOSHOW,
+    ...RECEIPT_SHARED_TAIL,
+  ],
+  // Shipping's per-item fields (courier, tracking, city, province, country, cost,
+  // taxes) are modeled as a repeated item block in Phase 4 alongside the generator.
+  'receipt:shipping': [
+    DATE_FIELD,
+    { key: 'customerName', label: 'Customer Name', marker: 'required', alwaysShown: true, kind: 'text' },
+    { key: 'customerPhone', label: 'Customer Phone', marker: 'required', alwaysShown: true, kind: 'phone' },
+    { key: 'customerEmail', label: 'Customer Email', marker: 'required', alwaysShown: false, kind: 'email' },
+    { key: 'gst', label: 'GST (5%)', marker: 'required', alwaysShown: true, kind: 'toggle' },
+  ],
+  'cartridge_create': [
+    { key: 'customerName', label: 'Customer Name', marker: 'required', alwaysShown: true, kind: 'text' },
+    { key: 'customerPhone', label: 'Customer Phone', marker: 'required', alwaysShown: true, kind: 'phone' },
+    { key: 'brand', label: 'Brand', marker: 'required', alwaysShown: true, kind: 'text' },
+    { key: 'model', label: 'Model', marker: 'required', alwaysShown: true, kind: 'text' },
+    { key: 'type', label: 'Type', marker: 'required', alwaysShown: true, kind: 'text' },
+    { key: 'price', label: 'Price', marker: 'required', alwaysShown: true, kind: 'money' },
+    { key: 'notes', label: 'Notes', marker: 'required', alwaysShown: false, kind: 'text' },
+  ],
+};
+
+// Derive the spec id from an intent.
+export function specIdFor(action: AiAction, subtype?: ReceiptSubtype): string | null {
+  if (action === 'receipt') return subtype ? `receipt:${subtype}` : null;
+  if (action === 'cartridge_create') return 'cartridge_create';
+  return null;
+}
+
+export function getFieldSpecs(intent: Intent): FieldSpec[] | null {
+  const id = specIdFor(intent.action, intent.subtype);
+  return id ? FIELD_SPECS[id] ?? null : null;
+}
+
+// A field is currently visible in the check if it is always-shown or has a value.
+export function isFieldVisible(spec: FieldSpec, value: unknown): boolean {
+  if (spec.alwaysShown) return true;
+  return value !== null && value !== undefined && value !== '';
+}
+
+// Confirm is blocked while any always-shown required field is still empty.
+export function missingRequired(specs: FieldSpec[], intent: Intent): FieldSpec[] {
+  return specs.filter((s) => {
+    if (s.marker !== 'required' || !s.alwaysShown) return false;
+    if (s.kind === 'toggle') return false; // toggles always have a boolean value
+    const v = intent.fields[s.key]?.value;
+    return v === null || v === undefined || v === '';
+  });
+}
