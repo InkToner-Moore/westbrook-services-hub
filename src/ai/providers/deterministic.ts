@@ -13,6 +13,7 @@ import {
   extractName,
   extractPhone,
   extractQuantity,
+  extractTracking,
   extractType,
   todayIso,
 } from '../extract';
@@ -126,6 +127,19 @@ export class DeterministicProvider implements AiProvider {
     const specs = getFieldSpecs(intent);
     if (specs) {
       intent.fields = fillFields(specs.map((s) => s.key), text);
+    }
+
+    // Tracking has no confirmation spec; fill courier + number directly.
+    if (action === 'track') {
+      const { courier, trackingNumber } = extractTracking(text);
+      intent.fields = {
+        courier: courier
+          ? { value: courier, source: 'explicit' }
+          : { value: null, source: 'not_provided' },
+        trackingNumber: trackingNumber
+          ? { value: trackingNumber, source: 'explicit' }
+          : { value: null, source: 'not_provided' },
+      };
     }
 
     return intent;

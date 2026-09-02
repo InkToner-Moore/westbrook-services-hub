@@ -4,9 +4,9 @@ Update this at the end of every phase and before any context handoff. To resume,
 read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this file.
 
 ## Where we are
-- **Phase:** 0, 1, 2 DONE. Phase 4 receipts (refill/supplies/key) DONE and
-  browser-verified (real PDF + Artifact preview + chat download/print). Phase 3
-  (quick-action pills) and shipping-receipt build are next.
+- **Phase:** 0,1,2,4(flat receipts),3(pills),7(tracking) DONE and browser-verified.
+  Next: cartridge manager (6), notes/inventory/directory/followup executors (7),
+  shipping receipt, packing/multi-mode (5), LLM proxy + staging (8), review (9).
 - **Branch:** ai-mode-overhaul (session branch, off main via GitButler).
 - **Prod:** untouched by design. Do not modify `deploy.yml` or `public/CNAME`.
 - **Build/lint:** `yarn build` green. New AI files lint-clean (one benign
@@ -63,7 +63,24 @@ read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this fi
 - Verified: refill prompt -> confirm -> correct PDF (Subtotal/GST/Total), both-size
   downloads, print, live Artifact preview.
 
+## Phase 3 + tracking (done)
+- `src/components/ai/QuickActions.tsx` + `quickActionSpecs.ts`: TRACK group
+  (FedEx/Purolator/UPS, hover reveals a tracking-number field, Enter tracks; click
+  drops a courier chip) and action chips (Receipt/Refill/Purchase/Note/Inventory).
+- `Composer.tsx`: holds chips, prepends their keywords to the prompt on send.
+- Tracking module: `src/ai/tracking.ts` (courier deep-links), `actions/track.ts`
+  (immediate, no confirmation), `ArtifactPanel` TrackingArtifact card ("Open on
+  <carrier>" new tab). `actions/index.ts` gained `isImmediate` (track, cartridge_list
+  run without a confirmation step); deterministic provider fills track courier+number.
+- Verified: pills add chips; "track UPS 1Z999AA10123456784" -> UPS card + correct
+  deep link; chat shifts left when the Artifact opens.
+
 ## Next
+- Cartridge manager (6): `actions/cartridge.ts` create (has spec already) + modify/
+  status/list; reuse `lib/cartridges.ts` + `syncOrderStatus`; Artifact = order
+  receipt. Add cartridge specs to fieldSpecs for modify. No delete.
+- Notes/Inventory/Directory/Follow-Ups executors (7): chat CRUD via existing
+  collections/helpers; rename Customer Requests -> Customer Follow-Ups in copy.
 - Shipping receipt: multi-item block (courier/tracking/city/province/country/cost/
   tax per item) in ConfirmationCheck + `executeReceipt` shipping branch + the
   final-sale footnote (already supported via `SimpleReceiptOptions.footnote`).

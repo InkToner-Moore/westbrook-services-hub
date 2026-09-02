@@ -8,7 +8,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAiMode } from '@/ai/context';
 import { getProvider } from '@/ai/providers';
 import { getFieldSpecs } from '@/ai/fieldSpecs';
-import { getExecutor } from '@/ai/actions';
+import { getExecutor, isImmediate } from '@/ai/actions';
 import type { Intent } from '@/ai/types';
 import Composer from './Composer';
 import ConfirmationCheck from './ConfirmationCheck';
@@ -75,7 +75,35 @@ const AiOverlay: React.FC = () => {
     addUserTurn(text);
     const provider = getProvider();
     const intent = await provider.parse(text);
+
+    // Read-only actions (tracking, listing) run immediately, no confirmation.
+    const executor = getExecutor(intent.action);
+    if (executor && isImmediate(intent.action)) {
+      try {
+        addResult(await executor(intent));
+      } catch {
+        addAssistantTurn('Something went wrong with that. Please try again.');
+      }
+      return;
+    }
+
     addAssistantTurn(describeIntent(intent), intent.action === 'unknown' ? undefined : intent);
+  };
+
+  // Hover-to-type on a courier pill tracks immediately.
+  const handleTrack = async (courier: string, trackingNumber: string) => {
+    addUserTurn(`Track ${courier} ${trackingNumber}`);
+    const executor = getExecutor('track');
+    if (!executor) return;
+    const intent: Intent = {
+      action: 'track',
+      fields: {
+        courier: { value: courier, source: 'explicit' },
+        trackingNumber: { value: trackingNumber, source: 'explicit' },
+      },
+      confidence: 1,
+    };
+    addResult(await executor(intent));
   };
 
   const artifactOpen = !!artifact && artifact.kind !== 'none';
@@ -175,7 +203,7 @@ const AiOverlay: React.FC = () => {
         </div>
 
         <div className="mt-3">
-          <Composer onSend={handleSend} />
+          <Composer onSend={handleSend} onTrack={handleTrack} />
         </div>
       </div>
 
