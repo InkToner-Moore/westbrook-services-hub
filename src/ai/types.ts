@@ -59,6 +59,14 @@ export interface AiParseContext {
   activeTab?: string;
 }
 
+// A generated receipt carried on an assistant turn, so the chat can offer the
+// download (4x6 / full page) and print controls the brief wants in the chat, not
+// in the Artifact. Uses SimpleReceiptOptions so both sizes are derivable.
+import type { SimpleReceiptOptions } from '@/lib/simpleReceipt';
+export interface ReceiptPayload {
+  opts: SimpleReceiptOptions;
+}
+
 // A single message in the chat thread.
 export interface ChatTurn {
   id: string;
@@ -69,6 +77,8 @@ export interface ChatTurn {
   intent?: Intent;
   // Whether this proposed intent has been confirmed, edited, or dismissed.
   status?: 'pending' | 'confirmed' | 'dismissed';
+  // A generated receipt attached to this turn (download/print controls).
+  receipt?: ReceiptPayload;
   createdAt: number;
 }
 

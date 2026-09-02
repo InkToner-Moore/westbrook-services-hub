@@ -8,9 +8,12 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAiMode } from '@/ai/context';
 import { getProvider } from '@/ai/providers';
 import { getFieldSpecs } from '@/ai/fieldSpecs';
+import { getExecutor } from '@/ai/actions';
 import type { Intent } from '@/ai/types';
 import Composer from './Composer';
 import ConfirmationCheck from './ConfirmationCheck';
+import ReceiptControls from './ReceiptControls';
+import ArtifactPanel from './ArtifactPanel';
 
 // A short, warm line describing what the engine understood. Real confirmation
 // checks replace this in Phase 2.
@@ -45,8 +48,18 @@ function describeIntent(intent: Intent): string {
 
 const AiOverlay: React.FC = () => {
   const { themeClasses } = useTheme();
-  const { isOpen, close, turns, addUserTurn, addAssistantTurn, updateTurnIntent, setTurnStatus, clear } =
-    useAiMode();
+  const {
+    isOpen,
+    close,
+    turns,
+    addUserTurn,
+    addAssistantTurn,
+    addResult,
+    updateTurnIntent,
+    setTurnStatus,
+    clear,
+    artifact,
+  } = useAiMode();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Keep the newest turn in view.
@@ -65,8 +78,10 @@ const AiOverlay: React.FC = () => {
     addAssistantTurn(describeIntent(intent), intent.action === 'unknown' ? undefined : intent);
   };
 
+  const artifactOpen = !!artifact && artifact.kind !== 'none';
+
   return (
-    <div className="fixed inset-0 z-[60] flex justify-center print:hidden">
+    <div className={`fixed inset-0 z-[60] flex print:hidden ${artifactOpen ? 'md:justify-start md:pl-[4%]' : 'justify-center'}`}>
       {/* Backdrop over the classic page. */}
       <div className={`absolute inset-0 backdrop-blur-sm ${themeClasses.background} opacity-95`} />
 
@@ -126,17 +141,30 @@ const AiOverlay: React.FC = () => {
                   </div>
                 </div>
 
+                {turn.receipt && (
+                  <div className="pl-1">
+                    <ReceiptControls receipt={turn.receipt} />
+                  </div>
+                )}
+
                 {turn.intent && specs && (
                   <ConfirmationCheck
                     intent={turn.intent}
                     specs={specs}
                     readOnly={turn.status !== 'pending'}
-                    onConfirm={(finalIntent) => {
+                    onConfirm={async (finalIntent) => {
                       updateTurnIntent(turn.id, finalIntent);
                       setTurnStatus(turn.id, 'confirmed');
-                      // Action execution (PDF generation, Firestore writes) is
-                      // wired per feature in later phases. For now, acknowledge.
-                      addAssistantTurn('Done. That is all set.');
+                      const executor = getExecutor(finalIntent.action);
+                      if (executor) {
+                        try {
+                          addResult(await executor(finalIntent));
+                        } catch {
+                          addAssistantTurn('Something went wrong finishing that. Please try again.');
+                        }
+                      } else {
+                        addAssistantTurn('Done. That is all set.');
+                      }
                     }}
                     onDismiss={() => setTurnStatus(turn.id, 'dismissed')}
                   />
@@ -150,6 +178,9 @@ const AiOverlay: React.FC = () => {
           <Composer onSend={handleSend} />
         </div>
       </div>
+
+      {/* The single Artifact panel slides in over the chat when opened. */}
+      <ArtifactPanel />
     </div>
   );
 };

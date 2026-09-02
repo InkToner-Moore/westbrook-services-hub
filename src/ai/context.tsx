@@ -3,6 +3,7 @@
 // only ever active on /staff routes. See docs/ai-mode/01-design.md.
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { ArtifactState, ChatTurn, Intent } from './types';
+import type { ActionResult } from './actions/types';
 
 let turnCounter = 0;
 const nextId = (prefix: string) => {
@@ -21,6 +22,9 @@ interface AiModeContextValue {
   turns: ChatTurn[];
   addUserTurn: (text: string) => ChatTurn;
   addAssistantTurn: (text: string, intent?: Intent) => ChatTurn;
+  // Add an assistant turn from an executed action's result (message + optional
+  // receipt), opening its Artifact if it carries one.
+  addResult: (result: ActionResult) => void;
   setTurnStatus: (id: string, status: ChatTurn['status']) => void;
   updateTurnIntent: (id: string, intent: Intent) => void;
   clear: () => void;
@@ -61,6 +65,18 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return turn;
   }, []);
 
+  const addResult = useCallback((result: ActionResult) => {
+    const turn: ChatTurn = {
+      id: nextId('a'),
+      role: 'assistant',
+      text: result.message,
+      receipt: result.receipt,
+      createdAt: Date.now(),
+    };
+    setTurns((prev) => [...prev, turn]);
+    if (result.artifact) setArtifact(result.artifact);
+  }, []);
+
   const setTurnStatus = useCallback((id: string, status: ChatTurn['status']) => {
     setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
   }, []);
@@ -86,6 +102,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       turns,
       addUserTurn,
       addAssistantTurn,
+      addResult,
       setTurnStatus,
       updateTurnIntent,
       clear,
@@ -101,6 +118,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       turns,
       addUserTurn,
       addAssistantTurn,
+      addResult,
       setTurnStatus,
       updateTurnIntent,
       clear,

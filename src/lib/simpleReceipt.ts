@@ -47,12 +47,20 @@ export interface SimpleReceiptOptions {
   price: number;
   gst?: number;              // present => GST/Subtotal/Total lines are shown
   fileNameBase: string;      // e.g. "cartridge-receipt-ORD-AB12"
+  footnote?: string[];       // small print at the foot (e.g. shipping final-sale terms)
 }
 
 const STORE_NAME = 'Ink, Toner & Moore';
 const STORE_ADDRESS = ['1200 37 Street SW, Unit 3b', 'Calgary, AB T3C 1S2', '(403) 686-2835'];
 
-export const generateSimpleReceiptPdf = (opts: SimpleReceiptOptions, size: ReceiptSize) => {
+// The file name a saved receipt gets, matching the historical scheme.
+export const receiptFileName = (fileNameBase: string, size: ReceiptSize) =>
+  `${fileNameBase}-${size === 'letter' ? 'fullpage' : '4x6'}.pdf`;
+
+// Build the receipt and return the jsPDF document without saving it, so callers
+// can preview it (doc.output(...)), print it, or save it. generateSimpleReceiptPdf
+// wraps this and saves, preserving the original download behavior.
+export const buildSimpleReceiptPdf = (opts: SimpleReceiptOptions, size: ReceiptSize) => {
   const isLetter = size === 'letter';
   const doc = new jsPDF({
     unit: 'in',
@@ -155,14 +163,34 @@ export const generateSimpleReceiptPdf = (opts: SimpleReceiptOptions, size: Recei
     addRow(opts.items?.length ? 'Total' : 'Price', `$${opts.price.toFixed(2)}`, true);
   }
 
+  // Footnote (small print). Rendered in flow so it works on both sizes.
+  if (opts.footnote?.length) {
+    y += isLetter ? 0.22 : 0.16;
+    doc.setLineWidth(0.006);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += isLetter ? 0.18 : 0.14;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(isLetter ? 8 : 6.6);
+    opts.footnote.forEach((para) => {
+      const wrapped = doc.splitTextToSize(para, contentWidth) as string[];
+      doc.text(wrapped, margin, y);
+      y += (isLetter ? 0.14 : 0.1) * wrapped.length + (isLetter ? 0.05 : 0.03);
+    });
+  }
+
   // Footer (full-page only)
   if (isLetter) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    doc.text('Thank you for choosing Ink, Toner & Moore — Westbrook Mall', pageWidth / 2, 10.6, {
+    doc.text('Thank you for choosing Ink, Toner & Moore, Westbrook Mall', pageWidth / 2, 10.6, {
       align: 'center',
     });
   }
 
-  doc.save(`${opts.fileNameBase}-${isLetter ? 'fullpage' : '4x6'}.pdf`);
+  return doc;
+};
+
+export const generateSimpleReceiptPdf = (opts: SimpleReceiptOptions, size: ReceiptSize) => {
+  const doc = buildSimpleReceiptPdf(opts, size);
+  doc.save(receiptFileName(opts.fileNameBase, size));
 };

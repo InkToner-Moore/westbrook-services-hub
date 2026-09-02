@@ -4,7 +4,9 @@ Update this at the end of every phase and before any context handoff. To resume,
 read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this file.
 
 ## Where we are
-- **Phase:** 0, 1, 2 DONE and browser-verified. Phase 3 (quick-action pills) next.
+- **Phase:** 0, 1, 2 DONE. Phase 4 receipts (refill/supplies/key) DONE and
+  browser-verified (real PDF + Artifact preview + chat download/print). Phase 3
+  (quick-action pills) and shipping-receipt build are next.
 - **Branch:** ai-mode-overhaul (session branch, off main via GitButler).
 - **Prod:** untouched by design. Do not modify `deploy.yml` or `public/CNAME`.
 - **Build/lint:** `yarn build` green. New AI files lint-clean (one benign
@@ -45,12 +47,31 @@ read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this fi
   403-555-1212" routes to refill, extracts fields, marks date/gst guessed, hides
   blank email/notes, Confirm -> done + read-only. Classic pages render untouched.
 
+## Phase 4 (done, flat receipts)
+- `src/lib/simpleReceipt.ts`: refactored into `buildSimpleReceiptPdf` (returns the
+  jsPDF doc) + `generateSimpleReceiptPdf` (builds + saves, unchanged behavior) +
+  `receiptFileName`; added optional `footnote` for shipping terms. Also removed an
+  em dash from the existing footer copy (project rule). StaffReceipts still works.
+- Action layer: `src/ai/actions/{types,receipt,index}.ts` (executor registry;
+  `executeReceipt` handles refill/supplies/key; shipping returns a placeholder msg).
+- `src/ai/receiptOutput.ts`: download/print/previewUri helpers.
+- `src/components/ai/ReceiptControls.tsx` (chat: 4x6 / full page / print) and
+  `ArtifactPanel.tsx` (right-side sheet previewing the PDF in an iframe).
+- Context gained `addResult(result)`; AiOverlay runs the executor on Confirm,
+  renders receipt controls, mounts ArtifactPanel, and shifts the chat left when the
+  Artifact is open.
+- Verified: refill prompt -> confirm -> correct PDF (Subtotal/GST/Total), both-size
+  downloads, print, live Artifact preview.
+
 ## Next
+- Shipping receipt: multi-item block (courier/tracking/city/province/country/cost/
+  tax per item) in ConfirmationCheck + `executeReceipt` shipping branch + the
+  final-sale footnote (already supported via `SimpleReceiptOptions.footnote`).
 - Phase 3: `src/components/ai/QuickActions.tsx` (tracking group FedEx/Purolator/UPS
-  with hover-to-type tracking#; action group Receipt/Refill/Purchase/Note/Inventory
-  as chips) wired into Composer. Then Phases 4-9 per `02-implementation-plan.md`.
-- NOTE for Phase 2 follow-up: shipping multi-item block and receipt generation are
-  Phase 4; ConfirmationCheck currently only renders flat specs.
+  with hover-to-type tracking#; action chips Receipt/Refill/Purchase/Note/Inventory)
+  wired into Composer.
+- Phases 5-9 per `02-implementation-plan.md`. Executors for cartridge/note/inventory/
+  directory/followup/track follow the `src/ai/actions/` pattern established here.
 
 ## Open questions / watch-outs
 - Exact staging host (Cloudflare Pages vs Firebase Hosting vs separate gh-pages
