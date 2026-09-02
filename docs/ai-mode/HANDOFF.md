@@ -3,6 +3,26 @@
 Update this at the end of every phase and before any context handoff. To resume,
 read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this file.
 
+## Exit state (2026-09-02)
+- **Next session is for:** the shipping multi-item receipt, then plan phase 5
+  (packing tab + multi-mode receipt cart). Building, not planning.
+- **Branch:** `ai-mode-overhaul`, 9 commits, all pushed to origin (head `df0c6a0`).
+  Working tree CLEAN (no uncommitted changes, no stray worktrees).
+- **Gate as observed:** `yarn build` GREEN. `yarn eslint src/ai src/components/ai`
+  = 0 errors, 1 benign fast-refresh warning (context.tsx, same pattern as
+  ThemeContext). Full-repo `yarn lint` FAILS, but only on pre-existing baseline
+  files this work never touched (dataExport.ts, validation.ts, tailwind.config.ts) -
+  it failed identically before this session. Do not "fix" those as part of this work.
+- **Open PR not from this work:** #1 "Align docs with the real Firebase + GitHub
+  Pages stack" (branch docs-align-claude-md). Leave it alone.
+- **Tooling:** node is not on the sandbox PATH. Use
+  `export PATH="/nix/store/zm0k3k5802qlww0llyl13s7hiw0jd6yl-nodejs-24.18.1/bin:$PATH"`
+  then `corepack yarn <cmd>` with `COREPACK_ENABLE_DOWNLOAD_PROMPT=0`. Dev server
+  with auth bypass: `VITE_NODE_ENV=development VITE_DEV_BYPASS_AUTH=true corepack yarn dev`.
+- **Do NOT rebuild (already built, verified):** the whole AI Mode layer under
+  `src/ai/` and `src/components/ai/` plus the `simpleReceipt.ts` builder split. See
+  the per-phase notes below before touching any of it.
+
 ## Where we are
 - **DONE + browser-verified:** phases 0,1,2,3(pills),4(flat receipts),6(cartridge),
   7(tracking + notes/inventory/directory/followup). Customer Requests renamed to
