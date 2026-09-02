@@ -93,7 +93,7 @@ const StaffDashboard = () => {
       featurePath: "modules.inventory.enabled"
     },
     {
-      title: "Customer Requests",
+      title: "Customer Follow-Ups",
       description: "Items customers are waiting to hear back on",
       icon: ClipboardList,
       color: "from-rose-500 to-pink-600",

@@ -138,13 +138,13 @@ const StaffRequests = () => {
 
   return (
     <StaffLayout
-      title="Customer Requests"
+      title="Customer Follow-Ups"
       icon={ClipboardList}
       iconColor="from-rose-500 to-pink-600"
     >
       <div className="text-center mb-12">
         <h2 className={`text-4xl font-bold mb-4 drop-shadow-2xl transition-colors duration-300 ${themeClasses.text.primary}`}>
-          Customer Requests
+          Customer Follow-Ups
         </h2>
         <p className={`text-xl max-w-2xl mx-auto drop-shadow-lg transition-colors duration-300 ${themeClasses.text.secondary}`}>
           Keep track of what customers are waiting to hear back on
