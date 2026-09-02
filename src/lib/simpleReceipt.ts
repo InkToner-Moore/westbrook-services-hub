@@ -6,7 +6,7 @@ import jsPDF from 'jspdf';
 export const GST_RATE = 0.05;
 export const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
-// Receipt number like "CR2605131432" — prefix + YYMMDDHHmm.
+// Receipt number like "CR2605131432": prefix + YYMMDDHHmm.
 export const generateReceiptNumber = (prefix: string) => {
   const now = new Date();
   const yy = now.getFullYear().toString().slice(-2);

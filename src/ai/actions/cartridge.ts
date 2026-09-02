@@ -130,6 +130,12 @@ export async function executeCartridgeStatus(intent: Intent): Promise<ActionResu
   const orderId = str(intent, 'orderId').toUpperCase();
   const status = str(intent, 'status') as OrderStatus;
 
+  // The three statuses are load-bearing on the public refill page, so never write
+  // anything else, even if the field was hand-edited to free text.
+  if (!(status in STATUS_LABEL)) {
+    return { message: 'Status must be one of: in progress, ready, picked up.' };
+  }
+
   const order = await getDocument<CartridgeOrder>(ORDERS_COLLECTION, orderId);
   if (!order) {
     return { message: `I could not find order ${orderId}. Check the ID and try again.` };
