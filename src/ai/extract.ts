@@ -115,6 +115,22 @@ export function extractTracking(text: string): CourierMatch {
   return { courier, trackingNumber };
 }
 
+// An order id like ORD-AB12CD.
+export function extractOrderId(text: string): string | null {
+  const m = text.match(/\bORD-[A-Z0-9]{6}\b/i);
+  return m ? m[0].toUpperCase() : null;
+}
+
+// A cartridge order's target status from natural language. Returns the stored
+// enum value the app uses (in_progress | ready | picked_up).
+export function extractCartridgeStatus(text: string): string | null {
+  const lower = text.toLowerCase();
+  if (/\bpick(ed)?\s*up\b|\bpicked\b|\bcollected\b/.test(lower)) return 'picked_up';
+  if (/\bready\b|\bdone\b|\bcomplete[d]?\b/.test(lower)) return 'ready';
+  if (/\bin\s*progress\b|\bworking\b|\bstarted\b/.test(lower)) return 'in_progress';
+  return null;
+}
+
 // Canadian province from a name or two-letter code in the text.
 const PROVINCES: Array<{ code: string; names: string[] }> = [
   { code: 'AB', names: ['alberta'] },

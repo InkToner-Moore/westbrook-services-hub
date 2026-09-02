@@ -4,9 +4,12 @@ Update this at the end of every phase and before any context handoff. To resume,
 read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this file.
 
 ## Where we are
-- **Phase:** 0,1,2,4(flat receipts),3(pills),7(tracking) DONE and browser-verified.
-  Next: cartridge manager (6), notes/inventory/directory/followup executors (7),
+- **Phase:** 0,1,2,4(flat receipts),3(pills),7(tracking),6(cartridge) DONE and
+  browser-verified. Next: notes/inventory/directory/followup executors (rest of 7),
   shipping receipt, packing/multi-mode (5), LLM proxy + staging (8), review (9).
+- **Confirmation gating decoupled:** FieldSpec now has `blocking?` separate from the
+  `?`/`i` marker, so a field can read as "needed" without forcing the counter to
+  have it (e.g. price/phone at intake). Only genuine must-haves block Confirm.
 - **Branch:** ai-mode-overhaul (session branch, off main via GitButler).
 - **Prod:** untouched by design. Do not modify `deploy.yml` or `public/CNAME`.
 - **Build/lint:** `yarn build` green. New AI files lint-clean (one benign

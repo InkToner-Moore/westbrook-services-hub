@@ -21,6 +21,10 @@ export interface FieldSpec {
   marker: 'required' | 'optional';
   alwaysShown: boolean;
   kind: FieldKind;
+  // When true and empty, Confirm is blocked. Kept separate from the marker so a
+  // field can read as "needed" (?) without forcing the counter to have it on hand
+  // (e.g. a phone at cartridge intake). Only the genuine must-haves block.
+  blocking?: boolean;
   // Optional hint shown as placeholder when the field is empty and editable.
   hint?: string;
 }
@@ -44,25 +48,25 @@ const DATE_FIELD: FieldSpec = { key: 'date', label: 'Date', marker: 'required', 
 export const FIELD_SPECS: Record<string, FieldSpec[]> = {
   'receipt:refill': [
     DATE_FIELD,
-    { key: 'model', label: 'Model', marker: 'required', alwaysShown: true, kind: 'text' },
-    { key: 'brand', label: 'Brand', marker: 'required', alwaysShown: true, kind: 'text' },
-    { key: 'price', label: 'Price', marker: 'required', alwaysShown: true, kind: 'money' },
+    { key: 'model', label: 'Model', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
+    { key: 'brand', label: 'Brand', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
+    { key: 'price', label: 'Price', marker: 'required', alwaysShown: true, kind: 'money', blocking: true },
     ...CUSTOMER_FIELDS_NOSHOW,
     ...RECEIPT_SHARED_TAIL,
   ],
   'receipt:supplies': [
     DATE_FIELD,
-    { key: 'supply', label: 'Supply', marker: 'required', alwaysShown: true, kind: 'text' },
+    { key: 'supply', label: 'Supply', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
     { key: 'quantity', label: 'Quantity', marker: 'optional', alwaysShown: true, kind: 'quantity' },
-    { key: 'model', label: 'Model', marker: 'required', alwaysShown: true, kind: 'text' },
-    { key: 'price', label: 'Price', marker: 'required', alwaysShown: true, kind: 'money' },
+    { key: 'model', label: 'Model', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
+    { key: 'price', label: 'Price', marker: 'required', alwaysShown: true, kind: 'money', blocking: true },
     ...CUSTOMER_FIELDS_NOSHOW,
     ...RECEIPT_SHARED_TAIL,
   ],
   'receipt:key': [
     DATE_FIELD,
-    { key: 'keyModel', label: 'Key Model / Description', marker: 'required', alwaysShown: true, kind: 'text' },
-    { key: 'price', label: 'Price', marker: 'required', alwaysShown: true, kind: 'money' },
+    { key: 'keyModel', label: 'Key Model / Description', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
+    { key: 'price', label: 'Price', marker: 'required', alwaysShown: true, kind: 'money', blocking: true },
     ...CUSTOMER_FIELDS_NOSHOW,
     ...RECEIPT_SHARED_TAIL,
   ],
@@ -70,19 +74,23 @@ export const FIELD_SPECS: Record<string, FieldSpec[]> = {
   // taxes) are modeled as a repeated item block in Phase 4 alongside the generator.
   'receipt:shipping': [
     DATE_FIELD,
-    { key: 'customerName', label: 'Customer Name', marker: 'required', alwaysShown: true, kind: 'text' },
+    { key: 'customerName', label: 'Customer Name', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
     { key: 'customerPhone', label: 'Customer Phone', marker: 'required', alwaysShown: true, kind: 'phone' },
     { key: 'customerEmail', label: 'Customer Email', marker: 'required', alwaysShown: false, kind: 'email' },
     { key: 'gst', label: 'GST (5%)', marker: 'required', alwaysShown: true, kind: 'toggle' },
   ],
   'cartridge_create': [
-    { key: 'customerName', label: 'Customer Name', marker: 'required', alwaysShown: true, kind: 'text' },
+    { key: 'customerName', label: 'Customer Name', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
     { key: 'customerPhone', label: 'Customer Phone', marker: 'required', alwaysShown: true, kind: 'phone' },
     { key: 'brand', label: 'Brand', marker: 'required', alwaysShown: true, kind: 'text' },
-    { key: 'model', label: 'Model', marker: 'required', alwaysShown: true, kind: 'text' },
+    { key: 'model', label: 'Model', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
     { key: 'type', label: 'Type', marker: 'required', alwaysShown: true, kind: 'text' },
     { key: 'price', label: 'Price', marker: 'required', alwaysShown: true, kind: 'money' },
     { key: 'notes', label: 'Notes', marker: 'required', alwaysShown: false, kind: 'text' },
+  ],
+  'cartridge_status': [
+    { key: 'orderId', label: 'Order', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
+    { key: 'status', label: 'New Status', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
   ],
 };
 
@@ -90,6 +98,7 @@ export const FIELD_SPECS: Record<string, FieldSpec[]> = {
 export function specIdFor(action: AiAction, subtype?: ReceiptSubtype): string | null {
   if (action === 'receipt') return subtype ? `receipt:${subtype}` : null;
   if (action === 'cartridge_create') return 'cartridge_create';
+  if (action === 'cartridge_status') return 'cartridge_status';
   return null;
 }
 
@@ -104,10 +113,10 @@ export function isFieldVisible(spec: FieldSpec, value: unknown): boolean {
   return value !== null && value !== undefined && value !== '';
 }
 
-// Confirm is blocked while any always-shown required field is still empty.
+// Confirm is blocked while any blocking field is still empty.
 export function missingRequired(specs: FieldSpec[], intent: Intent): FieldSpec[] {
   return specs.filter((s) => {
-    if (s.marker !== 'required' || !s.alwaysShown) return false;
+    if (!s.blocking) return false;
     if (s.kind === 'toggle') return false; // toggles always have a boolean value
     const v = intent.fields[s.key]?.value;
     return v === null || v === undefined || v === '';

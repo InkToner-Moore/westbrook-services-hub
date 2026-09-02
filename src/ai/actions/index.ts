@@ -5,10 +5,20 @@ import type { AiAction } from '../types';
 import type { ActionExecutor } from './types';
 import { executeReceipt } from './receipt';
 import { executeTrack } from './track';
+import {
+  executeCartridgeCreate,
+  executeCartridgeList,
+  executeCartridgeModify,
+  executeCartridgeStatus,
+} from './cartridge';
 
 const REGISTRY: Partial<Record<AiAction, ActionExecutor>> = {
   receipt: executeReceipt,
   track: executeTrack,
+  cartridge_create: executeCartridgeCreate,
+  cartridge_status: executeCartridgeStatus,
+  cartridge_list: executeCartridgeList,
+  cartridge_modify: executeCartridgeModify,
 };
 
 export function getExecutor(action: AiAction): ActionExecutor | undefined {
@@ -16,7 +26,7 @@ export function getExecutor(action: AiAction): ActionExecutor | undefined {
 }
 
 // Read-only actions that are safe to run immediately, with no confirmation step.
-const IMMEDIATE: Set<AiAction> = new Set(['track', 'cartridge_list']);
+const IMMEDIATE: Set<AiAction> = new Set(['track', 'cartridge_list', 'cartridge_modify']);
 
 export function isImmediate(action: AiAction): boolean {
   return IMMEDIATE.has(action);

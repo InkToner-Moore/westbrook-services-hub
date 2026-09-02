@@ -7,10 +7,12 @@ import type { AiAction, AiParseContext, AiProvider, FieldValue, Intent, ReceiptS
 import { getFieldSpecs } from '../fieldSpecs';
 import {
   extractBrand,
+  extractCartridgeStatus,
   extractEmail,
   extractModel,
   extractMoney,
   extractName,
+  extractOrderId,
   extractPhone,
   extractQuantity,
   extractTracking,
@@ -84,6 +86,12 @@ function fillFields(specKeys: string[], text: string): Record<string, FieldValue
       case 'customerEmail':
         fields[key] = fieldFrom(extractEmail(text));
         break;
+      case 'orderId':
+        fields[key] = fieldFrom(extractOrderId(text));
+        break;
+      case 'status':
+        fields[key] = fieldFrom(extractCartridgeStatus(text));
+        break;
       // Free-text fields we cannot reliably auto-fill: leave for the user.
       case 'supply':
       case 'keyModel':
@@ -107,7 +115,17 @@ export class DeterministicProvider implements AiProvider {
     let subtype: ReceiptSubtype | undefined;
     let confidence = 0;
 
-    for (const route of ROUTES) {
+    // Content-based routing for a cartridge status change: a status word, plus an
+    // order id or a clear "mark/set/order/status" cue. This catches phrasings the
+    // fixed keyword list misses (e.g. "mark ORD-AB12CD as ready").
+    const statusHint = extractCartridgeStatus(text);
+    if (statusHint && (extractOrderId(text) || /\b(mark|set|status|order|pickup|pick up)\b/i.test(lower))) {
+      action = 'cartridge_status';
+      confidence = 0.65;
+    }
+
+    if (action === 'unknown')
+      for (const route of ROUTES) {
       if (route.words.some((w) => lower.includes(w))) {
         action = route.action;
         subtype = route.subtype;
