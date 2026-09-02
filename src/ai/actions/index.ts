@@ -11,6 +11,7 @@ import {
   executeCartridgeModify,
   executeCartridgeStatus,
 } from './cartridge';
+import { executeDirectory, executeFollowup, executeInventory, executeNote } from './collections';
 
 const REGISTRY: Partial<Record<AiAction, ActionExecutor>> = {
   receipt: executeReceipt,
@@ -19,6 +20,10 @@ const REGISTRY: Partial<Record<AiAction, ActionExecutor>> = {
   cartridge_status: executeCartridgeStatus,
   cartridge_list: executeCartridgeList,
   cartridge_modify: executeCartridgeModify,
+  note: executeNote,
+  inventory: executeInventory,
+  directory: executeDirectory,
+  followup: executeFollowup,
 };
 
 export function getExecutor(action: AiAction): ActionExecutor | undefined {

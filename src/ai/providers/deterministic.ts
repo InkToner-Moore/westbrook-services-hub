@@ -6,6 +6,8 @@
 import type { AiAction, AiParseContext, AiProvider, FieldValue, Intent, ReceiptSubtype } from '../types';
 import { getFieldSpecs } from '../fieldSpecs';
 import {
+  cleanRemainder,
+  domainName,
   extractBrand,
   extractCartridgeStatus,
   extractEmail,
@@ -17,24 +19,28 @@ import {
   extractQuantity,
   extractTracking,
   extractType,
+  extractUrl,
   todayIso,
 } from '../extract';
 
-// Keyword groups per action. First match wins, checked most-specific first.
+// Keyword groups per action. First match wins. Explicit noun-intents (orders,
+// notes, inventory, directory, follow-ups) are checked before the receipt subtypes
+// so a category word like "shipping" inside "add directory link ... shipping" does
+// not get mistaken for a shipping receipt.
 const ROUTES: Array<{ action: AiAction; subtype?: ReceiptSubtype; words: string[] }> = [
-  { action: 'receipt', subtype: 'refill', words: ['refill', 'refilled', 'toner refill'] },
-  { action: 'receipt', subtype: 'shipping', words: ['ship', 'shipment', 'courier', 'parcel', 'drop off', 'dropoff'] },
-  { action: 'receipt', subtype: 'key', words: ['key cut', 'key cutting', 'cut a key', 'key copy', 'copy a key'] },
-  { action: 'receipt', subtype: 'supplies', words: ['purchase', 'buy', 'bought', 'sold', 'sale', 'supply', 'supplies'] },
   { action: 'cartridge_status', words: ['mark ready', 'set status', 'picked up', 'is ready', 'change status', 'mark as'] },
   { action: 'cartridge_list', words: ['list orders', 'show orders', 'pending orders', 'all orders', 'open orders'] },
   { action: 'cartridge_modify', words: ['modify order', 'edit order', 'update order', 'change order'] },
   { action: 'cartridge_create', words: ['new order', 'cartridge order', 'refill order', 'create order', 'log an order'] },
-  { action: 'track', words: ['track', 'tracking', 'where is', 'fedex', 'ups', 'purolator', 'canada post', 'dhl'] },
-  { action: 'note', words: ['note', 'remember', 'jot'] },
-  { action: 'inventory', words: ['inventory', 'in stock', 'out of stock', 'restock'] },
-  { action: 'directory', words: ['directory', 'website', 'link', 'bookmark'] },
+  { action: 'directory', words: ['directory', 'website', 'bookmark', 'add link', 'save link'] },
+  { action: 'inventory', words: ['inventory', 'in stock', 'out of stock', 'restock', 'key model'] },
   { action: 'followup', words: ['follow up', 'follow-up', 'call back', 'waiting list', 'customer request'] },
+  { action: 'note', words: ['note', 'remember', 'jot'] },
+  { action: 'track', words: ['track', 'tracking', 'where is', 'fedex', 'ups', 'purolator', 'canada post', 'dhl'] },
+  { action: 'receipt', subtype: 'refill', words: ['refill', 'refilled', 'toner refill'] },
+  { action: 'receipt', subtype: 'shipping', words: ['ship', 'shipment', 'courier', 'parcel', 'drop off', 'dropoff'] },
+  { action: 'receipt', subtype: 'key', words: ['key cut', 'key cutting', 'cut a key', 'key copy', 'copy a key'] },
+  { action: 'receipt', subtype: 'supplies', words: ['purchase', 'buy', 'bought', 'sold', 'sale', 'supply', 'supplies'] },
 ];
 
 const RECEIPT_HINT = ['receipt', 'invoice'];
@@ -92,10 +98,32 @@ function fillFields(specKeys: string[], text: string): Record<string, FieldValue
       case 'status':
         fields[key] = fieldFrom(extractCartridgeStatus(text));
         break;
+      case 'url':
+        fields[key] = fieldFrom(extractUrl(text));
+        break;
+      case 'linkName':
+        fields[key] = fieldFrom(domainName(extractUrl(text) ?? ''));
+        break;
+      case 'noteCategory':
+        fields[key] = guessed('general', 'default category');
+        break;
+      case 'linkCategory':
+        fields[key] = guessed('other', 'default category');
+        break;
+      case 'inStock':
+        fields[key] = guessed(true, 'in stock by default');
+        break;
+      // Free-text bodies: seed from the leftover words, else leave for the user.
+      case 'content':
+      case 'item':
+      case 'keyName':
+        fields[key] = fieldFrom(cleanRemainder(text));
+        break;
       // Free-text fields we cannot reliably auto-fill: leave for the user.
       case 'supply':
       case 'keyModel':
       case 'notes':
+      case 'linkDescription':
       default:
         fields[key] = absent();
         break;

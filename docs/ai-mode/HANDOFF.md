@@ -4,12 +4,22 @@ Update this at the end of every phase and before any context handoff. To resume,
 read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this file.
 
 ## Where we are
-- **Phase:** 0,1,2,4(flat receipts),3(pills),7(tracking),6(cartridge) DONE and
-  browser-verified. Next: notes/inventory/directory/followup executors (rest of 7),
-  shipping receipt, packing/multi-mode (5), LLM proxy + staging (8), review (9).
-- **Confirmation gating decoupled:** FieldSpec now has `blocking?` separate from the
+- **DONE + browser-verified:** phases 0,1,2,3(pills),4(flat receipts),6(cartridge),
+  7(tracking + notes/inventory/directory/followup). Customer Requests renamed to
+  Customer Follow-Ups in the dashboard card + page copy.
+- **Remaining:** shipping multi-item receipt; packing tab + multi-mode receipt cart
+  (5); LLM provider + proxy + staging deploy (8); final review (9).
+- **Confirmation gating decoupled:** FieldSpec has `blocking?` separate from the
   `?`/`i` marker, so a field can read as "needed" without forcing the counter to
   have it (e.g. price/phone at intake). Only genuine must-haves block Confirm.
+- **Routing:** explicit noun-intents (cartridge/note/inventory/directory/followup)
+  are matched before receipt subtypes so a category word like "shipping" in a
+  directory command is not mistaken for a shipping receipt. Cartridge status also
+  routes by content (order id + status word).
+- **Firestore caveat:** create/status executors write to real collections and reuse
+  the pages' exact shapes, but cannot be exercised against the demo Firebase project
+  (permissions). Verify writes on staging with real config. Confirmation flows for
+  all of them are browser-verified.
 - **Branch:** ai-mode-overhaul (session branch, off main via GitButler).
 - **Prod:** untouched by design. Do not modify `deploy.yml` or `public/CNAME`.
 - **Build/lint:** `yarn build` green. New AI files lint-clean (one benign

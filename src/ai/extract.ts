@@ -115,6 +115,35 @@ export function extractTracking(text: string): CourierMatch {
   return { courier, trackingNumber };
 }
 
+// A URL or bare domain in the text.
+export function extractUrl(text: string): string | null {
+  const m = text.match(/\b(?:https?:\/\/|www\.)[^\s]+|\b[a-z0-9-]+\.(?:com|ca|net|org|io|co)\b[^\s]*/i);
+  return m ? m[0] : null;
+}
+
+// Strip leading action words so the remainder can seed a free-text field (a note
+// body, a follow-up item, a key model). Returns null when nothing meaningful is
+// left.
+const LEADING_WORDS =
+  /^(?:please\s+)?(?:add|log|create|make|new|note|remember|jot|down|a|an|the|to|follow[\s-]?up|inventory|directory|key|link|customer|request)\b[\s:,-]*/i;
+export function cleanRemainder(text: string): string | null {
+  let out = text.trim();
+  // Peel leading action words a few times.
+  for (let i = 0; i < 4; i += 1) {
+    const next = out.replace(LEADING_WORDS, '').trim();
+    if (next === out) break;
+    out = next;
+  }
+  return out.length > 0 ? out : null;
+}
+
+// The hostname's first label, as a friendly default name for a directory link.
+export function domainName(url: string): string | null {
+  const m = url.replace(/^https?:\/\//i, '').replace(/^www\./i, '').match(/^([a-z0-9-]+)\./i);
+  if (!m) return null;
+  return m[1].charAt(0).toUpperCase() + m[1].slice(1);
+}
+
 // An order id like ORD-AB12CD.
 export function extractOrderId(text: string): string | null {
   const m = text.match(/\bORD-[A-Z0-9]{6}\b/i);

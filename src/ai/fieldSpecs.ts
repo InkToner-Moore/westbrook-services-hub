@@ -92,6 +92,25 @@ export const FIELD_SPECS: Record<string, FieldSpec[]> = {
     { key: 'orderId', label: 'Order', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
     { key: 'status', label: 'New Status', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
   ],
+  'note': [
+    { key: 'content', label: 'Note', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
+    { key: 'noteCategory', label: 'Category', marker: 'optional', alwaysShown: true, kind: 'text' },
+  ],
+  'inventory': [
+    { key: 'keyName', label: 'Key Model', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
+    { key: 'inStock', label: 'In Stock', marker: 'optional', alwaysShown: true, kind: 'toggle' },
+  ],
+  'directory': [
+    { key: 'linkName', label: 'Name', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
+    { key: 'url', label: 'URL', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
+    { key: 'linkCategory', label: 'Category', marker: 'optional', alwaysShown: true, kind: 'text' },
+    { key: 'linkDescription', label: 'Description', marker: 'optional', alwaysShown: false, kind: 'text' },
+  ],
+  'followup': [
+    { key: 'customerName', label: 'Customer Name', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
+    { key: 'item', label: 'Item / Request', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
+    { key: 'customerPhone', label: 'Customer Phone', marker: 'optional', alwaysShown: true, kind: 'phone' },
+  ],
 };
 
 // Derive the spec id from an intent.
@@ -99,6 +118,10 @@ export function specIdFor(action: AiAction, subtype?: ReceiptSubtype): string | 
   if (action === 'receipt') return subtype ? `receipt:${subtype}` : null;
   if (action === 'cartridge_create') return 'cartridge_create';
   if (action === 'cartridge_status') return 'cartridge_status';
+  if (action === 'note') return 'note';
+  if (action === 'inventory') return 'inventory';
+  if (action === 'directory') return 'directory';
+  if (action === 'followup') return 'followup';
   return null;
 }
 
