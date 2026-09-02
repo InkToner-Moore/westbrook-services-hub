@@ -18,6 +18,9 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import FeatureProtectedRoute from "./components/FeatureProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./hooks/useAuth";
+import { AiModeProvider } from "./ai/context";
+import TabDock from "./components/ai/TabDock";
+import AiOverlay from "./components/ai/AiOverlay";
 import { Package, Receipt, Printer, StickyNote, Boxes, ClipboardList } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -164,7 +167,14 @@ const App = () => (
         {/* Match Vite's base path (set in vite.config.ts) so routing works
             whether the app is served at the site root or under a subpath. */}
         <BrowserRouter basename={import.meta.env.BASE_URL}>
-          <AppRoutes />
+          {/* AI Mode is an additive layer: the dock and overlay mount once here,
+              outside <Routes>, so they sit over every staff page without touching
+              any of them. They render nothing on public routes or when signed out. */}
+          <AiModeProvider>
+            <AppRoutes />
+            <TabDock />
+            <AiOverlay />
+          </AiModeProvider>
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
