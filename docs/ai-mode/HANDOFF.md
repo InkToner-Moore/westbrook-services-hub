@@ -3,11 +3,32 @@
 Update this at the end of every phase and before any context handoff. To resume,
 read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this file.
 
-## Exit state (2026-09-02)
-- **Next session is for:** the shipping multi-item receipt, then plan phase 5
-  (packing tab + multi-mode receipt cart). Building, not planning.
-- **Branch:** `ai-mode-overhaul`, 9 commits, all pushed to origin (head `df0c6a0`).
-  Working tree CLEAN (no uncommitted changes, no stray worktrees).
+## Exit state (2026-09-02, later session)
+- **Next session is for:** phase 5 (packing tab + multi-mode receipt cart).
+  Building, not planning.
+- **Just landed (browser-verified):** the shipping multi-item receipt. Commit
+  `vyv` on `ai-mode-overhaul`. Verified end to end in the browser: single item
+  (Purolator to BC, GST+PST), and two items across provinces (ON HST + BC GST/PST)
+  aggregating to the right total, correct footnote, PDF preview + download/print.
+- **Branch:** `ai-mode-overhaul`, 11 commits. The shipping commit `vyv` is NOT yet
+  pushed as of writing (push it); everything before it is on origin.
+  Working tree CLEAN after the commit.
+- **Shipping design notes (read before touching it):**
+  - Per-item tax comes from `src/lib/canadaTax.ts` (province -> GST/PST/HST),
+    a new module deliberately separate from StaffReceipts.tsx so the classic page
+    is untouched. The item's tax is editable (manual override) in the editor.
+  - The receipt's tax breakdown aggregates per-item tax lines by label, so a
+    two-item Alberta shipment shows one "GST (5%)" line.
+  - `SimpleReceiptOptions.taxLines` (new, optional) drives the multi-line tax
+    block; flat receipts still use the single `gst` line, unchanged.
+  - The `gst` field on the shipping spec is relabeled "Charge Tax" and acts as the
+    master on/off for all per-item tax.
+  - ROUTING FIX: bare courier names no longer route to `track`. Only the verbs
+    track/where is/trace route there up front; a bare courier or lone tracking
+    number falls back to track after the receipt routes. This is what the Track
+    pills (which prepend just the courier name) rely on, and it stops a shipping
+    receipt that names a courier from being read as a lookup. Re-verify tracking
+    pills still work if you touch the router.
 - **Gate as observed:** `yarn build` GREEN. `yarn eslint src/ai src/components/ai`
   = 0 errors, 1 benign fast-refresh warning (context.tsx, same pattern as
   ThemeContext). Full-repo `yarn lint` FAILS, but only on pre-existing baseline
@@ -24,11 +45,12 @@ read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this fi
   the per-phase notes below before touching any of it.
 
 ## Where we are
-- **DONE + browser-verified:** phases 0,1,2,3(pills),4(flat receipts),6(cartridge),
-  7(tracking + notes/inventory/directory/followup). Customer Requests renamed to
-  Customer Follow-Ups in the dashboard card + page copy.
-- **Remaining:** shipping multi-item receipt; packing tab + multi-mode receipt cart
-  (5); LLM provider + proxy + staging deploy (8); final review (9).
+- **DONE + browser-verified:** phases 0,1,2,3(pills),4(flat + shipping receipts),
+  6(cartridge),7(tracking + notes/inventory/directory/followup). Customer Requests
+  renamed to Customer Follow-Ups in the dashboard card + page copy. Shipping
+  multi-item receipt now complete (was the last gap in phase 4).
+- **Remaining:** packing tab + multi-mode receipt cart (5); LLM provider + proxy +
+  staging deploy (8); final review (9).
 - **Confirmation gating decoupled:** FieldSpec has `blocking?` separate from the
   `?`/`i` marker, so a field can read as "needed" without forcing the counter to
   have it (e.g. price/phone at intake). Only genuine must-haves block Confirm.
@@ -114,9 +136,9 @@ read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this fi
   receipt. Add cartridge specs to fieldSpecs for modify. No delete.
 - Notes/Inventory/Directory/Follow-Ups executors (7): chat CRUD via existing
   collections/helpers; rename Customer Requests -> Customer Follow-Ups in copy.
-- Shipping receipt: multi-item block (courier/tracking/city/province/country/cost/
-  tax per item) in ConfirmationCheck + `executeReceipt` shipping branch + the
-  final-sale footnote (already supported via `SimpleReceiptOptions.footnote`).
+- Shipping receipt: DONE (commit `vyv`). Multi-item block in ConfirmationCheck via
+  ShipmentItemsEditor, `executeReceipt` shipping branch, per-province tax, and the
+  final-sale footnote. See the shipping design notes in the exit state above.
 - Phase 3: `src/components/ai/QuickActions.tsx` (tracking group FedEx/Purolator/UPS
   with hover-to-type tracking#; action chips Receipt/Refill/Purchase/Note/Inventory)
   wired into Composer.
