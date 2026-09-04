@@ -3,9 +3,43 @@
 Update this at the end of every phase and before any context handoff. To resume,
 read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this file.
 
-## Exit state (2026-09-02, later session)
-- **Next session is for:** phase 5 (packing tab + multi-mode receipt cart).
-  Building, not planning.
+## Exit state (2026-09-03)
+- **Next session is for:** phase 8 (LLM provider + proxy + staging deploy) and
+  phase 9 (final review). Phase 5 is done. See the "Phase 5 decision to flag"
+  note below before phase 8: the classic StaffReceipts shipping form still has no
+  "add to receipt" button, so a shipment started on the classic Receipts page
+  cannot join the cart (chat + Packing page can). User asked for this; decide
+  whether to add it (additive, gated behind multi-mode) as a phase 5 follow-up.
+- **Just landed (browser-verified):** phase 5, packing tab + multi-item receipt
+  cart. Commit `zyy` on `ai-mode-overhaul`. Verified end to end in the browser
+  (dev server, auth bypass):
+  - Classic Packing page: presets add rows, qty +/- and tax toggle recompute
+    (Medium Box x2 + Envelope = $15.00 + $0.75 GST = $15.75), Add to receipt /
+    Download / Print all work.
+  - Cross-tab cart: items added on the Packing page appear in the chat cart bar
+    ("N items on receipt $X.XX"), and PACK chips in the chat add supplies too
+    (running total correct through 3 items = $26.25, then a fresh 2 items =
+    $12.60).
+  - Finish receipt builds one combined PDF: chat message + 4x6/full-page/print
+    controls + Artifact panel. (Artifact iframe renders blank under headless
+    Playwright, a PDF-plugin limitation; same code path as the verified shipping
+    receipt. Re-check the preview in a real browser if in doubt.)
+  - Multi-mode toggle persists (localStorage `ai-multi-mode`), reachable from both
+    the dashboard header and the AI overlay header. When OFF, nothing changes:
+    confirmed receipts finalize immediately as before.
+- **Bug fixed during verification:** `finalizeCart` first read its result from
+  inside a `setCart` updater (which React does not run synchronously), so the
+  combined receipt never rendered. Now computes from `cart` directly. If you
+  touch it, keep the deps on `cart`.
+- **Phase 5 decision to flag (user asked, not built):** the classic StaffReceipts
+  page was left untouched (invariant), so its shipping form has no cart hook. The
+  user's note: "if someone wants to add it to a shipment using classic view they
+  can just make the receipt multi, and add the packaging stuff." The cross-tab
+  cart covers this via chat + Packing page, but a classic-Receipts "Add to
+  receipt" button (gated behind multi-mode) would honor it literally. Additive,
+  keeps the off-state identical. Confirm scope with the user before building.
+
+## Prior exit state (2026-09-02, later session)
 - **Just landed (browser-verified):** the shipping multi-item receipt. Commit
   `vyv` on `ai-mode-overhaul`. Verified end to end in the browser: single item
   (Purolator to BC, GST+PST), and two items across provinces (ON HST + BC GST/PST)
@@ -46,11 +80,12 @@ read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this fi
 
 ## Where we are
 - **DONE + browser-verified:** phases 0,1,2,3(pills),4(flat + shipping receipts),
-  6(cartridge),7(tracking + notes/inventory/directory/followup). Customer Requests
-  renamed to Customer Follow-Ups in the dashboard card + page copy. Shipping
-  multi-item receipt now complete (was the last gap in phase 4).
-- **Remaining:** packing tab + multi-mode receipt cart (5); LLM provider + proxy +
-  staging deploy (8); final review (9).
+  5(packing tab + multi-item receipt cart),6(cartridge),7(tracking +
+  notes/inventory/directory/followup). Customer Requests renamed to Customer
+  Follow-Ups in the dashboard card + page copy.
+- **Remaining:** LLM provider + proxy + staging deploy (8); final review (9).
+  Possible phase 5 follow-up: classic StaffReceipts "add to receipt" button
+  (see the exit-state note).
 - **Confirmation gating decoupled:** FieldSpec has `blocking?` separate from the
   `?`/`i` marker, so a field can read as "needed" without forcing the counter to
   have it (e.g. price/phone at intake). Only genuine must-haves block Confirm.
