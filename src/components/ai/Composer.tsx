@@ -8,10 +8,12 @@ import { useTheme } from '@/contexts/ThemeContext';
 import QuickActions from './QuickActions';
 import type { ChipSpec } from './quickActionSpecs';
 import type { Courier } from '@/ai/tracking';
+import type { PackingPreset } from '@/lib/packing';
 
 interface ComposerProps {
   onSend: (text: string) => void;
   onTrack: (courier: Courier, trackingNumber: string) => void;
+  onAddPacking: (preset: PackingPreset) => void;
   disabled?: boolean;
 }
 
@@ -21,7 +23,7 @@ interface ActiveChip extends ChipSpec {
 
 let chipCounter = 0;
 
-const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, disabled }) => {
+const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disabled }) => {
   const { themeClasses, isDarkMode } = useTheme();
   const [text, setText] = useState('');
   const [chips, setChips] = useState<ActiveChip[]>([]);
@@ -44,7 +46,7 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, disabled }) => {
 
   return (
     <div className={`rounded-2xl border p-2 ${themeClasses.card.primary}`}>
-      <QuickActions onAddChip={addChip} onTrack={onTrack} />
+      <QuickActions onAddChip={addChip} onTrack={onTrack} onAddPacking={onAddPacking} />
 
       {chips.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5">

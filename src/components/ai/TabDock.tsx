@@ -8,6 +8,7 @@ import {
   Sparkles,
   Package,
   Receipt,
+  Box,
   Printer,
   StickyNote,
   Boxes,
@@ -29,6 +30,7 @@ interface TabItem {
 const TABS: TabItem[] = [
   { label: 'Tracking', icon: Package, route: '/staff/tracking' },
   { label: 'Receipts', icon: Receipt, route: '/staff/receipts' },
+  { label: 'Packing', icon: Box, route: '/staff/packing' },
   { label: 'Cartridges', icon: Printer, route: '/staff/cartridges' },
   { label: 'Notes', icon: StickyNote, route: '/staff/notes' },
   { label: 'Inventory', icon: Boxes, route: '/staff/inventory' },

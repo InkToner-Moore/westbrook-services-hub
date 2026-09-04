@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { ComposerChip } from '@/ai/types';
 import type { Courier } from '@/ai/tracking';
+import { PACKING_PRESETS, type PackingPreset } from '@/lib/packing';
 import { ACTION_CHIPS, TRACK_CHIP_SPECS, type ChipSpec } from './quickActionSpecs';
 
 const TRACKING: Array<{ courier: Courier; kind: ComposerChip['kind']; label: string }> = [
@@ -18,9 +19,12 @@ const TRACKING: Array<{ courier: Courier; kind: ComposerChip['kind']; label: str
 interface QuickActionsProps {
   onAddChip: (spec: ChipSpec) => void;
   onTrack: (courier: Courier, trackingNumber: string) => void;
+  // Add a packing preset straight onto the receipt cart (no confirmation needed;
+  // it is a fixed-price item). Custom entry lives on the classic Packing page.
+  onAddPacking: (preset: PackingPreset) => void;
 }
 
-const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack }) => {
+const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack, onAddPacking }) => {
   const { themeClasses, isDarkMode } = useTheme();
   const [hovered, setHovered] = useState<Courier | null>(null);
   const [entry, setEntry] = useState('');
@@ -78,6 +82,29 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack }) => {
               </div>
             )}
           </div>
+        ))}
+      </div>
+
+      {/* Packing group: fixed-price supplies added straight to the receipt. */}
+      <div
+        className={`flex items-center gap-1 rounded-full border px-1 py-0.5 ${
+          isDarkMode ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-slate-50'
+        }`}
+      >
+        <span className={`px-1.5 text-[10px] font-semibold uppercase tracking-wide ${themeClasses.text.muted}`}>
+          Pack
+        </span>
+        {PACKING_PRESETS.filter((p) => !p.custom).map((p) => (
+          <button
+            key={p.type}
+            type="button"
+            onClick={() => onAddPacking(p)}
+            className={`${pill} ${
+              isDarkMode ? 'border-teal-700 bg-teal-900/40 text-teal-200' : 'border-teal-300 bg-teal-50 text-teal-800'
+            }`}
+          >
+            {p.type} ${p.cost}
+          </button>
         ))}
       </div>
 

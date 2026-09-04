@@ -3,13 +3,16 @@
 // echoes routed intents for now; the confirmation check lands in Phase 2 and the
 // Artifact renderers in later phases.
 import React, { useEffect, useRef } from 'react';
-import { X, Eraser, Sparkles } from 'lucide-react';
+import { X, Eraser, Sparkles, Layers } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAiMode } from '@/ai/context';
 import { getProvider } from '@/ai/providers';
 import { getFieldSpecs } from '@/ai/fieldSpecs';
 import { getExecutor, isImmediate } from '@/ai/actions';
+import { packingToCartLine, receiptIntentToCartLines } from '@/ai/actions/cartLines';
+import { emptyPackingItem, type PackingPreset } from '@/lib/packing';
 import type { Intent } from '@/ai/types';
+import CartBar from './CartBar';
 import Composer from './Composer';
 import ConfirmationCheck from './ConfirmationCheck';
 import ReceiptControls from './ReceiptControls';
@@ -59,6 +62,10 @@ const AiOverlay: React.FC = () => {
     setTurnStatus,
     clear,
     artifact,
+    multiMode,
+    setMultiMode,
+    cart,
+    addCartLines,
   } = useAiMode();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -106,6 +113,13 @@ const AiOverlay: React.FC = () => {
     addResult(await executor(intent));
   };
 
+  // A packing pill adds a fixed-price supply straight onto the receipt cart.
+  const handleAddPacking = (preset: PackingPreset) => {
+    const line = packingToCartLine({ ...emptyPackingItem(), name: preset.type, cost: preset.cost });
+    addCartLines([line]);
+    addAssistantTurn(`Added ${preset.type} ($${preset.cost.toFixed(2)}) to the receipt.`);
+  };
+
   const artifactOpen = !!artifact && artifact.kind !== 'none';
 
   return (
@@ -121,6 +135,19 @@ const AiOverlay: React.FC = () => {
             <span className="text-lg font-semibold">AI Mode</span>
           </div>
           <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setMultiMode(!multiMode)}
+              title={multiMode ? 'Multi-item receipt: on' : 'Multi-item receipt: off'}
+              aria-label="Toggle multi-item receipt mode"
+              aria-pressed={multiMode}
+              className={`flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium transition-colors ${
+                multiMode ? themeClasses.button.primary : `${themeClasses.text.secondary} ${themeClasses.interactive.hover}`
+              }`}
+            >
+              <Layers className="h-4 w-4" />
+              <span className="hidden sm:inline">Multi</span>
+            </button>
             <button
               type="button"
               onClick={clear}
@@ -183,6 +210,23 @@ const AiOverlay: React.FC = () => {
                     onConfirm={async (finalIntent) => {
                       updateTurnIntent(turn.id, finalIntent);
                       setTurnStatus(turn.id, 'confirmed');
+
+                      // Multi-mode: a confirmed receipt drops its lines onto the
+                      // shared cart instead of printing on its own.
+                      if (multiMode && finalIntent.action === 'receipt') {
+                        const lines = receiptIntentToCartLines(finalIntent);
+                        if (lines.length === 0) {
+                          addAssistantTurn('That receipt has nothing complete to add yet. Fill in a price and try again.');
+                          return;
+                        }
+                        addCartLines(lines);
+                        const count = cart.length + lines.length;
+                        addAssistantTurn(
+                          `Added to the receipt. ${count} ${count === 1 ? 'item' : 'items'} so far. Finish it from the bar below when you are ready.`,
+                        );
+                        return;
+                      }
+
                       const executor = getExecutor(finalIntent.action);
                       if (executor) {
                         try {
@@ -202,8 +246,14 @@ const AiOverlay: React.FC = () => {
           })}
         </div>
 
+        {cart.length > 0 && (
+          <div className="mt-3">
+            <CartBar />
+          </div>
+        )}
+
         <div className="mt-3">
-          <Composer onSend={handleSend} onTrack={handleTrack} />
+          <Composer onSend={handleSend} onTrack={handleTrack} onAddPacking={handleAddPacking} />
         </div>
       </div>
 

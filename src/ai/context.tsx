@@ -1,9 +1,22 @@
 // AiModeProvider holds all AI Mode UI state so the tab dock, the overlay, the
 // chat, and the Artifact can share it. Mounted high in the tree (App.tsx) but
 // only ever active on /staff routes. See docs/ai-mode/01-design.md.
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ArtifactState, ChatTurn, Intent } from './types';
 import type { ActionResult } from './actions/types';
+import type { CartCustomer, CartLine } from './cart';
+import { buildCartReceiptOpts } from './cart';
+
+// Multi-item receipt mode is a shop-wide preference, persisted so it survives a
+// refresh. The dashboard toggle and the in-chat toggle both drive this.
+const MULTI_MODE_KEY = 'ai-multi-mode';
+const readMultiMode = (): boolean => {
+  try {
+    return localStorage.getItem(MULTI_MODE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+};
 
 let turnCounter = 0;
 const nextId = (prefix: string) => {
@@ -33,6 +46,17 @@ interface AiModeContextValue {
   artifact: ArtifactState | null;
   showArtifact: (artifact: ArtifactState) => void;
   hideArtifact: () => void;
+
+  // Multi-item receipt mode + the shared receipt cart.
+  multiMode: boolean;
+  setMultiMode: (on: boolean) => void;
+  cart: CartLine[];
+  addCartLines: (lines: CartLine[]) => void;
+  removeCartLine: (id: string) => void;
+  clearCart: () => void;
+  // Build the combined receipt for the whole cart and open it as an Artifact,
+  // returning its result so the caller can attach chat download/print controls.
+  finalizeCart: (customer?: CartCustomer) => ActionResult | null;
 }
 
 const AiModeContext = createContext<AiModeContextValue | undefined>(undefined);
@@ -41,6 +65,17 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isOpen, setIsOpen] = useState(false);
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [artifact, setArtifact] = useState<ArtifactState | null>(null);
+  const [multiMode, setMultiModeState] = useState<boolean>(readMultiMode);
+  const [cart, setCart] = useState<CartLine[]>([]);
+
+  // Keep the persisted preference in sync when the toggle flips.
+  useEffect(() => {
+    try {
+      localStorage.setItem(MULTI_MODE_KEY, multiMode ? 'true' : 'false');
+    } catch {
+      // Storage unavailable (private mode, etc.); the in-memory value still works.
+    }
+  }, [multiMode]);
 
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
@@ -93,6 +128,34 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const showArtifact = useCallback((next: ArtifactState) => setArtifact(next), []);
   const hideArtifact = useCallback(() => setArtifact(null), []);
 
+  const setMultiMode = useCallback((on: boolean) => setMultiModeState(on), []);
+  const addCartLines = useCallback((lines: CartLine[]) => {
+    if (!lines.length) return;
+    setCart((prev) => [...prev, ...lines]);
+  }, []);
+  const removeCartLine = useCallback((id: string) => {
+    setCart((prev) => prev.filter((l) => l.id !== id));
+  }, []);
+  const clearCart = useCallback(() => setCart([]), []);
+
+  const finalizeCart = useCallback(
+    (customer: CartCustomer = {}): ActionResult | null => {
+      if (cart.length === 0) return null;
+      const opts = buildCartReceiptOpts(cart, customer);
+      const result: ActionResult = {
+        message: `Here is the combined receipt with ${cart.length} ${
+          cart.length === 1 ? 'item' : 'items'
+        }. Download or print it below.`,
+        artifact: { kind: 'receipt', title: opts.title, data: { opts } },
+        receipt: { opts },
+      };
+      setArtifact(result.artifact);
+      setCart([]);
+      return result;
+    },
+    [cart],
+  );
+
   const value = useMemo<AiModeContextValue>(
     () => ({
       isOpen,
@@ -109,6 +172,13 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       artifact,
       showArtifact,
       hideArtifact,
+      multiMode,
+      setMultiMode,
+      cart,
+      addCartLines,
+      removeCartLine,
+      clearCart,
+      finalizeCart,
     }),
     [
       isOpen,
@@ -125,6 +195,13 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       artifact,
       showArtifact,
       hideArtifact,
+      multiMode,
+      setMultiMode,
+      cart,
+      addCartLines,
+      removeCartLine,
+      clearCart,
+      finalizeCart,
     ],
   );
 
