@@ -183,43 +183,52 @@ export class DeterministicProvider implements AiProvider {
     }
 
     const intent: Intent = { action, subtype, fields: {}, confidence };
-
-    // Fill fields for actions that have a confirmation spec.
-    const specs = getFieldSpecs(intent);
-    if (specs) {
-      intent.fields = fillFields(specs.map((s) => s.key), text);
-    }
-
-    // Shipping carries a repeated item block. Seed one item from whatever the
-    // utterance names (courier, tracking, province, cost); the rest is confirmed
-    // in the item editor.
-    if (action === 'receipt' && subtype === 'shipping') {
-      const { courier, trackingNumber } = extractTracking(text);
-      const cost = extractMoney(text);
-      const province = extractProvince(text);
-      const item = {
-        ...emptyShipmentItem(),
-        courier: courier ?? '',
-        trackingNumber: trackingNumber ?? '',
-        province: province ?? emptyShipmentItem().province,
-        cost: cost ?? null,
-      };
-      intent.fields.shipmentItems = { value: [item], source: 'explicit' };
-    }
-
-    // Tracking has no confirmation spec; fill courier + number directly.
-    if (action === 'track') {
-      const { courier, trackingNumber } = extractTracking(text);
-      intent.fields = {
-        courier: courier
-          ? { value: courier, source: 'explicit' }
-          : { value: null, source: 'not_provided' },
-        trackingNumber: trackingNumber
-          ? { value: trackingNumber, source: 'explicit' }
-          : { value: null, source: 'not_provided' },
-      };
-    }
-
+    populateIntentFields(intent, text);
     return intent;
+  }
+}
+
+// Fill an intent's fields from the utterance, given its action/subtype are already
+// set. Shared by the deterministic provider and the LLM provider: the LLM only
+// decides routing; extraction and provenance stay here so a bad LLM response
+// degrades to exactly the deterministic result and the model never touches
+// business values. Mutates intent.fields in place.
+export function populateIntentFields(intent: Intent, text: string): void {
+  const { action, subtype } = intent;
+
+  // Fill fields for actions that have a confirmation spec.
+  const specs = getFieldSpecs(intent);
+  if (specs) {
+    intent.fields = fillFields(specs.map((s) => s.key), text);
+  }
+
+  // Shipping carries a repeated item block. Seed one item from whatever the
+  // utterance names (courier, tracking, province, cost); the rest is confirmed
+  // in the item editor.
+  if (action === 'receipt' && subtype === 'shipping') {
+    const { courier, trackingNumber } = extractTracking(text);
+    const cost = extractMoney(text);
+    const province = extractProvince(text);
+    const item = {
+      ...emptyShipmentItem(),
+      courier: courier ?? '',
+      trackingNumber: trackingNumber ?? '',
+      province: province ?? emptyShipmentItem().province,
+      cost: cost ?? null,
+    };
+    intent.fields.shipmentItems = { value: [item], source: 'explicit' };
+  }
+
+  // Tracking has no confirmation spec; fill courier + number directly.
+  if (action === 'track') {
+    const { courier, trackingNumber } = extractTracking(text);
+    intent.fields = {
+      courier: courier
+        ? { value: courier, source: 'explicit' }
+        : { value: null, source: 'not_provided' },
+      trackingNumber: trackingNumber
+        ? { value: trackingNumber, source: 'explicit' }
+        : { value: null, source: 'not_provided' },
+    };
   }
 }
