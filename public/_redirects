@@ -1,0 +1,4 @@
+# SPA fallback for Cloudflare Pages (staging): serve index.html for any path so
+# client-side routes like /staff/* resolve on refresh. Inert on GitHub Pages (prod),
+# which uses the 404.html copy created in deploy.yml, so this does not change prod.
+/*    /index.html    200
