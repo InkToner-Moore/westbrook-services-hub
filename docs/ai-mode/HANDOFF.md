@@ -3,41 +3,63 @@
 Update this at the end of every phase and before any context handoff. To resume,
 read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this file.
 
-## Exit state (2026-09-03)
+## Exit state (2026-09-03, evening session)
 - **Next session is for:** phase 8 (LLM provider + proxy + staging deploy) and
-  phase 9 (final review). Phase 5 is done. See the "Phase 5 decision to flag"
-  note below before phase 8: the classic StaffReceipts shipping form still has no
-  "add to receipt" button, so a shipment started on the classic Receipts page
-  cannot join the cart (chat + Packing page can). User asked for this; decide
-  whether to add it (additive, gated behind multi-mode) as a phase 5 follow-up.
-- **Just landed (browser-verified):** phase 5, packing tab + multi-item receipt
-  cart. Commit `zyy` on `ai-mode-overhaul`. Verified end to end in the browser
-  (dev server, auth bypass):
-  - Classic Packing page: presets add rows, qty +/- and tax toggle recompute
-    (Medium Box x2 + Envelope = $15.00 + $0.75 GST = $15.75), Add to receipt /
-    Download / Print all work.
-  - Cross-tab cart: items added on the Packing page appear in the chat cart bar
-    ("N items on receipt $X.XX"), and PACK chips in the chat add supplies too
-    (running total correct through 3 items = $26.25, then a fresh 2 items =
-    $12.60).
-  - Finish receipt builds one combined PDF: chat message + 4x6/full-page/print
-    controls + Artifact panel. (Artifact iframe renders blank under headless
-    Playwright, a PDF-plugin limitation; same code path as the verified shipping
-    receipt. Re-check the preview in a real browser if in doubt.)
-  - Multi-mode toggle persists (localStorage `ai-multi-mode`), reachable from both
-    the dashboard header and the AI overlay header. When OFF, nothing changes:
-    confirmed receipts finalize immediately as before.
-- **Bug fixed during verification:** `finalizeCart` first read its result from
-  inside a `setCart` updater (which React does not run synchronously), so the
-  combined receipt never rendered. Now computes from `cart` directly. If you
-  touch it, keep the deps on `cart`.
-- **Phase 5 decision to flag (user asked, not built):** the classic StaffReceipts
-  page was left untouched (invariant), so its shipping form has no cart hook. The
-  user's note: "if someone wants to add it to a shipment using classic view they
-  can just make the receipt multi, and add the packaging stuff." The cross-tab
-  cart covers this via chat + Packing page, but a classic-Receipts "Add to
-  receipt" button (gated behind multi-mode) would honor it literally. Additive,
-  keeps the off-state identical. Confirm scope with the user before building.
+  phase 9 (final review). All building phases (0-7) are done; phase 5 was
+  reworked this session into the "open receipt" model below.
+- **Where things stand:** branch `ai-mode-overhaul`, tree CLEAN, in sync with
+  origin (`ed3d2ea`). `corepack yarn build` GREEN; `corepack yarn eslint` on this
+  session's files = 0 errors, 1 benign react-refresh warning (context.tsx, same
+  pattern as ThemeContext). Full-repo `yarn lint` still fails only on pre-existing
+  baseline files (dataExport.ts, validation.ts, tailwind.config.ts) - not ours.
+  This session's commits: `twu`, `ytx`, `ymq` (plus `zyy`/`som` earlier same day),
+  all pushed.
+- **BIG DESIGN CHANGE - the "open receipt" model (replaces phase-5 multi-mode).**
+  Multi-mode and its toggle are GONE. There is always exactly one open receipt;
+  a single item is just a one-item receipt. Do NOT reintroduce a mode/toggle.
+  - The open receipt is the cart in `src/ai/context.tsx` (state `cart`,
+    `addCartLines`/`removeCartLine`/`clearCart`/`finalizeCart`), persisted to
+    `sessionStorage` under key `ai-open-receipt` so a refresh does not lose it.
+  - `src/components/ai/CartPanel.tsx`: global side panel, shows on any staff page
+    whenever the open receipt has items, hidden while the Artifact is open.
+    Finish -> builds one combined PDF (title "Sales Receipt") via
+    `buildCartReceiptOpts` and opens it in AI Mode. Replaced the old in-overlay
+    CartBar (deleted).
+  - `src/ai/actions/cartLines.ts`: `receiptIntentToCartLines` (chat confirm ->
+    cart) and `packingToCartLine`. AI confirm always routes receipt intents into
+    the open receipt now (no mode check).
+- **Receipt Generator is now the one place to build receipts.** `StaffReceipts.tsx`
+  has FIVE tabs: Shipping, Key Cutting, Cartridge Refill, Toner Sale, Packing.
+  Every tab has a single "Add to receipt" button. All Download / Generate-PDF
+  buttons were removed and the dead PDF builders (`generateShippingPDF`,
+  `generateKeyPDF`, the `onSubmit*` download handlers) deleted. The standalone
+  Packing page, its `/staff/packing` route, the dock Packing tab, the dashboard
+  Packing card, and `buildPackingReceiptOpts` were all removed - Packing lives in
+  the tab now.
+- **Receipt titles generalized:** all sales receipts read "Sales Receipt"; the
+  cartridge order intake reads "Order Receipt" (`StaffCartridges.tsx` +
+  `actions/cartridge.ts`). Specifics live in the line items, like a real receipt.
+- **AI Mode readability pass:** larger text/spacing across AiOverlay, Composer,
+  QuickActions, ConfirmationCheck.
+- **Do NOT rebuild (built + browser-verified this session):** the open-receipt
+  layer (context cart + `finalizeCart` + sessionStorage; `src/ai/cart.ts`;
+  `actions/cartLines.ts`; `CartPanel.tsx`) and the Receipt Generator tab
+  integration (all five tabs feed the cart). See "Constraints" for what changed.
+- **Bug fixed earlier this day:** `finalizeCart` first read its result from inside
+  a `setCart` updater (React does not run that synchronously) so the combined
+  receipt never rendered. Now computes from `cart` directly; keep its deps on
+  `cart` if you touch it.
+- **Browser-verified (dev server + auth bypass):** Packing tab (Medium Box $7 +
+  $0.35 GST = $7.35); classic Shipping "Add to receipt" (UPS Ground $15 -> $15.75);
+  cross-tab accumulation via in-app SPA nav (FedEx $30 from the Shipping tab +
+  Large Box $10 from the Packing tab = $42); Finish -> one "Sales Receipt". The
+  Artifact PDF iframe renders BLANK under headless Playwright (PDF-plugin
+  limitation, not a bug) - re-check the preview in a real browser.
+
+## Prior exit state (2026-09-03, earlier - superseded by the open-receipt model)
+- Phase 5 first landed as a multi-mode toggle + packing tab + cart (commit `zyy`).
+  The evening session above removed the toggle entirely. Ignore any "multi-mode"
+  or `ai-multi-mode` localStorage references; that key and concept no longer exist.
 
 ## Prior exit state (2026-09-02, later session)
 - **Just landed (browser-verified):** the shipping multi-item receipt. Commit
@@ -84,8 +106,6 @@ read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this fi
   notes/inventory/directory/followup). Customer Requests renamed to Customer
   Follow-Ups in the dashboard card + page copy.
 - **Remaining:** LLM provider + proxy + staging deploy (8); final review (9).
-  Possible phase 5 follow-up: classic StaffReceipts "add to receipt" button
-  (see the exit-state note).
 - **Confirmation gating decoupled:** FieldSpec has `blocking?` separate from the
   `?`/`i` marker, so a field can read as "needed" without forcing the counter to
   have it (e.g. price/phone at intake). Only genuine must-haves block Confirm.
@@ -188,7 +208,14 @@ read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this fi
   the real theme; keep it calm and uncluttered.
 
 ## Invariants (do not violate)
-- Nothing existing breaks; classic pages stay reachable and identical.
+- Nothing existing breaks; classic pages stay reachable. NOTE (changed this
+  session, with user approval): the old "classic pages stay identical" invariant
+  is relaxed for `StaffReceipts.tsx`. It now feeds the open receipt via "Add to
+  receipt" and no longer downloads PDFs directly; that is intentional. Do not
+  restore the removed Download/Generate buttons without asking. `StaffCartridges`
+  (Order Receipt intake) still prints directly and was left alone.
 - `orderStatus` never widened; cartridge 3-status enum intact.
 - Model never runs business logic; it only emits typed intent + provenance.
 - No em dashes. Theme via `themeClasses`. Reuse existing lib helpers.
+- One receipt path only: everything is the open receipt, Finish prints it. Do not
+  add a second "download now" path or a multi-mode toggle.
