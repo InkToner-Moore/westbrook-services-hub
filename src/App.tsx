@@ -9,7 +9,6 @@ import StaffLogin from "./pages/StaffLogin";
 import StaffDashboard from "./pages/StaffDashboard";
 import StaffTracking from "./pages/StaffTracking";
 import StaffReceipts from "./pages/StaffReceipts";
-import StaffPacking from "./pages/StaffPacking";
 import StaffCartridges from "./pages/StaffCartridges";
 import StaffDirectory from "./pages/StaffDirectory";
 import StaffNotes from "./pages/StaffNotes";
@@ -82,15 +81,6 @@ const AppRoutes = () => {
         } 
       />
       
-      <Route
-        path="/staff/packing"
-        element={
-          <ProtectedRoute>
-            <StaffPacking />
-          </ProtectedRoute>
-        }
-      />
-
       <Route
         path="/staff/cartridges"
         element={

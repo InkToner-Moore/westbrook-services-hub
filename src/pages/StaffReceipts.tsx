@@ -15,7 +15,9 @@ import {
   Key,
   Printer,
   Droplets,
+  Box,
   Plus,
+  Minus,
   Trash2,
   ArrowLeft,
   User,
@@ -27,6 +29,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { useAiMode } from "@/ai/context";
 import type { CartLine } from "@/ai/cart";
+import { packingToCartLine } from "@/ai/actions/cartLines";
+import {
+  PACKING_PRESETS,
+  aggregatePackingTax,
+  emptyPackingItem,
+  packingLineTotal,
+  packingSubtotal,
+  type PackingItem,
+} from "@/lib/packing";
 import StaffLayout from "@/components/StaffLayout";
 import ThemeToggleButton from "@/components/ThemeToggleButton";
 import GstBreakdown from "@/components/GstBreakdown";
@@ -151,6 +162,9 @@ const StaffReceipts = () => {
     ? "border-gray-300 data-[state=checked]:bg-white data-[state=checked]:text-slate-900"
     : "";
   const [activeTab, setActiveTab] = useState("shipping");
+  const [packingRows, setPackingRows] = useState<(PackingItem & { id: string })[]>([]);
+  const [packingCustomName, setPackingCustomName] = useState("");
+  const [packingCustomCost, setPackingCustomCost] = useState("");
   
   const shippingForm = useForm<ShippingReceiptData>({
     defaultValues: {
@@ -354,6 +368,30 @@ const StaffReceipts = () => {
     addedToast();
   };
 
+  // Packing tab: local rows of supplies before they go on the open receipt.
+  const addPackingPreset = (name: string, cost: number) =>
+    setPackingRows((prev) => [...prev, { ...emptyPackingItem(), id: nextCartLineId(), name, cost }]);
+  const addPackingCustom = () => {
+    const name = packingCustomName.trim();
+    const cost = Number(packingCustomCost);
+    if (!name || !Number.isFinite(cost) || cost < 0) {
+      toast({ title: "Add a name and a valid price", variant: "destructive" });
+      return;
+    }
+    setPackingRows((prev) => [...prev, { ...emptyPackingItem(), id: nextCartLineId(), name, cost }]);
+    setPackingCustomName("");
+    setPackingCustomCost("");
+  };
+  const patchPackingRow = (id: string, next: Partial<PackingItem>) =>
+    setPackingRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...next } : r)));
+  const removePackingRow = (id: string) => setPackingRows((prev) => prev.filter((r) => r.id !== id));
+  const addPackingToReceipt = () => {
+    if (packingRows.length === 0) return;
+    addCartLines(packingRows.map((r) => packingToCartLine(r)));
+    addedToast();
+    setPackingRows([]);
+  };
+
   const handleLogout = async () => {
     await logout();
   };
@@ -424,7 +462,7 @@ const StaffReceipts = () => {
         {/* Receipt Type Tabs */}
         <div className={`border rounded-3xl p-8 shadow-2xl transition-all duration-300 ${themeClasses.card.primary}`}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className={`grid w-full grid-cols-2 md:grid-cols-4 gap-2 mb-8 h-auto backdrop-blur-sm transition-all duration-300 ${themeClasses.card.secondary}`}>
+            <TabsList className={`grid w-full grid-cols-2 md:grid-cols-5 gap-2 mb-8 h-auto backdrop-blur-sm transition-all duration-300 ${themeClasses.card.secondary}`}>
               <TabsTrigger
                 value="shipping"
                 className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white"
@@ -452,6 +490,13 @@ const StaffReceipts = () => {
               >
                 <Droplets className="h-4 w-4" />
                 <span>Toner Sale</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="packing"
+                className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white"
+              >
+                <Box className="h-4 w-4" />
+                <span>Packing</span>
               </TabsTrigger>
             </TabsList>
 
@@ -1252,6 +1297,145 @@ const StaffReceipts = () => {
                   Add to receipt
                 </Button>
               </form>
+            </TabsContent>
+
+            {/* Packing supplies */}
+            <TabsContent value="packing">
+              <div className="space-y-6">
+                <div>
+                  <h3 className={`mb-3 text-sm font-semibold ${themeClasses.text.primary}`}>Add a supply</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {PACKING_PRESETS.filter((p) => !p.custom).map((p) => (
+                      <Button
+                        key={p.type}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addPackingPreset(p.type, p.cost)}
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1.5" />
+                        {p.type} ${p.cost}
+                      </Button>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-end gap-2">
+                    <div className="flex-1 min-w-[10rem]">
+                      <Label className={`text-xs ${themeClasses.text.secondary}`}>Custom name</Label>
+                      <Input
+                        value={packingCustomName}
+                        onChange={(e) => setPackingCustomName(e.target.value)}
+                        placeholder="e.g. Bubble wrap"
+                        className={themeClasses.input}
+                      />
+                    </div>
+                    <div className="w-28">
+                      <Label className={`text-xs ${themeClasses.text.secondary}`}>Price</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={packingCustomCost}
+                        onChange={(e) => setPackingCustomCost(e.target.value)}
+                        placeholder="0.00"
+                        className={themeClasses.input}
+                      />
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={addPackingCustom}>
+                      <Plus className="h-3.5 w-3.5 mr-1.5" />
+                      Add
+                    </Button>
+                  </div>
+                </div>
+
+                {packingRows.length > 0 && (
+                  <div className="space-y-3">
+                    {packingRows.map((r) => (
+                      <div key={r.id} className="flex flex-wrap items-center gap-3">
+                        <span className={`flex-1 min-w-[8rem] text-sm font-medium ${themeClasses.text.primary}`}>
+                          {r.name}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => patchPackingRow(r.id, { quantity: Math.max(1, r.quantity - 1) })}
+                            aria-label="Decrease quantity"
+                          >
+                            <Minus className="h-3.5 w-3.5" />
+                          </Button>
+                          <span className={`w-6 text-center text-sm ${themeClasses.text.primary}`}>{r.quantity}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => patchPackingRow(r.id, { quantity: r.quantity + 1 })}
+                            aria-label="Increase quantity"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                        <label className={`flex items-center gap-1.5 text-xs ${themeClasses.text.secondary}`}>
+                          <Checkbox
+                            checked={r.taxable}
+                            onCheckedChange={(v) => patchPackingRow(r.id, { taxable: v === true })}
+                            className={checkboxClass}
+                          />
+                          Tax
+                        </label>
+                        <span className={`w-16 text-right text-sm ${themeClasses.text.primary}`}>
+                          ${packingLineTotal(r).toFixed(2)}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => removePackingRow(r.id)}
+                          aria-label="Remove"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+
+                    <div className={`border-t pt-3 text-sm ${themeClasses.text.secondary}`}>
+                      <div className="flex justify-between">
+                        <span>Subtotal</span>
+                        <span>${packingSubtotal(packingRows).toFixed(2)}</span>
+                      </div>
+                      {aggregatePackingTax(packingRows).map((t) => (
+                        <div key={t.label} className="flex justify-between">
+                          <span>{t.label}</span>
+                          <span>${t.amount.toFixed(2)}</span>
+                        </div>
+                      ))}
+                      <div className={`flex justify-between font-semibold ${themeClasses.text.primary}`}>
+                        <span>Total</span>
+                        <span>
+                          ${round2(
+                            packingSubtotal(packingRows) +
+                              aggregatePackingTax(packingRows).reduce((s, t) => round2(s + t.amount), 0),
+                          ).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  type="button"
+                  disabled={packingRows.length === 0}
+                  onClick={addPackingToReceipt}
+                  className={`w-full h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 disabled:opacity-50 ${themeClasses.button.primary}`}
+                >
+                  <Receipt className="h-5 w-5 mr-2" />
+                  Add to receipt
+                </Button>
+              </div>
             </TabsContent>
           </Tabs>
         </div>

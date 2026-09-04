@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import {
   Printer,
   Package,
-  Box,
   Key,
   Receipt,
   Globe,
@@ -56,15 +55,6 @@ const StaffDashboard = () => {
       route: "/staff/receipts",
 
       featurePath: "modules.receiptGenerator.enabled"
-    },
-    {
-      title: "Packing",
-      description: "Boxes, envelopes, and packing supplies",
-      icon: Box,
-      color: "from-teal-500 to-emerald-600",
-      route: "/staff/packing",
-
-      featurePath: "modules.packing.enabled"
     },
     {
       title: "Customer Cartridge Manager",

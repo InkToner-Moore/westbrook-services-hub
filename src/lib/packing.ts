@@ -1,14 +1,8 @@
 // Packing supplies (boxes, envelopes) sold at the counter, most often added onto
 // a shipment. These used to live inside the classic Shipping receipt as "add-ons";
-// AI Mode gives them their own tab and its own receipt line. Kept as a shared lib
-// module so the classic Packing page and the chat use one source of truth.
-import {
-  formatReceiptDate,
-  generateReceiptNumber,
-  round2,
-  type ReceiptItem,
-  type SimpleReceiptOptions,
-} from './simpleReceipt';
+// now they are their own tab in the Receipt Generator and a chat quick action.
+// Kept as a shared lib module so the page and the chat use one source of truth.
+import { round2 } from './simpleReceipt';
 import { taxesForProvince, type TaxAmount } from './canadaTax';
 
 export interface PackingPreset {
@@ -74,28 +68,4 @@ export function aggregatePackingTax(items: PackingItem[]): TaxAmount[] {
     }
   }
   return order.map((label) => ({ label, amount: byLabel.get(label) ?? 0 }));
-}
-
-// Build a standalone packing receipt for the classic Packing page.
-export function buildPackingReceiptOpts(items: PackingItem[]): SimpleReceiptOptions {
-  const subtotal = packingSubtotal(items);
-  const taxLines = aggregatePackingTax(items);
-  const receiptNumber = generateReceiptNumber('PK');
-  const todayIso = new Date().toISOString().split('T')[0];
-  const receiptItems: ReceiptItem[] = items.map((i) => ({
-    description: packingLabel(i),
-    price: packingLineTotal(i),
-  }));
-
-  return {
-    title: 'Sales Receipt',
-    identifierLabel: 'Receipt #',
-    identifierValue: receiptNumber,
-    date: formatReceiptDate(todayIso),
-    rows: [],
-    items: receiptItems,
-    price: subtotal,
-    taxLines: taxLines.length ? taxLines : undefined,
-    fileNameBase: `packing-receipt-${receiptNumber}`,
-  };
 }
