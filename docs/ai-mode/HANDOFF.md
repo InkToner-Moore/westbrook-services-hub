@@ -3,6 +3,43 @@
 Update this at the end of every phase and before any context handoff. To resume,
 read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this file.
 
+## Exit state (2026-09-04, phase 8 build session)
+- **Next session is for:** finishing the phase 8 deploy STEPS (user-run: Cloudflare
+  account, Gemini key, Worker deploy, Pages project), then phase 9 (final review).
+  All phase 8 CODE is written, built, and pushed. Nothing left to build for 8.
+- **Where things stand:** branch `ai-mode-overhaul`, tree CLEAN after commits `pto`
+  and `ttk` (pushed). `corepack yarn build` GREEN; `corepack yarn eslint` on the new
+  provider files = 0 errors, 0 warnings. Deterministic routing re-verified in the
+  browser after the refactor (refill utterance -> correct fields + guessed markers).
+- **Host decision (user, 2026-09-04):** Cloudflare Worker for the proxy + Cloudflare
+  Pages for staging. Both free tier, no card. See proxy.md / deploy-staging.md.
+- **What landed this session (phase 8):**
+  - `src/ai/providers/llm.ts` `LlmProvider`: POSTs the utterance to the proxy, gets a
+    routing decision, then reuses the deterministic field-filler. 6s timeout, one
+    repair retry, falls back to deterministic on ANY failure. Gated on
+    `VITE_AI_PROXY_URL` (unset = deterministic only, unchanged behavior).
+  - `src/ai/providers/routingSchema.ts`: Zod schema the client validates against;
+    mirrors the Worker's `RESPONSE_SCHEMA`. Keep them in sync.
+  - `src/ai/providers/deterministic.ts`: extracted `populateIntentFields(intent,text)`
+    (was inline in `parse`); both providers share it. Pure refactor, behavior same.
+  - `src/ai/providers/index.ts`: selects LlmProvider when `VITE_AI_PROXY_URL` is set.
+  - `proxy/` Cloudflare Worker (`src/worker.js`, `wrangler.toml`, `package.json`,
+    `.dev.vars.example`, `.gitignore`). Holds `GEMINI_API_KEY` secret; CORS locked to
+    `ALLOWED_ORIGIN`; model `gemini-flash-lite-latest` (configurable). Routing only,
+    never field values, never Firestore.
+  - `public/_redirects`: SPA fallback for Cloudflare Pages. INERT on GitHub Pages, so
+    prod is unchanged (verify this stays true if you touch it).
+  - `.env.example`: added `VITE_AI_PROXY_URL`.
+  - Docs: `docs/ai-mode/proxy.md`, `docs/ai-mode/deploy-staging.md` (full step-by-step).
+- **DESIGN NOTE (important):** the LLM only decides ROUTING. Extraction + provenance
+  stay in the deterministic engine. This keeps the "model never runs business logic"
+  invariant and means a bad LLM response == the deterministic result. Do not move
+  field extraction into the model or the proxy.
+- **CANNOT be verified locally:** the actual LLM path needs the deployed Worker + a
+  real Gemini key (user's steps in proxy.md). Locally, no proxy URL is set, so the
+  deterministic engine runs (verified). The fallback logic (fetch fail -> null ->
+  deterministic) is by construction; confirm end to end once the Worker is up.
+
 ## Exit state (2026-09-03, evening session)
 - **Next session is for:** phase 8 (LLM provider + proxy + staging deploy) and
   phase 9 (final review). All building phases (0-7) are done; phase 5 was
