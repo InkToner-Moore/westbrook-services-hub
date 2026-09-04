@@ -29,7 +29,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack, onAddPa
   const [hovered, setHovered] = useState<Courier | null>(null);
   const [entry, setEntry] = useState('');
 
-  const pill = `rounded-full border px-2.5 py-1 text-xs font-medium transition-colors`;
+  const pill = `rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors`;
 
   return (
     <div className="mb-2 flex flex-wrap items-center gap-1.5">
@@ -39,7 +39,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack, onAddPa
           isDarkMode ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-slate-50'
         }`}
       >
-        <span className={`px-1.5 text-[10px] font-semibold uppercase tracking-wide ${themeClasses.text.muted}`}>
+        <span className={`px-1.5 text-[11px] font-semibold uppercase tracking-wide ${themeClasses.text.muted}`}>
           Track
         </span>
         {TRACKING.map((t) => (
@@ -91,7 +91,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack, onAddPa
           isDarkMode ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-slate-50'
         }`}
       >
-        <span className={`px-1.5 text-[10px] font-semibold uppercase tracking-wide ${themeClasses.text.muted}`}>
+        <span className={`px-1.5 text-[11px] font-semibold uppercase tracking-wide ${themeClasses.text.muted}`}>
           Pack
         </span>
         {PACKING_PRESETS.filter((p) => !p.custom).map((p) => (

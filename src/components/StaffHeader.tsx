@@ -56,11 +56,11 @@ const StaffHeader = ({
           </div>
           
           <div className="flex items-center space-x-4">
-            <div className={`flex items-center space-x-2 transition-all duration-500 ${themeClasses.text.secondary}`}>
+            <div className={`hidden md:flex items-center space-x-2 transition-all duration-500 ${themeClasses.text.secondary}`}>
               <User className="h-4 w-4" />
               <span className="text-sm font-medium">{user?.email}</span>
             </div>
-            
+
             {/* Theme Toggle */}
             <Button
               onClick={toggleTheme}

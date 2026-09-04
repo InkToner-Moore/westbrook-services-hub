@@ -114,7 +114,7 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({
             if (e.key === 'Escape') setEditingKey(null);
           }}
           placeholder={spec.hint}
-          className={`w-40 rounded-lg border px-2 py-0.5 text-sm outline-none ${themeClasses.input}`}
+          className={`w-40 rounded-lg border px-2.5 py-1 text-[15px] outline-none ${themeClasses.input}`}
         />
       );
     }
@@ -133,7 +133,7 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({
         type="button"
         disabled={readOnly}
         onClick={() => setEditingKey(spec.key)}
-        className={`group inline-flex items-center gap-1 text-sm ${
+        className={`group inline-flex items-center gap-1 text-[15px] ${
           isEmpty ? themeClasses.text.muted : themeClasses.text.primary
         }`}
       >
@@ -144,7 +144,7 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({
   };
 
   return (
-    <div className={`rounded-2xl border p-3 ${themeClasses.card.primary}`}>
+    <div className={`rounded-2xl border p-4 shadow-sm ${themeClasses.card.primary}`}>
       <ul className="space-y-1.5">
         {visibleSpecs.map((spec) => {
           const fv = fields[spec.key];
@@ -152,13 +152,13 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({
           return (
             <li
               key={spec.key}
-              className={`flex items-center justify-between gap-3 rounded-lg px-2 py-1 ${
+              className={`flex items-center justify-between gap-3 rounded-lg px-2.5 py-1.5 ${
                 isGuessed ? (isDarkMode ? 'border border-dashed border-amber-600/60' : 'border border-dashed border-amber-400') : ''
               }`}
             >
               <div className="flex items-center gap-2">
                 <Marker marker={spec.marker} />
-                <span className={`text-sm ${themeClasses.text.secondary}`}>{spec.label}</span>
+                <span className={`text-[15px] ${themeClasses.text.secondary}`}>{spec.label}</span>
                 {isGuessed && (
                   <span
                     title={fv?.reason}
@@ -190,7 +190,7 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({
 
       {!readOnly && (
         <div className="mt-3 flex items-center justify-between gap-2">
-          <span className={`text-xs ${themeClasses.text.muted}`}>
+          <span className={`text-sm ${themeClasses.text.muted}`}>
             {canConfirm
               ? 'Ready when you are.'
               : missing.length > 0

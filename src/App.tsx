@@ -22,6 +22,7 @@ import { useAuth } from "./hooks/useAuth";
 import { AiModeProvider } from "./ai/context";
 import TabDock from "./components/ai/TabDock";
 import AiOverlay from "./components/ai/AiOverlay";
+import CartPanel from "./components/ai/CartPanel";
 import { Package, Receipt, Printer, StickyNote, Boxes, ClipboardList } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -183,6 +184,7 @@ const App = () => (
           <AiModeProvider>
             <AppRoutes />
             <TabDock />
+            <CartPanel />
             <AiOverlay />
           </AiModeProvider>
         </BrowserRouter>

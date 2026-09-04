@@ -88,7 +88,7 @@ export function buildPackingReceiptOpts(items: PackingItem[]): SimpleReceiptOpti
   }));
 
   return {
-    title: 'Packing Receipt',
+    title: 'Sales Receipt',
     identifierLabel: 'Receipt #',
     identifierValue: receiptNumber,
     date: formatReceiptDate(todayIso),

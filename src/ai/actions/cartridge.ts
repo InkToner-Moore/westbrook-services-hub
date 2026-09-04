@@ -81,7 +81,7 @@ function orderReceiptOptions(order: CartridgeOrder): SimpleReceiptOptions {
     price: typeof c.price === 'number' ? c.price : 0,
   }));
   return {
-    title: 'Cartridge Order',
+    title: 'Order Receipt',
     identifierLabel: 'Order ID',
     identifierValue: order.id,
     date: formatReceiptDate(order.dateReceived) || order.dateReceived,
@@ -121,7 +121,7 @@ export async function executeCartridgeCreate(intent: Intent): Promise<ActionResu
   const opts = orderReceiptOptions(order);
   return {
     message: `Order ${order.id} is logged for ${order.customerName}, marked in progress.`,
-    artifact: { kind: 'receipt', title: 'Cartridge Order', data: { opts } },
+    artifact: { kind: 'receipt', title: 'Order Receipt', data: { opts } },
     receipt: { opts },
   };
 }

@@ -69,7 +69,7 @@ export function buildCartReceiptOpts(
   const items: ReceiptItem[] = lines.map((l) => ({ description: l.description, price: round2(l.price || 0) }));
 
   return {
-    title: 'Receipt',
+    title: 'Sales Receipt',
     identifierLabel: 'Receipt #',
     identifierValue: receiptNumber,
     date: formatReceiptDate(todayIso),

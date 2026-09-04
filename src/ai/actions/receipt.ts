@@ -58,7 +58,7 @@ function executeShipping(intent: Intent): ActionResult {
   const email = intent.fields.customerEmail?.value ? String(intent.fields.customerEmail.value).trim() : '';
 
   const opts: SimpleReceiptOptions = {
-    title: 'Shipping Receipt',
+    title: 'Sales Receipt',
     identifierLabel: 'Receipt #',
     identifierValue: receiptNumber,
     date: formatReceiptDate(dateIso) || dateIso,
@@ -98,11 +98,15 @@ function truthy(intent: Intent, key: string): boolean {
   return intent.fields[key]?.value === true;
 }
 
+// One general title on every printed receipt. What was sold shows in the line
+// items and detail rows, the way a real store receipt reads. The subtype only
+// drives the receipt-number prefix and file name below.
+const RECEIPT_TITLE = 'Sales Receipt';
 const TITLES: Record<ReceiptSubtype, string> = {
-  refill: 'Cartridge Refill Receipt',
-  supplies: 'Supplies Receipt',
-  key: 'Key Cutting Receipt',
-  shipping: 'Shipping Receipt',
+  refill: RECEIPT_TITLE,
+  supplies: RECEIPT_TITLE,
+  key: RECEIPT_TITLE,
+  shipping: RECEIPT_TITLE,
 };
 
 const PREFIXES: Record<ReceiptSubtype, string> = {

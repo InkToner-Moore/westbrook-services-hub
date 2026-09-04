@@ -53,7 +53,7 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
           {chips.map((chip) => (
             <span
               key={chip.id}
-              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${
+              className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[13px] font-medium ${
                 isDarkMode ? 'border-slate-600 bg-slate-700 text-slate-100' : chip.tone
               }`}
             >
@@ -78,7 +78,7 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
           }}
           rows={1}
           placeholder="Tell me what you need. For example: refill for Sarah, HP 65, $34"
-          className={`min-h-[2.5rem] max-h-40 flex-1 resize-none rounded-xl border bg-transparent px-3 py-2 text-sm outline-none ${themeClasses.input}`}
+          className={`min-h-[2.75rem] max-h-40 flex-1 resize-none rounded-xl border bg-transparent px-3.5 py-2.5 text-[15px] leading-relaxed outline-none ${themeClasses.input}`}
         />
         <button
           type="button"

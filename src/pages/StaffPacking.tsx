@@ -35,7 +35,7 @@ const rowId = () => `pk-${(rowCounter += 1)}`;
 
 const StaffPacking = () => {
   const { themeClasses } = useTheme();
-  const { multiMode, addCartLines } = useAiMode();
+  const { addCartLines } = useAiMode();
   const [rows, setRows] = useState<Row[]>([]);
   const [customName, setCustomName] = useState("");
   const [customCost, setCustomCost] = useState("");
@@ -70,9 +70,7 @@ const StaffPacking = () => {
     addCartLines(rows.map((r) => packingToCartLine(r)));
     toast({
       title: "Added to the receipt",
-      description: multiMode
-        ? "Open AI Mode to finish the combined receipt."
-        : "Multi-item mode is off. Turn it on from the dashboard to combine with other tabs, or finish it in AI Mode.",
+      description: "It is on the open receipt panel. Add more from any tab, then Finish it.",
     });
     setRows([]);
   };

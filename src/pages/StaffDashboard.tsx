@@ -15,18 +15,15 @@ import {
   LogOut,
   User,
   Sun,
-  Moon,
-  Layers
+  Moon
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
-import { useAiMode } from "@/ai/context";
 import { toast } from "@/hooks/use-toast";
 
 const StaffDashboard = () => {
   const { user, logout } = useAuth();
   const { isDarkMode, toggleTheme, themeClasses } = useTheme();
-  const { multiMode, setMultiMode } = useAiMode();
   const navigate = useNavigate();
   
   const handleLogout = async () => {
@@ -150,22 +147,6 @@ const StaffDashboard = () => {
                 <span className="text-sm font-medium">{user?.email}</span>
               </div>
               
-              {/* Multi-item receipt mode: when on, items from different tabs and
-                  the chat collect onto one receipt before it prints. */}
-              <Button
-                onClick={() => setMultiMode(!multiMode)}
-                variant="ghost"
-                size="sm"
-                aria-pressed={multiMode}
-                title={multiMode ? "Multi-item receipt: on" : "Multi-item receipt: off"}
-                className={`rounded-lg px-3 py-2 transition-all duration-300 hover:scale-105 border ${
-                  multiMode ? themeClasses.button.primary : themeClasses.button.secondary
-                } ${themeClasses.interactive.focus}`}
-              >
-                <Layers className="h-4 w-4 mr-2" />
-                <span className="text-sm font-medium">Multi-receipt {multiMode ? "on" : "off"}</span>
-              </Button>
-
               {/* Theme Toggle */}
               <Button
                 onClick={toggleTheme}

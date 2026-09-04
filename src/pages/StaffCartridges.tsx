@@ -190,7 +190,7 @@ const ReceiptDialog = ({
 
     generateSimpleReceiptPdf(
       {
-        title: 'Cartridge Refill Receipt',
+        title: 'Order Receipt',
         identifierLabel: 'Order ID',
         identifierValue: order.id,
         date: formatReceiptDate(new Date().toISOString().split('T')[0]),

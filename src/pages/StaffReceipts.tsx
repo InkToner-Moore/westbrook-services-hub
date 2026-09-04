@@ -26,6 +26,8 @@ import {
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
+import { useAiMode } from "@/ai/context";
+import type { CartLine } from "@/ai/cart";
 import jsPDF from 'jspdf';
 import StaffLayout from "@/components/StaffLayout";
 import ThemeToggleButton from "@/components/ThemeToggleButton";
@@ -141,8 +143,12 @@ const shippingAddOns = [
   { type: 'Custom', cost: 0 }
 ];
 
+let receiptCartLineId = 0;
+const nextCartLineId = () => `sr-${(receiptCartLineId += 1)}`;
+
 const StaffReceipts = () => {
   const { user, logout } = useAuth();
+  const { addCartLines } = useAiMode();
   const { themeClasses, isDarkMode } = useTheme();
   // The app's dialogs/inputs render against the light shadcn palette, so in dark
   // mode the default checkbox (dark border, dark fill) nearly vanishes — invert it.
@@ -213,7 +219,7 @@ const StaffReceipts = () => {
       const subtotal = cartridgesSubtotal(data.cartridges);
       generateSimpleReceiptPdf(
         {
-          title: 'Cartridge Refill Receipt',
+          title: 'Sales Receipt',
           identifierLabel: 'Receipt #',
           identifierValue: data.receiptNumber,
           date: formatReceiptDate(data.date),
@@ -244,7 +250,7 @@ const StaffReceipts = () => {
       const subtotal = tonersSubtotal(data.toners);
       generateSimpleReceiptPdf(
         {
-          title: 'Toner Sale Receipt',
+          title: 'Sales Receipt',
           identifierLabel: 'Receipt #',
           identifierValue: data.receiptNumber,
           date: formatReceiptDate(data.date),
@@ -637,6 +643,99 @@ const StaffReceipts = () => {
       title: "Receipt Generated",
       description: `Key receipt ${data.receiptNumber} has been downloaded`,
     });
+  };
+
+  // Add the current tab's items to the open receipt instead of downloading now.
+  // Same open receipt the Packing tab and the chat feed; Finish prints it. A
+  // single item is just a one-item receipt.
+  const gstLine = (price: number) => [{ label: `GST (${(GST_RATE * 100).toFixed(0)}%)`, amount: round2(price * GST_RATE) }];
+  const addedToast = () =>
+    toast({ title: "Added to the receipt", description: "It is on the open receipt panel. Finish it when ready." });
+
+  const addCartridgeToReceipt = () => {
+    const data = cartridgeForm.getValues();
+    const lines: CartLine[] = (data.cartridges || [])
+      .filter((c) => isFilledNumber(c.price))
+      .map((c) => {
+        const price = round2(c.price as number);
+        return {
+          id: nextCartLineId(),
+          description: describeCartridge(c),
+          price,
+          taxLines: cartridgeAddGst ? gstLine(price) : [],
+          source: "refill" as const,
+        };
+      });
+    if (!lines.length) {
+      toast({ title: "Add a cartridge with a price first", variant: "destructive" });
+      return;
+    }
+    addCartLines(lines);
+    addedToast();
+  };
+
+  const addTonerToReceipt = () => {
+    const data = tonerForm.getValues();
+    const lines: CartLine[] = (data.toners || [])
+      .filter((t) => isFilledNumber(t.price))
+      .map((t) => {
+        const price = round2(t.price as number);
+        return {
+          id: nextCartLineId(),
+          description: t.model || "Toner",
+          price,
+          taxLines: tonerAddGst ? gstLine(price) : [],
+          source: "supplies" as const,
+        };
+      });
+    if (!lines.length) {
+      toast({ title: "Add a toner with a price first", variant: "destructive" });
+      return;
+    }
+    addCartLines(lines);
+    addedToast();
+  };
+
+  const addShippingToReceipt = () => {
+    const data = shippingForm.getValues();
+    const lines: CartLine[] = [];
+    const taxToLines = (cost: number, taxes: { name: string; percentage: number }[]) =>
+      calculateTaxes(cost, (taxes || []).map((t) => ({ ...t, amount: 0 })))
+        .filter((t) => t.name && t.percentage)
+        .map((t) => ({ label: `${t.name} (${t.percentage}%)`, amount: round2(t.amount) }));
+
+    (data.shippingItems || []).forEach((item) => {
+      const dest = [item.destinationCity, item.destinationProvince, item.destinationCountry]
+        .filter(Boolean)
+        .join(", ");
+      if (isFilledNumber(item.shippingCost) || (item.courier && item.courier.trim())) {
+        const price = round2(item.shippingCost || 0);
+        lines.push({
+          id: nextCartLineId(),
+          description: [item.courier?.trim() || "Shipment", dest ? `To: ${dest}` : ""].filter(Boolean).join("\n"),
+          price,
+          taxLines: taxToLines(price, item.taxes),
+          source: "shipping",
+        });
+      }
+      (item.addOns || []).forEach((addon) => {
+        const name = addon.type === "Custom" ? addon.customName || "Add-on" : addon.type;
+        const price = round2(addon.cost || 0);
+        lines.push({
+          id: nextCartLineId(),
+          description: name,
+          price,
+          taxLines: taxToLines(price, addon.taxes),
+          source: "shipping",
+        });
+      });
+    });
+    if (!lines.length) {
+      toast({ title: "Add a shipment with a courier and cost first", variant: "destructive" });
+      return;
+    }
+    addCartLines(lines);
+    addedToast();
   };
 
   const handleLogout = async () => {
@@ -1127,13 +1226,24 @@ const StaffReceipts = () => {
                   </div>
                 </div>
 
-                <Button
-                  type="submit"
-                  className={`w-full h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
-                >
-                  <Download className="h-5 w-5 mr-2" />
-                  Generate Shipping Receipt PDF
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    type="button"
+                    onClick={addShippingToReceipt}
+                    variant="outline"
+                    className="h-12 font-semibold rounded-xl sm:w-56"
+                  >
+                    <Receipt className="h-5 w-5 mr-2" />
+                    Add to receipt
+                  </Button>
+                  <Button
+                    type="submit"
+                    className={`flex-1 h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
+                  >
+                    <Download className="h-5 w-5 mr-2" />
+                    Generate Shipping Receipt PDF
+                  </Button>
+                </div>
               </form>
             </TabsContent>
 
@@ -1400,6 +1510,15 @@ const StaffReceipts = () => {
 
                 <div className="flex flex-col sm:flex-row gap-3">
                   <Button
+                    type="button"
+                    onClick={addCartridgeToReceipt}
+                    variant="outline"
+                    className="h-12 font-semibold rounded-xl sm:w-48"
+                  >
+                    <Receipt className="h-5 w-5 mr-2" />
+                    Add to receipt
+                  </Button>
+                  <Button
                     type="submit"
                     className={`flex-1 h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
                   >
@@ -1540,6 +1659,15 @@ const StaffReceipts = () => {
                 <p className={`text-sm ${themeClasses.text.muted}`}>Blank fields are left off the printed receipt.</p>
 
                 <div className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    type="button"
+                    onClick={addTonerToReceipt}
+                    variant="outline"
+                    className="h-12 font-semibold rounded-xl sm:w-48"
+                  >
+                    <Receipt className="h-5 w-5 mr-2" />
+                    Add to receipt
+                  </Button>
                   <Button
                     type="submit"
                     className={`flex-1 h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}

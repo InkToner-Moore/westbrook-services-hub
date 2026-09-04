@@ -7,14 +7,17 @@ import type { ActionResult } from './actions/types';
 import type { CartCustomer, CartLine } from './cart';
 import { buildCartReceiptOpts } from './cart';
 
-// Multi-item receipt mode is a shop-wide preference, persisted so it survives a
-// refresh. The dashboard toggle and the in-chat toggle both drive this.
-const MULTI_MODE_KEY = 'ai-multi-mode';
-const readMultiMode = (): boolean => {
+// The open receipt survives a page refresh (sessionStorage) so the counter does
+// not lose a half-built receipt to an accidental reload. It clears when the tab
+// or browser is closed, which is the right lifetime for a walk-up counter.
+const CART_KEY = 'ai-open-receipt';
+const readCart = (): CartLine[] => {
   try {
-    return localStorage.getItem(MULTI_MODE_KEY) === 'true';
+    const raw = sessionStorage.getItem(CART_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return false;
+    return [];
   }
 };
 
@@ -47,15 +50,14 @@ interface AiModeContextValue {
   showArtifact: (artifact: ArtifactState) => void;
   hideArtifact: () => void;
 
-  // Multi-item receipt mode + the shared receipt cart.
-  multiMode: boolean;
-  setMultiMode: (on: boolean) => void;
+  // The open receipt: items collected from any tab or the chat before it prints.
+  // One item is just a one-item receipt; there is no separate mode.
   cart: CartLine[];
   addCartLines: (lines: CartLine[]) => void;
   removeCartLine: (id: string) => void;
   clearCart: () => void;
-  // Build the combined receipt for the whole cart and open it as an Artifact,
-  // returning its result so the caller can attach chat download/print controls.
+  // Build the receipt for the whole cart and open it as an Artifact, returning
+  // its result so the caller can attach chat download/print controls.
   finalizeCart: (customer?: CartCustomer) => ActionResult | null;
 }
 
@@ -65,17 +67,16 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isOpen, setIsOpen] = useState(false);
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [artifact, setArtifact] = useState<ArtifactState | null>(null);
-  const [multiMode, setMultiModeState] = useState<boolean>(readMultiMode);
-  const [cart, setCart] = useState<CartLine[]>([]);
+  const [cart, setCart] = useState<CartLine[]>(readCart);
 
-  // Keep the persisted preference in sync when the toggle flips.
+  // Persist the open receipt across reloads.
   useEffect(() => {
     try {
-      localStorage.setItem(MULTI_MODE_KEY, multiMode ? 'true' : 'false');
+      sessionStorage.setItem(CART_KEY, JSON.stringify(cart));
     } catch {
-      // Storage unavailable (private mode, etc.); the in-memory value still works.
+      // Storage unavailable; the in-memory receipt still works for this session.
     }
-  }, [multiMode]);
+  }, [cart]);
 
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
@@ -128,7 +129,6 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const showArtifact = useCallback((next: ArtifactState) => setArtifact(next), []);
   const hideArtifact = useCallback(() => setArtifact(null), []);
 
-  const setMultiMode = useCallback((on: boolean) => setMultiModeState(on), []);
   const addCartLines = useCallback((lines: CartLine[]) => {
     if (!lines.length) return;
     setCart((prev) => [...prev, ...lines]);
@@ -172,8 +172,6 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       artifact,
       showArtifact,
       hideArtifact,
-      multiMode,
-      setMultiMode,
       cart,
       addCartLines,
       removeCartLine,
@@ -195,8 +193,6 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       artifact,
       showArtifact,
       hideArtifact,
-      multiMode,
-      setMultiMode,
       cart,
       addCartLines,
       removeCartLine,
