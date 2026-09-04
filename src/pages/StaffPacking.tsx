@@ -1,9 +1,9 @@
 // Packing: box and envelope supplies, detached from the Shipping receipt into
-// their own tab. Pick supplies, set quantity, then either add them onto the open
-// receipt (multi-item mode) or print a standalone packing receipt. The presets
-// and tax math live in lib/packing.ts so the chat and this page agree.
+// their own tab. Pick supplies, set quantity, then add them onto the open
+// receipt; Finish prints it. The presets and tax math live in lib/packing.ts so
+// the chat and this page agree.
 import { useState } from "react";
-import { Package as PackageIcon, Plus, Minus, Trash2, Download, Printer, Receipt } from "lucide-react";
+import { Package as PackageIcon, Plus, Minus, Trash2, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,14 +17,12 @@ import { packingToCartLine } from "@/ai/actions/cartLines";
 import {
   PACKING_PRESETS,
   aggregatePackingTax,
-  buildPackingReceiptOpts,
   emptyPackingItem,
   packingLineTotal,
   packingSubtotal,
   type PackingItem,
 } from "@/lib/packing";
 import { round2 } from "@/lib/simpleReceipt";
-import { downloadReceipt, printReceipt } from "@/ai/receiptOutput";
 
 interface Row extends PackingItem {
   id: string;
@@ -73,16 +71,6 @@ const StaffPacking = () => {
       description: "It is on the open receipt panel. Add more from any tab, then Finish it.",
     });
     setRows([]);
-  };
-
-  const handleDownload = () => {
-    if (rows.length === 0) return;
-    downloadReceipt(buildPackingReceiptOpts(rows), "letter");
-  };
-
-  const handlePrint = () => {
-    if (rows.length === 0) return;
-    printReceipt(buildPackingReceiptOpts(rows), "letter");
   };
 
   return (
@@ -217,18 +205,10 @@ const StaffPacking = () => {
               </div>
 
               {/* Actions */}
-              <div className="flex flex-wrap gap-2 pt-2">
-                <Button onClick={handleAddToReceipt}>
+              <div className="pt-2">
+                <Button onClick={handleAddToReceipt} className="w-full sm:w-auto">
                   <Receipt className="h-4 w-4 mr-1.5" />
                   Add to receipt
-                </Button>
-                <Button variant="outline" onClick={handleDownload}>
-                  <Download className="h-4 w-4 mr-1.5" />
-                  Download receipt
-                </Button>
-                <Button variant="outline" onClick={handlePrint}>
-                  <Printer className="h-4 w-4 mr-1.5" />
-                  Print
                 </Button>
               </div>
             </CardContent>

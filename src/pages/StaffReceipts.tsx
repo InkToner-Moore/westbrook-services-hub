@@ -15,7 +15,6 @@ import {
   Key,
   Printer,
   Droplets,
-  Download,
   Plus,
   Trash2,
   ArrowLeft,
@@ -28,17 +27,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { useAiMode } from "@/ai/context";
 import type { CartLine } from "@/ai/cart";
-import jsPDF from 'jspdf';
 import StaffLayout from "@/components/StaffLayout";
 import ThemeToggleButton from "@/components/ThemeToggleButton";
 import GstBreakdown from "@/components/GstBreakdown";
 import CartridgeLineFields from "@/components/CartridgeLineFields";
 import {
   GST_RATE,
-  ReceiptSize,
-  formatReceiptDate,
   generateReceiptNumber,
-  generateSimpleReceiptPdf,
   round2,
 } from "@/lib/simpleReceipt";
 import {
@@ -214,66 +209,6 @@ const StaffReceipts = () => {
   const [tonerAddGst, setTonerAddGst] = useState(true);
   const tonerSubtotal = tonersSubtotal(tonerForm.watch('toners') ?? []);
 
-  const onSubmitCartridge = (size: ReceiptSize) =>
-    cartridgeForm.handleSubmit((data) => {
-      const subtotal = cartridgesSubtotal(data.cartridges);
-      generateSimpleReceiptPdf(
-        {
-          title: 'Sales Receipt',
-          identifierLabel: 'Receipt #',
-          identifierValue: data.receiptNumber,
-          date: formatReceiptDate(data.date),
-          rows: [
-            { label: 'Name', value: data.customerName },
-            { label: 'Phone Number', value: data.customerPhone },
-            { label: 'Email', value: data.customerEmail },
-            { label: 'Notes', value: data.notes },
-          ],
-          items: data.cartridges.map((line) => ({
-            description: describeCartridge(line),
-            price: line.price as number,
-          })),
-          price: subtotal,
-          gst: cartridgeAddGst ? round2(subtotal * GST_RATE) : undefined,
-          fileNameBase: `cartridge-receipt-${data.receiptNumber}`,
-        },
-        size,
-      );
-      toast({
-        title: 'Receipt Generated',
-        description: `Cartridge refill receipt ${data.receiptNumber} downloaded`,
-      });
-    });
-
-  const onSubmitToner = (size: ReceiptSize) =>
-    tonerForm.handleSubmit((data) => {
-      const subtotal = tonersSubtotal(data.toners);
-      generateSimpleReceiptPdf(
-        {
-          title: 'Sales Receipt',
-          identifierLabel: 'Receipt #',
-          identifierValue: data.receiptNumber,
-          date: formatReceiptDate(data.date),
-          rows: [
-            { label: 'Name', value: data.customerName },
-            { label: 'Phone Number', value: data.customerPhone },
-          ],
-          items: data.toners.map((line) => ({
-            description: line.model,
-            price: line.price as number,
-          })),
-          price: subtotal,
-          gst: tonerAddGst ? round2(subtotal * GST_RATE) : undefined,
-          fileNameBase: `toner-receipt-${data.receiptNumber}`,
-        },
-        size,
-      );
-      toast({
-        title: 'Receipt Generated',
-        description: `Toner sale receipt ${data.receiptNumber} downloaded`,
-      });
-    });
-
   const calculateTaxes = (subtotal: number, taxes: { name: string; percentage: number; amount: number }[]) => {
     return taxes.map(tax => ({
       ...tax,
@@ -299,350 +234,6 @@ const StaffReceipts = () => {
     } else if (formType === 'key') {
       keyForm.setValue('taxes', taxesWithAmount);
     }
-  };
-
-  const generateShippingPDF = (data: ShippingReceiptData) => {
-    const pdf = new jsPDF();
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    
-    // Header with business name
-    pdf.setFillColor(220, 220, 220); // Light gray for print
-    pdf.rect(0, 0, pageWidth, 25, 'F');
-    
-    pdf.setTextColor(0, 0, 0);
-    pdf.setFontSize(20);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('INK TONER & MOORE', 20, 16);
-    
-    // Black line
-    pdf.setDrawColor(0, 0, 0);
-    pdf.setLineWidth(1);
-    pdf.line(0, 25, pageWidth, 25);
-    
-    // Receipt title
-    pdf.setFontSize(16);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('SHIPPING RECEIPT', 20, 40);
-    
-    // Business info
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text('1200 37 Street SW Unit 3b', 20, 50);
-    pdf.text('Calgary, AB T3C 1S2', 20, 55);
-    pdf.text('Phone: (403) 686-2835', 20, 60);
-    
-    // Receipt details (right side)
-    pdf.text(`Receipt #: ${data.receiptNumber}`, 120, 50);
-    pdf.text(`Date: ${data.date}`, 120, 55);
-    
-    // Customer info section
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('CUSTOMER INFORMATION', 20, 80);
-    
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(`Name: ${data.customerName}`, 20, 90);
-    pdf.text(`Phone: ${data.customerPhone}`, 20, 95);
-    
-    // Shipping items section
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('SHIPPING DETAILS', 20, 110);
-    
-    let yPos = 120;
-    data.shippingItems.forEach((item, index) => {
-      // Package header with border
-      pdf.setFillColor(240, 240, 240);
-      pdf.rect(15, yPos - 3, 170, 8, 'F');
-      
-      pdf.setFontSize(11);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(`Package ${index + 1}`, 20, yPos);
-      yPos += 12;
-      
-      // Create a structured layout
-      pdf.setFontSize(9);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Service:', 25, yPos);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(item.courier, 60, yPos);
-      
-      yPos += 7;
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Tracking #:', 25, yPos);
-      pdf.setFont('helvetica', 'bold');  // Make tracking number bold
-      pdf.text(item.trackingNumber, 60, yPos);
-      
-      yPos += 7;
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Destination:', 25, yPos);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`${item.destinationCity}, ${item.destinationProvince}`, 60, yPos);
-      
-      yPos += 7;
-      pdf.text(`${item.destinationCountry}`, 60, yPos);
-      
-      yPos += 7;
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Shipping Cost:', 25, yPos);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`$${item.shippingCost.toFixed(2)}`, 60, yPos);
-      
-      if (item.addOns.length > 0) {
-        yPos += 8;
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Add-ons:', 25, yPos);
-        item.addOns.forEach(addon => {
-          yPos += 6;
-          const addonName = addon.type === 'Custom' ? addon.customName : addon.type;
-          pdf.setFont('helvetica', 'normal');
-          pdf.text(`• ${addonName}:`, 30, yPos);
-          pdf.text(`$${addon.cost.toFixed(2)}`, 150, yPos);
-          
-          if (addon.taxes.length > 0) {
-            addon.taxes.forEach(tax => {
-              yPos += 5;
-              pdf.setFontSize(8);
-              pdf.text(`    ${tax.name} (${tax.percentage}%):`, 35, yPos);
-              pdf.text(`$${tax.amount.toFixed(2)}`, 150, yPos);
-              pdf.setFontSize(9);
-            });
-          }
-        });
-      }
-      
-      if (item.taxes.length > 0) {
-        yPos += 8;
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Shipping Taxes:', 25, yPos);
-        item.taxes.forEach(tax => {
-          yPos += 6;
-          pdf.setFont('helvetica', 'normal');
-          pdf.text(`• ${tax.name} (${tax.percentage}%):`, 30, yPos);
-          pdf.text(`$${tax.amount.toFixed(2)}`, 150, yPos);
-        });
-      }
-      
-      yPos += 10;
-    });
-    
-    // Pricing section
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('TOTAL CHARGES', 20, yPos);
-    
-    yPos += 10;
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(`Subtotal:`, 20, yPos);
-    pdf.text(`$${data.subtotal.toFixed(2)}`, 150, yPos);
-    
-    yPos += 6;
-    pdf.text(`Total Taxes:`, 20, yPos);
-    pdf.text(`$${data.totalTaxes.toFixed(2)}`, 150, yPos);
-    
-    // Total with light gray background for print
-    yPos += 10;
-    pdf.setFillColor(240, 240, 240);
-    pdf.rect(15, yPos - 4, 160, 8, 'F');
-    
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(`TOTAL:`, 20, yPos);
-    pdf.text(`$${data.total.toFixed(2)}`, 150, yPos);
-    
-    // Footer
-    pdf.setFontSize(8);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text('Thank you for choosing Ink Toner & Moore!', 20, 280);
-    pdf.text('Located in Westbrook Mall - Your trusted office services provider', 20, 285);
-    
-    // Save the PDF
-    pdf.save(`shipping-receipt-${data.receiptNumber}.pdf`);
-  };
-
-  const generateKeyPDF = (data: KeyReceiptData) => {
-    const pdf = new jsPDF();
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    
-    // Header with business name
-    pdf.setFillColor(220, 220, 220); // Light gray for print
-    pdf.rect(0, 0, pageWidth, 25, 'F');
-    
-    pdf.setTextColor(0, 0, 0);
-    pdf.setFontSize(20);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('INK TONER & MOORE', 20, 16);
-    
-    // Black line
-    pdf.setDrawColor(0, 0, 0);
-    pdf.setLineWidth(1);
-    pdf.line(0, 25, pageWidth, 25);
-    
-    // Receipt title
-    pdf.setFontSize(16);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('KEY CUTTING RECEIPT', 20, 40);
-    
-    // Business info
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text('1200 37 Street SW Unit 3b', 20, 50);
-    pdf.text('Calgary, AB T3C 1S2', 20, 55);
-    pdf.text('Phone: (403) 686-2835', 20, 60);
-    
-    // Receipt details (right side)
-    pdf.text(`Receipt #: ${data.receiptNumber}`, 120, 50);
-    pdf.text(`Date: ${data.date}`, 120, 55);
-    
-    // Customer info section
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('CUSTOMER INFORMATION', 20, 80);
-    
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(`Name: ${data.customerName}`, 20, 90);
-    pdf.text(`Phone: ${data.customerPhone}`, 20, 95);
-    
-    // Items section
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('ITEMS', 20, 110);
-    
-    // Table headers
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('Key Model', 20, 120);
-    pdf.text('Qty', 80, 120);
-    pdf.text('Price Each', 100, 120);
-    pdf.text('Total', 140, 120);
-    
-    // Table line
-    pdf.setLineWidth(0.5);
-    pdf.line(20, 123, 170, 123);
-    
-    // Items
-    pdf.setFont('helvetica', 'normal');
-    let yPos = 130;
-    data.keyItems.forEach(item => {
-      pdf.text(item.model, 20, yPos);
-      pdf.text(item.quantity.toString(), 80, yPos);
-      pdf.text(`$${item.priceEach.toFixed(2)}`, 100, yPos);
-      pdf.text(`$${item.total.toFixed(2)}`, 140, yPos);
-      yPos += 8;
-    });
-    
-    // Pricing section
-    yPos += 10;
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(`Subtotal:`, 100, yPos);
-    pdf.text(`$${data.subtotal.toFixed(2)}`, 140, yPos);
-    
-    // Taxes
-    pdf.setFont('helvetica', 'normal');
-    data.taxes.forEach(tax => {
-      yPos += 8;
-      pdf.text(`${tax.name} (${tax.percentage}%):`, 100, yPos);
-      pdf.text(`$${tax.amount.toFixed(2)}`, 140, yPos);
-    });
-    
-    // Total with light gray background for print
-    yPos += 12;
-    pdf.setFillColor(240, 240, 240);
-    pdf.rect(95, yPos - 5, 80, 10, 'F');
-    
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(`TOTAL:`, 100, yPos);
-    pdf.text(`$${data.total.toFixed(2)}`, 140, yPos);
-    
-    // Footer
-    pdf.setFontSize(8);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text('Thank you for choosing Ink Toner & Moore!', 20, 280);
-    pdf.text('Located in Westbrook Mall - Your trusted office services provider', 20, 285);
-    
-    // Save the PDF
-    pdf.save(`key-receipt-${data.receiptNumber}.pdf`);
-  };
-
-  const onSubmitShipping = (data: ShippingReceiptData) => {
-    // Calculate totals for each shipping item and their add-ons
-    const updatedItems = data.shippingItems.map(item => {
-      // Calculate shipping taxes
-      const calculatedShippingTaxes = calculateTaxes(item.shippingCost, item.taxes);
-      
-      // Calculate add-on taxes separately
-      const updatedAddOns = item.addOns.map(addon => {
-        const calculatedAddonTaxes = calculateTaxes(addon.cost, addon.taxes);
-        return {
-          ...addon,
-          taxes: calculatedAddonTaxes
-        };
-      });
-      
-      return {
-        ...item,
-        taxes: calculatedShippingTaxes,
-        addOns: updatedAddOns
-      };
-    });
-    
-    // Calculate overall totals
-    const subtotal = updatedItems.reduce((sum, item) => {
-      const addOnTotal = item.addOns.reduce((addOnSum, addon) => addOnSum + addon.cost, 0);
-      return sum + item.shippingCost + addOnTotal;
-    }, 0);
-    
-    // Calculate total taxes from shipping and add-ons separately
-    const totalTaxes = updatedItems.reduce((sum, item) => {
-      const shippingTaxTotal = item.taxes.reduce((taxSum, tax) => taxSum + tax.amount, 0);
-      const addOnTaxTotal = item.addOns.reduce((addOnSum, addon) => {
-        return addOnSum + addon.taxes.reduce((taxSum, tax) => taxSum + tax.amount, 0);
-      }, 0);
-      return sum + shippingTaxTotal + addOnTaxTotal;
-    }, 0);
-    
-    const finalData = {
-      ...data,
-      shippingItems: updatedItems,
-      subtotal,
-      totalTaxes,
-      total: subtotal + totalTaxes
-    };
-    
-    generateShippingPDF(finalData);
-    toast({
-      title: "Receipt Generated",
-      description: `Shipping receipt ${data.receiptNumber} has been downloaded`,
-    });
-  };
-
-  const onSubmitKey = (data: KeyReceiptData) => {
-    // Calculate item totals and subtotal
-    const itemsWithTotals = data.keyItems.map(item => ({
-      ...item,
-      total: item.quantity * item.priceEach
-    }));
-    const subtotal = itemsWithTotals.reduce((sum, item) => sum + item.total, 0);
-    
-    // Calculate taxes and total
-    const calculatedTaxes = calculateTaxes(subtotal, data.taxes);
-    const totalTaxes = calculatedTaxes.reduce((sum, tax) => sum + tax.amount, 0);
-    
-    const finalData = {
-      ...data,
-      keyItems: itemsWithTotals,
-      subtotal,
-      taxes: calculatedTaxes,
-      total: subtotal + totalTaxes
-    };
-    
-    generateKeyPDF(finalData);
-    toast({
-      title: "Receipt Generated",
-      description: `Key receipt ${data.receiptNumber} has been downloaded`,
-    });
   };
 
   // Add the current tab's items to the open receipt instead of downloading now.
@@ -732,6 +323,31 @@ const StaffReceipts = () => {
     });
     if (!lines.length) {
       toast({ title: "Add a shipment with a courier and cost first", variant: "destructive" });
+      return;
+    }
+    addCartLines(lines);
+    addedToast();
+  };
+
+  const addKeyToReceipt = () => {
+    const data = keyForm.getValues();
+    const lines: CartLine[] = (data.keyItems || [])
+      .filter((k) => k.model?.trim() && isFilledNumber(k.priceEach))
+      .map((k) => {
+        const qty = k.quantity || 1;
+        const price = round2((k.priceEach || 0) * qty);
+        return {
+          id: nextCartLineId(),
+          description: qty > 1 ? `${k.model} x${qty}` : k.model,
+          price,
+          taxLines: (data.taxes || [])
+            .filter((t) => t.name && t.percentage)
+            .map((t) => ({ label: `${t.name} (${t.percentage}%)`, amount: round2((price * t.percentage) / 100) })),
+          source: "supplies" as const,
+        };
+      });
+    if (!lines.length) {
+      toast({ title: "Add a key with a price first", variant: "destructive" });
       return;
     }
     addCartLines(lines);
@@ -841,7 +457,7 @@ const StaffReceipts = () => {
 
             {/* Shipping Receipt Form */}
             <TabsContent value="shipping">
-              <form onSubmit={shippingForm.handleSubmit(onSubmitShipping)} className="space-y-6">
+              <form onSubmit={shippingForm.handleSubmit(addShippingToReceipt)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="receiptNumber" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Receipt Number</Label>
@@ -1226,30 +842,19 @@ const StaffReceipts = () => {
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button
-                    type="button"
-                    onClick={addShippingToReceipt}
-                    variant="outline"
-                    className="h-12 font-semibold rounded-xl sm:w-56"
-                  >
-                    <Receipt className="h-5 w-5 mr-2" />
-                    Add to receipt
-                  </Button>
-                  <Button
-                    type="submit"
-                    className={`flex-1 h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
-                  >
-                    <Download className="h-5 w-5 mr-2" />
-                    Generate Shipping Receipt PDF
-                  </Button>
-                </div>
+                <Button
+                  type="submit"
+                  className={`w-full h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
+                >
+                  <Receipt className="h-5 w-5 mr-2" />
+                  Add to receipt
+                </Button>
               </form>
             </TabsContent>
 
             {/* Key Cutting Receipt Form */}
             <TabsContent value="key">
-              <form onSubmit={keyForm.handleSubmit(onSubmitKey)} className="space-y-6">
+              <form onSubmit={keyForm.handleSubmit(addKeyToReceipt)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="keyReceiptNumber" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Receipt Number</Label>
@@ -1432,17 +1037,17 @@ const StaffReceipts = () => {
 
                 <Button
                   type="submit"
-                  className={`w-full h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.secondary}`}
+                  className={`w-full h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
                 >
-                  <Download className="h-5 w-5 mr-2" />
-                  Generate Key Receipt PDF
+                  <Receipt className="h-5 w-5 mr-2" />
+                  Add to receipt
                 </Button>
               </form>
             </TabsContent>
 
             {/* Cartridge Refill Receipt Form */}
             <TabsContent value="cartridge">
-              <form onSubmit={onSubmitCartridge('4x6')} className="space-y-6">
+              <form onSubmit={cartridgeForm.handleSubmit(addCartridgeToReceipt)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="crReceiptNumber" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Receipt Number</Label>
@@ -1508,38 +1113,19 @@ const StaffReceipts = () => {
 
                 <p className={`text-sm ${themeClasses.text.muted}`}>Blank fields are left off the printed receipt.</p>
 
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button
-                    type="button"
-                    onClick={addCartridgeToReceipt}
-                    variant="outline"
-                    className="h-12 font-semibold rounded-xl sm:w-48"
-                  >
-                    <Receipt className="h-5 w-5 mr-2" />
-                    Add to receipt
-                  </Button>
-                  <Button
-                    type="submit"
-                    className={`flex-1 h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
-                  >
-                    <Download className="h-5 w-5 mr-2" />
-                    Download 4×6
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={onSubmitCartridge('letter')}
-                    className={`flex-1 h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.secondary}`}
-                  >
-                    <Download className="h-5 w-5 mr-2" />
-                    Download Full Page
-                  </Button>
-                </div>
+                <Button
+                  type="submit"
+                  className={`w-full h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
+                >
+                  <Receipt className="h-5 w-5 mr-2" />
+                  Add to receipt
+                </Button>
               </form>
             </TabsContent>
 
             {/* Toner Sale Receipt Form */}
             <TabsContent value="toner">
-              <form onSubmit={onSubmitToner('4x6')} className="space-y-6">
+              <form onSubmit={tonerForm.handleSubmit(addTonerToReceipt)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <Label htmlFor="tonReceiptNumber" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Receipt Number</Label>
@@ -1658,32 +1244,13 @@ const StaffReceipts = () => {
 
                 <p className={`text-sm ${themeClasses.text.muted}`}>Blank fields are left off the printed receipt.</p>
 
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button
-                    type="button"
-                    onClick={addTonerToReceipt}
-                    variant="outline"
-                    className="h-12 font-semibold rounded-xl sm:w-48"
-                  >
-                    <Receipt className="h-5 w-5 mr-2" />
-                    Add to receipt
-                  </Button>
-                  <Button
-                    type="submit"
-                    className={`flex-1 h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
-                  >
-                    <Download className="h-5 w-5 mr-2" />
-                    Download 4×6
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={onSubmitToner('letter')}
-                    className={`flex-1 h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.secondary}`}
-                  >
-                    <Download className="h-5 w-5 mr-2" />
-                    Download Full Page
-                  </Button>
-                </div>
+                <Button
+                  type="submit"
+                  className={`w-full h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
+                >
+                  <Receipt className="h-5 w-5 mr-2" />
+                  Add to receipt
+                </Button>
               </form>
             </TabsContent>
           </Tabs>
