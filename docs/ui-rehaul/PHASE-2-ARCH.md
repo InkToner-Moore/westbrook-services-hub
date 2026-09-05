@@ -287,6 +287,56 @@ other on each edit). A1 just ships the math.
 - One receipt path: everything is the open receipt, Finish prints it. Do not add a
   second "download now" path or a mode toggle.
 
+## 6b. Wave 2 ownership map (Receipt / Record / Note+Inventory / Slip)
+
+Wave 1 landed. Four Wave-2 agents build in parallel on DISJOINT files. Each writes
+its bespoke artifact card in its OWN file under `src/components/ai/artifacts/` and
+exports `export function register(reg: ArtifactRegistry) { reg.<kind> = {...} }`.
+Agents do NOT edit `artifactRegistry.tsx` (the integrator adds the one import+call).
+
+Shared engine files (`fieldSpecs.ts` except where noted, `providers/deterministic.ts`,
+`actions/index.ts`, `intentOptions.ts`, `context.tsx`, `routingSchema.ts`,
+`proxy/worker.js`) are INTEGRATOR-OWNED in Wave 2: if you need a routing cue, an
+executor registration, a describeIntent copy tweak, or a spec change outside your
+owned files, put a precise "shared-file change request" in your report and the
+integrator applies it. Do not edit them yourself.
+
+- **W2-Slip** owns `src/components/ai/ConfirmationCheck.tsx` and `src/ai/fieldSpecs.ts`.
+  Delivers: clearer, subtype-contextual field labels (fix the confusing "Model" on a
+  supplies sale, e.g. selling a custom box must not ask for "Model"); GST TWO-WAY
+  input (a money field with a "tax incl." toggle: type either pre-tax or tax-inclusive
+  and the other auto-updates, using `grossFromNet`/`netFromGross`/`taxOf` from
+  `@/lib/canadaTax`; show the after-GST total when GST is on); a new `select` FieldKind
+  with a dropdown, and make Note's `noteCategory` a fixed dropdown (categories:
+  General, Customer, Supplier, Repair, Reminder, Other - export them). Keep the
+  omit-toggle + attach toggles working.
+- **W2-Receipt** owns `src/ai/actions/receipt.ts`, `src/lib/simpleReceipt.ts`,
+  `src/ai/receiptOutput.ts`, `src/ai/cart.ts`, `src/ai/actions/cartLines.ts`,
+  `src/components/ai/ShipmentItemsEditor.tsx`, `src/ai/actions/label.ts` (register
+  the real 4x6 label builder via `registerLabelBuilder`), and card
+  `src/components/ai/artifacts/ReceiptCard.tsx` (kind `'receipt'`). Delivers: the
+  receipt artifact card with BOTH full-sheet and 4x6 preview + print + download,
+  after-GST totals, contextual line naming. Export a `registerReceiptSeams()` that
+  calls `registerLabelBuilder`; note it for the integrator to invoke once at startup.
+- **W2-Record** owns `src/ai/actions/cartridge.ts`, `src/lib/cartridges.ts`, and card
+  `src/components/ai/artifacts/RecordCard.tsx` (kind `'refill'`; update the cartridge
+  executors to emit that kind). Delivers: record a NEW refill, CHANGE STATUS, and VIEW
+  one, each a purpose-built card state; ALWAYS show and allow a 4x6 label download
+  regardless of whether there is a price (reuse the shared label builder seam or
+  `simpleReceipt`). Do not widen `orderStatus`; keep the 3-status enum.
+- **W2-NoteInv** owns `src/ai/actions/collections.ts` (note + inventory +
+  inventory_lookup executors; leave directory alone) and cards
+  `src/components/ai/artifacts/NoteCard.tsx` (kind `'note'`) and
+  `src/components/ai/artifacts/InventoryCard.tsx` (kind `'inventory'`). Delivers: the
+  note card; the inventory RESULT card (stock badge, price in mono, and a key
+  LOCATION slot that reads a future model->cut-code map - scaffold it now, show
+  "location coming soon" when absent) rendering the `inventory` artifact shape A1
+  defined (see section 1's report: `{query, keys[], refills[], total}`); plus an
+  inventory EDIT/update state. Reuse `lib/firestore.ts` helpers.
+
+W2-Receipt and W2-Slip both concern receipts but own different files (card vs slip);
+coordinate only through the report. None of the four edit another's files.
+
 ## 7. What to put in your final report
 
 - Every file you created or changed, one line each.
