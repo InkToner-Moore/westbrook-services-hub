@@ -17,7 +17,15 @@ read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this fi
     stock-toggle/soft-delete pattern as keys.
   - The 2 pre-existing `any` lint errors in `lib/firestore.ts` (generic helper signatures,
     lines 42/54) are NOT from this work; do not "fix" them here.
-- **Import prepared but NOT yet run** (blocked on a credential, user chose DEV ONLY):
+- **IMPORT DONE into DEV (2026-09-06):** ran `import.mjs` with the `inktonermoore-dev`
+  service-account key. `keyInventory` = 397 docs, `refillInventory` = 130 docs, all
+  `inStock: true`, verified by read-back. Fixed a casing glitch afterward (51 HP refills had
+  brand "Hp" from title-casing -> now "HP"). PROD untouched. STILL OUTSTANDING: (a) the
+  Firestore console needs a read rule for `refillInventory`/`deletedRefillInventory` mirroring
+  `keyInventory`, or the Refills tab loads empty in-app despite the data being there; (b) the 4
+  edge keys below are not imported - user to decide prices; (c) prod import not done (dev-only
+  by the user's choice).
+- **Import prepared (details, for a prod run later):** (user chose DEV ONLY for now)
   - Parsed both spreadsheets: **397 keys** (col A code -> model, col B -> notes, col K
     "2019 + tax" -> price, treated as before-tax) and **130 refills** (107 clean numeric,
     23 with a preserved `priceNote`). **4 edge keys held back** for the user to decide:
