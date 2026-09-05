@@ -3,7 +3,52 @@
 Update this at the end of every phase and before any context handoff. To resume,
 read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this file.
 
-## Exit state (2026-09-05, polish + deploy sync + research, LATEST)
+## Exit state (2026-09-06, LLM-assisted extraction, LATEST)
+- **State:** branch `ai-mode-overhaul`, tree CLEAN after this session's commits.
+  `corepack yarn build` GREEN; `corepack yarn eslint src/ai/providers/llm.ts
+  src/ai/providers/routingSchema.ts` = 0 errors/0 warnings; `node --check
+  proxy/src/worker.js` OK. Built and lint-clean only; the LLM path CANNOT be
+  exercised locally (no proxy URL, demo Firebase), so it is UNVERIFIED end to end.
+- **What landed: the LLM now helps EXTRACT, not just route.** The standing invariant
+  "model never touches business values" is RELAXED, with the user's go-ahead, in the
+  narrow, guarded way the prior handoff proposed. The model can now return field
+  CANDIDATES; deterministic extraction stays the floor and still owns every value it
+  finds; a candidate fills a field ONLY where deterministic left it empty
+  (`not_provided`), is marked `source: 'guessed'` (reason "read by the assistant"), and
+  shows on the confirmation slip as a guessed value a human must confirm. A bad guess
+  is just an edit; a proxy failure degrades to exactly today's deterministic result.
+- **Files touched:**
+  - `proxy/src/worker.js`: `RESPONSE_SCHEMA` gained an optional nullable `fields`
+    object (customerName, customerPhone, brand, model, type, quantity, price, supply,
+    keyModel, item, content); `SYSTEM_PROMPT` now asks the model to copy stated values
+    verbatim, null when unstated, and NEVER guess a phone/price/name; `maxOutputTokens`
+    120 -> 320. Routing behavior and the coarse confidence bucket are unchanged.
+  - `src/ai/providers/routingSchema.ts`: added `candidateSchema` (defensive string/number
+    coercion, blank -> absent), `fields` on `routingSchema` (optional, so an
+    un-redeployed proxy still validates), and exported `CANDIDATE_KEYS`.
+  - `src/ai/providers/llm.ts`: `mergeCandidates` (fill-only-empty, mark guessed, never
+    overwrite explicit/guessed) and `hasFillableGap`. The gate now also spends the model
+    when local routing IS confident but a BLOCKING candidate-key field is still empty
+    (e.g. a confident "cut a key" with no key model) - the vague-input case where regex
+    misses a value. When local is confident and complete, still instant and free.
+  - Deliberately NOT candidates: date, gst, orderId, status, url, categories, inStock,
+    linkName - system-generated or regex-reliable, where the model adds risk not help.
+- **REQUIRED before this works on staging (in order):**
+  1. `cd proxy && npx wrangler deploy` - the new schema/prompt are INERT until the
+     worker redeploys. (You redeployed the PRIOR prompt sharpening already; this is a
+     SECOND, new deploy for the `fields` schema.)
+  2. Re-sync `origin/dev` to the `ai-mode-overhaul` tip so Cloudflare Pages rebuilds
+     staging with the SPA merge changes (fast-forward now, per the deploy note below).
+  3. Smoke-test on the STABLE `https://ink-toner-moore.pages.dev` only: try vague input
+     the regex misses (e.g. "refill for mrs o'brien, the hp 65 thing, twenty bucks") and
+     confirm the guessed fields fill and are flagged for check on the slip; confirm an
+     explicit value is never overwritten; confirm turning the proxy off still yields the
+     deterministic result.
+- **Still outstanding from before:** the staging smoke-test on the dev DB (login, create a
+  throwaway note, confirm it lands in DEV Firestore) was never finished - fold it into the
+  same staging pass.
+
+## Exit state (2026-09-05, polish + deploy sync + research)
 - **State:** branch `ai-mode-overhaul`, tree CLEAN. `corepack yarn build` GREEN, eslint on
   changed files 0 errors (only the pre-existing `context.tsx` react-refresh warning).
   `origin/dev` was force-synced to the `ai-mode-overhaul` tip this session (see deploy note),
