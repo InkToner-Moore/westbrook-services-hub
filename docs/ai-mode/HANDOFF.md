@@ -3,6 +3,27 @@
 Update this at the end of every phase and before any context handoff. To resume,
 read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this file.
 
+## At a glance (session close 2026-09-06)
+- **Next session is for:** verification and small follow-ups, not a big build. Namely: (1)
+  in-browser staging smoke-test of the LLM-assisted extraction AND the new Inventory tabs (needs
+  the dev staff login - see below); (2) inventory loose ends - the 4 edge keys, an optional prod
+  import, and the optional refill-price autofill into receipts; (3) AI Mode phase 9 (final
+  review) per `02-implementation-plan.md`. Everything built this session is browser-UNverified
+  because it needs a staff login on staging.
+- **Where things stand:** branch `ai-mode-overhaul`, tree CLEAN, pushed (tip `deeac14`).
+  `origin/dev` is at the inventory-feature tip and the two-tab Inventory + proxy URL are
+  confirmed present in the live staging bundle. Only open PR is #1 `docs-align-claude-md`
+  (pre-existing, NOT this session - leave it).
+- **Gate as observed (2026-09-06):** `corepack yarn build` GREEN. `corepack yarn eslint` on
+  every file this session changed (`StaffInventory.tsx`, `firestore.ts`, `llm.ts`,
+  `routingSchema.ts`) is clean EXCEPT the 2 long-standing baseline `any` errors in
+  `firestore.ts:42,54` (generic helper signatures, not this session's - do not "fix" here).
+- **Blocked on Parsa:** the dev staff login for the staging smoke-tests; the 4 edge-key prices;
+  a go/no-go on the prod import. Dev service-account key kept at
+  `/home/user/Programming/InkTonerMoore/inktonermoore-dev-firebase-adminsdk-fbsvc-00212c1190.json`
+  (Parsa chose to keep it; dev-only, lives outside the repo).
+- Detail for each item is in the dated sections below; this block is the pointer, not a copy.
+
 ## Exit state (2026-09-06, Inventory price lists - keys + refills, LATEST)
 - **Separate track from AI Mode** (same session/branch `ai-mode-overhaul`). The user asked to
   import the shop's key and toner/cartridge refill price lists into the app. The Inventory page
