@@ -615,7 +615,7 @@ const StaffInventory = () => {
                 <CardContent>
                   <form
                     onSubmit={newRefillForm.handleSubmit(addRefill)}
-                    className="grid grid-cols-1 sm:grid-cols-12 gap-3"
+                    className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-12"
                   >
                     <div className="sm:col-span-3">
                       <Label className={`sr-only`}>Brand</Label>

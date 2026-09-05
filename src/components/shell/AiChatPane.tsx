@@ -25,7 +25,7 @@ const EXAMPLES = [
   'Refill for Sarah, HP 65, $34',
   'Ship to Vancouver, UPS, $22',
   'Track UPS 1Z999AA10123456784',
-  'New cartridge order for John, Canon 137',
+  'Record a refill for John, Canon 137',
 ];
 
 const AiChatPane: React.FC = () => {
@@ -102,8 +102,8 @@ const AiChatPane: React.FC = () => {
               What can I help with?
             </p>
             <p className={`mt-2 max-w-md text-[15px] leading-relaxed ${themeClasses.text.secondary}`}>
-              Say it in plain words. I make receipts, manage cartridge orders, track
-              packages, and keep your notes, inventory, and follow-ups in order.
+              Say it in plain words. I make receipts, record refills, track
+              packages, and keep your notes and inventory in order.
             </p>
             <div className="mt-5 flex items-start gap-2">
               <span className={`mt-1.5 text-[13px] ${themeClasses.text.muted}`}>Try</span>

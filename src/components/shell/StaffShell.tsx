@@ -9,6 +9,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Menu, PanelRight, PanelLeftOpen, PanelRightOpen, X, Sparkles } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAiMode } from '@/ai/context';
+import type { ArtifactState } from '@/ai/types';
 import { ShellContext } from './ShellContext';
 import TileRail from './TileRail';
 import ArtifactRail from './ArtifactRail';
@@ -23,7 +24,7 @@ const readFlag = (key: string) => {
 
 const StaffShell: React.FC = () => {
   const { themeClasses } = useTheme();
-  const { artifact } = useAiMode();
+  const { artifact, showArtifact } = useAiMode();
   const { pathname } = useLocation();
   const [railOpen, setRailOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -31,6 +32,23 @@ const StaffShell: React.FC = () => {
   const [rightCollapsed, setRightCollapsed] = useState(() => readFlag('shell-right-collapsed'));
 
   const hasArtifact = !!artifact && artifact.kind !== 'none';
+
+  // Remember the last real result so the rail can offer a "Show last" reopen
+  // after a tool switch clears the live artifact. Confirmation slips are
+  // transient (their turn is confirmed or dismissed), so they are not kept.
+  // Local fallback until A1 promotes lastArtifact/reopenLastArtifact into the AI
+  // context; see the report.
+  const [lastArtifact, setLastArtifact] = useState<ArtifactState | null>(null);
+  useEffect(() => {
+    if (artifact && artifact.kind !== 'none' && artifact.kind !== 'confirmation') {
+      setLastArtifact(artifact);
+    }
+  }, [artifact]);
+  const reopenLast = () => {
+    if (lastArtifact) showArtifact(lastArtifact);
+  };
+  // A dot marks the rail when there is something live OR something to reopen.
+  const showDot = hasArtifact || !!lastArtifact;
 
   useEffect(() => {
     try {
@@ -93,7 +111,7 @@ const StaffShell: React.FC = () => {
               className={`relative flex h-10 w-10 items-center justify-center rounded-xl ${themeClasses.interactive.hover}`}
             >
               <PanelRight className={`h-5 w-5 ${themeClasses.text.secondary}`} />
-              {hasArtifact && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-blue-500" />}
+              {showDot && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-blue-500" />}
             </button>
           </div>
 
@@ -113,12 +131,12 @@ const StaffShell: React.FC = () => {
               className={`relative flex h-9 w-9 items-center justify-center rounded-lg ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
             >
               <PanelRightOpen className="h-4 w-4" />
-              {hasArtifact && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-blue-500" />}
+              {showDot && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-blue-500" />}
             </button>
           </aside>
         ) : (
           <aside className={`hidden w-[400px] shrink-0 border-l xl:block ${themeClasses.card.primary}`}>
-            <ArtifactRail onCollapse={() => setRightCollapsed(true)} />
+            <ArtifactRail onCollapse={() => setRightCollapsed(true)} lastArtifact={lastArtifact} onReopenLast={reopenLast} />
           </aside>
         )}
 
@@ -148,7 +166,7 @@ const StaffShell: React.FC = () => {
                 </button>
               </div>
               <div className="min-h-0 flex-1">
-                <ArtifactRail />
+                <ArtifactRail lastArtifact={lastArtifact} onReopenLast={reopenLast} />
               </div>
             </div>
           </div>

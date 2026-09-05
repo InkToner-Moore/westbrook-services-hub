@@ -51,3 +51,31 @@ export function taxesForProvince(code: string | null | undefined, subtotal: numb
     amount: round2((subtotal * t.percentage) / 100),
   }));
 }
+
+// GST two-way math for the Receipt tool: the counter can type EITHER the pre-tax
+// (net) price OR the tax-inclusive (gross) price and derive the other. These are
+// pure and cents-rounded. A null, non-finite, or zero-or-negative amount returns
+// 0 rather than NaN, so a half-typed field never shows garbage. `rate` defaults to
+// the 5% federal GST but is overridable for a different single-tax rate.
+export const GST_RATE = 0.05;
+
+const safeAmount = (n: number | null | undefined): number =>
+  typeof n === 'number' && Number.isFinite(n) && n > 0 ? n : 0;
+const safeRate = (rate?: number): number =>
+  typeof rate === 'number' && Number.isFinite(rate) && rate >= 0 ? rate : GST_RATE;
+
+// Gross (tax-inclusive) total from a net (pre-tax) amount: net + tax.
+export function grossFromNet(net: number, rate?: number): number {
+  return round2(safeAmount(net) * (1 + safeRate(rate)));
+}
+
+// Net (pre-tax) amount from a gross (tax-inclusive) total: gross / (1 + rate).
+export function netFromGross(gross: number, rate?: number): number {
+  const r = safeRate(rate);
+  return round2(safeAmount(gross) / (1 + r));
+}
+
+// The tax portion of a net (pre-tax) amount: net * rate.
+export function taxOf(net: number, rate?: number): number {
+  return round2(safeAmount(net) * safeRate(rate));
+}

@@ -16,12 +16,15 @@ export const ROUTE_OPTIONS: RouteOption[] = [
   { label: 'Sale receipt', action: 'receipt', subtype: 'supplies' },
   { label: 'Shipping receipt', action: 'receipt', subtype: 'shipping' },
   { label: 'Key receipt', action: 'receipt', subtype: 'key' },
-  { label: 'Cartridge order', action: 'cartridge_create' },
-  { label: 'Order status', action: 'cartridge_status' },
+  // "Record" is the user-facing name for the cartridge-refill workflow. The
+  // internal ids stay cartridge_* (Firestore and lib/cartridges.ts key off them);
+  // only the presentation says "Record". See PHASE-2-ARCH section 1.
+  { label: 'Record a refill', action: 'cartridge_create' },
+  { label: 'Update refill status', action: 'cartridge_status' },
   { label: 'Note', action: 'note' },
-  { label: 'Inventory', action: 'inventory' },
+  { label: 'Check inventory', action: 'inventory_lookup' },
+  { label: 'Update inventory', action: 'inventory' },
   { label: 'Directory link', action: 'directory' },
-  { label: 'Follow-up', action: 'followup' },
   { label: 'Track a parcel', action: 'track' },
 ];
 

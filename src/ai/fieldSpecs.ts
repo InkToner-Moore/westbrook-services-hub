@@ -108,11 +108,6 @@ export const FIELD_SPECS: Record<string, FieldSpec[]> = {
     { key: 'linkCategory', label: 'Category', marker: 'optional', alwaysShown: true, kind: 'text' },
     { key: 'linkDescription', label: 'Description', marker: 'optional', alwaysShown: false, kind: 'text' },
   ],
-  'followup': [
-    { key: 'customerName', label: 'Customer Name', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
-    { key: 'item', label: 'Item / Request', marker: 'required', alwaysShown: true, kind: 'text', blocking: true },
-    { key: 'customerPhone', label: 'Customer Phone', marker: 'optional', alwaysShown: true, kind: 'phone' },
-  ],
 };
 
 // Derive the spec id from an intent.
@@ -123,7 +118,6 @@ export function specIdFor(action: AiAction, subtype?: ReceiptSubtype): string | 
   if (action === 'note') return 'note';
   if (action === 'inventory') return 'inventory';
   if (action === 'directory') return 'directory';
-  if (action === 'followup') return 'followup';
   return null;
 }
 

@@ -4,10 +4,11 @@
 // carrier for tracking. An artifact with nothing to do (an order list) renders
 // no foot at all. See docs/ui-rehaul/DESIGN-SPEC.md.
 import React from 'react';
-import { Check, Download, ExternalLink, Printer } from 'lucide-react';
+import { Check, CreditCard, Download, ExternalLink, Printer, Tag } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { ArtifactKind } from '@/ai/types';
 import type { FieldSpec } from '@/ai/fieldSpecs';
+import type { IntentAttachments } from '@/ai/types';
 import type { SimpleReceiptOptions } from '@/lib/simpleReceipt';
 import type { TrackingCard } from '@/ai/tracking';
 import { downloadReceipt, printReceipt } from '@/ai/receiptOutput';
@@ -18,6 +19,11 @@ interface ConfirmationFootProps {
   busy?: boolean;
   onConfirm: () => void;
   onDismiss: () => void;
+  // Compound attachments on the intent. When present, the foot shows a toggle
+  // per attachment so the counter can flip them before Confirm. Undefined means
+  // this intent has no attachments and no extra controls render.
+  attach?: IntentAttachments;
+  onToggleAttach?: (key: keyof IntentAttachments, value: boolean) => void;
 }
 
 interface ArtifactActionsProps {
@@ -30,9 +36,33 @@ const ArtifactActions: React.FC<ArtifactActionsProps> = ({ kind, data, confirmat
   const { themeClasses } = useTheme();
 
   if (kind === 'confirmation' && confirmation) {
-    const { canConfirm, missing, busy, onConfirm, onDismiss } = confirmation;
+    const { canConfirm, missing, busy, onConfirm, onDismiss, attach, onToggleAttach } = confirmation;
+    const attachToggle = (on: boolean, label: string, Icon: typeof CreditCard, onClick: () => void) => (
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        onClick={onClick}
+        className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+          on ? themeClasses.status.success : themeClasses.button.secondary
+        }`}
+      >
+        <Icon className="h-4 w-4" />
+        {label}
+      </button>
+    );
     return (
       <div className={`border-t px-4 py-3 ${themeClasses.header}`}>
+        {attach && onToggleAttach && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {attachToggle(attach.pay === true, 'Also charge card', CreditCard, () =>
+              onToggleAttach('pay', !(attach.pay === true)),
+            )}
+            {attachToggle(attach.label === true, 'Also print 4x6 label', Tag, () =>
+              onToggleAttach('label', !(attach.label === true)),
+            )}
+          </div>
+        )}
         <p className={`mb-2.5 text-sm ${themeClasses.text.muted}`}>
           {canConfirm
             ? 'Ready when you are.'

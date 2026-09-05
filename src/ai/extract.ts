@@ -3,6 +3,7 @@
 // not_provided). Heuristic by design: everything is confirmable and editable in
 // the check, and the optional LLM improves recall later without changing this.
 import { CARTRIDGE_BRANDS, CARTRIDGE_TYPES } from '@/lib/cartridges';
+import type { IntentAttachments } from './types';
 
 export function todayIso(): string {
   const d = new Date();
@@ -182,10 +183,9 @@ export function extractUrl(text: string): string | null {
 }
 
 // Strip leading action words so the remainder can seed a free-text field (a note
-// body, a follow-up item, a key model). Returns null when nothing meaningful is
-// left.
+// body or a key model). Returns null when nothing meaningful is left.
 const LEADING_WORDS =
-  /^(?:please\s+)?(?:add|log|create|make|new|note|remember|jot|down|a|an|the|to|follow[\s-]?up|inventory|directory|key|link|customer|request)\b[\s:,-]*/i;
+  /^(?:please\s+)?(?:add|log|create|make|new|note|remember|jot|down|a|an|the|to|inventory|directory|key|link)\b[\s:,-]*/i;
 export function cleanRemainder(text: string): string | null {
   let out = text.trim();
   // Peel leading action words a few times.
@@ -244,4 +244,24 @@ export function extractProvince(text: string): string | null {
     if (new RegExp(`\\b${p.code}\\b`).test(text)) return p.code;
   }
   return null;
+}
+
+// Side-action cues for the compound "chain around one transaction". A pay cue
+// ("charge her card", "tap", "moneris") means also send the amount to the payment
+// device and record it (Purchase); a label cue ("print a label", "4x6", "sticker")
+// means also produce a 4x6 label. Returns undefined when neither is present, so an
+// intent stays clean unless the counter actually asked for a side action. These are
+// only defaults: the confirmation slip renders them as toggles the counter can flip
+// before Confirm. See PHASE-2-ARCH section 1.2.
+const PAY_CUES = /\b(?:charge|pay|paid|card|tap|debit|credit|moneris)\b/i;
+const LABEL_CUES = /\b(?:label|4\s?x\s?6|sticker)\b/i;
+
+export function extractAttachments(text: string): IntentAttachments | undefined {
+  const pay = PAY_CUES.test(text);
+  const label = LABEL_CUES.test(text);
+  if (!pay && !label) return undefined;
+  const attach: IntentAttachments = {};
+  if (pay) attach.pay = true;
+  if (label) attach.label = true;
+  return attach;
 }

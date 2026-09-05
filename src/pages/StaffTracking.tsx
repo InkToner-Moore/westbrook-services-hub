@@ -10,8 +10,10 @@ const StaffTracking = () => {
       icon={Package}
       iconColor="text-blue-600 dark:text-blue-400"
     >
-      <div className="mx-auto max-w-3xl">
-        <SmartTracker />
+      {/* The shell's tool title bar already names Tracking (blue hue), so the
+          tracker card drops its own header here to avoid a doubled title. */}
+      <div className="mx-auto max-w-2xl">
+        <SmartTracker showHeader={false} />
       </div>
     </StaffLayout>
   );

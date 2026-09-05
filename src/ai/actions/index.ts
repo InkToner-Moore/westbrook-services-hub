@@ -11,7 +11,7 @@ import {
   executeCartridgeModify,
   executeCartridgeStatus,
 } from './cartridge';
-import { executeDirectory, executeFollowup, executeInventory, executeNote } from './collections';
+import { executeDirectory, executeInventory, executeInventoryLookup, executeNote } from './collections';
 
 const REGISTRY: Partial<Record<AiAction, ActionExecutor>> = {
   receipt: executeReceipt,
@@ -22,8 +22,8 @@ const REGISTRY: Partial<Record<AiAction, ActionExecutor>> = {
   cartridge_modify: executeCartridgeModify,
   note: executeNote,
   inventory: executeInventory,
+  inventory_lookup: executeInventoryLookup,
   directory: executeDirectory,
-  followup: executeFollowup,
 };
 
 export function getExecutor(action: AiAction): ActionExecutor | undefined {
@@ -31,7 +31,12 @@ export function getExecutor(action: AiAction): ActionExecutor | undefined {
 }
 
 // Read-only actions that are safe to run immediately, with no confirmation step.
-const IMMEDIATE: Set<AiAction> = new Set(['track', 'cartridge_list', 'cartridge_modify']);
+const IMMEDIATE: Set<AiAction> = new Set([
+  'track',
+  'cartridge_list',
+  'cartridge_modify',
+  'inventory_lookup',
+]);
 
 export function isImmediate(action: AiAction): boolean {
   return IMMEDIATE.has(action);

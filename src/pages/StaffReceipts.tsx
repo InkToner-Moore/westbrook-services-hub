@@ -617,7 +617,7 @@ const StaffReceipts = () => {
                           
                           <div className="space-y-2">
                             {shippingForm.watch(`shippingItems.${itemIndex}.addOns`)?.map((_, addonIndex) => (
-                              <div key={addonIndex} className="grid grid-cols-3 gap-2 items-end">
+                              <div key={addonIndex} className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:items-end">
                                 <div>
                                   <Label className={`text-sm font-medium ${themeClasses.text.primary}`}>Add-on Type</Label>
                                   <Select 
@@ -885,7 +885,7 @@ const StaffReceipts = () => {
                   <h3 className={`font-bold text-lg mb-4 transition-colors duration-300 ${themeClasses.text.primary}`}>Key Items</h3>
                   <div className="space-y-4">
                     {keyForm.watch('keyItems')?.map((_, index) => (
-                      <div key={index} className="grid grid-cols-4 gap-4 items-end">
+                      <div key={index} className="grid grid-cols-2 gap-3 items-end sm:grid-cols-4 sm:gap-4">
                         <div>
                           <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Key Model</Label>
                           <Input

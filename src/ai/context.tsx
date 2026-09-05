@@ -15,6 +15,8 @@ import { getProvider } from './providers';
 import { getFieldSpecs } from './fieldSpecs';
 import { getExecutor, isImmediate } from './actions';
 import { receiptIntentToCartLines } from './actions/cartLines';
+import { recordPurchase } from './actions/purchase';
+import { buildLabel } from './actions/label';
 import { logCorrection } from './corrections';
 import { routeLabel } from './intentOptions';
 
@@ -48,7 +50,6 @@ const TAB_NAMES: Record<string, string> = {
   '/staff/notes': 'Notes',
   '/staff/inventory': 'Inventory',
   '/staff/directory': 'Directory',
-  '/staff/requests': 'Follow-Ups',
 };
 
 // A short, warm line describing what the engine understood.
@@ -57,21 +58,21 @@ function describeIntent(intent: Intent): string {
     case 'receipt':
       return `Let's make a ${intent.subtype ?? ''} receipt.`.replace('  ', ' ');
     case 'cartridge_create':
-      return 'New cartridge order, coming right up.';
+      return 'New refill record, coming right up.';
     case 'cartridge_modify':
-      return "Let's update that order.";
+      return "Let's update that record.";
     case 'cartridge_status':
-      return "I'll change the order status for you.";
+      return "I'll change the record's status for you.";
     case 'cartridge_list':
-      return 'Here are the cartridge orders.';
+      return 'Here are the refill records.';
     case 'note':
       return "I'll save that as a note.";
     case 'inventory':
       return "Let's update the inventory.";
+    case 'inventory_lookup':
+      return "Let me check the inventory.";
     case 'directory':
       return "I'll take care of that directory entry.";
-    case 'followup':
-      return "I'll log that follow-up.";
     case 'track':
       return "Let's track that package.";
     default:
@@ -342,6 +343,29 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setTurnStatus(turnId, 'confirmed');
       setArtifact(null);
 
+      // The compound chain: after the primary action, run any attached side
+      // actions in order (pay, then label). Each is a registry-backed seam that
+      // is a friendly no-op until Wave 2/3 registers the real one, so this runs
+      // safely today. See PHASE-2-ARCH section 1.2.
+      const runAttachments = async () => {
+        const attach = finalIntent.attach;
+        if (!attach) return;
+        if (attach.pay) {
+          try {
+            addResult(await recordPurchase(finalIntent));
+          } catch {
+            addAssistantTurn('Could not record the payment just now. The rest is done.');
+          }
+        }
+        if (attach.label) {
+          try {
+            addResult(await buildLabel(finalIntent));
+          } catch {
+            addAssistantTurn('Could not build the label just now. The rest is done.');
+          }
+        }
+      };
+
       // A confirmed receipt drops its lines onto the open receipt. One item or
       // many, it is the same flow; Finish builds the combined receipt.
       if (finalIntent.action === 'receipt') {
@@ -355,6 +379,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         addAssistantTurn(
           `Added to the receipt. ${count} ${count === 1 ? 'item' : 'items'} so far. Finish it from the open receipt when you are ready.`,
         );
+        await runAttachments();
         return;
       }
 
@@ -368,6 +393,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       } else {
         addAssistantTurn('Done. That is all set.');
       }
+      await runAttachments();
     },
     [updateTurnIntent, setTurnStatus, addAssistantTurn, addCartLines, cart, addResult],
   );

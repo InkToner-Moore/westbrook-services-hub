@@ -12,7 +12,6 @@ import StaffCartridges from "./pages/StaffCartridges";
 import StaffDirectory from "./pages/StaffDirectory";
 import StaffNotes from "./pages/StaffNotes";
 import StaffInventory from "./pages/StaffInventory";
-import StaffRequests from "./pages/StaffRequests";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./hooks/useAuth";
@@ -55,7 +54,6 @@ const AppRoutes = () => {
           <Route path="directory" element={<StaffDirectory />} />
           <Route path="notes" element={<StaffNotes />} />
           <Route path="inventory" element={<StaffInventory />} />
-          <Route path="requests" element={<StaffRequests />} />
         </Route>
       </Route>
 

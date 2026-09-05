@@ -9,9 +9,12 @@ import purolatorLogo from "@/assets/couriers/purolator.png";
 
 interface SmartTrackerProps {
   className?: string;
+  // The card's own titled header. Hidden when a surrounding layout (the staff
+  // shell's tool title bar) already names the tool, so it does not read twice.
+  showHeader?: boolean;
 }
 
-const SmartTracker = ({ className = "" }: SmartTrackerProps) => {
+const SmartTracker = ({ className = "", showHeader = true }: SmartTrackerProps) => {
   // Package tracking is always enabled since system settings was removed
   const { themeClasses, isDarkMode } = useTheme();
   const [trackingNumber, setTrackingNumber] = useState("");
@@ -80,21 +83,23 @@ const SmartTracker = ({ className = "" }: SmartTrackerProps) => {
 
   return (
     <div className={`rounded-xl border p-5 sm:p-6 ${className} ${themeClasses.card.primary}`}>
-      <div className="flex items-center gap-3">
-        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${isDarkMode ? "bg-blue-950/60" : "bg-blue-50"}`}>
-          <Package className={`h-5 w-5 ${isDarkMode ? "text-blue-300" : "text-blue-700"}`} />
-        </span>
-        <div>
-          <h2 className={`text-xl font-semibold tracking-tight ${themeClasses.text.primary}`}>
-            Track a parcel
-          </h2>
-          <p className={`text-[13px] ${themeClasses.text.secondary}`}>
-            Enter the tracking number, then choose the courier
-          </p>
+      {showHeader && (
+        <div className="flex items-center gap-3">
+          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${isDarkMode ? "bg-blue-950/60" : "bg-blue-50"}`}>
+            <Package className={`h-5 w-5 ${isDarkMode ? "text-blue-300" : "text-blue-700"}`} />
+          </span>
+          <div>
+            <h2 className={`text-xl font-semibold tracking-tight ${themeClasses.text.primary}`}>
+              Track a parcel
+            </h2>
+            <p className={`text-[13px] ${themeClasses.text.secondary}`}>
+              Enter the tracking number, then choose the courier
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="mt-5 max-w-md space-y-5">
+      <div className={`${showHeader ? "mt-5" : ""} max-w-md space-y-5`}>
         {/* Tracking Number Input */}
         <div>
           <label htmlFor="tracking-number" className={`mb-1.5 block text-sm font-medium ${themeClasses.text.primary}`}>

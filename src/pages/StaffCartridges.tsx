@@ -596,7 +596,11 @@ const StaffCartridges = () => {
   });
 
   const content = (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    // Stay single-column until there is real width (2xl). Inside the shell the
+    // center pane is narrow when both rails are open (which starts at xl, where
+    // the right rail appears), so a viewport-based lg:grid-cols-3 squeezed the
+    // form and list; 2xl only splits once there is room for it.
+    <div className="grid grid-cols-1 gap-8 2xl:grid-cols-3">
           {/* Add New Order Form */}
           <div className="lg:col-span-1">
             <Card className={themeClasses.card.primary}>

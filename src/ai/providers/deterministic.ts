@@ -8,6 +8,7 @@ import { getFieldSpecs } from '../fieldSpecs';
 import {
   cleanRemainder,
   domainName,
+  extractAttachments,
   extractBrand,
   extractCartridgeStatus,
   extractEmail,
@@ -26,17 +27,42 @@ import {
 import { emptyShipmentItem } from '../shipping';
 
 // Keyword groups per action. First match wins. Explicit noun-intents (orders,
-// notes, inventory, directory, follow-ups) are checked before the receipt subtypes
-// so a category word like "shipping" inside "add directory link ... shipping" does
-// not get mistaken for a shipping receipt.
+// notes, inventory, directory) are checked before the receipt subtypes so a
+// category word like "shipping" inside "add directory link ... shipping" does not
+// get mistaken for a shipping receipt.
 const ROUTES: Array<{ action: AiAction; subtype?: ReceiptSubtype; words: string[] }> = [
   { action: 'cartridge_status', words: ['mark ready', 'set status', 'picked up', 'is ready', 'change status', 'mark as'] },
   { action: 'cartridge_list', words: ['list orders', 'show orders', 'pending orders', 'all orders', 'open orders'] },
   { action: 'cartridge_modify', words: ['modify order', 'edit order', 'update order', 'change order'] },
-  { action: 'cartridge_create', words: ['new order', 'cartridge order', 'refill order', 'create order', 'log an order'] },
+  // "record a refill" is the Phase-2 presentation name for logging a cartridge
+  // order (the id and Firestore stay cartridge_*). Kept specific ("record a
+  // refill", not bare "record") so "record a note" still routes to note.
+  { action: 'cartridge_create', words: ['new order', 'cartridge order', 'refill order', 'create order', 'log an order', 'record a refill', 'record refill'] },
   { action: 'directory', words: ['directory', 'website', 'bookmark', 'add link', 'save link'] },
+  // A READ lookup ("is the HP 65 in stock?", "do we have", "price of", "where is
+  // that key") must be checked BEFORE the inventory WRITE and before track, so a
+  // stock/price/key question is answered instead of opening an edit or a parcel
+  // trace. Its cues are question-shaped so a write like "mark X in stock" still
+  // routes to inventory.
+  {
+    action: 'inventory_lookup',
+    words: [
+      'in stock?',
+      'do we have',
+      'do we carry',
+      'have any',
+      'price of',
+      'how much is',
+      'how much for',
+      "what's the price",
+      'whats the price',
+      'where is the key',
+      "where's the key",
+      'where is that key',
+      'location of',
+    ],
+  },
   { action: 'inventory', words: ['inventory', 'in stock', 'out of stock', 'restock', 'key model'] },
-  { action: 'followup', words: ['follow up', 'follow-up', 'call back', 'waiting list', 'customer request'] },
   { action: 'note', words: ['note', 'remember', 'jot'] },
   // Only explicit tracking verbs route here. A bare courier name (from a Track
   // pill) or a lone tracking number falls back to track after the receipt routes,
@@ -265,4 +291,35 @@ export function populateIntentFields(intent: Intent, text: string): void {
         : { value: null, source: 'not_provided' },
     };
   }
+
+  // Inventory lookup is a read with no confirmation spec; fill a search term the
+  // executor uses to match keyInventory / refillInventory. Prefer a brand/model
+  // the extractors found, else the salient words left after removing the question
+  // scaffolding. The executor tokenizes and matches, so this need not be exact.
+  if (action === 'inventory_lookup') {
+    const brand = extractBrand(text);
+    const model = extractModel(text);
+    const bm = [brand, model].filter(Boolean).join(' ');
+    const cleaned = text
+      .toLowerCase()
+      .replace(
+        /\b(?:is|are|do|does|did|we|the|a|an|any|have|carry|got|in|out|of|stock|price|priced|cost|costs|how|much|for|where|located|location|whats|what)\b/gi,
+        ' ',
+      )
+      .replace(/['?.,]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const query = bm || cleaned;
+    intent.fields = {
+      query: query ? explicit(query) : absent(),
+      brand: brand ? explicit(brand) : absent(),
+      model: model ? explicit(model) : absent(),
+    };
+  }
+
+  // The compound chain: note any pay/label side actions the utterance asked for.
+  // The confirmation slip renders these as toggles; on Confirm, the chain runs
+  // them after the primary action. Left unset when neither cue is present.
+  const attach = extractAttachments(text);
+  if (attach) intent.attach = attach;
 }

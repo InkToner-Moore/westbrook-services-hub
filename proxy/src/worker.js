@@ -23,8 +23,10 @@ const ACTIONS = [
   'cartridge_list',
   'note',
   'inventory',
+  'inventory_lookup',
   'directory',
-  'followup',
+  'purchase',
+  'timesheet',
   'track',
   'clarify',
   'unknown',
@@ -80,7 +82,7 @@ const RESPONSE_SCHEMA = {
         price: { type: 'NUMBER', nullable: true, description: 'A stated price/amount as a number, no currency symbol. Null if none.' },
         supply: { type: 'STRING', nullable: true, description: 'The product bought/sold on a supplies receipt. Null if none.' },
         keyModel: { type: 'STRING', nullable: true, description: 'Key model or description on a key-cutting receipt. Null if none.' },
-        item: { type: 'STRING', nullable: true, description: 'The item or request on a follow-up. Null if none.' },
+        item: { type: 'STRING', nullable: true, description: 'A generic item name stated in the utterance. Null if none.' },
         content: { type: 'STRING', nullable: true, description: 'The body text of a note. Null if none.' },
       },
       propertyOrdering: ['customerName', 'customerPhone', 'brand', 'model', 'type', 'quantity', 'price', 'supply', 'keyModel', 'item', 'content'],
@@ -100,8 +102,10 @@ Actions:
 - cartridge_list: list/show cartridge orders.
 - note: save an internal staff note.
 - inventory: add or update an inventory / stock item.
+- inventory_lookup: a READ-ONLY question about stock, price, or a key's location, e.g. "is the HP 65 in stock?", "do we have Kwikset KW1?", "what's the price of a Canon 137?", "where is that key?". Choose this over inventory when the words ask a question rather than tell you to add or change stock.
 - directory: save a website link / bookmark to the internal directory.
-- followup: log a customer follow-up / call-back.
+- purchase: send a payment to the card machine and record the transaction. Only when the words are about taking a payment on its own (e.g. "charge $40 to a card"). A priced receipt that also says "charge her card" is still a receipt; the payment rides along as an attachment, not this action.
+- timesheet: employee punch-in / punch-out clock, or add / view / change time entries.
 - track: look up a parcel by courier and/or tracking number.
 - clarify: the request is a real task but too ambiguous to route; put your one short question in "clarify".
 - unknown: not a task this tool handles.
@@ -121,7 +125,9 @@ Examples (utterance -> action[/subtype]):
 - "track UPS 1Z999AA10123456784" -> track
 - "note: front printer jams on cardstock" -> note
 - "add staples.ca to the directory" -> directory
-- "call back Dave about his order" -> followup
+- "is the HP 65 in stock?" -> inventory_lookup
+- "what's the price of a Canon 137?" -> inventory_lookup
+- "where is that key?" -> inventory_lookup
 
 confidence is high, medium, or low.
 
@@ -133,7 +139,7 @@ After choosing the action, also fill "fields" with any values the utterance clea
 Examples:
 - "refill for Sarah, HP 65XL black, $34" -> fields: {customerName:"Sarah", brand:"HP", model:"65XL", type:"black", price:34}
 - "sold 2 reams of paper $12" -> fields: {supply:"paper", quantity:2, price:12}
-- "call back Dave 403-555-1212 about his toner" -> fields: {customerName:"Dave", customerPhone:"403-555-1212", item:"toner"}`;
+- "new order for Dave 403-555-1212, HP 65" -> fields: {customerName:"Dave", customerPhone:"403-555-1212", brand:"HP", model:"65"}`;
 
 function corsHeaders(origin) {
   return {

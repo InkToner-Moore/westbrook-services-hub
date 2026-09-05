@@ -16,13 +16,12 @@ import {
   StickyNote,
   Boxes,
   BookMarked,
-  ClipboardList,
   Package,
   FileText,
   type LucideIcon,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import type { AiAction, FieldValue, Intent, ReceiptSubtype } from '@/ai/types';
+import type { AiAction, FieldValue, Intent, IntentAttachments, ReceiptSubtype } from '@/ai/types';
 import { type FieldSpec, isFieldVisible, missingRequired } from '@/ai/fieldSpecs';
 import { isItemComplete, toShipmentItems, type ShipmentItem } from '@/ai/shipping';
 import ShipmentItemsEditor from './ShipmentItemsEditor';
@@ -38,15 +37,27 @@ const ACTION_ICON: Partial<Record<AiAction, LucideIcon>> = {
   note: StickyNote,
   inventory: Boxes,
   directory: BookMarked,
-  followup: ClipboardList,
   track: Package,
 };
+
+// Compound attachments (also charge card / also print a 4x6 label) live on the
+// intent as `intent.attach` (types.ts; see PHASE-2-ARCH section 1.2).
+const readAttach = (intent: Intent): IntentAttachments | undefined => intent.attach;
 
 export interface ConfirmationDraft {
   fields: Record<string, FieldValue<unknown>>;
   editingKey: string | null;
   setEditingKey: (key: string | null) => void;
   setValue: (key: string, value: unknown) => void;
+  // Per-field omit: the circle left of a row toggles it. An omitted field is
+  // dropped from workingIntent.fields and excluded from the blocking check, so
+  // Confirm is never blocked by an omitted field even when it is required.
+  omitted: Set<string>;
+  toggleOmit: (key: string) => void;
+  // Compound attachments, editable so the foot's toggles can flip them before
+  // Confirm. Carried onto workingIntent for the confirm chain to honor.
+  attach?: IntentAttachments;
+  toggleAttach: (key: keyof IntentAttachments, value: boolean) => void;
   // The intent as currently edited; what Confirm hands off to run.
   workingIntent: Intent;
   missing: FieldSpec[];
@@ -62,20 +73,52 @@ export interface ConfirmationDraft {
 export function useConfirmationDraft(intent: Intent, specs: FieldSpec[]): ConfirmationDraft {
   const [fields, setFields] = useState<Record<string, FieldValue<unknown>>>(() => ({ ...intent.fields }));
   const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [omitted, setOmitted] = useState<Set<string>>(() => new Set());
+  const [attach, setAttach] = useState<IntentAttachments | undefined>(() => readAttach(intent));
 
   // A reroute swaps in a freshly parsed intent (a new object each time); start
   // the draft over from its fields rather than carrying stale edits across.
   useEffect(() => {
     setFields({ ...intent.fields });
     setEditingKey(null);
+    setOmitted(new Set());
+    setAttach(readAttach(intent));
   }, [intent]);
 
   const setValue = (key: string, value: unknown) => {
     setFields((prev) => ({ ...prev, [key]: { value, source: 'explicit' } }));
   };
 
-  const workingIntent = useMemo<Intent>(() => ({ ...intent, fields }), [intent, fields]);
-  const missing = useMemo(() => missingRequired(specs, workingIntent), [specs, workingIntent]);
+  const toggleOmit = (key: string) => {
+    setOmitted((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleAttach = (key: keyof IntentAttachments, value: boolean) => {
+    setAttach((prev) => ({ ...(prev ?? {}), [key]: value }));
+  };
+
+  // Omitted keys are DELETED from the built intent so downstream builders never
+  // see them (the encoding chosen per PHASE-2-ARCH section 2.1).
+  const workingIntent = useMemo<Intent>(() => {
+    const nextFields: Record<string, FieldValue<unknown>> = { ...fields };
+    omitted.forEach((key) => {
+      delete nextFields[key];
+    });
+    const base = { ...intent, fields: nextFields };
+    if (attach) (base as Record<string, unknown>).attach = attach;
+    return base as Intent;
+  }, [intent, fields, omitted, attach]);
+
+  // Dropping a key from fields alone would read as "missing" to missingRequired,
+  // so also drop omitted specs from the enforced set: an omitted required field
+  // must not block Confirm.
+  const activeSpecs = useMemo(() => specs.filter((s) => !omitted.has(s.key)), [specs, omitted]);
+  const missing = useMemo(() => missingRequired(activeSpecs, workingIntent), [activeSpecs, workingIntent]);
 
   // Shipping carries a repeated item block instead of flat item fields.
   const isShipping = intent.action === 'receipt' && intent.subtype === 'shipping';
@@ -86,7 +129,44 @@ export function useConfirmationDraft(intent: Intent, specs: FieldSpec[]): Confir
   const shipmentReady = !isShipping || shipmentItems.some(isItemComplete);
   const canConfirm = missing.length === 0 && shipmentReady;
 
-  return { fields, editingKey, setEditingKey, setValue, workingIntent, missing, isShipping, shipmentItems, canConfirm };
+  return {
+    fields,
+    editingKey,
+    setEditingKey,
+    setValue,
+    omitted,
+    toggleOmit,
+    attach,
+    toggleAttach,
+    workingIntent,
+    missing,
+    isShipping,
+    shipmentItems,
+    canConfirm,
+  };
+}
+
+// The circle to the left of a field row. Filled = included, empty = omitted.
+// State is carried by shape (fill) and by the struck-through row, not colour
+// alone, per the accessibility floor.
+function OmitToggle({ omitted, onToggle, label }: { omitted: boolean; onToggle: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={!omitted}
+      aria-label={omitted ? `Include ${label} on the slip` : `Omit ${label} from the slip`}
+      title={omitted ? 'Omitted. Click to include.' : 'Included. Click to omit.'}
+      onClick={onToggle}
+      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+    >
+      <span
+        className={`h-3.5 w-3.5 rounded-full border-2 transition-colors ${
+          omitted ? 'border-slate-400' : 'border-blue-600 bg-blue-600'
+        }`}
+      />
+    </button>
+  );
 }
 
 function Marker({ marker }: { marker: FieldSpec['marker'] }) {
@@ -125,7 +205,7 @@ interface ConfirmationCheckProps {
 
 const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, draft, onReroute }) => {
   const { themeClasses, isDarkMode } = useTheme();
-  const { fields, editingKey, setEditingKey, setValue, isShipping, shipmentItems } = draft;
+  const { fields, editingKey, setEditingKey, setValue, omitted, toggleOmit, isShipping, shipmentItems } = draft;
 
   // A low-confidence route is worth a gentle "double-check" nudge. The model
   // returns 0..1; the deterministic engine uses coarse buckets (<= 0.5 is a
@@ -256,12 +336,20 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
           {visibleSpecs.map((spec) => {
             const fv = fields[spec.key];
             const isGuessed = fv?.source === 'guessed';
+            const isOmitted = omitted.has(spec.key);
             return (
               <li key={spec.key} className="flex items-center justify-between gap-3 py-2">
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <OmitToggle omitted={isOmitted} onToggle={() => toggleOmit(spec.key)} label={spec.label} />
                   <Marker marker={spec.marker} />
-                  <span className={`text-[15px] ${themeClasses.text.secondary}`}>{spec.label}</span>
-                  {isGuessed && (
+                  <span
+                    className={`text-[15px] ${themeClasses.text.secondary} ${
+                      isOmitted ? 'line-through opacity-50' : ''
+                    }`}
+                  >
+                    {spec.label}
+                  </span>
+                  {isGuessed && !isOmitted && (
                     <span
                       title={fv?.reason}
                       className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
@@ -272,7 +360,9 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
                     </span>
                   )}
                 </div>
-                <div className="text-right">{renderValue(spec, fv)}</div>
+                <div className={`text-right ${isOmitted ? 'pointer-events-none line-through opacity-40' : ''}`}>
+                  {renderValue(spec, fv)}
+                </div>
               </li>
             );
           })}

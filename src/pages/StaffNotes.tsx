@@ -216,7 +216,7 @@ const StaffNotes = () => {
       )}
 
       <div className={`rounded-xl border p-4 sm:p-6 ${themeClasses.card.primary}`}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 2xl:grid-cols-3">
           {/* Add/Edit Note Form */}
           <div className="lg:col-span-1">
             <Card className={`${themeClasses.card.secondary} rounded-xl`}>

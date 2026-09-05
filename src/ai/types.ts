@@ -22,14 +22,26 @@ export type AiAction =
   | 'cartridge_status'
   | 'cartridge_list'
   | 'note'
-  | 'inventory'
+  | 'inventory'         // create/update inventory (write)
+  | 'inventory_lookup'  // "is the HP 65 in stock?" (read, immediate)
   | 'directory'
-  | 'followup'
+  | 'purchase'          // send a transaction to Moneris + record it (Wave 3)
+  | 'timesheet'         // punch clock / employees (Wave 3; may fan into subtypes)
   | 'track'
   | 'clarify'
   | 'unknown';
 
 export type ReceiptSubtype = 'refill' | 'supplies' | 'shipping' | 'key';
+
+// Optional side actions that ride along on one primary intent. An utterance like
+// "refill for Sarah, HP 65, $34, charge her card and print a label" is ONE
+// Record/Receipt intent that also PAYS and prints a LABEL. The confirmation slip
+// renders these as toggles; on Confirm, the confirm chain runs the primary action
+// then each attached side action. Keep it to exactly these two.
+export interface IntentAttachments {
+  pay?: boolean;      // also send to Moneris + record a transaction (Purchase)
+  label?: boolean;    // also produce a 4x6 label
+}
 
 export interface Intent {
   action: AiAction;
@@ -37,6 +49,8 @@ export interface Intent {
   subtype?: ReceiptSubtype;
   // Extracted fields, each carrying provenance. Keyed by domain field name.
   fields: Record<string, FieldValue<unknown>>;
+  // Optional side actions to run after the primary one (pay, print a label).
+  attach?: IntentAttachments;
   // Present when action === 'clarify'.
   clarify?: string;
   // 0..1. Deterministic provider grades from match strength; the LLM maps its
@@ -117,7 +131,19 @@ export interface ComposerChip {
 // 'confirmation' is a proposed intent awaiting the counter's OK: the chat points
 // at it ("I put the details on the right"), the rail renders the slip, and the
 // rail's pinned foot carries Confirm / Not now.
-export type ArtifactKind = 'receipt' | 'tracking' | 'order' | 'list' | 'confirmation' | 'none';
+//
+// The kind is an OPEN union: the known kinds are listed for autocomplete and
+// safety, but `(string & {})` lets a Wave-2/3 card introduce a new kind and
+// register its renderer without editing this file. ArtifactRail looks the kind up
+// in its renderer registry and falls back to the generic panel when it is absent.
+export type KnownArtifactKind =
+  | 'receipt' | 'tracking' | 'order' | 'list' | 'confirmation' | 'none'
+  | 'payment'        // Purchase (Wave 3)
+  | 'refill'         // Record card (Wave 2)
+  | 'inventory'      // Inventory result/edit card (Wave 2)
+  | 'note'           // Note card (Wave 2)
+  | 'timesheet';     // Timesheet card (Wave 3)
+export type ArtifactKind = KnownArtifactKind | (string & {});
 
 export interface ArtifactState {
   kind: ArtifactKind;
