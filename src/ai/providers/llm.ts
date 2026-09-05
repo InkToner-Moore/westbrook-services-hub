@@ -5,9 +5,10 @@
 // (proxy down, bad JSON, schema mismatch, timeout) falls back to the deterministic
 // result, so AI Mode never gets worse than the free offline baseline.
 // See docs/ai-mode/proxy.md and 01-design.md.
-import type { AiParseContext, AiProvider, Intent } from '../types';
+import type { AiParseContext, AiProvider, FieldValue, Intent } from '../types';
+import { getFieldSpecs, missingRequired } from '../fieldSpecs';
 import { DeterministicProvider, populateIntentFields } from './deterministic';
-import { routingSchema } from './routingSchema';
+import { CANDIDATE_KEYS, routingSchema, type Candidates } from './routingSchema';
 
 // Give up on the network path quickly; the deterministic fallback is instant and
 // this runs at a walk-up counter where dead air reads as broken.
@@ -46,17 +47,27 @@ export class LlmProvider implements AiProvider {
     // A user-corrected misroute never needs the model; route deterministically.
     if (context?.forceAction) return this.fallback.parse(utterance, context);
 
-    // Run the instant offline router first. If it is confident, use it as-is and
-    // never touch the network.
+    // Run the instant offline router first. It is the floor: it owns routing when
+    // it is confident, and it owns every value it extracts, always.
     const local = await this.fallback.parse(utterance, context);
-    if (local.action !== 'unknown' && local.confidence >= LOCAL_TRUST_THRESHOLD) {
-      return local;
-    }
+    const localConfident = local.action !== 'unknown' && local.confidence >= LOCAL_TRUST_THRESHOLD;
+
+    // The model earns a call in two cases: (1) local routing is unsure, or (2)
+    // local routed fine but a required field the counter needs is still empty and
+    // the model might read it from vague phrasing. Otherwise stay instant and free.
+    if (localConfident && !hasFillableGap(local)) return local;
 
     const routing = await this.route(utterance, context);
 
     // No usable routing: keep the deterministic result (already computed).
     if (!routing) return local;
+
+    // Local routed confidently; we only called out for extraction help. Trust the
+    // local routing and borrow the model's field candidates for the empty gaps.
+    if (localConfident) {
+      mergeCandidates(local, routing.fields);
+      return local;
+    }
 
     // The model disagreeing with a keyword hit is a genuine ambiguity, so keep the
     // local guess as the runner-up for the "did you mean ...?" one-tap correction.
@@ -66,7 +77,8 @@ export class LlmProvider implements AiProvider {
         : local.runnerUp;
 
     // Build the intent from the model's routing decision, then let the shared
-    // deterministic filler own extraction + provenance.
+    // deterministic filler own extraction + provenance, then fill only the gaps it
+    // left from the model's candidates.
     const intent: Intent = {
       action: routing.action,
       subtype: routing.subtype ?? undefined,
@@ -76,6 +88,7 @@ export class LlmProvider implements AiProvider {
       runnerUp,
     };
     populateIntentFields(intent, utterance);
+    mergeCandidates(intent, routing.fields);
     return intent;
   }
 
@@ -120,5 +133,33 @@ export class LlmProvider implements AiProvider {
     } finally {
       clearTimeout(timer);
     }
+  }
+}
+
+// True when local routed to a spec'd action but a blocking field the counter needs
+// is still empty AND that field is one the model is allowed to propose. This is the
+// only reason to spend the model when local routing was already confident: to read a
+// value the regex extractors missed in vague phrasing.
+function hasFillableGap(intent: Intent): boolean {
+  const specs = getFieldSpecs(intent);
+  if (!specs) return false;
+  const candidateKeys = new Set<string>(CANDIDATE_KEYS);
+  return missingRequired(specs, intent).some((s) => candidateKeys.has(s.key));
+}
+
+// Merge the model's field candidates into the intent. The rule is strict: fill a
+// field ONLY if it exists on the intent (declared by the spec) and deterministic
+// extraction left it not_provided. Never overwrite an explicit or guessed value the
+// deterministic engine already set. Everything filled here is marked `guessed` so
+// the confirmation slip flags it for a human to check.
+function mergeCandidates(intent: Intent, candidates: Candidates): void {
+  if (!candidates) return;
+  for (const key of CANDIDATE_KEYS) {
+    const value = candidates[key];
+    if (value === undefined || value === null || value === '') continue;
+    const current = intent.fields[key] as FieldValue<unknown> | undefined;
+    // Only fields the spec declared, and only where deterministic found nothing.
+    if (!current || current.source !== 'not_provided') continue;
+    intent.fields[key] = { value, source: 'guessed', reason: 'read by the assistant' };
   }
 }

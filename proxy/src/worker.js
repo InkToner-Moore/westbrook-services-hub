@@ -2,9 +2,13 @@
 //
 // Holds the Gemini key server-side and does one job: take a staff utterance and
 // return a routing decision (action + optional receipt subtype + confidence +
-// optional clarify), nothing more. Field extraction and all business logic live in
-// the SPA's deterministic engine, so this proxy can never emit customer data or run
-// store logic. If Gemini fails, the client falls back to the deterministic engine.
+// optional clarify) plus OPTIONAL field candidates. The candidates are suggestions
+// only. The SPA's deterministic engine still runs first and owns every value it can
+// extract; the client fills a candidate in only where deterministic extraction left
+// a field empty, marks it "guessed", and shows it for human confirmation. So this
+// proxy never sets a value the counter must accept, and business logic (IDs, tax,
+// Firestore writes) stays in the SPA. If Gemini fails, the client falls back to the
+// deterministic engine.
 //
 // Secrets / vars (set with `wrangler secret put` or in wrangler.toml [vars]):
 //   GEMINI_API_KEY   (secret, required)  the Google AI Studio key
@@ -58,9 +62,32 @@ const RESPONSE_SCHEMA = {
       nullable: true,
       description: 'Only when action is clarify: one short question to disambiguate. Null otherwise.',
     },
+    // Optional field CANDIDATES. Suggestions only: the client fills one in only
+    // where its own extraction found nothing, marks it "guessed", and asks a human
+    // to confirm. Copy values verbatim from the utterance; never invent one.
+    fields: {
+      type: 'OBJECT',
+      nullable: true,
+      description:
+        'Field values stated in the utterance, to help fill the form. Copy exactly from the words; set a field to null if it is not stated. NEVER guess a phone number, a price, or a name that is not in the text.',
+      properties: {
+        customerName: { type: 'STRING', nullable: true, description: "The customer's name, if stated. Null otherwise." },
+        customerPhone: { type: 'STRING', nullable: true, description: 'A phone number, copied digit for digit. Null if none.' },
+        brand: { type: 'STRING', nullable: true, description: 'Cartridge/product brand, e.g. HP, Canon, Brother. Null if none.' },
+        model: { type: 'STRING', nullable: true, description: 'Model or SKU, e.g. 65XL, TN660. Null if none.' },
+        type: { type: 'STRING', nullable: true, description: 'Cartridge type/colour, e.g. black, tri-color, toner. Null if none.' },
+        quantity: { type: 'NUMBER', nullable: true, description: 'A stated count/quantity. Null if none.' },
+        price: { type: 'NUMBER', nullable: true, description: 'A stated price/amount as a number, no currency symbol. Null if none.' },
+        supply: { type: 'STRING', nullable: true, description: 'The product bought/sold on a supplies receipt. Null if none.' },
+        keyModel: { type: 'STRING', nullable: true, description: 'Key model or description on a key-cutting receipt. Null if none.' },
+        item: { type: 'STRING', nullable: true, description: 'The item or request on a follow-up. Null if none.' },
+        content: { type: 'STRING', nullable: true, description: 'The body text of a note. Null if none.' },
+      },
+      propertyOrdering: ['customerName', 'customerPhone', 'brand', 'model', 'type', 'quantity', 'price', 'supply', 'keyModel', 'item', 'content'],
+    },
   },
   required: ['action', 'confidence'],
-  propertyOrdering: ['action', 'subtype', 'confidence', 'clarify'],
+  propertyOrdering: ['action', 'subtype', 'confidence', 'clarify', 'fields'],
 };
 
 const SYSTEM_PROMPT = `You route a single staff utterance from an office-services shop's counter tool into one action. Return ONLY the structured object.
@@ -96,7 +123,17 @@ Examples (utterance -> action[/subtype]):
 - "add staples.ca to the directory" -> directory
 - "call back Dave about his order" -> followup
 
-confidence is high, medium, or low. Do not extract field values, names, prices, or numbers; only choose the action, the subtype when action is receipt, and confidence.`;
+confidence is high, medium, or low.
+
+After choosing the action, also fill "fields" with any values the utterance clearly states, to help the counter fill the form faster:
+- Copy each value exactly from the words. Do not reformat, expand, or invent.
+- Set a field to null when it is not stated. Most fields will be null; that is fine.
+- NEVER guess a phone number, a price, or a name. If it is not written, it is null.
+- These are only suggestions. A person verifies every one before it is used, and your own extraction is never the final value.
+Examples:
+- "refill for Sarah, HP 65XL black, $34" -> fields: {customerName:"Sarah", brand:"HP", model:"65XL", type:"black", price:34}
+- "sold 2 reams of paper $12" -> fields: {supply:"paper", quantity:2, price:12}
+- "call back Dave 403-555-1212 about his toner" -> fields: {customerName:"Dave", customerPhone:"403-555-1212", item:"toner"}`;
 
 function corsHeaders(origin) {
   return {
@@ -164,9 +201,9 @@ export default {
         responseSchema: RESPONSE_SCHEMA,
         temperature: 0,
         candidateCount: 1,
-        // The payload is tiny (action + subtype + bucket + short clarify); a tight
-        // cap bounds worst-case latency on Flash-Lite.
-        maxOutputTokens: 120,
+        // Routing is tiny, but the optional field candidates add a handful of short
+        // strings; keep the cap tight enough to bound Flash-Lite latency.
+        maxOutputTokens: 320,
       },
     };
 
