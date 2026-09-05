@@ -20,11 +20,16 @@ read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this fi
 - **IMPORT DONE into DEV (2026-09-06):** ran `import.mjs` with the `inktonermoore-dev`
   service-account key. `keyInventory` = 397 docs, `refillInventory` = 130 docs, all
   `inStock: true`, verified by read-back. Fixed a casing glitch afterward (51 HP refills had
-  brand "Hp" from title-casing -> now "HP"). PROD untouched. STILL OUTSTANDING: (a) the
-  Firestore console needs a read rule for `refillInventory`/`deletedRefillInventory` mirroring
-  `keyInventory`, or the Refills tab loads empty in-app despite the data being there; (b) the 4
-  edge keys below are not imported - user to decide prices; (c) prod import not done (dev-only
-  by the user's choice).
+  brand "Hp" from title-casing -> now "HP"). PROD untouched.
+- **FIRESTORE RULES updated for the new collections (2026-09-06):** the dev Firestore ruleset
+  now includes `refillInventory` and `deletedRefillInventory` (both `allow read, write: if
+  request.auth != null`, mirroring `keyInventory`). Deployed via the Firebase Rules REST API
+  with the dev service-account key (tmp `rules_deploy.mjs`), not the console. This FIXED the
+  "Failed to load refills from database" toast (the app read was permission-denied before). The
+  rules are managed in Firebase, NOT in this repo, so this change is not in git.
+- **STILL OUTSTANDING:** (a) the 4 edge keys below are not imported - user to decide prices;
+  (b) prod import not done (dev-only by the user's choice), and prod would need its own
+  service-account key AND the same `refillInventory` rules added to the PROD ruleset.
 - **Import prepared (details, for a prod run later):** (user chose DEV ONLY for now)
   - Parsed both spreadsheets: **397 keys** (col A code -> model, col B -> notes, col K
     "2019 + tax" -> price, treated as before-tax) and **130 refills** (107 clean numeric,
