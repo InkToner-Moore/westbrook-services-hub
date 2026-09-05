@@ -6,7 +6,7 @@ compatibility_date = "2024-11-01"
 # Public vars (not secrets). Set ALLOWED_ORIGIN to the exact staging origin that is
 # allowed to call this proxy. GEMINI_MODEL is optional; the default is used if unset.
 [vars]
-ALLOWED_ORIGIN = "https://REPLACE-WITH-STAGING-ORIGIN"
+ALLOWED_ORIGIN = "https://ink-toner-moore.pages.dev"
 GEMINI_MODEL = "gemini-flash-lite-latest"
 
 # GEMINI_API_KEY is a SECRET: never put it here. Set it once with
