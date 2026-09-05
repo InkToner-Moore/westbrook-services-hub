@@ -39,8 +39,12 @@ export interface Intent {
   fields: Record<string, FieldValue<unknown>>;
   // Present when action === 'clarify'.
   clarify?: string;
-  // 0..1. Deterministic provider uses coarse buckets; the LLM returns its own.
+  // 0..1. Deterministic provider grades from match strength; the LLM maps its
+  // coarse high/medium/low bucket onto this scale.
   confidence: number;
+  // The next-best route when routing was a close call, so the confirmation card
+  // can offer a one-tap "or did you mean ...?" instead of the full grid.
+  runnerUp?: { action: AiAction; subtype?: ReceiptSubtype };
 }
 
 // A parsing engine. Two implementations share this interface: a deterministic
@@ -55,8 +59,14 @@ export interface AiProvider {
 export interface AiParseContext {
   // The previous turn's proposed intent, when the user is refining it.
   lastIntent?: Intent | null;
-  // The tab the user is currently on, as a routing hint.
+  // The tab the user is currently on, as a routing hint. On the weak LLM this is
+  // a strong disambiguation signal ("they are on the Cartridges page").
   activeTab?: string;
+  // When the user corrects a misroute, skip routing entirely and treat the
+  // utterance as this action (+ subtype). Extraction still runs on the text, so
+  // the confirmation check fills in from what was actually said.
+  forceAction?: AiAction;
+  forceSubtype?: ReceiptSubtype;
 }
 
 // A generated receipt carried on an assistant turn, so the chat can offer the
@@ -75,6 +85,9 @@ export interface ChatTurn {
   text: string;
   // When the assistant is proposing an action, the intent to confirm.
   intent?: Intent;
+  // The user utterance that produced this assistant turn. Kept so a misroute can
+  // be re-parsed under a corrected action without the user retyping.
+  sourceText?: string;
   // Whether this proposed intent has been confirmed, edited, or dismissed.
   status?: 'pending' | 'confirmed' | 'dismissed';
   // A generated receipt attached to this turn (download/print controls).

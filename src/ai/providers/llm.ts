@@ -9,8 +9,32 @@ import type { AiParseContext, AiProvider, Intent } from '../types';
 import { DeterministicProvider, populateIntentFields } from './deterministic';
 import { routingSchema } from './routingSchema';
 
-// Give up on the network path quickly; the deterministic fallback is instant.
-const REQUEST_TIMEOUT_MS = 6000;
+// Give up on the network path quickly; the deterministic fallback is instant and
+// this runs at a walk-up counter where dead air reads as broken.
+const REQUEST_TIMEOUT_MS = 4000;
+
+// Trust the offline router at or above this confidence and skip the network. The
+// weak model earns its call only on the cases the keyword router is unsure about
+// (unknown, a lone weak keyword, or a cross-action tie). This keeps the common
+// case instant and free, and spends the model where it actually helps.
+const LOCAL_TRUST_THRESHOLD = 0.7;
+
+// Map the model's coarse confidence bucket onto the 0..1 scale the app uses. A
+// small model's self-reported float is poorly calibrated, so the proxy returns a
+// bucket instead (see docs/ai-mode/proxy.md); older numeric responses still pass.
+function bucketToConfidence(raw: unknown): number {
+  if (typeof raw === 'number') return Math.max(0, Math.min(1, raw));
+  switch (String(raw).toLowerCase()) {
+    case 'high':
+      return 0.9;
+    case 'medium':
+      return 0.65;
+    case 'low':
+      return 0.4;
+    default:
+      return 0.6;
+  }
+}
 
 export class LlmProvider implements AiProvider {
   readonly name = 'llm';
@@ -19,10 +43,27 @@ export class LlmProvider implements AiProvider {
   constructor(private readonly proxyUrl: string) {}
 
   async parse(utterance: string, context?: AiParseContext): Promise<Intent> {
+    // A user-corrected misroute never needs the model; route deterministically.
+    if (context?.forceAction) return this.fallback.parse(utterance, context);
+
+    // Run the instant offline router first. If it is confident, use it as-is and
+    // never touch the network.
+    const local = await this.fallback.parse(utterance, context);
+    if (local.action !== 'unknown' && local.confidence >= LOCAL_TRUST_THRESHOLD) {
+      return local;
+    }
+
     const routing = await this.route(utterance, context);
 
-    // No usable routing: fall back to the deterministic engine entirely.
-    if (!routing) return this.fallback.parse(utterance, context);
+    // No usable routing: keep the deterministic result (already computed).
+    if (!routing) return local;
+
+    // The model disagreeing with a keyword hit is a genuine ambiguity, so keep the
+    // local guess as the runner-up for the "did you mean ...?" one-tap correction.
+    const runnerUp =
+      local.action !== 'unknown' && local.action !== routing.action
+        ? { action: local.action, subtype: local.subtype }
+        : local.runnerUp;
 
     // Build the intent from the model's routing decision, then let the shared
     // deterministic filler own extraction + provenance.
@@ -30,27 +71,28 @@ export class LlmProvider implements AiProvider {
       action: routing.action,
       subtype: routing.subtype ?? undefined,
       fields: {},
-      confidence: routing.confidence,
+      confidence: bucketToConfidence(routing.confidence),
       clarify: routing.clarify ?? undefined,
+      runnerUp,
     };
     populateIntentFields(intent, utterance);
     return intent;
   }
 
-  // Call the proxy once, validate; on invalid JSON/schema, retry once with a
-  // repair hint; on any hard failure or a second miss, return null (-> fallback).
+  // Call the proxy once and validate. The repair retry only fires when we got a
+  // response that failed the schema (the model can fix that). A hard failure
+  // (proxy down, timeout, non-2xx) returns null immediately so we do not burn a
+  // second full timeout before falling back to the instant deterministic engine.
   private async route(utterance: string, context?: AiParseContext) {
     const first = await this.callProxy(utterance, context, false);
-    if (first) {
-      const parsed = routingSchema.safeParse(first);
-      if (parsed.success) return parsed.data;
-    }
+    if (first === null) return null;
+    const parsedFirst = routingSchema.safeParse(first);
+    if (parsedFirst.success) return parsedFirst.data;
+
     const second = await this.callProxy(utterance, context, true);
-    if (second) {
-      const parsed = routingSchema.safeParse(second);
-      if (parsed.success) return parsed.data;
-    }
-    return null;
+    if (second === null) return null;
+    const parsedSecond = routingSchema.safeParse(second);
+    return parsedSecond.success ? parsedSecond.data : null;
   }
 
   private async callProxy(

@@ -140,30 +140,63 @@ function fillFields(specKeys: string[], text: string): Record<string, FieldValue
 export class DeterministicProvider implements AiProvider {
   readonly name = 'deterministic';
 
-  async parse(utterance: string, _context?: AiParseContext): Promise<Intent> {
+  async parse(utterance: string, context?: AiParseContext): Promise<Intent> {
     const text = utterance;
     const lower = utterance.toLowerCase();
+
+    // The user corrected a misroute: take the forced action as given and only
+    // run extraction. Confidence 1 because the human chose it.
+    if (context?.forceAction) {
+      const forced: Intent = {
+        action: context.forceAction,
+        subtype: context.forceSubtype,
+        fields: {},
+        confidence: 1,
+      };
+      populateIntentFields(forced, text);
+      return forced;
+    }
 
     let action: AiAction = 'unknown';
     let subtype: ReceiptSubtype | undefined;
     let confidence = 0;
+    let runnerUp: Intent['runnerUp'];
 
     // Content-based routing for a cartridge status change: a status word, plus an
     // order id or a clear "mark/set/order/status" cue. This catches phrasings the
-    // fixed keyword list misses (e.g. "mark ORD-AB12CD as ready").
+    // fixed keyword list misses (e.g. "mark ORD-AB12CD as ready"). Strong signal.
     const statusHint = extractCartridgeStatus(text);
     if (statusHint && (extractOrderId(text) || /\b(mark|set|status|order|pickup|pick up)\b/i.test(lower))) {
       action = 'cartridge_status';
-      confidence = 0.65;
+      confidence = 0.8;
     }
 
-    if (action === 'unknown')
-      for (const route of ROUTES) {
-      if (route.words.some((w) => lower.includes(w))) {
-        action = route.action;
-        subtype = route.subtype;
-        confidence = 0.6;
-        break;
+    if (action === 'unknown') {
+      // Score every route by how many of its keywords hit. The DECISION is
+      // unchanged from the original first-match-wins: the winner is the earliest
+      // matching route in priority order. Scores only grade confidence and pick a
+      // runner-up (the next matching route of a different action), so the
+      // confirmation card can offer a one-tap correction on a close call.
+      const matches = ROUTES.map((route) => ({
+        route,
+        hits: route.words.filter((w) => lower.includes(w)).length,
+      })).filter((m) => m.hits > 0);
+
+      if (matches.length > 0) {
+        const winner = matches[0];
+        action = winner.route.action;
+        subtype = winner.route.subtype;
+
+        const alt = matches.find((m) => m.route.action !== action);
+        const closeCall = !!alt && alt.hits >= winner.hits;
+        // Base trust for a keyword hit, plus a little for extra corroborating
+        // words; a genuine cross-action ambiguity pulls it down so the LLM gate
+        // and the top-2 prompt both engage.
+        confidence = Math.min(0.92, 0.7 + 0.08 * (winner.hits - 1));
+        if (closeCall) {
+          confidence = Math.min(confidence, 0.5);
+          runnerUp = { action: alt.route.action, subtype: alt.route.subtype };
+        }
       }
     }
 
@@ -173,16 +206,17 @@ export class DeterministicProvider implements AiProvider {
     }
 
     // Bare courier name or lone tracking number, with no other intent: a lookup.
-    // This is what a Track pill (which prepends just the courier) relies on.
+    // This is what a Track pill (which prepends just the courier) relies on. A
+    // courier or a full tracking number is unambiguous, so trust it.
     if (action === 'unknown') {
       const { courier, trackingNumber } = extractTracking(text);
       if (courier || trackingNumber) {
         action = 'track';
-        confidence = 0.5;
+        confidence = 0.75;
       }
     }
 
-    const intent: Intent = { action, subtype, fields: {}, confidence };
+    const intent: Intent = { action, subtype, fields: {}, confidence, runnerUp };
     populateIntentFields(intent, text);
     return intent;
   }

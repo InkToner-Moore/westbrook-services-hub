@@ -22,7 +22,10 @@ export const routingSchema = z.object({
     'unknown',
   ]),
   subtype: z.enum(['refill', 'supplies', 'shipping', 'key']).optional().nullable(),
-  confidence: z.number().min(0).max(1),
+  // Coarse bucket from the model (a weak model's raw float is poorly calibrated).
+  // A plain number is still accepted so an older proxy response keeps validating;
+  // llm.ts maps either form onto the app's 0..1 scale.
+  confidence: z.union([z.enum(['high', 'medium', 'low']), z.number().min(0).max(1)]),
   clarify: z.string().optional().nullable(),
 });
 
