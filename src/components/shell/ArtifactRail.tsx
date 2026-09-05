@@ -4,7 +4,7 @@
 // Print, Open on carrier) pinned to the foot. The chat on the left just points you
 // here. Only one artifact exists at a time. See docs/ui-rehaul/DESIGN-SPEC.md.
 import React from 'react';
-import { PanelRight } from 'lucide-react';
+import { PanelRight, PanelRightClose } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAiMode, type ConfirmationArtifactData } from '@/ai/context';
 import { getFieldSpecs } from '@/ai/fieldSpecs';
@@ -43,7 +43,7 @@ const ConfirmationArtifact: React.FC<{ data: ConfirmationArtifactData }> = ({ da
   );
 };
 
-const ArtifactRail: React.FC = () => {
+const ArtifactRail: React.FC<{ onCollapse?: () => void }> = ({ onCollapse }) => {
   const { themeClasses } = useTheme();
   const { artifact } = useAiMode();
   const hasArtifact = !!artifact && artifact.kind !== 'none';
@@ -55,6 +55,17 @@ const ArtifactRail: React.FC = () => {
         <span className={`text-sm font-semibold ${themeClasses.text.primary}`}>
           {hasArtifact ? artifact?.title ?? 'Details' : 'Workspace'}
         </span>
+        {onCollapse && (
+          <button
+            type="button"
+            onClick={onCollapse}
+            aria-label="Collapse workspace"
+            title="Collapse workspace"
+            className={`ml-auto hidden h-7 w-7 items-center justify-center rounded-lg xl:flex ${themeClasses.text.muted} ${themeClasses.interactive.hover}`}
+          >
+            <PanelRightClose className="h-4 w-4" />
+          </button>
+        )}
       </header>
 
       {hasArtifact && artifact?.kind === 'confirmation' ? (

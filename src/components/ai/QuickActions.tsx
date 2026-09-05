@@ -37,14 +37,16 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack, onAddPa
       ? 'border-slate-700 text-slate-300 hover:bg-slate-800'
       : 'border-slate-200 text-slate-600 hover:bg-slate-50'
   }`;
-  // Fixed-width group labels so the pills on each line start at the same x.
-  const groupLabel = `w-12 shrink-0 text-[13px] ${themeClasses.text.muted}`;
+  // Fixed-width group labels so the pills on each row start at the same x, and
+  // any that wrap line up under the first pill rather than under the label.
+  const groupLabel = `w-12 shrink-0 pt-1.5 text-[13px] ${themeClasses.text.muted}`;
 
   return (
     <div className="space-y-1.5">
       {/* Track */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex items-start gap-1.5">
         <span className={groupLabel}>Track</span>
+        <div className="flex flex-wrap items-center gap-1.5">
         {TRACKING.map((t) => (
           <div
             key={t.courier}
@@ -79,28 +81,34 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack, onAddPa
             )}
           </div>
         ))}
+        </div>
       </div>
 
       {/* Pack: fixed-price supplies added straight to the receipt. */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex items-start gap-1.5">
         <span className={groupLabel}>Pack</span>
-        {PACKING_PRESETS.filter((p) => !p.custom).map((p) => (
-          <button key={p.type} type="button" onClick={() => onAddPacking(p)} className={pill}>
-            <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
-            {p.type} <span className="tabular-nums opacity-70">${p.cost}</span>
-          </button>
-        ))}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {PACKING_PRESETS.filter((p) => !p.custom).map((p) => (
+            <button key={p.type} type="button" onClick={() => onAddPacking(p)} className={pill} title={p.type}>
+              <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
+              {p.type.replace(' Box', '').replace('Padded Envelope', 'Padded')}{' '}
+              <span className="tabular-nums opacity-70">${p.cost}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Actions */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex items-start gap-1.5">
         <span className={groupLabel}>Start</span>
-        {ACTION_CHIPS.map((spec) => (
-          <button key={spec.kind} type="button" onClick={() => onAddChip(spec)} className={pill}>
-            <span className={`h-1.5 w-1.5 rounded-full ${spec.dot}`} />
-            {spec.label}
-          </button>
-        ))}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {ACTION_CHIPS.map((spec) => (
+            <button key={spec.kind} type="button" onClick={() => onAddChip(spec)} className={pill}>
+              <span className={`h-1.5 w-1.5 rounded-full ${spec.dot}`} />
+              {spec.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

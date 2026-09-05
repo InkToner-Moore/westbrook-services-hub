@@ -1,16 +1,25 @@
 // The staff shell: the three-pane frame that replaces the old dashboard + overlay.
 // Left = tile rail, center = the active tool (AI chat by default) via <Outlet/>,
-// right = the artifact rail. On desktop all three show at once; on a phone it is a
-// single column (AI-first) with the rail in a slide-in drawer and the artifact in a
-// slide-up sheet. See docs/ui-rehaul/DESIGN-SPEC.md and PLAN.md.
-import React, { useState } from 'react';
+// right = the artifact rail. On desktop all three show at once and each side rail
+// collapses to a slim reopen strip; on a phone it is a single column (AI-first)
+// with the rail in a slide-in drawer and the artifact in a slide-up sheet.
+// See docs/ui-rehaul/DESIGN-SPEC.md and PLAN.md.
+import React, { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { Menu, PanelRight, X, Sparkles } from 'lucide-react';
+import { Menu, PanelRight, PanelLeftOpen, PanelRightOpen, X, Sparkles } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAiMode } from '@/ai/context';
 import { ShellContext } from './ShellContext';
 import TileRail from './TileRail';
 import ArtifactRail from './ArtifactRail';
+
+const readFlag = (key: string) => {
+  try {
+    return localStorage.getItem(key) === '1';
+  } catch {
+    return false;
+  }
+};
 
 const StaffShell: React.FC = () => {
   const { themeClasses } = useTheme();
@@ -18,21 +27,48 @@ const StaffShell: React.FC = () => {
   const { pathname } = useLocation();
   const [railOpen, setRailOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [leftCollapsed, setLeftCollapsed] = useState(() => readFlag('shell-left-collapsed'));
+  const [rightCollapsed, setRightCollapsed] = useState(() => readFlag('shell-right-collapsed'));
 
   const hasArtifact = !!artifact && artifact.kind !== 'none';
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('shell-left-collapsed', leftCollapsed ? '1' : '0');
+    } catch { /* storage unavailable */ }
+  }, [leftCollapsed]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('shell-right-collapsed', rightCollapsed ? '1' : '0');
+    } catch { /* storage unavailable */ }
+  }, [rightCollapsed]);
+
   // Close the mobile drawer whenever the route changes (a tile was tapped).
-  React.useEffect(() => {
+  useEffect(() => {
     setRailOpen(false);
   }, [pathname]);
 
   return (
     <ShellContext.Provider value={{ inShell: true }}>
       <div className={`flex h-[100dvh] w-full overflow-hidden ${themeClasses.background}`}>
-        {/* Left rail - desktop */}
-        <aside className={`hidden w-52 shrink-0 border-r lg:block ${themeClasses.header}`}>
-          <TileRail />
-        </aside>
+        {/* Left rail - desktop (full, or a slim reopen strip when collapsed) */}
+        {leftCollapsed ? (
+          <aside className={`hidden w-10 shrink-0 flex-col items-center border-r pt-2 lg:flex ${themeClasses.header}`}>
+            <button
+              type="button"
+              onClick={() => setLeftCollapsed(false)}
+              aria-label="Expand menu"
+              title="Expand menu"
+              className={`flex h-9 w-9 items-center justify-center rounded-lg ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
+            >
+              <PanelLeftOpen className="h-4 w-4" />
+            </button>
+          </aside>
+        ) : (
+          <aside className={`hidden w-52 shrink-0 border-r lg:block ${themeClasses.header}`}>
+            <TileRail onCollapse={() => setLeftCollapsed(true)} />
+          </aside>
+        )}
 
         {/* Center + mobile chrome */}
         <div className="flex min-w-0 flex-1 flex-col">
@@ -66,10 +102,25 @@ const StaffShell: React.FC = () => {
           </main>
         </div>
 
-        {/* Right rail - desktop */}
-        <aside className={`hidden w-[400px] shrink-0 border-l xl:block ${themeClasses.card.primary}`}>
-          <ArtifactRail />
-        </aside>
+        {/* Right rail - desktop (full, or a slim reopen strip when collapsed) */}
+        {rightCollapsed ? (
+          <aside className={`hidden w-10 shrink-0 flex-col items-center border-l pt-2 xl:flex ${themeClasses.header}`}>
+            <button
+              type="button"
+              onClick={() => setRightCollapsed(false)}
+              aria-label="Expand workspace"
+              title="Expand workspace"
+              className={`relative flex h-9 w-9 items-center justify-center rounded-lg ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
+            >
+              <PanelRightOpen className="h-4 w-4" />
+              {hasArtifact && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-blue-500" />}
+            </button>
+          </aside>
+        ) : (
+          <aside className={`hidden w-[400px] shrink-0 border-l xl:block ${themeClasses.card.primary}`}>
+            <ArtifactRail onCollapse={() => setRightCollapsed(true)} />
+          </aside>
+        )}
 
         {/* Mobile tile drawer */}
         {railOpen && (
