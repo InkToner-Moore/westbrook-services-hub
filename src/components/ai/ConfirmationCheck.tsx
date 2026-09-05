@@ -23,6 +23,7 @@ import {
 import { useTheme } from '@/contexts/ThemeContext';
 import type { AiAction, FieldValue, Intent, IntentAttachments, ReceiptSubtype } from '@/ai/types';
 import { type FieldSpec, isFieldVisible, missingRequired } from '@/ai/fieldSpecs';
+import { GST_RATE, grossFromNet, netFromGross, taxOf } from '@/lib/canadaTax';
 import { isItemComplete, toShipmentItems, type ShipmentItem } from '@/ai/shipping';
 import ShipmentItemsEditor from './ShipmentItemsEditor';
 import IntentSuggestions from './IntentSuggestions';
@@ -207,6 +208,24 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
   const { themeClasses, isDarkMode } = useTheme();
   const { fields, editingKey, setEditingKey, setValue, omitted, toggleOmit, isShipping, shipmentItems } = draft;
 
+  // Tax context for the money field. When the slip carries a GST toggle and it is
+  // on, a money field becomes two-way: the counter can type the pre-tax price OR
+  // the tax-inclusive price and the other derives from it. The stored value is
+  // always the pre-tax (net) amount, since that is what the receipt builder taxes.
+  const gstSpec = specs.find((s) => s.key === 'gst' && s.kind === 'toggle');
+  const gstOn = gstSpec ? fields.gst?.value === true : false;
+  // Which money fields the counter is currently entering tax-inclusive. A field
+  // not in the set is entered pre-tax (the default). Keyed so it generalises past
+  // the single 'price' field, though today only that field is money-on-a-receipt.
+  const [taxInclKeys, setTaxInclKeys] = useState<Set<string>>(() => new Set());
+  const toggleTaxIncl = (key: string) =>
+    setTaxInclKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
   // A low-confidence route is worth a gentle "double-check" nudge. The model
   // returns 0..1; the deterministic engine uses coarse buckets (<= 0.5 is a
   // weak keyword hit).
@@ -216,6 +235,99 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
   const runnerUpLabel = onReroute && intent.runnerUp ? routeLabel(intent.runnerUp.action, intent.runnerUp.subtype) : null;
 
   const visibleSpecs = specs.filter((s) => isFieldVisible(s, fields[s.key]?.value));
+
+  // The two-way money field. `value` in fields is always the pre-tax (net) price.
+  // When GST is on the counter can flip a "tax incl." toggle to type the tax-
+  // inclusive figure instead; we convert back to net on entry so downstream never
+  // changes. When GST is off it is a plain price field.
+  const renderMoney = (spec: FieldSpec, fv: FieldValue<unknown> | undefined) => {
+    const value = fv?.value;
+    const isEmpty = value === null || value === undefined || value === '';
+    const net = isEmpty ? null : Number(value);
+    const twoWay = gstOn; // only offer the incl/excl choice when GST applies
+    const taxIncl = twoWay && taxInclKeys.has(spec.key);
+    // Primary figure follows the chosen mode; the secondary line shows the other.
+    const primary = net == null ? null : taxIncl ? grossFromNet(net) : net;
+    const secondary = net == null ? null : taxIncl ? net : grossFromNet(net);
+
+    const taxToggle = twoWay ? (
+      <button
+        type="button"
+        role="switch"
+        aria-checked={taxIncl}
+        onClick={() => toggleTaxIncl(spec.key)}
+        title={taxIncl ? 'Entering the tax-inclusive price. Click for pre-tax.' : 'Entering the pre-tax price. Click for tax-inclusive.'}
+        className={`rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none ${
+          taxIncl
+            ? isDarkMode
+              ? 'border-amber-600/60 bg-amber-800/50 text-amber-200'
+              : 'border-amber-300 bg-amber-100 text-amber-800'
+            : isDarkMode
+              ? 'border-[#2a2f3a] text-[#9aa4b2] hover:bg-[#1f232c]'
+              : 'border-[#e4e1d9] text-[#5b6270] hover:bg-[#f1efe9]'
+        }`}
+      >
+        tax incl.
+      </button>
+    ) : null;
+
+    if (editingKey === spec.key) {
+      return (
+        <div className="flex flex-col items-end gap-1.5">
+          <input
+            autoFocus
+            inputMode="decimal"
+            defaultValue={primary == null ? '' : primary.toFixed(2)}
+            onBlur={(e) => {
+              const raw = e.target.value.trim();
+              if (raw === '') {
+                setValue(spec.key, null);
+                setEditingKey(null);
+                return;
+              }
+              const typed = Number(raw);
+              const nextNet = Number.isFinite(typed) ? (taxIncl ? netFromGross(typed) : typed) : null;
+              setValue(spec.key, nextNet);
+              setEditingKey(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+              if (e.key === 'Escape') setEditingKey(null);
+            }}
+            placeholder={taxIncl ? 'tax-inclusive price' : spec.hint ?? 'pre-tax price'}
+            className={`w-32 rounded-lg border px-2.5 py-1.5 text-right font-mono text-[15px] tabular-nums outline-none ${themeClasses.input}`}
+          />
+          {taxToggle}
+        </div>
+      );
+    }
+
+    const display = isEmpty ? (spec.marker === 'required' ? 'Add' : 'Optional') : `$${primary!.toFixed(2)}`;
+    return (
+      <div className="flex flex-col items-end gap-1">
+        <button
+          type="button"
+          onClick={() => setEditingKey(spec.key)}
+          className={`group inline-flex items-center gap-1 font-mono text-[15px] tabular-nums ${
+            isEmpty ? themeClasses.text.muted : themeClasses.text.primary
+          }`}
+        >
+          <span className={isEmpty ? 'font-sans underline decoration-dotted underline-offset-4' : ''}>{display}</span>
+          <Pencil className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-60" />
+        </button>
+        {twoWay && (
+          <div className="flex items-center gap-2">
+            {!isEmpty && (
+              <span className={`font-mono text-[11px] tabular-nums ${themeClasses.text.muted}`}>
+                {taxIncl ? `$${secondary!.toFixed(2)} before GST` : `$${secondary!.toFixed(2)} with GST`}
+              </span>
+            )}
+            {taxToggle}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderValue = (spec: FieldSpec, fv: FieldValue<unknown> | undefined) => {
     const value = fv?.value;
@@ -236,6 +348,31 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
       );
     }
 
+    if (spec.kind === 'money') {
+      return renderMoney(spec, fv);
+    }
+
+    if (spec.kind === 'select') {
+      // A fixed dropdown. Match the stored value to an option case-insensitively so
+      // a seeded default like 'general' still selects "General"; the option chosen
+      // is stored verbatim.
+      const current = spec.options?.find((o) => o.toLowerCase() === String(value ?? '').toLowerCase()) ?? '';
+      return (
+        <select
+          value={current}
+          onChange={(e) => setValue(spec.key, e.target.value || null)}
+          className={`min-h-[36px] rounded-lg border px-2.5 py-1 text-[15px] outline-none ${themeClasses.input}`}
+        >
+          {!current && <option value="">Choose...</option>}
+          {spec.options?.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
+      );
+    }
+
     if (editingKey === spec.key) {
       return (
         <input
@@ -243,7 +380,7 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
           defaultValue={value == null ? '' : String(value)}
           onBlur={(e) => {
             const raw = e.target.value.trim();
-            const next = spec.kind === 'money' || spec.kind === 'quantity' ? (raw === '' ? null : Number(raw)) : raw || null;
+            const next = spec.kind === 'quantity' ? (raw === '' ? null : Number(raw)) : raw || null;
             setValue(spec.key, next);
             setEditingKey(null);
           }}
@@ -257,21 +394,13 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
       );
     }
 
-    const display =
-      spec.kind === 'money' && !isEmpty
-        ? `$${Number(value).toFixed(2)}`
-        : isEmpty
-          ? spec.marker === 'required'
-            ? 'Add'
-            : 'Optional'
-          : String(value);
-
-    const alignFigures = spec.kind === 'money' || spec.kind === 'quantity';
+    const display = isEmpty ? (spec.marker === 'required' ? 'Add' : 'Optional') : String(value);
+    const alignFigures = spec.kind === 'quantity';
     return (
       <button
         type="button"
         onClick={() => setEditingKey(spec.key)}
-        className={`group inline-flex items-center gap-1 text-[15px] ${alignFigures ? 'tabular-nums' : ''} ${
+        className={`group inline-flex items-center gap-1 text-[15px] ${alignFigures ? 'font-mono tabular-nums' : ''} ${
           isEmpty ? themeClasses.text.muted : themeClasses.text.primary
         }`}
       >
@@ -289,6 +418,20 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
     ? 'bg-indigo-900/25 border-indigo-800/50 text-indigo-100'
     : 'bg-indigo-50 border-indigo-100 text-indigo-900';
   const divide = isDarkMode ? 'divide-slate-700/70' : 'divide-slate-100';
+  const rule = isDarkMode ? 'border-[#2a2f3a]' : 'border-[#e4e1d9]';
+
+  // One total rule at the foot of the ledger, like a real slip: when the slip has
+  // a price and a GST toggle, show the tax and the after-GST total (or just the
+  // total when GST is off). An omitted or empty price drops out of the total.
+  const moneySpec = specs.find((s) => s.kind === 'money');
+  const priceRaw = moneySpec ? fields[moneySpec.key]?.value : undefined;
+  const priceNet =
+    moneySpec && gstSpec && !omitted.has(moneySpec.key) && priceRaw !== null && priceRaw !== undefined && priceRaw !== ''
+      ? Number(priceRaw)
+      : null;
+  const showTotal = priceNet != null && Number.isFinite(priceNet);
+  const totalTax = showTotal && gstOn ? taxOf(priceNet) : 0;
+  const totalDue = showTotal ? (gstOn ? grossFromNet(priceNet) : priceNet) : 0;
 
   return (
     <div className={`overflow-hidden rounded-2xl border ${themeClasses.card.primary}`}>
@@ -367,6 +510,21 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
             );
           })}
         </ul>
+
+        {showTotal && (
+          <div className={`mt-1 space-y-1 border-t pt-2.5 ${rule}`}>
+            {gstOn && (
+              <div className={`flex items-center justify-between text-[13px] ${themeClasses.text.secondary}`}>
+                <span>{`GST (${GST_RATE * 100}%)`}</span>
+                <span className="font-mono tabular-nums">${totalTax.toFixed(2)}</span>
+              </div>
+            )}
+            <div className={`flex items-center justify-between text-[15px] font-semibold ${themeClasses.text.primary}`}>
+              <span>{gstOn ? 'Total (incl. GST)' : 'Total'}</span>
+              <span className="font-mono tabular-nums">${totalDue.toFixed(2)}</span>
+            </div>
+          </div>
+        )}
 
         {isShipping && (
           <div className="mt-3">

@@ -136,7 +136,7 @@ function fillFields(specKeys: string[], text: string): Record<string, FieldValue
         fields[key] = fieldFrom(domainName(extractUrl(text) ?? ''));
         break;
       case 'noteCategory':
-        fields[key] = guessed('general', 'default category');
+        fields[key] = guessed('General', 'default category');
         break;
       case 'linkCategory':
         fields[key] = guessed('other', 'default category');
