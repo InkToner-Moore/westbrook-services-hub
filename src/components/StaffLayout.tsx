@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { useTheme } from "@/hooks/useTheme";
+import { useShell } from "@/components/shell/ShellContext";
 import StaffHeader from "./StaffHeader";
 
 interface StaffLayoutProps {
@@ -12,27 +13,45 @@ interface StaffLayoutProps {
   backLabel?: string;
 }
 
-const StaffLayout = ({ 
-  children, 
-  title, 
-  subtitle, 
-  icon, 
-  iconColor, 
-  backTo, 
-  backLabel 
+const StaffLayout = ({
+  children,
+  title,
+  subtitle,
+  icon,
+  iconColor,
+  backTo,
+  backLabel,
 }: StaffLayoutProps) => {
   const { themeClasses } = useTheme();
+  const { inShell } = useShell();
 
-  return (
-    <div className={`min-h-screen transition-all duration-500 ${themeClasses.background}`}>
-      {/* Background elements */}
-      <div className="fixed inset-0 -z-10">
-        <div className={`absolute -top-40 -right-40 w-80 h-80 rounded-full mix-blend-multiply filter blur-xl animate-pulse transition-all duration-500 ${themeClasses.backgroundFloating.purple}`}></div>
-        <div className={`absolute -bottom-40 -left-40 w-80 h-80 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-1000 transition-all duration-500 ${themeClasses.backgroundFloating.blue}`}></div>
-        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-500 transition-all duration-500 ${themeClasses.backgroundFloating.indigo}`}></div>
+  // Inside the staff shell the rail already provides navigation and identity, so
+  // the tool renders as content only: no page header, no full-height background,
+  // no back button. A thin title bar keeps the tool legible in the center pane.
+  if (inShell) {
+    const Icon = icon;
+    return (
+      <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
+        <div className="mb-6 flex items-center gap-3">
+          {Icon && (
+            <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${themeClasses.card.secondary}`}>
+              <Icon className={`h-5 w-5 ${iconColor ?? themeClasses.text.secondary}`} />
+            </span>
+          )}
+          <div>
+            <h1 className={`text-xl font-semibold tracking-tight ${themeClasses.text.primary}`}>{title}</h1>
+            {subtitle && <p className={`text-sm ${themeClasses.text.secondary}`}>{subtitle}</p>}
+          </div>
+        </div>
+        {children}
       </div>
+    );
+  }
 
-      <StaffHeader 
+  // Standalone (deep-linked) full page.
+  return (
+    <div className={`min-h-screen ${themeClasses.background}`}>
+      <StaffHeader
         title={title}
         subtitle={subtitle}
         icon={icon}
@@ -40,8 +59,6 @@ const StaffLayout = ({
         backTo={backTo}
         backLabel={backLabel}
       />
-
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {children}
       </main>

@@ -29,8 +29,8 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
   const [chips, setChips] = useState<ActiveChip[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // AiOverlay unmounts the composer when it closes, so this mount-time focus fires
-  // each time the overlay opens: the cursor is in the box, ready to type.
+  // Focus on mount, so arriving at AI Mode (the center pane) drops the cursor
+  // straight in the box, ready to type.
   useEffect(() => {
     inputRef.current?.focus();
   }, []);

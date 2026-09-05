@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { useShell } from "@/components/shell/ShellContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -157,6 +158,7 @@ const getRefillIconStyle = (label: string) => {
 const StaffInventory = () => {
   const { user, logout } = useAuth();
   const { themeClasses, isDarkMode } = useTheme();
+  const { inShell } = useShell();
   const [keys, setKeys] = useState<KeyInventoryItem[]>([]);
   const [refills, setRefills] = useState<RefillItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -392,82 +394,20 @@ const StaffInventory = () => {
     return parts;
   };
 
-  return (
-    <div className={`min-h-screen transition-colors duration-300 ${themeClasses.background}`}>
-      {/* Background elements */}
-      <div className="fixed inset-0 -z-10">
-        <div className={`absolute -top-40 -right-40 w-80 h-80 rounded-full mix-blend-multiply filter blur-xl animate-pulse transition-all duration-300 ${themeClasses.backgroundFloating.purple}`}></div>
-        <div className={`absolute -bottom-40 -left-40 w-80 h-80 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-1000 transition-all duration-300 ${themeClasses.backgroundFloating.blue}`}></div>
-        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-500 transition-all duration-300 ${themeClasses.backgroundFloating.indigo}`}></div>
-      </div>
-
-      {/* Header */}
-      <header className={`sticky top-0 z-50 shadow-2xl transition-colors duration-300 ${themeClasses.header}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-3">
-              <Link
-                to="/staff/dashboard"
-                className={`transition-colors mr-4 group ${themeClasses.link}`}
-              >
-                <ArrowLeft className="h-6 w-6 group-hover:-translate-x-1 transition-transform inline mr-2" />
-                Back to Dashboard
-              </Link>
-              <div className="bg-gradient-to-br from-amber-400 to-orange-600 p-3 rounded-xl shadow-2xl">
-                <Boxes className="h-8 w-8 text-white drop-shadow-lg" />
-              </div>
-              <div>
-                <h1 className={`text-xl lg:text-2xl font-bold bg-clip-text text-transparent drop-shadow-lg transition-all duration-300 ${themeClasses.gradient.title}`}>
-                  Inventory
-                </h1>
-                <p className={`text-xs font-medium transition-colors duration-300 ${themeClasses.text.secondary}`}>Staff Portal</p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <div className={`flex items-center space-x-2 transition-colors duration-300 ${themeClasses.text.secondary}`}>
-                <User className="h-4 w-4" />
-                <span className="text-sm font-medium">{user?.email}</span>
-              </div>
-              <ThemeToggleButton />
-              <Button
-                onClick={handleLogout}
-                variant="ghost"
-                size="sm"
-                className={`rounded-full px-4 py-2 transition-all duration-300 hover:scale-110 ${themeClasses.button.ghost}`}
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-12">
-          <h2 className={`text-4xl font-bold mb-4 drop-shadow-2xl transition-colors duration-300 ${themeClasses.text.primary}`}>
-            Inventory
-          </h2>
-          <p className={`text-xl max-w-2xl mx-auto drop-shadow-lg transition-colors duration-300 ${themeClasses.text.secondary}`}>
-            Keys and refill prices, in stock at a glance.
-          </p>
-        </div>
-
-        <div className={`border rounded-3xl p-8 shadow-2xl transition-all duration-300 ${themeClasses.card.primary}`}>
+  const content = (
+    <div className={`border rounded-xl p-4 sm:p-6 ${themeClasses.card.primary}`}>
           <Tabs defaultValue="keys" className="w-full">
-            <TabsList className={`grid w-full grid-cols-2 mb-8 backdrop-blur-sm transition-all duration-300 ${themeClasses.card.secondary}`}>
+            <TabsList className={`grid w-full grid-cols-2 mb-8 ${themeClasses.card.secondary}`}>
               <TabsTrigger
                 value="keys"
-                className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-600 data-[state=active]:text-white"
+                className="flex items-center space-x-2 data-[state=active]:bg-orange-600 data-[state=active]:text-white"
               >
                 <Key className="h-4 w-4" />
                 <span>Key Inventory</span>
               </TabsTrigger>
               <TabsTrigger
                 value="refills"
-                className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white"
+                className="flex items-center space-x-2 data-[state=active]:bg-orange-600 data-[state=active]:text-white"
               >
                 <Droplets className="h-4 w-4" />
                 <span>Refills</span>
@@ -507,7 +447,7 @@ const StaffInventory = () => {
                     </div>
                     <Button
                       type="submit"
-                      className={`font-bold rounded-xl shadow-lg transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
+                      className={`font-semibold rounded-lg transition-colors ${themeClasses.button.primary}`}
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add
@@ -548,14 +488,14 @@ const StaffInventory = () => {
 
               {/* List */}
               {loading ? (
-                <Card className={`shadow-2xl transition-all duration-300 ${themeClasses.card.primary}`}>
+                <Card className={themeClasses.card.primary}>
                   <CardContent className="p-12 text-center">
                     <Loader2 className={`h-12 w-12 mx-auto mb-4 animate-spin transition-colors duration-300 ${themeClasses.text.muted}`} />
                     <p className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>Loading inventory...</p>
                   </CardContent>
                 </Card>
               ) : keys.length === 0 ? (
-                <Card className={`shadow-2xl transition-all duration-300 ${themeClasses.card.primary}`}>
+                <Card className={themeClasses.card.primary}>
                   <CardContent className="p-12 text-center">
                     <Key className={`h-12 w-12 mx-auto mb-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
                     <h3 className={`text-xl font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>No keys yet</h3>
@@ -565,7 +505,7 @@ const StaffInventory = () => {
                   </CardContent>
                 </Card>
               ) : filteredKeys.length === 0 ? (
-                <Card className={`shadow-2xl transition-all duration-300 ${themeClasses.card.primary}`}>
+                <Card className={themeClasses.card.primary}>
                   <CardContent className="p-12 text-center">
                     <Search className={`h-12 w-12 mx-auto mb-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
                     <h3 className={`text-xl font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>No matches</h3>
@@ -607,7 +547,7 @@ const StaffInventory = () => {
 
                         <div className="flex items-center gap-4">
                           {priceText ? (
-                            <Badge variant="outline" className={`${priceBadgeClass} border text-xs font-semibold tabular-nums`}>
+                            <Badge variant="outline" className={`${priceBadgeClass} border text-xs font-mono font-semibold tabular-nums`}>
                               {priceText}
                             </Badge>
                           ) : (
@@ -723,7 +663,7 @@ const StaffInventory = () => {
                     <div className="sm:col-span-2">
                       <Button
                         type="submit"
-                        className={`w-full font-bold rounded-xl shadow-lg transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
+                        className={`w-full font-semibold rounded-lg transition-colors ${themeClasses.button.primary}`}
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Add
@@ -764,14 +704,14 @@ const StaffInventory = () => {
 
               {/* List */}
               {refillsLoading ? (
-                <Card className={`shadow-2xl transition-all duration-300 ${themeClasses.card.primary}`}>
+                <Card className={themeClasses.card.primary}>
                   <CardContent className="p-12 text-center">
                     <Loader2 className={`h-12 w-12 mx-auto mb-4 animate-spin transition-colors duration-300 ${themeClasses.text.muted}`} />
                     <p className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>Loading refills...</p>
                   </CardContent>
                 </Card>
               ) : refills.length === 0 ? (
-                <Card className={`shadow-2xl transition-all duration-300 ${themeClasses.card.primary}`}>
+                <Card className={themeClasses.card.primary}>
                   <CardContent className="p-12 text-center">
                     <Droplets className={`h-12 w-12 mx-auto mb-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
                     <h3 className={`text-xl font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>No refills yet</h3>
@@ -781,7 +721,7 @@ const StaffInventory = () => {
                   </CardContent>
                 </Card>
               ) : filteredRefills.length === 0 ? (
-                <Card className={`shadow-2xl transition-all duration-300 ${themeClasses.card.primary}`}>
+                <Card className={themeClasses.card.primary}>
                   <CardContent className="p-12 text-center">
                     <Search className={`h-12 w-12 mx-auto mb-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
                     <h3 className={`text-xl font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>No matches</h3>
@@ -814,8 +754,8 @@ const StaffInventory = () => {
                                 {item.brand ? `${item.brand} ` : ""}{item.cartridge}
                               </p>
                               {parts.length > 0 ? (
-                                <p className={`text-xs truncate tabular-nums transition-colors duration-300 ${themeClasses.text.secondary}`}>
-                                  {parts.join("  ·  ")}
+                                <p className={`text-xs truncate font-mono tabular-nums transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                                  {parts.join("   ")}
                                 </p>
                               ) : item.priceNote ? (
                                 <p className={`text-xs truncate transition-colors duration-300 ${themeClasses.text.muted}`}>
@@ -878,7 +818,83 @@ const StaffInventory = () => {
               )}
             </TabsContent>
           </Tabs>
+    </div>
+  );
+
+  if (inShell) {
+    return (
+      <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
+        <div className="mb-6 flex items-center gap-3">
+          <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${themeClasses.card.secondary}`}>
+            <Boxes className={`h-5 w-5 ${themeClasses.text.secondary}`} />
+          </span>
+          <div>
+            <h1 className={`text-xl font-semibold tracking-tight ${themeClasses.text.primary}`}>Inventory</h1>
+            <p className={`text-sm ${themeClasses.text.secondary}`}>Keys and refill prices, in stock at a glance</p>
+          </div>
         </div>
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`min-h-screen ${themeClasses.background}`}>
+      {/* Header */}
+      <header className={`sticky top-0 z-50 border-b transition-colors duration-300 ${themeClasses.header}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div className="flex items-center space-x-3">
+              <Link
+                to="/staff/dashboard"
+                className={`transition-colors mr-4 group ${themeClasses.link}`}
+              >
+                <ArrowLeft className="h-6 w-6 group-hover:-translate-x-1 transition-transform inline mr-2" />
+                Back to Dashboard
+              </Link>
+              <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${themeClasses.card.secondary}`}>
+                <Boxes className={`h-6 w-6 ${themeClasses.text.secondary}`} />
+              </span>
+              <div>
+                <h1 className={`text-xl lg:text-2xl font-semibold tracking-tight ${themeClasses.text.primary}`}>
+                  Inventory
+                </h1>
+                <p className={`text-xs font-medium transition-colors duration-300 ${themeClasses.text.secondary}`}>Staff Portal</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <div className={`flex items-center space-x-2 transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                <User className="h-4 w-4" />
+                <span className="text-sm font-medium">{user?.email}</span>
+              </div>
+              <ThemeToggleButton />
+              <Button
+                onClick={handleLogout}
+                variant="ghost"
+                size="sm"
+                className={`rounded-full px-4 py-2 transition-colors ${themeClasses.button.ghost}`}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="text-center mb-12">
+          <h2 className={`text-2xl sm:text-3xl font-semibold tracking-tight ${themeClasses.text.primary}`}>
+            Inventory
+          </h2>
+          <p className={`mt-2 max-w-2xl mx-auto ${themeClasses.text.secondary}`}>
+            Keys and refill prices, in stock at a glance.
+          </p>
+        </div>
+
+        {content}
       </main>
     </div>
   );

@@ -3,7 +3,6 @@ import { Phone, MapPin, ExternalLink, Clock, Printer, Key, Package, Sun, Moon, S
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useTheme } from "@/hooks/useTheme";
 import SmartTracker from "@/components/SmartTracker";
@@ -32,6 +31,13 @@ const STATUS_COLORS: Record<string, string> = {
 
 const PublicHome = () => {
   const { isDarkMode, toggleTheme, themeClasses } = useTheme();
+
+  // The wordmark and "Check a refill status" icon use the brand ink colour
+  // (indigo) directly, same as AI Mode elsewhere in the app - it is not a
+  // themeClasses key, just the one spot outside staff chrome that reaches for it.
+  const ink = isDarkMode ? "text-indigo-300" : "text-indigo-700";
+  const inkBg = isDarkMode ? "bg-indigo-900/40" : "bg-indigo-50";
+  const focusRing = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2";
 
   // Refill status checker state. Customers rarely hang on to the order ID, so
   // they look themselves up by last name instead — which can match more than
@@ -83,81 +89,81 @@ const PublicHome = () => {
   const services = [
     {
       icon: Printer,
-      title: "Ink & Toner Cartridges",
+      title: "Ink & toner cartridges",
       description: "Compatible and brand-name cartridges for all major printer brands"
     },
     {
       icon: Package,
-      title: "Ink Jet Refills",
+      title: "Ink jet refills",
       description: "Professional refill services - call or visit to verify cartridge compatibility"
     },
     {
       icon: Key,
-      title: "Key Cutting Services",
+      title: "Key cutting",
       description: "House, mailbox, and automotive key cutting - call or visit to verify availability"
     },
     {
       icon: Package,
-      title: "Shipping Services",
-      description: "UPS, FedEx, Purolator authorized center"
+      title: "Shipping",
+      description: "UPS, FedEx, Purolator authorized centre"
     }
   ];
 
   const additionalServices = [
-    "Printing, Faxing, Scanning",
-    "Photocopying Services", 
-    "Card Lamination",
-    "Cartridge Recycling"
+    "Printing, faxing, scanning",
+    "Photocopying",
+    "Card lamination",
+    "Cartridge recycling"
   ];
 
   return (
-    <div className={`min-h-screen transition-all duration-300 ${themeClasses.background}`}>
+    <div className={`min-h-screen ${themeClasses.background}`}>
       {/* Header */}
-      <header className={`border-b transition-all duration-300 ${themeClasses.header}`}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-3 sm:py-4">
-            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
-              <div className="bg-blue-600 p-1.5 sm:p-2 rounded-lg shrink-0">
-                <Printer className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-              </div>
+      <header className={`sticky top-0 z-40 border-b backdrop-blur-xl ${themeClasses.header}`}>
+        <div className="mx-auto max-w-5xl px-4 sm:px-6">
+          <div className="flex items-center justify-between gap-3 py-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${inkBg}`}>
+                <Printer className={`h-5 w-5 ${ink}`} />
+              </span>
               <div className="min-w-0">
-                <h1 className={`text-sm sm:text-xl font-bold leading-tight ${themeClasses.text.primary}`}>
-                  Ink, Toner & Moore
-                </h1>
+                <p className={`truncate text-base font-semibold leading-tight sm:text-lg ${themeClasses.text.primary}`}>
+                  Ink, Toner &amp; Moore
+                </p>
                 <a
                   href={MAPS_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`text-xs sm:text-sm hover:underline ${themeClasses.text.secondary}`}
+                  className={`block truncate rounded-sm text-xs hover:underline sm:text-sm ${themeClasses.text.secondary} ${focusRing}`}
                 >
                   Westbrook Mall, Calgary
                 </a>
               </div>
             </div>
 
-            <div className="flex items-center space-x-2 sm:space-x-4 shrink-0">
+            <div className="flex shrink-0 items-center gap-2">
               <a
                 href="tel:4036862835"
-                className={`flex items-center space-x-2 p-2 sm:px-4 sm:py-2 rounded-lg transition-colors ${themeClasses.button.primary}`}
+                className={`flex h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium sm:px-4 ${themeClasses.button.primary} ${focusRing}`}
               >
-                <Phone className="h-4 w-4" />
+                <Phone className="h-4 w-4 shrink-0" />
                 <span className="hidden sm:inline">(403) 686-2835</span>
               </a>
 
               <Button
                 onClick={toggleTheme}
                 variant="ghost"
-                size="sm"
-                className={`p-2 rounded-lg border ${themeClasses.button.ghost}`}
+                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+                className={`h-11 w-11 rounded-lg border p-0 ${themeClasses.button.ghost} ${focusRing}`}
               >
                 {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </Button>
 
               <Link
                 to="/staff"
-                className={`hidden sm:block px-4 py-2 rounded-lg border transition-colors text-sm ${themeClasses.button.secondary}`}
+                className={`hidden h-11 items-center rounded-lg border px-4 text-sm font-medium sm:flex ${themeClasses.button.secondary} ${focusRing}`}
               >
-                Staff Login
+                Staff login
               </Link>
             </div>
           </div>
@@ -165,83 +171,93 @@ const PublicHome = () => {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Hero Section */}
-        <section className="text-center mb-16">
-          <h2 className={`text-4xl font-bold mb-4 ${themeClasses.text.primary}`}>
-            Your Local Printing & Shipping Solution
-          </h2>
-          <p className={`text-xl mb-8 max-w-2xl mx-auto ${themeClasses.text.secondary}`}>
-            Professional ink, toner, key cutting, and shipping services at Westbrook Mall
+      <main className="mx-auto max-w-5xl space-y-12 px-4 py-8 sm:space-y-16 sm:px-6 sm:py-12">
+        {/* Hero: what we do and how to reach us, plain, not a marketing headline */}
+        <section>
+          <h1 className={`max-w-2xl text-2xl font-semibold tracking-tight sm:text-3xl ${themeClasses.text.primary}`}>
+            Printing, ink and toner, keys, and shipping.
+          </h1>
+          <p className={`mt-2 max-w-xl text-[15px] leading-relaxed sm:text-lg ${themeClasses.text.secondary}`}>
+            Your neighbourhood counter inside Westbrook Mall. Drop by, call, or use the tools below.
           </p>
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a 
+
+          <div className="mt-5 flex flex-wrap gap-2.5">
+            <a
               href="tel:4036862835"
-              className={`px-8 py-3 rounded-lg font-semibold transition-colors ${themeClasses.button.primary}`}
+              className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium ${themeClasses.card.secondary} ${themeClasses.text.primary} ${focusRing}`}
             >
-              Call Now: (403) 686-2835
+              <Phone className="h-4 w-4" />
+              (403) 686-2835
             </a>
             <a
               href={MAPS_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className={`px-8 py-3 rounded-lg border-2 transition-colors hover:border-blue-500 ${themeClasses.card.secondary} ${themeClasses.text.secondary}`}
+              className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium ${themeClasses.card.secondary} ${themeClasses.text.primary} ${focusRing}`}
             >
-              <MapPin className="h-5 w-5 inline mr-2" />
+              <MapPin className="h-4 w-4" />
               Westbrook Mall, Calgary
             </a>
+            <span
+              className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium ${themeClasses.card.secondary} ${themeClasses.text.secondary}`}
+            >
+              <Clock className="h-4 w-4" />
+              Open 7 days a week
+            </span>
           </div>
         </section>
 
-        {/* Package Tracker */}
-        <section className="mb-16">
-          <SmartTracker
-            className="max-w-4xl mx-auto"
-          />
-        </section>
+        {/* The two jobs a customer came here to do, ahead of anything else */}
+        <section aria-label="Self-serve tools" className="space-y-5">
+          <SmartTracker />
 
-        {/* Refill Status Checker */}
-        <section className="mb-16">
-          <Card className={`max-w-4xl mx-auto py-4 ${themeClasses.card.primary}`}>
-            <CardHeader>
-              <CardTitle className={`flex items-center space-x-2 text-center justify-center ${themeClasses.text.primary}`}>
-                <Printer className="h-5 w-5" />
-                <span>Check Refill Status</span>
-              </CardTitle>
-              <p className={`text-center text-sm mt-2 ${themeClasses.text.secondary}`}>
-                Enter your last name to check the status of your cartridge refill
-              </p>
-            </CardHeader>
-            <CardContent className="max-w-md mx-auto space-y-4">
+          <div className={`rounded-xl border p-5 sm:p-6 ${themeClasses.card.primary}`}>
+            <div className="flex items-center gap-3">
+              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${isDarkMode ? "bg-violet-950/60" : "bg-violet-50"}`}>
+                <Printer className={`h-5 w-5 ${isDarkMode ? "text-violet-300" : "text-violet-700"}`} />
+              </span>
               <div>
-                <Label className={`block mb-2 ${themeClasses.text.primary}`}>Last Name</Label>
+                <h2 className={`text-xl font-semibold tracking-tight ${themeClasses.text.primary}`}>
+                  Check a refill status
+                </h2>
+                <p className={`text-[13px] ${themeClasses.text.secondary}`}>
+                  Enter the last name on the order
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 max-w-sm space-y-4">
+              <div>
+                <Label htmlFor="refill-last-name" className={`mb-1.5 block text-sm font-medium ${themeClasses.text.primary}`}>
+                  Last name
+                </Label>
                 <Input
+                  id="refill-last-name"
                   placeholder="e.g. Smith"
                   value={refillLastName}
                   onChange={(e) => setRefillLastName(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !refillLoading) checkRefillStatus();
                   }}
-                  className={`h-12 text-center ${themeClasses.input}`}
+                  className={`h-11 ${themeClasses.input}`}
                 />
               </div>
 
               <Button
                 onClick={checkRefillStatus}
                 disabled={refillLoading}
-                className={`w-full h-12 font-semibold ${themeClasses.button.primary}`}
+                className={`h-11 w-full font-medium ${themeClasses.button.primary}`}
               >
                 {refillLoading ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
                   <Search className="h-4 w-4 mr-2" />
                 )}
-                Check Status
+                Check status
               </Button>
 
               {refillResults && (
-                <div className={`rounded-lg p-4 text-center space-y-3 ${themeClasses.card.secondary}`}>
+                <div className={`space-y-3 rounded-lg border p-4 ${themeClasses.card.secondary}`}>
                   <p className={`text-sm ${themeClasses.text.secondary}`}>
                     {refillResults.length === 1
                       ? "Your refill status:"
@@ -249,8 +265,8 @@ const PublicHome = () => {
                   </p>
 
                   {refillResults.map((result) => (
-                    <div key={result.orderId} className="flex flex-col items-center gap-1">
-                      <Badge className={`text-base px-4 py-1 ${STATUS_COLORS[result.status] || STATUS_COLORS.in_progress}`}>
+                    <div key={result.orderId} className="flex flex-col items-start gap-1">
+                      <Badge className={`px-4 py-1 text-base ${STATUS_COLORS[result.status] || STATUS_COLORS.in_progress}`}>
                         {result.status === 'ready' ? (
                           <CheckCircle className="h-4 w-4 mr-2" />
                         ) : (
@@ -260,7 +276,7 @@ const PublicHome = () => {
                       </Badge>
                       {/* Only useful for telling several refills apart. */}
                       {refillResults.length > 1 && (
-                        <span className={`text-xs font-mono ${themeClasses.text.muted}`}>
+                        <span className={`font-mono text-xs tabular-nums ${themeClasses.text.muted}`}>
                           {result.orderId}
                         </span>
                       )}
@@ -270,121 +286,107 @@ const PublicHome = () => {
               )}
 
               {refillError && (
-                <div className="rounded-lg p-4 text-center bg-red-50 border border-red-200 dark:bg-red-950/50 dark:border-red-800">
-                  <div className="flex items-center justify-center space-x-2 text-red-700 dark:text-red-200">
-                    <AlertCircle className="h-4 w-4" />
-                    <p className="text-sm">{refillError}</p>
-                  </div>
+                <div className={`flex items-start gap-2 rounded-lg border p-4 ${themeClasses.status.error}`}>
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <p className="text-sm">{refillError}</p>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </section>
 
         {/* Services */}
-        <section className="mb-16">
-          <h3 className={`text-3xl font-bold text-center mb-12 ${themeClasses.text.primary}`}>
-            Our Services
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <section>
+          <h2 className={`text-xl font-semibold tracking-tight ${themeClasses.text.primary}`}>
+            What we do
+          </h2>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {services.map((service, index) => (
-              <Card key={index} className={`transition-all duration-200 hover:shadow-lg ${themeClasses.card.primary}`}>
-                <CardHeader className="text-center pb-4">
-                  <div className={`p-3 rounded-lg w-fit mx-auto mb-4 ${themeClasses.card.secondary}`}>
-                    <service.icon className="h-8 w-8 text-blue-600" />
-                  </div>
-                  <CardTitle className={`text-lg ${themeClasses.text.primary}`}>
+              <div key={index} className={`flex items-start gap-3 rounded-lg border p-4 ${themeClasses.card.secondary}`}>
+                <service.icon className={`mt-0.5 h-5 w-5 shrink-0 ${themeClasses.text.accent}`} />
+                <div>
+                  <p className={`font-medium ${themeClasses.text.primary}`}>
                     {service.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className={`text-center ${themeClasses.text.secondary}`}>
+                  </p>
+                  <p className={`mt-0.5 text-[14px] leading-relaxed ${themeClasses.text.secondary}`}>
                     {service.description}
                   </p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className={`mt-5 text-sm font-medium ${themeClasses.text.primary}`}>
+            Also at the counter
+          </p>
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            {additionalServices.map((service, index) => (
+              <span
+                key={index}
+                className={`rounded-full border px-3 py-1.5 text-sm ${themeClasses.card.secondary} ${themeClasses.text.secondary}`}
+              >
+                {service}
+              </span>
             ))}
           </div>
         </section>
 
-        {/* Additional Services */}
-        <section className="mb-16">
-          <Card className={themeClasses.card.primary}>
-            <CardHeader>
-              <CardTitle className={`text-2xl text-center ${themeClasses.text.primary}`}>
-                Additional Services
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {additionalServices.map((service, index) => (
-                  <div key={index} className={`flex items-center space-x-2 ${themeClasses.text.secondary}`}>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span>{service}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
         {/* Business Hours & Contact */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <section className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           {/* Business Hours */}
-          <Card className={themeClasses.card.primary}>
-            <CardHeader>
-              <CardTitle className={`flex items-center space-x-2 ${themeClasses.text.primary}`}>
-                <Clock className="h-5 w-5" />
-                <span>Business Hours</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {businessHours.map((schedule, index) => (
-                  <div key={index} className="flex justify-between">
-                    <span className={themeClasses.text.secondary}>{schedule.days}</span>
-                    <span className={`font-semibold ${themeClasses.text.primary}`}>{schedule.hours}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <div className={`rounded-xl border p-5 sm:p-6 ${themeClasses.card.primary}`}>
+            <h2 className={`flex items-center gap-2 text-lg font-semibold ${themeClasses.text.primary}`}>
+              <Clock className="h-5 w-5" />
+              Business hours
+            </h2>
+            <div className="mt-4">
+              {businessHours.map((schedule, index) => (
+                <div
+                  key={index}
+                  className={`flex justify-between py-2.5 first:pt-0 ${
+                    index > 0 ? "border-t border-[#e4e1d9] dark:border-[#2a2f3a]" : ""
+                  }`}
+                >
+                  <span className={themeClasses.text.secondary}>{schedule.days}</span>
+                  <span className={`font-medium ${themeClasses.text.primary}`}>{schedule.hours}</span>
+                </div>
+              ))}
+            </div>
+          </div>
 
           {/* Contact Information */}
-          <Card className={themeClasses.card.primary}>
-            <CardHeader>
-              <CardTitle className={`flex items-center space-x-2 ${themeClasses.text.primary}`}>
-                <MapPin className="h-5 w-5" />
-                <span>Contact & Location</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
+          <div className={`rounded-xl border p-5 sm:p-6 ${themeClasses.card.primary}`}>
+            <h2 className={`flex items-center gap-2 text-lg font-semibold ${themeClasses.text.primary}`}>
+              <MapPin className="h-5 w-5" />
+              Contact and location
+            </h2>
+            <div className="mt-4 flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
               <div className="min-w-0 flex-1 space-y-4">
                 <div>
-                  <p className={`font-semibold ${themeClasses.text.primary}`}>Address</p>
+                  <p className={`font-medium ${themeClasses.text.primary}`}>Address</p>
                   <a
                     href={MAPS_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`hover:underline ${themeClasses.text.accent}`}
+                    className={`rounded-sm hover:underline ${themeClasses.text.accent} ${focusRing}`}
                   >
                     Westbrook Mall, Calgary
                   </a>
                 </div>
                 <div>
-                  <p className={`font-semibold ${themeClasses.text.primary}`}>Phone</p>
+                  <p className={`font-medium ${themeClasses.text.primary}`}>Phone</p>
                   <a
                     href="tel:4036862835"
-                    className={`hover:underline ${themeClasses.text.accent}`}
+                    className={`rounded-sm hover:underline ${themeClasses.text.accent} ${focusRing}`}
                   >
                     (403) 686-2835
                   </a>
                 </div>
                 <div>
-                  <p className={`font-semibold ${themeClasses.text.primary}`}>Email</p>
+                  <p className={`font-medium ${themeClasses.text.primary}`}>Email</p>
                   <a
                     href="mailto:inktonerandmoore@gmail.com"
-                    className={`hover:underline ${themeClasses.text.accent}`}
+                    className={`rounded-sm hover:underline ${themeClasses.text.accent} ${focusRing}`}
                   >
                     inktonerandmoore@gmail.com
                   </a>
@@ -398,15 +400,15 @@ const PublicHome = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Open our location in Google Maps"
-                  className="group relative block overflow-hidden rounded-xl ring-1 ring-black/10 transition-all duration-300 hover:ring-2 hover:ring-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:ring-white/15"
+                  className={`group relative block overflow-hidden rounded-lg border ${themeClasses.card.secondary} ${focusRing}`}
                 >
                   <img
                     src={storeMap}
                     alt="Map showing Ink, Toner & Moore inside Westbrook Mall, Calgary"
-                    className="block aspect-[817/700] w-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+                    className="block aspect-[817/700] w-full object-cover"
                     loading="lazy"
                   />
-                  <span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-gradient-to-t from-black/75 via-black/45 to-transparent px-3 pb-2 pt-6 text-xs font-semibold text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                  <span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-black/70 px-3 py-2 text-xs font-medium text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
                     <ExternalLink className="h-3.5 w-3.5" />
                     Open in Google Maps
                   </span>
@@ -417,22 +419,22 @@ const PublicHome = () => {
                     href={MAPS_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`font-medium hover:underline ${themeClasses.text.accent}`}
+                    className={`rounded-sm font-medium hover:underline ${themeClasses.text.accent} ${focusRing}`}
                   >
                     Get directions
                   </a>
                 </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className={`border-t mt-16 py-8 ${themeClasses.header}`}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <footer className={`mt-4 border-t py-8 ${themeClasses.header}`}>
+        <div className="mx-auto max-w-5xl px-4 text-center sm:px-6">
           <p className={themeClasses.text.secondary}>
-            © 2024 Ink, Toner & Moore. All rights reserved.
+            Ink, Toner &amp; Moore, Westbrook Mall, Calgary. Open 7 days a week.
           </p>
         </div>
       </footer>

@@ -36,93 +36,98 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     setIsDarkMode(!isDarkMode);
   };
 
-  // Both themes are built on the same slate scale so surfaces stay in the same
-  // family across a toggle. The light theme layers page (slate-100) < card
-  // (white) < nested card (slate-100) so panels separate by value, not just by
-  // a hairline border — the previous stone-on-stone palette washed together.
+  // The counter/paper palette (see docs/ui-rehaul/DESIGN-SPEC.md). Both themes
+  // share one warm-neutral spine so a light/dark toggle only changes value, never
+  // layout. Light is warm paper on a paper-grey counter; dark is graphite. Ink
+  // (indigo) is the brand + AI signature; blue is the action colour; brass (amber)
+  // is the single warm accent. Borders + a step in surface value carry hierarchy;
+  // heavy shadows are gone.
   const themeClasses = {
     background: isDarkMode
-      ? 'bg-slate-900'
-      : 'bg-slate-100',
+      ? 'bg-[#0f1115]'
+      : 'bg-[#f6f5f2]',
 
+    // Two former Lovable tells are neutralised here, at the token, so they vanish
+    // everywhere at once without editing the ~8 pages that still reference them:
+    //  - backgroundFloating: the animated blur blobs render invisibly now.
+    //  - gradient.title: a solid colour, so every `bg-clip-text` title paints
+    //    solid graphite instead of a gradient.
+    // Owners still delete the dead JSX when they touch a file; this keeps the app
+    // coherent in the meantime.
     backgroundFloating: {
-      // Kept very faint in light mode: mix-blend-multiply over a bright page
-      // turns saturated blobs into muddy patches that fight the content.
-      purple: isDarkMode ? 'bg-purple-500/20 opacity-30' : 'bg-purple-200/40 opacity-25',
-      blue: isDarkMode ? 'bg-blue-500/20 opacity-30' : 'bg-blue-200/40 opacity-25',
-      indigo: isDarkMode ? 'bg-indigo-500/20 opacity-30' : 'bg-indigo-200/40 opacity-25',
+      purple: 'bg-transparent opacity-0',
+      blue: 'bg-transparent opacity-0',
+      indigo: 'bg-transparent opacity-0',
     },
 
     header: isDarkMode
-      ? 'bg-slate-800 border-slate-700 backdrop-blur-xl'
-      : 'bg-white/95 border-slate-200 backdrop-blur-xl shadow-sm',
+      ? 'bg-[#171a21]/95 border-[#2a2f3a] backdrop-blur-xl'
+      : 'bg-white/90 border-[#e4e1d9] backdrop-blur-xl',
 
     text: {
-      primary: isDarkMode ? 'text-white' : 'text-slate-900',
-      secondary: isDarkMode ? 'text-gray-300' : 'text-slate-600',
-      muted: isDarkMode ? 'text-gray-400' : 'text-slate-500',
+      primary: isDarkMode ? 'text-[#f3f4f6]' : 'text-[#1a1d23]',
+      secondary: isDarkMode ? 'text-[#9aa4b2]' : 'text-[#5b6270]',
+      muted: isDarkMode ? 'text-[#6b7280]' : 'text-[#8a8f9a]',
       accent: isDarkMode ? 'text-blue-400' : 'text-blue-700',
-      inverted: isDarkMode ? 'text-gray-900' : 'text-white',
+      inverted: isDarkMode ? 'text-[#1a1d23]' : 'text-white',
     },
 
     gradient: {
-      title: isDarkMode
-        ? 'bg-gradient-to-r from-white to-blue-300'
-        : 'bg-gradient-to-r from-slate-900 to-blue-700',
+      // Solid, not a gradient (see note above): renders solid graphite through
+      // the existing `bg-clip-text text-transparent` at each call site.
+      title: isDarkMode ? 'bg-[#f3f4f6]' : 'bg-[#1a1d23]',
     },
 
     card: {
       primary: isDarkMode
-        ? 'bg-slate-800 border-slate-700'
-        : 'bg-white border-slate-200 shadow-sm',
+        ? 'bg-[#171a21] border-[#2a2f3a]'
+        : 'bg-white border-[#e4e1d9]',
       secondary: isDarkMode
-        ? 'bg-slate-700 border-slate-600'
-        : 'bg-slate-100 border-slate-200',
+        ? 'bg-[#1f232c] border-[#2a2f3a]'
+        : 'bg-[#f1efe9] border-[#e4e1d9]',
       accent: isDarkMode
-        ? 'bg-slate-800 border-blue-600'
+        ? 'bg-[#171a21] border-blue-700'
         : 'bg-blue-50 border-blue-200',
     },
 
     button: {
       primary: isDarkMode
-        ? 'bg-blue-600 hover:bg-blue-500 text-white border-blue-500 shadow-lg'
+        ? 'bg-blue-500 hover:bg-blue-400 text-white border-blue-500 shadow-sm'
         : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600 shadow-sm',
-      // Light variants are tinted rather than white: a white button on a white
-      // header/card has no edge to read against and stops looking clickable.
       secondary: isDarkMode
-        ? 'bg-slate-700 hover:bg-slate-600 text-white border-slate-600 shadow-md'
-        : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300 shadow-sm',
+        ? 'bg-[#1f232c] hover:bg-[#262b35] text-[#f3f4f6] border-[#2a2f3a]'
+        : 'bg-[#f1efe9] hover:bg-[#e9e6df] text-[#1a1d23] border-[#e4e1d9]',
       ghost: isDarkMode
-        ? 'bg-slate-700/70 hover:bg-slate-600 text-gray-200 border-slate-600 shadow-md'
-        : 'bg-slate-50 hover:bg-slate-200 text-slate-700 border-slate-300 shadow-sm',
+        ? 'bg-transparent hover:bg-[#1f232c] text-[#9aa4b2] border-transparent'
+        : 'bg-transparent hover:bg-[#f1efe9] text-[#5b6270] border-transparent',
       danger: isDarkMode
-        ? 'bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-lg'
+        ? 'bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-sm'
         : 'bg-red-600 hover:bg-red-700 text-white border-red-600 shadow-sm',
       success: isDarkMode
-        ? 'bg-green-600 hover:bg-green-500 text-white border-green-500 shadow-lg'
-        : 'bg-green-600 hover:bg-green-700 text-white border-green-600 shadow-sm',
+        ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-sm'
+        : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 shadow-sm',
     },
 
     input: isDarkMode
-      ? 'bg-slate-800 border-slate-600 text-white placeholder:text-gray-400 focus:border-blue-400 focus:ring-blue-400/30'
-      : 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500/30',
+      ? 'bg-[#1f232c] border-[#2a2f3a] text-[#f3f4f6] placeholder:text-[#6b7280] focus:border-blue-400 focus:ring-blue-400/30'
+      : 'bg-[#f1efe9] border-[#e4e1d9] text-[#1a1d23] placeholder:text-[#8a8f9a] focus:border-blue-500 focus:ring-blue-500/30',
 
     link: isDarkMode
       ? 'text-blue-400 hover:text-blue-300'
       : 'text-blue-700 hover:text-blue-800',
 
     status: {
-      success: isDarkMode ? 'bg-green-800/60 text-green-200 border-green-600' : 'bg-green-100 text-green-800 border-green-300',
-      warning: isDarkMode ? 'bg-yellow-800/60 text-yellow-200 border-yellow-600' : 'bg-amber-100 text-amber-900 border-amber-300',
-      error: isDarkMode ? 'bg-red-800/60 text-red-200 border-red-600' : 'bg-red-100 text-red-800 border-red-300',
-      info: isDarkMode ? 'bg-blue-800/60 text-blue-200 border-blue-600' : 'bg-blue-100 text-blue-800 border-blue-300',
+      success: isDarkMode ? 'bg-emerald-900/50 text-emerald-200 border-emerald-700' : 'bg-emerald-50 text-emerald-800 border-emerald-300',
+      warning: isDarkMode ? 'bg-amber-900/50 text-amber-200 border-amber-700' : 'bg-amber-50 text-amber-900 border-amber-300',
+      error: isDarkMode ? 'bg-red-900/50 text-red-200 border-red-700' : 'bg-red-50 text-red-800 border-red-300',
+      info: isDarkMode ? 'bg-blue-900/50 text-blue-200 border-blue-700' : 'bg-blue-50 text-blue-800 border-blue-300',
     },
 
     interactive: {
-      hover: isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-slate-100',
-      active: isDarkMode ? 'active:bg-slate-600' : 'active:bg-slate-200',
+      hover: isDarkMode ? 'hover:bg-[#1f232c]' : 'hover:bg-[#f1efe9]',
+      active: isDarkMode ? 'active:bg-[#262b35]' : 'active:bg-[#e9e6df]',
       focus: isDarkMode ? 'focus:ring-2 focus:ring-blue-400/50 focus:outline-none' : 'focus:ring-2 focus:ring-blue-500/50 focus:outline-none',
-    }
+    },
   };
 
   const value = {

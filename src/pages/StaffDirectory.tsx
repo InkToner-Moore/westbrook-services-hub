@@ -56,6 +56,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { useAuth } from "@/hooks/useAuth";
+import { useShell } from "@/components/shell/ShellContext";
 import { toast } from "@/hooks/use-toast";
 import ThemeToggleButton from "@/components/ThemeToggleButton";
 import {
@@ -216,6 +217,7 @@ const blankForm: LinkFormValues = {
 const StaffDirectory = () => {
   const { user, logout } = useAuth();
   const { themeClasses, isDarkMode } = useTheme();
+  const { inShell } = useShell();
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [links, setLinks] = useState<DirectoryLink[]>([]);
@@ -374,191 +376,216 @@ const StaffDirectory = () => {
     }
   };
 
-  return (
-    <div className={`min-h-screen transition-colors duration-300 ${themeClasses.background}`}>
-      {/* Background elements */}
-      <div className="fixed inset-0 -z-10">
-        <div className={`absolute -top-40 -right-40 w-80 h-80 rounded-full mix-blend-multiply filter blur-xl animate-pulse transition-all duration-300 ${themeClasses.backgroundFloating.purple}`}></div>
-        <div className={`absolute -bottom-40 -left-40 w-80 h-80 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-1000 transition-all duration-300 ${themeClasses.backgroundFloating.blue}`}></div>
-        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-500 transition-all duration-300 ${themeClasses.backgroundFloating.indigo}`}></div>
+  // Shared between the standalone (deep-linked) page and the shell's compact
+  // in-pane rendering. Only the surrounding chrome differs between the two.
+  const directoryContent = (
+    <>
+      {/* Search, filter, and add */}
+      <div className="mb-6 flex flex-col lg:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${themeClasses.text.muted}`} />
+          <Input
+            placeholder="Search websites..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className={`pl-10 min-h-[44px] ${themeClasses.input}`}
+          />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(["all", "admin", "shipping", "courier", "other"] as const).map((c) => (
+            <Button
+              key={c}
+              variant={categoryFilter === c ? "default" : "ghost"}
+              onClick={() => setCategoryFilter(c)}
+              className={`min-h-[44px] capitalize ${
+                categoryFilter === c ? themeClasses.button.primary : themeClasses.button.ghost
+              }`}
+            >
+              {c}
+            </Button>
+          ))}
+          <Button
+            onClick={() => setAdding(true)}
+            size="lg"
+            className={`font-semibold ${themeClasses.button.primary}`}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Tile
+          </Button>
+        </div>
       </div>
 
-      {/* Header */}
-      <header className={`sticky top-0 z-50 shadow-2xl transition-colors duration-300 ${themeClasses.header}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-3">
-              <Link
-                to="/staff/dashboard"
-                className={`transition-colors mr-4 group ${themeClasses.link}`}
+      {/* Loading state */}
+      {loading && (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className={`h-8 w-8 animate-spin ${themeClasses.text.secondary}`} />
+        </div>
+      )}
+
+      {/* Websites Grid */}
+      {!loading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredLinks.map((link) => {
+            const { Icon } = ICON_OPTIONS[link.iconKey] ?? ICON_OPTIONS.link;
+            return (
+              <Card
+                key={link.id}
+                className={`rounded-xl cursor-pointer group ${themeClasses.card.primary}`}
+                onClick={() => window.open(link.url, "_blank")}
               >
-                <ArrowLeft className="h-6 w-6 group-hover:-translate-x-1 transition-transform inline mr-2" />
-                Back to Dashboard
-              </Link>
-              <div className="bg-gradient-to-br from-cyan-400 to-blue-600 p-3 rounded-xl shadow-2xl">
-                <Globe className="h-8 w-8 text-white drop-shadow-lg" />
-              </div>
-              <div>
-                <h1 className={`text-xl lg:text-2xl font-bold bg-clip-text text-transparent drop-shadow-lg transition-all duration-300 ${themeClasses.gradient.title}`}>
-                  Website Directory
-                </h1>
-                <p className={`text-xs font-medium transition-colors duration-300 ${themeClasses.text.secondary}`}>Staff Portal</p>
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className={`bg-gradient-to-r ${gradientFor(link.colorKey)} p-3 rounded-xl`}>
+                      <Icon className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {link.isAdmin && (
+                        <Badge variant="outline" className={`${getCategoryBadge("admin")} border text-xs`}>
+                          Admin
+                        </Badge>
+                      )}
+                      {/* Edit/delete: stopPropagation so they don't trigger the card's open-link click. */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`h-11 w-11 ${themeClasses.button.ghost}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditing(link);
+                        }}
+                        aria-label={`Edit ${link.name}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`h-11 w-11 ${themeClasses.button.ghost}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPendingDelete(link);
+                        }}
+                        aria-label={`Delete ${link.name}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                      <ExternalLink className={`h-4 w-4 ${themeClasses.text.secondary}`} />
+                    </div>
+                  </div>
+                  <CardTitle className={`text-lg font-semibold ${themeClasses.text.primary}`}>
+                    {link.name}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <p className={`text-sm mb-3 ${themeClasses.text.secondary}`}>
+                    {link.description}
+                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge variant="outline" className={`${getCategoryBadge(link.category)} border text-xs capitalize`}>
+                      {link.category}
+                    </Badge>
+                    <div className={`text-xs font-mono truncate max-w-32 ${themeClasses.text.muted}`}>
+                      {link.url.replace("https://", "").replace("http://", "").replace("www.", "")}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {!loading && filteredLinks.length === 0 && (
+        <div className="text-center py-12">
+          <Globe className={`h-14 w-14 mx-auto mb-4 opacity-50 ${themeClasses.text.muted}`} />
+          <h3 className={`text-lg font-semibold mb-2 ${themeClasses.text.primary}`}>No websites found</h3>
+          <p className={themeClasses.text.secondary}>Try adjusting your search terms or filter</p>
+        </div>
+      )}
+    </>
+  );
+
+  return (
+    <>
+      {inShell ? (
+        // Inside the staff shell the rail already provides navigation and
+        // identity, so this renders as content only, mirroring StaffLayout's
+        // own chromeless branch: no page header, no full-height background,
+        // no back button or logout (the shell owns those).
+        <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
+          <div className="mb-6 flex items-center gap-3">
+            <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${themeClasses.card.secondary}`}>
+              <Globe className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+            </span>
+            <div>
+              <h1 className={`text-xl font-semibold tracking-tight ${themeClasses.text.primary}`}>
+                Website Directory
+              </h1>
+              <p className={`text-sm ${themeClasses.text.secondary}`}>
+                Quick access to shipping and courier sites
+              </p>
+            </div>
+          </div>
+          {directoryContent}
+        </div>
+      ) : (
+        // Standalone (deep-linked) full page.
+        <div className={`min-h-screen ${themeClasses.background}`}>
+          <header className={`sticky top-0 z-50 border-b ${themeClasses.header}`}>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex justify-between items-center py-6">
+                <div className="flex items-center gap-3">
+                  <Link
+                    to="/staff/dashboard"
+                    className={`mr-4 group ${themeClasses.link}`}
+                  >
+                    <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform inline mr-2" />
+                    Back to Dashboard
+                  </Link>
+                  <div className="bg-cyan-600 p-3 rounded-xl">
+                    <Globe className="h-7 w-7 text-white" />
+                  </div>
+                  <div>
+                    <h1 className={`text-xl lg:text-2xl font-semibold tracking-tight ${themeClasses.text.primary}`}>
+                      Website Directory
+                    </h1>
+                    <p className={`text-xs font-medium ${themeClasses.text.secondary}`}>Staff Portal</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className={`hidden md:flex items-center gap-2 ${themeClasses.text.secondary}`}>
+                    <User className="h-4 w-4" />
+                    <span className="text-sm font-medium">{user?.email}</span>
+                  </div>
+                  <ThemeToggleButton />
+                  <Button
+                    onClick={handleLogout}
+                    variant="ghost"
+                    size="sm"
+                    className={`rounded-lg px-4 min-h-[44px] ${themeClasses.button.ghost}`}
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </Button>
+                </div>
               </div>
             </div>
+          </header>
 
-            <div className="flex items-center space-x-4">
-              <div className={`flex items-center space-x-2 transition-colors duration-300 ${themeClasses.text.secondary}`}>
-                <User className="h-4 w-4" />
-                <span className="text-sm font-medium">{user?.email}</span>
-              </div>
-              <ThemeToggleButton />
-              <Button
-                onClick={handleLogout}
-                variant="ghost"
-                size="sm"
-                className={`rounded-full px-4 py-2 transition-all duration-300 hover:scale-110 ${themeClasses.button.ghost}`}
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            <div className="mb-8">
+              <h2 className={`text-2xl sm:text-3xl font-semibold tracking-tight ${themeClasses.text.primary}`}>
+                Quick Access Directory
+              </h2>
+              <p className={`mt-1 ${themeClasses.text.secondary}`}>
+                Fast access to commonly used shipping and courier websites
+              </p>
             </div>
-          </div>
+            {directoryContent}
+          </main>
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-12">
-          <h2 className={`text-4xl font-bold mb-4 drop-shadow-2xl transition-colors duration-300 ${themeClasses.text.primary}`}>
-            Quick Access Directory
-          </h2>
-          <p className={`text-xl max-w-2xl mx-auto drop-shadow-lg transition-colors duration-300 ${themeClasses.text.secondary}`}>
-            Fast access to commonly used shipping and courier websites
-          </p>
-        </div>
-
-        {/* Search, filter, and add */}
-        <div className="mb-8 flex flex-col lg:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className={`absolute left-3 top-3 h-4 w-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
-            <Input
-              placeholder="Search websites..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={`pl-10 transition-all duration-300 ${themeClasses.input}`}
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {(["all", "admin", "shipping", "courier", "other"] as const).map((c) => (
-              <Button
-                key={c}
-                variant={categoryFilter === c ? "default" : "ghost"}
-                onClick={() => setCategoryFilter(c)}
-                className={`transition-all duration-300 capitalize ${
-                  categoryFilter === c ? themeClasses.button.primary : themeClasses.button.ghost
-                }`}
-              >
-                {c}
-              </Button>
-            ))}
-            <Button
-              onClick={() => setAdding(true)}
-              className={`font-bold rounded-xl shadow-lg transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Tile
-            </Button>
-          </div>
-        </div>
-
-        {/* Loading state */}
-        {loading && (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className={`h-8 w-8 animate-spin ${themeClasses.text.secondary}`} />
-          </div>
-        )}
-
-        {/* Websites Grid */}
-        {!loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredLinks.map((link) => {
-              const { Icon } = ICON_OPTIONS[link.iconKey] ?? ICON_OPTIONS.link;
-              return (
-                <Card
-                  key={link.id}
-                  className={`shadow-2xl hover:shadow-3xl transition-all duration-300 hover:-translate-y-1 hover:scale-105 cursor-pointer group ${themeClasses.card.primary}`}
-                  onClick={() => window.open(link.url, "_blank")}
-                >
-                  <CardHeader className="pb-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className={`bg-gradient-to-r ${gradientFor(link.colorKey)} p-3 rounded-xl shadow-2xl group-hover:scale-110 transition-transform duration-300`}>
-                        <Icon className="h-6 w-6 text-white" />
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {link.isAdmin && (
-                          <Badge variant="outline" className={`${getCategoryBadge("admin")} border text-xs`}>
-                            Admin
-                          </Badge>
-                        )}
-                        {/* Edit/delete: stopPropagation so they don't trigger the card's open-link click. */}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={`h-8 w-8 ${themeClasses.button.ghost}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditing(link);
-                          }}
-                          aria-label={`Edit ${link.name}`}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={`h-8 w-8 ${themeClasses.button.ghost}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPendingDelete(link);
-                          }}
-                          aria-label={`Delete ${link.name}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                        <ExternalLink className={`h-4 w-4 group-hover:text-white transition-colors duration-300 ${themeClasses.text.secondary}`} />
-                      </div>
-                    </div>
-                    <CardTitle className={`text-lg drop-shadow-lg transition-colors duration-300 ${themeClasses.text.primary} group-hover:${themeClasses.link}`}>
-                      {link.name}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <p className={`text-sm mb-3 transition-colors duration-300 ${themeClasses.text.secondary}`}>
-                      {link.description}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <Badge variant="outline" className={`${getCategoryBadge(link.category)} border text-xs capitalize`}>
-                        {link.category}
-                      </Badge>
-                      <div className={`text-xs font-mono truncate max-w-32 transition-colors duration-300 ${themeClasses.text.muted}`}>
-                        {link.url.replace("https://", "").replace("http://", "").replace("www.", "")}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-
-        {!loading && filteredLinks.length === 0 && (
-          <div className="text-center py-12">
-            <Globe className={`h-16 w-16 mx-auto mb-4 opacity-50 transition-colors duration-300 ${themeClasses.text.muted}`} />
-            <h3 className={`text-xl font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>No websites found</h3>
-            <p className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>Try adjusting your search terms or filter</p>
-          </div>
-        )}
-      </main>
+      )}
 
       {/* Add dialog */}
       <LinkDialog
@@ -608,7 +635,7 @@ const StaffDirectory = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 };
 

@@ -1,8 +1,9 @@
-// The single Artifact panel. When AI Mode has something larger or contained to
-// show, it slides in over the chat and fills a defined region (a right-side sheet
-// on desktop, full width on mobile). Only one Artifact exists at a time.
+// The artifact body renderers: a receipt preview, a tracking stub, or an order
+// list. Rendered inside the shell's ArtifactRail, which supplies the header,
+// the scrolling frame, and (via ArtifactActions) the pinned action foot. Only
+// one Artifact exists at a time.
 import React, { useMemo } from 'react';
-import { ExternalLink, Package, X } from 'lucide-react';
+import { Package } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAiMode } from '@/ai/context';
 import { receiptPreviewUri } from '@/ai/receiptOutput';
@@ -33,24 +34,14 @@ const TrackingArtifact: React.FC<{ card: TrackingCard }> = ({ card }) => {
           {card.courier ?? 'Unknown carrier'}
         </span>
       </div>
-      <p className={`mt-3 font-mono text-lg ${themeClasses.text.primary}`}>{card.trackingNumber}</p>
-      {card.url ? (
-        <a
-          href={card.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`mt-4 inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium ${themeClasses.button.primary}`}
-        >
-          <ExternalLink className="h-4 w-4" />
-          Open on {card.courier}
-        </a>
-      ) : (
+      <p className={`mt-3 font-mono text-lg tabular-nums ${themeClasses.text.primary}`}>{card.trackingNumber}</p>
+      {!card.url && (
         <p className={`mt-3 text-sm ${themeClasses.text.muted}`}>
           Tell me the carrier and I will open its tracking page.
         </p>
       )}
       <p className={`mt-4 text-xs ${themeClasses.text.muted}`}>
-        Live in-app status is coming soon. For now this opens the carrier's official page.
+        Live in-app status is coming soon. Open on {card.courier ?? 'the carrier'} below for now.
       </p>
     </div>
   );
@@ -96,42 +87,27 @@ const OrderListArtifact: React.FC<{ orders: CartridgeOrder[] }> = ({ orders }) =
   );
 };
 
+// Renders the current artifact's body (the kind-specific view) for the artifact
+// rail's scrolling region. The rail supplies the header and, via
+// ArtifactActions, the pinned action foot; a 'confirmation' artifact is handled
+// entirely by the rail (ConfirmationCheck + its draft state) and never reaches
+// here.
 const ArtifactPanel: React.FC = () => {
   const { themeClasses } = useTheme();
-  const { artifact, hideArtifact } = useAiMode();
-
+  const { artifact } = useAiMode();
   if (!artifact || artifact.kind === 'none') return null;
-
   return (
-    <div
-      className={`fixed inset-y-0 right-0 z-[65] flex w-full flex-col border-l shadow-2xl md:w-1/2 lg:w-[46%] ${themeClasses.card.primary} print:hidden`}
-    >
-      <header className={`flex items-center justify-between border-b px-4 py-3 ${themeClasses.header}`}>
-        <span className={`text-sm font-semibold ${themeClasses.text.primary}`}>
-          {artifact.title ?? 'Details'}
-        </span>
-        <button
-          type="button"
-          onClick={hideArtifact}
-          aria-label="Close panel"
-          className={`flex h-9 w-9 items-center justify-center rounded-xl ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </header>
-
-      <div className="flex-1 overflow-auto p-3">
-        {artifact.kind === 'receipt' && (
-          <ReceiptArtifact opts={(artifact.data as { opts: SimpleReceiptOptions }).opts} />
-        )}
-        {artifact.kind === 'tracking' && <TrackingArtifact card={artifact.data as TrackingCard} />}
-        {artifact.kind === 'list' && (
-          <OrderListArtifact orders={(artifact.data as { orders: CartridgeOrder[] }).orders} />
-        )}
-        {artifact.kind !== 'receipt' && artifact.kind !== 'tracking' && artifact.kind !== 'list' && (
-          <p className={`text-sm ${themeClasses.text.muted}`}>Nothing to show yet.</p>
-        )}
-      </div>
+    <div className="flex-1 overflow-auto p-3">
+      {artifact.kind === 'receipt' && (
+        <ReceiptArtifact opts={(artifact.data as { opts: SimpleReceiptOptions }).opts} />
+      )}
+      {artifact.kind === 'tracking' && <TrackingArtifact card={artifact.data as TrackingCard} />}
+      {artifact.kind === 'list' && (
+        <OrderListArtifact orders={(artifact.data as { orders: CartridgeOrder[] }).orders} />
+      )}
+      {artifact.kind !== 'receipt' && artifact.kind !== 'tracking' && artifact.kind !== 'list' && (
+        <p className={`text-sm ${themeClasses.text.muted}`}>Nothing to show yet.</p>
+      )}
     </div>
   );
 };

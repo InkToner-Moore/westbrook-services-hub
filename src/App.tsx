@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import PublicHome from "./pages/PublicHome";
 import StaffLogin from "./pages/StaffLogin";
-import StaffDashboard from "./pages/StaffDashboard";
 import StaffTracking from "./pages/StaffTracking";
 import StaffReceipts from "./pages/StaffReceipts";
 import StaffCartridges from "./pages/StaffCartridges";
@@ -15,14 +14,11 @@ import StaffNotes from "./pages/StaffNotes";
 import StaffInventory from "./pages/StaffInventory";
 import StaffRequests from "./pages/StaffRequests";
 import ProtectedRoute from "./components/ProtectedRoute";
-import FeatureProtectedRoute from "./components/FeatureProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./hooks/useAuth";
 import { AiModeProvider } from "./ai/context";
-import TabDock from "./components/ai/TabDock";
-import AiOverlay from "./components/ai/AiOverlay";
-import CartPanel from "./components/ai/CartPanel";
-import { Package, Receipt, Printer, StickyNote, Boxes, ClipboardList } from "lucide-react";
+import StaffShell from "./components/shell/StaffShell";
+import AiChatPane from "./components/shell/AiChatPane";
 
 const queryClient = new QueryClient();
 
@@ -31,129 +27,39 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      {/* Public Routes */}
+      {/* Public portal */}
       <Route path="/" element={<PublicHome />} />
-      
-      {/* Staff Authentication */}
-      <Route 
-        path="/staff" 
-        element={user ? <Navigate to="/staff/dashboard" replace /> : <StaffLogin />} 
-      />
-      
-      {/* Protected Staff Routes */}
-      <Route 
-        path="/staff/dashboard" 
-        element={
-          <ProtectedRoute>
-            <StaffDashboard />
-          </ProtectedRoute>
-        } 
-      />
-      
-      {/* Placeholder for future staff routes */}
-      <Route 
-        path="/staff/tracking" 
-        element={
-          <ProtectedRoute>
-            <FeatureProtectedRoute 
-              featurePath="modules.packageTracking.enabled"
-              moduleTitle="Package Tracking"
-              moduleIcon={<Package className="h-8 w-8 text-blue-500" />}
-            >
-              <StaffTracking />
-            </FeatureProtectedRoute>
-          </ProtectedRoute>
-        } 
-      />
-      
-      <Route 
-        path="/staff/receipts" 
-        element={
-          <ProtectedRoute>
-            <FeatureProtectedRoute 
-              featurePath="modules.receiptGenerator.enabled"
-              moduleTitle="Receipt Generator"
-              moduleIcon={<Receipt className="h-8 w-8 text-green-500" />}
-            >
-              <StaffReceipts />
-            </FeatureProtectedRoute>
-          </ProtectedRoute>
-        } 
-      />
-      
-      <Route
-        path="/staff/cartridges"
-        element={
-          <ProtectedRoute>
-            <FeatureProtectedRoute 
-              featurePath="modules.cartridgeManager.enabled"
-              moduleTitle="Cartridge Manager"
-              moduleIcon={<Printer className="h-8 w-8 text-purple-500" />}
-            >
-              <StaffCartridges />
-            </FeatureProtectedRoute>
-          </ProtectedRoute>
-        } 
-      />
-      
-      
-      <Route 
-        path="/staff/directory" 
-        element={
-          <ProtectedRoute>
-            <StaffDirectory />
-          </ProtectedRoute>
-        } 
-      />
-      
-      <Route
-        path="/staff/notes"
-        element={
-          <ProtectedRoute>
-            <FeatureProtectedRoute
-              featurePath="modules.notes.enabled"
-              moduleTitle="Notes System"
-              moduleIcon={<StickyNote className="h-8 w-8 text-yellow-500" />}
-            >
-              <StaffNotes />
-            </FeatureProtectedRoute>
-          </ProtectedRoute>
-        }
-      />
 
-      <Route
-        path="/staff/inventory"
-        element={
-          <ProtectedRoute>
-            <FeatureProtectedRoute
-              featurePath="modules.inventory.enabled"
-              moduleTitle="Inventory"
-              moduleIcon={<Boxes className="h-8 w-8 text-amber-500" />}
-            >
-              <StaffInventory />
-            </FeatureProtectedRoute>
-          </ProtectedRoute>
-        }
-      />
+      {/* Staff portal */}
+      <Route path="/staff">
+        {/* Bare /staff: login when signed out, jump to AI Mode when signed in. */}
+        <Route
+          index
+          element={user ? <Navigate to="/staff/ai" replace /> : <StaffLogin />}
+        />
 
-      <Route
-        path="/staff/requests"
-        element={
-          <ProtectedRoute>
-            <FeatureProtectedRoute
-              featurePath="modules.customerRequests.enabled"
-              moduleTitle="Customer Requests"
-              moduleIcon={<ClipboardList className="h-8 w-8 text-rose-500" />}
-            >
-              <StaffRequests />
-            </FeatureProtectedRoute>
-          </ProtectedRoute>
-        }
-      />
-      
-      
-      
-      {/* Catch-all route */}
+        {/* Everything below renders inside the three-pane staff shell. The tile
+            rail and artifact rail stay put; the center pane is the active tool. */}
+        <Route
+          element={
+            <ProtectedRoute>
+              <StaffShell />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="dashboard" element={<Navigate to="/staff/ai" replace />} />
+          <Route path="ai" element={<AiChatPane />} />
+          <Route path="tracking" element={<StaffTracking />} />
+          <Route path="receipts" element={<StaffReceipts />} />
+          <Route path="cartridges" element={<StaffCartridges />} />
+          <Route path="directory" element={<StaffDirectory />} />
+          <Route path="notes" element={<StaffNotes />} />
+          <Route path="inventory" element={<StaffInventory />} />
+          <Route path="requests" element={<StaffRequests />} />
+        </Route>
+      </Route>
+
+      {/* Catch-all */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -168,14 +74,11 @@ const App = () => (
         {/* Match Vite's base path (set in vite.config.ts) so routing works
             whether the app is served at the site root or under a subpath. */}
         <BrowserRouter basename={import.meta.env.BASE_URL}>
-          {/* AI Mode is an additive layer: the dock and overlay mount once here,
-              outside <Routes>, so they sit over every staff page without touching
-              any of them. They render nothing on public routes or when signed out. */}
+          {/* AI Mode state (chat, artifact, open receipt) is shared across the
+              staff shell, so the provider wraps all routes. It renders nothing on
+              public routes or when signed out. */}
           <AiModeProvider>
             <AppRoutes />
-            <TabDock />
-            <CartPanel />
-            <AiOverlay />
           </AiModeProvider>
         </BrowserRouter>
       </TooltipProvider>

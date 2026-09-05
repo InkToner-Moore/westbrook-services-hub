@@ -114,7 +114,10 @@ export interface ComposerChip {
 }
 
 // What fills the single Artifact panel. Kind decides which renderer runs.
-export type ArtifactKind = 'receipt' | 'tracking' | 'order' | 'list' | 'none';
+// 'confirmation' is a proposed intent awaiting the counter's OK: the chat points
+// at it ("I put the details on the right"), the rail renders the slip, and the
+// rail's pinned foot carries Confirm / Not now.
+export type ArtifactKind = 'receipt' | 'tracking' | 'order' | 'list' | 'confirmation' | 'none';
 
 export interface ArtifactState {
   kind: ArtifactKind;

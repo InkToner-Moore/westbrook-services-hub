@@ -203,223 +203,218 @@ const StaffNotes = () => {
       title="Staff Notes"
       subtitle="Keep track of important information and reminders"
       icon={StickyNote}
-      iconColor="from-yellow-500 to-orange-600"
+      iconColor="text-amber-600 dark:text-amber-400"
     >
-      <div className="text-center mb-12">
-        <h2 className={`text-4xl font-bold mb-4 drop-shadow-2xl transition-colors duration-300 ${themeClasses.text.primary}`}>
-          Staff Notes
-        </h2>
-        <p className={`text-xl max-w-2xl mx-auto drop-shadow-lg transition-colors duration-300 ${themeClasses.text.secondary}`}>
-          Keep track of important information and reminders
-        </p>
-      </div>
+      {/* Success Message */}
+      {showSuccess && (
+        <div className="mb-6">
+          <FormSuccessMessage
+            message="Note saved successfully!"
+            onDismiss={() => setShowSuccess(false)}
+          />
+        </div>
+      )}
 
-          {/* Success Message */}
-          {showSuccess && (
-            <div className="mb-6">
-              <FormSuccessMessage
-                message="Note saved successfully!"
-                onDismiss={() => setShowSuccess(false)}
-              />
-            </div>
-          )}
+      <div className={`rounded-xl border p-4 sm:p-6 ${themeClasses.card.primary}`}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Add/Edit Note Form */}
+          <div className="lg:col-span-1">
+            <Card className={`${themeClasses.card.secondary} rounded-xl`}>
+              <CardHeader>
+                <CardTitle className={`flex items-center gap-2 text-lg font-semibold ${themeClasses.text.primary}`}>
+                  <Plus className="h-5 w-5" />
+                  <span>{editingNote ? 'Edit Note' : 'Add New Note'}</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form
+                  onSubmit={noteForm.handleSubmit(editingNote ?
+                    (data) => updateNote(editingNote, data) :
+                    addNote
+                  )}
+                  className="space-y-6"
+                >
+                  <FormErrorSummary errors={noteValidation.errors} />
 
-          <div className={`border rounded-3xl p-8 shadow-2xl transition-all duration-300 ${themeClasses.card.primary}`}>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Add/Edit Note Form */}
-              <div className="lg:col-span-1">
-                <Card className={`${themeClasses.card.secondary} shadow-xl`}>
-                  <CardHeader>
-                    <CardTitle className={`flex items-center space-x-2 transition-colors duration-300 ${themeClasses.text.primary}`}>
-                      <Plus className="h-5 w-5" />
-                      <span>{editingNote ? 'Edit Note' : 'Add New Note'}</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <form
-                      onSubmit={noteForm.handleSubmit(editingNote ?
-                        (data) => updateNote(editingNote, data) :
-                        addNote
-                      )}
-                      className="space-y-6"
-                    >
-                      <FormErrorSummary errors={noteValidation.errors} />
-
-                      <div>
-                        <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Title</Label>
-                        <ValidatedInput
-                          {...noteForm.register('title')}
-                          placeholder="Enter note title..."
-                          error={noteValidation.errors.title}
-                          className={`transition-all duration-300 ${themeClasses.input}`}
-                        />
-                      </div>
-
-                      <div>
-                        <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Category</Label>
-                        <select
-                          {...noteForm.register('category')}
-                          className={`w-full p-3 rounded-lg transition-all duration-300 ${themeClasses.input}`}
-                        >
-                          <option value="general">General</option>
-                          <option value="customer">Customer</option>
-                          <option value="inventory">Inventory</option>
-                          <option value="shipping">Shipping</option>
-                          <option value="urgent">Urgent</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Content</Label>
-                        <ValidatedTextarea
-                          {...noteForm.register('content')}
-                          placeholder="Enter note content..."
-                          error={noteValidation.errors.content}
-                          className={`min-h-[120px] transition-all duration-300 ${themeClasses.input}`}
-                        />
-                      </div>
-
-                      <div className="flex gap-3">
-                        <Button
-                          type="submit"
-                          className={`flex-1 font-semibold transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
-                        >
-                          {editingNote ? 'Update Note' : 'Add Note'}
-                        </Button>
-
-                        {editingNote && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={cancelEditing}
-                            className={`transition-all duration-300 ${themeClasses.button.ghost}`}
-                          >
-                            Cancel
-                          </Button>
-                        )}
-                      </div>
-                    </form>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Notes List */}
-              <div className="lg:col-span-2">
-                {/* Controls */}
-                <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                  <div className="flex-1">
-                    <div className="relative">
-                      <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
-                      <Input
-                        placeholder="Search notes..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className={`pl-10 transition-all duration-300 ${themeClasses.input}`}
-                      />
-                    </div>
+                  <div>
+                    <Label className={`font-medium ${themeClasses.text.primary}`}>Title</Label>
+                    <ValidatedInput
+                      {...noteForm.register('title')}
+                      placeholder="Enter note title..."
+                      error={noteValidation.errors.title}
+                      className={`min-h-[44px] ${themeClasses.input}`}
+                    />
                   </div>
 
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className={`px-4 py-2 rounded-lg transition-all duration-300 ${themeClasses.input}`}
-                  >
-                    <option value="all">All Categories</option>
-                    <option value="general">General</option>
-                    <option value="customer">Customer</option>
-                    <option value="inventory">Inventory</option>
-                    <option value="shipping">Shipping</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
+                  <div>
+                    <Label className={`font-medium ${themeClasses.text.primary}`}>Category</Label>
+                    <select
+                      {...noteForm.register('category')}
+                      className={`w-full min-h-[44px] rounded-lg p-3 ${themeClasses.input}`}
+                    >
+                      <option value="general">General</option>
+                      <option value="customer">Customer</option>
+                      <option value="inventory">Inventory</option>
+                      <option value="shipping">Shipping</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </div>
 
+                  <div>
+                    <Label className={`font-medium ${themeClasses.text.primary}`}>Content</Label>
+                    <ValidatedTextarea
+                      {...noteForm.register('content')}
+                      placeholder="Enter note content..."
+                      error={noteValidation.errors.content}
+                      className={`min-h-[120px] ${themeClasses.input}`}
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button
+                      type="submit"
+                      size="lg"
+                      className={`flex-1 font-semibold ${themeClasses.button.primary}`}
+                    >
+                      {editingNote ? 'Update Note' : 'Add Note'}
+                    </Button>
+
+                    {editingNote && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="lg"
+                        onClick={cancelEditing}
+                        className={themeClasses.button.ghost}
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+
+              {/* Notes List */}
+          <div className="lg:col-span-2">
+            {/* Controls */}
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${themeClasses.text.muted}`} />
+                  <Input
+                    placeholder="Search notes..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className={`pl-10 min-h-[44px] ${themeClasses.input}`}
+                  />
                 </div>
+              </div>
 
-                {/* Loading State */}
-                {loading && (
-                  <Card className={`${themeClasses.card.primary}`}>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className={`min-h-[44px] px-4 py-2 rounded-lg ${themeClasses.input}`}
+              >
+                <option value="all">All Categories</option>
+                <option value="general">General</option>
+                <option value="customer">Customer</option>
+                <option value="inventory">Inventory</option>
+                <option value="shipping">Shipping</option>
+                <option value="urgent">Urgent</option>
+              </select>
+
+            </div>
+
+            {/* Loading State */}
+            {loading && (
+              <Card className={`rounded-xl ${themeClasses.card.primary}`}>
+                <CardContent className="p-12 text-center">
+                  <Loader2 className={`h-10 w-10 mx-auto mb-4 animate-spin ${themeClasses.text.muted}`} />
+                  <p className={themeClasses.text.secondary}>Loading notes...</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Notes */}
+            {!loading && (
+              <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                {filteredNotes.map((note) => (
+                  <Card key={note.id} className={`rounded-xl ${themeClasses.card.primary}`}>
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-start mb-3 gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className={`text-lg font-semibold mb-2 ${themeClasses.text.primary}`}>
+                            {note.title}
+                          </h3>
+                          <div className="flex flex-wrap items-center gap-3 mb-3">
+                            <Badge className={getCategoryColor(note.category)}>
+                              <Tag className="h-3 w-3 mr-1" />
+                              {note.category}
+                            </Badge>
+                            <div className={`flex items-center text-sm ${themeClasses.text.muted}`}>
+                              <Clock className="h-3 w-3 mr-1" />
+                              {new Date(note.createdAt).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => startEditing(note)}
+                            aria-label={`Edit ${note.title}`}
+                            className={`h-11 w-11 ${themeClasses.button.ghost}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => deleteNote(note.id)}
+                            aria-label={`Delete ${note.title}`}
+                            className={`h-11 w-11 ${themeClasses.button.danger}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <p className={`leading-relaxed ${themeClasses.text.secondary}`}>
+                        {note.content}
+                      </p>
+
+                      {note.updatedAt !== note.createdAt && (
+                        <div className={`mt-4 pt-3 border-t text-xs ${themeClasses.text.muted}`}>
+                          <span>Updated: {new Date(note.updatedAt).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+
+                {filteredNotes.length === 0 && (
+                  <Card className={`rounded-xl border-dashed ${themeClasses.card.primary}`}>
                     <CardContent className="p-12 text-center">
-                      <Loader2 className={`h-12 w-12 mx-auto mb-4 animate-spin transition-colors duration-300 ${themeClasses.text.muted}`} />
-                      <p className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>Loading notes...</p>
+                      <FileText className={`h-14 w-14 mx-auto mb-4 ${themeClasses.text.muted}`} />
+                      <h3 className={`text-lg font-semibold mb-2 ${themeClasses.text.primary}`}>
+                        {searchQuery || selectedCategory !== "all" ? "No matching notes" : "No notes yet"}
+                      </h3>
+                      <p className={themeClasses.text.secondary}>
+                        {searchQuery || selectedCategory !== "all" ?
+                          "Try adjusting your search or filter criteria" :
+                          "Create your first note to get started"
+                        }
+                      </p>
                     </CardContent>
                   </Card>
                 )}
-
-                {/* Notes */}
-                {!loading && (
-                  <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                    {filteredNotes.map((note) => (
-                      <Card key={note.id} className={`transition-all duration-200 hover:shadow-lg ${themeClasses.card.primary}`}>
-                        <CardContent className="p-6">
-                          <div className="flex justify-between items-start mb-3">
-                            <div className="flex-1">
-                              <h3 className={`text-lg font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>
-                                {note.title}
-                              </h3>
-                              <div className="flex items-center space-x-3 mb-3">
-                                <Badge className={`${getCategoryColor(note.category)} transition-colors duration-300`}>
-                                  <Tag className="h-3 w-3 mr-1" />
-                                  {note.category}
-                                </Badge>
-                                <div className={`flex items-center text-sm transition-colors duration-300 ${themeClasses.text.muted}`}>
-                                  <Clock className="h-3 w-3 mr-1" />
-                                  {new Date(note.createdAt).toLocaleDateString()}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center space-x-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => startEditing(note)}
-                                className={`transition-all duration-300 ${themeClasses.button.ghost}`}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => deleteNote(note.id)}
-                                className={`transition-all duration-300 ${themeClasses.button.danger}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-
-                          <p className={`leading-relaxed transition-colors duration-300 ${themeClasses.text.secondary}`}>
-                            {note.content}
-                          </p>
-
-                          {note.updatedAt !== note.createdAt && (
-                            <div className={`mt-4 pt-3 border-t text-xs transition-colors duration-300 ${themeClasses.text.muted}`}>
-                              <span>Updated: {new Date(note.updatedAt).toLocaleDateString()}</span>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
-
-                    {filteredNotes.length === 0 && (
-                      <Card className={`${themeClasses.card.primary} border-dashed`}>
-                        <CardContent className="p-12 text-center">
-                          <FileText className={`h-16 w-16 mx-auto mb-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
-                          <h3 className={`text-xl font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>
-                            {searchQuery || selectedCategory !== "all" ? "No matching notes" : "No notes yet"}
-                          </h3>
-                          <p className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>
-                            {searchQuery || selectedCategory !== "all" ?
-                              "Try adjusting your search or filter criteria" :
-                              "Create your first note to get started"
-                            }
-                          </p>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </div>
-                )}
               </div>
-            </div>
+            )}
+          </div>
+        </div>
       </div>
     </StaffLayout>
   );

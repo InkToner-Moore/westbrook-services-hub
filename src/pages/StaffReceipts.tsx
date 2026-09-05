@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { useFieldArray, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,13 +18,9 @@ import {
   Plus,
   Minus,
   Trash2,
-  ArrowLeft,
-  User,
-  LogOut,
   RefreshCw
 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
-import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { useAiMode } from "@/ai/context";
 import type { CartLine } from "@/ai/cart";
@@ -39,7 +34,6 @@ import {
   type PackingItem,
 } from "@/lib/packing";
 import StaffLayout from "@/components/StaffLayout";
-import ThemeToggleButton from "@/components/ThemeToggleButton";
 import GstBreakdown from "@/components/GstBreakdown";
 import CartridgeLineFields from "@/components/CartridgeLineFields";
 import {
@@ -153,7 +147,6 @@ let receiptCartLineId = 0;
 const nextCartLineId = () => `sr-${(receiptCartLineId += 1)}`;
 
 const StaffReceipts = () => {
-  const { user, logout } = useAuth();
   const { addCartLines } = useAiMode();
   const { themeClasses, isDarkMode } = useTheme();
   // The app's dialogs/inputs render against the light shadcn palette, so in dark
@@ -392,108 +385,46 @@ const StaffReceipts = () => {
     setPackingRows([]);
   };
 
-  const handleLogout = async () => {
-    await logout();
-  };
-
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${themeClasses.background}`}>
-      {/* Background elements */}
-      <div className="fixed inset-0 -z-10">
-        <div className={`absolute -top-40 -right-40 w-80 h-80 rounded-full mix-blend-multiply filter blur-xl animate-pulse transition-all duration-300 ${themeClasses.backgroundFloating.purple}`}></div>
-        <div className={`absolute -bottom-40 -left-40 w-80 h-80 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-1000 transition-all duration-300 ${themeClasses.backgroundFloating.blue}`}></div>
-        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full mix-blend-multiply filter blur-xl animate-pulse delay-500 transition-all duration-300 ${themeClasses.backgroundFloating.indigo}`}></div>
-      </div>
-
-      {/* Header */}
-      <header className={`sticky top-0 z-50 shadow-2xl transition-colors duration-300 ${themeClasses.header}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-3">
-              <Link 
-                to="/staff/dashboard"
-                className={`transition-colors mr-4 group ${themeClasses.link}`}
-              >
-                <ArrowLeft className="h-6 w-6 group-hover:-translate-x-1 transition-transform inline mr-2" />
-                Back to Dashboard
-              </Link>
-              <div className="bg-gradient-to-br from-blue-400 to-indigo-600 p-3 rounded-xl shadow-2xl">
-                <Receipt className="h-8 w-8 text-white drop-shadow-lg" />
-              </div>
-              <div>
-                <h1 className={`text-xl lg:text-2xl font-bold bg-clip-text text-transparent drop-shadow-lg transition-all duration-300 ${themeClasses.gradient.title}`}>
-                  Receipt Generator
-                </h1>
-                <p className={`text-xs font-medium transition-colors duration-300 ${themeClasses.text.secondary}`}>Staff Portal</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className={`flex items-center space-x-2 transition-colors duration-300 ${themeClasses.text.secondary}`}>
-                <User className="h-4 w-4" />
-                <span className="text-sm font-medium">{user?.email}</span>
-              </div>
-              <ThemeToggleButton />
-              <Button
-                onClick={handleLogout}
-                variant="ghost"
-                size="sm"
-                className={`rounded-full px-4 py-2 transition-all duration-300 hover:scale-110 ${themeClasses.button.ghost}`}
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-12">
-          <h2 className={`text-4xl font-bold mb-4 drop-shadow-2xl transition-colors duration-300 ${themeClasses.text.primary}`}>
-            Professional Receipt Generator
-          </h2>
-          <p className={`text-xl max-w-2xl mx-auto drop-shadow-lg transition-colors duration-300 ${themeClasses.text.secondary}`}>
-            Create custom PDF receipts for shipping, key cutting, cartridge refills, and toner sales
-          </p>
-        </div>
-
-        {/* Receipt Type Tabs */}
-        <div className={`border rounded-3xl p-8 shadow-2xl transition-all duration-300 ${themeClasses.card.primary}`}>
+    <StaffLayout
+      title="Receipt Generator"
+      subtitle="Shipping, key cutting, cartridge refills, toner sales, and packing"
+      icon={Receipt}
+    >
+      <div className={`border rounded-xl p-4 sm:p-6 ${themeClasses.card.primary}`}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className={`grid w-full grid-cols-2 md:grid-cols-5 gap-2 mb-8 h-auto backdrop-blur-sm transition-all duration-300 ${themeClasses.card.secondary}`}>
+            <TabsList className={`grid w-full grid-cols-2 md:grid-cols-5 gap-2 mb-8 h-auto ${themeClasses.card.secondary}`}>
               <TabsTrigger
                 value="shipping"
-                className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white"
+                className="flex items-center space-x-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
               >
                 <Package className="h-4 w-4" />
                 <span>Shipping</span>
               </TabsTrigger>
               <TabsTrigger
                 value="key"
-                className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white"
+                className="flex items-center space-x-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
               >
                 <Key className="h-4 w-4" />
                 <span>Key Cutting</span>
               </TabsTrigger>
               <TabsTrigger
                 value="cartridge"
-                className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white"
+                className="flex items-center space-x-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
               >
                 <Printer className="h-4 w-4" />
                 <span>Cartridge Refill</span>
               </TabsTrigger>
               <TabsTrigger
                 value="toner"
-                className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-500 data-[state=active]:to-teal-600 data-[state=active]:text-white"
+                className="flex items-center space-x-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
               >
                 <Droplets className="h-4 w-4" />
                 <span>Toner Sale</span>
               </TabsTrigger>
               <TabsTrigger
                 value="packing"
-                className="flex items-center space-x-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white"
+                className="flex items-center space-x-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
               >
                 <Box className="h-4 w-4" />
                 <span>Packing</span>
@@ -510,7 +441,7 @@ const StaffReceipts = () => {
                       <Input
                         id="receiptNumber"
                         {...shippingForm.register('receiptNumber')}
-                        className={`transition-all duration-300 ${themeClasses.input}`}
+                        className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
                       />
                       <Button
                         type="button"
@@ -548,7 +479,7 @@ const StaffReceipts = () => {
                       id="customerPhone"
                       {...shippingForm.register('customerPhone')}
                       placeholder="(403) 555-0123"
-                      className={`transition-all duration-300 ${themeClasses.input}`}
+                      className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
                     />
                   </div>
                 </div>
@@ -619,7 +550,7 @@ const StaffReceipts = () => {
                             <Input
                               {...shippingForm.register(`shippingItems.${itemIndex}.trackingNumber`)}
                               placeholder="Enter tracking number"
-                              className={`transition-all duration-300 ${themeClasses.input}`}
+                              className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
                             />
                           </div>
                           <div>
@@ -655,7 +586,7 @@ const StaffReceipts = () => {
                               step="0.01"
                               {...shippingForm.register(`shippingItems.${itemIndex}.shippingCost`, { valueAsNumber: true })}
                               placeholder="0.00"
-                              className={`transition-all duration-300 ${themeClasses.input}`}
+                              className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
                             />
                           </div>
                         </div>
@@ -730,7 +661,7 @@ const StaffReceipts = () => {
                                       step="0.01"
                                       {...shippingForm.register(`shippingItems.${itemIndex}.addOns.${addonIndex}.cost`, { valueAsNumber: true })}
                                       placeholder="0.00"
-                                      className={`h-8 text-sm ${themeClasses.input}`}
+                                      className={`h-8 text-sm ${themeClasses.input} font-mono tabular-nums`}
                                     />
                                   </div>
                                   <Button
@@ -795,7 +726,7 @@ const StaffReceipts = () => {
                                           step="0.01"
                                           {...shippingForm.register(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes.${taxIndex}.percentage`, { valueAsNumber: true })}
                                           placeholder="%"
-                                          className={`h-7 text-xs ${themeClasses.input}`}
+                                          className={`h-7 text-xs ${themeClasses.input} font-mono tabular-nums`}
                                         />
                                         <Button
                                           type="button"
@@ -863,7 +794,7 @@ const StaffReceipts = () => {
                                   step="0.01"
                                   {...shippingForm.register(`shippingItems.${itemIndex}.taxes.${taxIndex}.percentage`, { valueAsNumber: true })}
                                   placeholder="%"
-                                  className={`h-8 text-sm ${themeClasses.input}`}
+                                  className={`h-8 text-sm ${themeClasses.input} font-mono tabular-nums`}
                                 />
                                 <Button
                                   type="button"
@@ -889,7 +820,7 @@ const StaffReceipts = () => {
 
                 <Button
                   type="submit"
-                  className={`w-full h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
+                  className={`w-full h-12 font-semibold rounded-lg transition-colors ${themeClasses.button.primary}`}
                 >
                   <Receipt className="h-5 w-5 mr-2" />
                   Add to receipt
@@ -907,7 +838,7 @@ const StaffReceipts = () => {
                       <Input
                         id="keyReceiptNumber"
                         {...keyForm.register('receiptNumber')}
-                        className={`transition-all duration-300 ${themeClasses.input}`}
+                        className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
                       />
                       <Button
                         type="button"
@@ -945,7 +876,7 @@ const StaffReceipts = () => {
                       id="keyCustomerPhone"
                       {...keyForm.register('customerPhone')}
                       placeholder="(403) 555-0123"
-                      className={`transition-all duration-300 ${themeClasses.input}`}
+                      className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
                     />
                   </div>
                 </div>
@@ -979,7 +910,7 @@ const StaffReceipts = () => {
                             step="0.01"
                             {...keyForm.register(`keyItems.${index}.priceEach`, { valueAsNumber: true })}
                             placeholder="0.00"
-                            className={`transition-all duration-300 ${themeClasses.input}`}
+                            className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
                           />
                         </div>
                         <Button
@@ -1059,7 +990,7 @@ const StaffReceipts = () => {
                             step="0.01"
                             {...keyForm.register(`taxes.${index}.percentage`, { valueAsNumber: true })}
                             placeholder="5.00"
-                            className={`transition-all duration-300 ${themeClasses.input}`}
+                            className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
                           />
                         </div>
                         <Button
@@ -1082,7 +1013,7 @@ const StaffReceipts = () => {
 
                 <Button
                   type="submit"
-                  className={`w-full h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
+                  className={`w-full h-12 font-semibold rounded-lg transition-colors ${themeClasses.button.primary}`}
                 >
                   <Receipt className="h-5 w-5 mr-2" />
                   Add to receipt
@@ -1100,7 +1031,7 @@ const StaffReceipts = () => {
                       <Input
                         id="crReceiptNumber"
                         {...cartridgeForm.register('receiptNumber')}
-                        className={`transition-all duration-300 ${themeClasses.input}`}
+                        className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
                       />
                       <Button
                         type="button"
@@ -1124,7 +1055,7 @@ const StaffReceipts = () => {
                   </div>
                   <div>
                     <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Phone</Label>
-                    <Input {...cartridgeForm.register('customerPhone')} placeholder="(403) 555-0123" className={`transition-all duration-300 ${themeClasses.input}`} />
+                    <Input {...cartridgeForm.register('customerPhone')} placeholder="(403) 555-0123" className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`} />
                   </div>
                   <div>
                     <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Email</Label>
@@ -1160,7 +1091,7 @@ const StaffReceipts = () => {
 
                 <Button
                   type="submit"
-                  className={`w-full h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
+                  className={`w-full h-12 font-semibold rounded-lg transition-colors ${themeClasses.button.primary}`}
                 >
                   <Receipt className="h-5 w-5 mr-2" />
                   Add to receipt
@@ -1178,7 +1109,7 @@ const StaffReceipts = () => {
                       <Input
                         id="tonReceiptNumber"
                         {...tonerForm.register('receiptNumber')}
-                        className={`transition-all duration-300 ${themeClasses.input}`}
+                        className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
                       />
                       <Button
                         type="button"
@@ -1202,7 +1133,7 @@ const StaffReceipts = () => {
                   </div>
                   <div>
                     <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Phone</Label>
-                    <Input {...tonerForm.register('customerPhone')} placeholder="Optional" className={`transition-all duration-300 ${themeClasses.input}`} />
+                    <Input {...tonerForm.register('customerPhone')} placeholder="Optional" className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`} />
                   </div>
                 </div>
 
@@ -1246,7 +1177,7 @@ const StaffReceipts = () => {
                             valueAsNumber: true,
                             validate: (v) => (isFilledNumber(v) && v >= 0) || 'A valid price is required',
                           })}
-                          className={`transition-all duration-300 ${themeClasses.input}`}
+                          className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
                         />
                       </div>
                       {tonerLines.fields.length > 1 && (
@@ -1272,7 +1203,7 @@ const StaffReceipts = () => {
                   {tonerLines.fields.length > 1 && (
                     <div className={`flex justify-between text-sm font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>
                       <span>Subtotal</span>
-                      <span>${tonerSubtotal.toFixed(2)}</span>
+                      <span className="font-mono tabular-nums">${tonerSubtotal.toFixed(2)}</span>
                     </div>
                   )}
                 </div>
@@ -1291,7 +1222,7 @@ const StaffReceipts = () => {
 
                 <Button
                   type="submit"
-                  className={`w-full h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
+                  className={`w-full h-12 font-semibold rounded-lg transition-colors ${themeClasses.button.primary}`}
                 >
                   <Receipt className="h-5 w-5 mr-2" />
                   Add to receipt
@@ -1386,7 +1317,7 @@ const StaffReceipts = () => {
                           />
                           Tax
                         </label>
-                        <span className={`w-16 text-right text-sm ${themeClasses.text.primary}`}>
+                        <span className={`w-16 text-right text-sm font-mono tabular-nums ${themeClasses.text.primary}`}>
                           ${packingLineTotal(r).toFixed(2)}
                         </span>
                         <Button
@@ -1405,17 +1336,17 @@ const StaffReceipts = () => {
                     <div className={`border-t pt-3 text-sm ${themeClasses.text.secondary}`}>
                       <div className="flex justify-between">
                         <span>Subtotal</span>
-                        <span>${packingSubtotal(packingRows).toFixed(2)}</span>
+                        <span className="font-mono tabular-nums">${packingSubtotal(packingRows).toFixed(2)}</span>
                       </div>
                       {aggregatePackingTax(packingRows).map((t) => (
                         <div key={t.label} className="flex justify-between">
                           <span>{t.label}</span>
-                          <span>${t.amount.toFixed(2)}</span>
+                          <span className="font-mono tabular-nums">${t.amount.toFixed(2)}</span>
                         </div>
                       ))}
                       <div className={`flex justify-between font-semibold ${themeClasses.text.primary}`}>
                         <span>Total</span>
-                        <span>
+                        <span className="font-mono tabular-nums">
                           ${round2(
                             packingSubtotal(packingRows) +
                               aggregatePackingTax(packingRows).reduce((s, t) => round2(s + t.amount), 0),
@@ -1430,7 +1361,7 @@ const StaffReceipts = () => {
                   type="button"
                   disabled={packingRows.length === 0}
                   onClick={addPackingToReceipt}
-                  className={`w-full h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 disabled:opacity-50 ${themeClasses.button.primary}`}
+                  className={`w-full h-12 font-semibold rounded-lg transition-colors disabled:opacity-50 ${themeClasses.button.primary}`}
                 >
                   <Receipt className="h-5 w-5 mr-2" />
                   Add to receipt
@@ -1438,9 +1369,8 @@ const StaffReceipts = () => {
               </div>
             </TabsContent>
           </Tabs>
-        </div>
-      </main>
-    </div>
+      </div>
+    </StaffLayout>
   );
 };
 

@@ -115,7 +115,7 @@ const StaffRequests = () => {
   };
 
   // Completing a request archives the full doc into `completedCustomerRequests`
-  // before removing it from the active list — same soft-delete approach the
+  // before removing it from the active list, the same soft-delete approach the
   // other mini-apps use. Archived requests are never shown in the UI.
   const completeRequest = async (request: CustomerRequest) => {
     try {
@@ -139,24 +139,16 @@ const StaffRequests = () => {
   return (
     <StaffLayout
       title="Customer Follow-Ups"
+      subtitle="Keep track of what customers are waiting to hear back on"
       icon={ClipboardList}
-      iconColor="from-rose-500 to-pink-600"
+      iconColor="text-rose-600 dark:text-rose-400"
     >
-      <div className="text-center mb-12">
-        <h2 className={`text-4xl font-bold mb-4 drop-shadow-2xl transition-colors duration-300 ${themeClasses.text.primary}`}>
-          Customer Follow-Ups
-        </h2>
-        <p className={`text-xl max-w-2xl mx-auto drop-shadow-lg transition-colors duration-300 ${themeClasses.text.secondary}`}>
-          Keep track of what customers are waiting to hear back on
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Add New Request */}
         <div className="lg:col-span-1">
-          <Card className={`shadow-2xl transition-all duration-300 ${themeClasses.card.primary}`}>
+          <Card className={`rounded-xl ${themeClasses.card.primary}`}>
             <CardHeader>
-              <CardTitle className={`flex items-center space-x-2 transition-colors duration-300 ${themeClasses.text.primary}`}>
+              <CardTitle className={`flex items-center gap-2 text-lg font-semibold ${themeClasses.text.primary}`}>
                 <Plus className="h-5 w-5" />
                 <span>New Request</span>
               </CardTitle>
@@ -164,41 +156,42 @@ const StaffRequests = () => {
             <CardContent>
               <form onSubmit={newRequestForm.handleSubmit(addRequest)} className="space-y-4">
                 <div>
-                  <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>
+                  <Label className={`font-medium ${themeClasses.text.primary}`}>
                     Customer Name<RequiredMark />
                   </Label>
                   <Input
                     {...newRequestForm.register('customerName', { required: true })}
                     placeholder="Enter customer name"
-                    className={`transition-all duration-300 ${themeClasses.input}`}
+                    className={`min-h-[44px] ${themeClasses.input}`}
                   />
                 </div>
 
                 <div>
-                  <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>
+                  <Label className={`font-medium ${themeClasses.text.primary}`}>
                     Phone Number<RequiredMark />
                   </Label>
                   <Input
                     {...newRequestForm.register('customerPhone', { required: true })}
                     placeholder="(403) 555-0123"
-                    className={`transition-all duration-300 ${themeClasses.input}`}
+                    className={`min-h-[44px] font-mono tabular-nums ${themeClasses.input}`}
                   />
                 </div>
 
                 <div>
-                  <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>
+                  <Label className={`font-medium ${themeClasses.text.primary}`}>
                     Item<RequiredMark />
                   </Label>
                   <Input
                     {...newRequestForm.register('item', { required: true })}
                     placeholder="e.g. Schlage SC1 key, HP 26A toner"
-                    className={`transition-all duration-300 ${themeClasses.input}`}
+                    className={`min-h-[44px] ${themeClasses.input}`}
                   />
                 </div>
 
                 <Button
                   type="submit"
-                  className={`w-full font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
+                  size="lg"
+                  className={`w-full font-semibold ${themeClasses.button.primary}`}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Request
@@ -210,22 +203,22 @@ const StaffRequests = () => {
 
         {/* Request List */}
         <div className="lg:col-span-2">
-          {/* Search bar — hidden until there's something to search through. */}
+          {/* Search bar: hidden until there's something to search through. */}
           {!loading && requests.length > 0 && (
             <div className="relative mb-6">
-              <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
+              <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${themeClasses.text.muted}`} />
               <Input
                 placeholder="Search by customer, phone, or item..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className={`pl-10 pr-10 transition-all duration-300 ${themeClasses.input}`}
+                className={`pl-10 pr-10 min-h-[44px] ${themeClasses.input}`}
               />
               {searchTerm && (
                 <button
                   type="button"
                   onClick={() => setSearchTerm("")}
                   aria-label="Clear search"
-                  className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors duration-300 ${themeClasses.text.muted} hover:${themeClasses.text.primary}`}
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 ${themeClasses.text.muted} hover:${themeClasses.text.primary}`}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -234,20 +227,20 @@ const StaffRequests = () => {
           )}
 
           {loading ? (
-            <Card className={`shadow-2xl transition-all duration-300 ${themeClasses.card.primary}`}>
+            <Card className={`rounded-xl ${themeClasses.card.primary}`}>
               <CardContent className="p-12 text-center">
-                <Loader2 className={`h-12 w-12 mx-auto mb-4 animate-spin transition-colors duration-300 ${themeClasses.text.muted}`} />
-                <p className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>Loading requests...</p>
+                <Loader2 className={`h-10 w-10 mx-auto mb-4 animate-spin ${themeClasses.text.muted}`} />
+                <p className={themeClasses.text.secondary}>Loading requests...</p>
               </CardContent>
             </Card>
           ) : filteredRequests.length === 0 ? (
-            <Card className={`shadow-2xl transition-all duration-300 ${themeClasses.card.primary}`}>
+            <Card className={`rounded-xl ${themeClasses.card.primary}`}>
               <CardContent className="p-12 text-center">
-                <ClipboardList className={`h-12 w-12 mx-auto mb-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
-                <h3 className={`text-xl font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>
+                <ClipboardList className={`h-12 w-12 mx-auto mb-4 ${themeClasses.text.muted}`} />
+                <h3 className={`text-lg font-semibold mb-2 ${themeClasses.text.primary}`}>
                   {requests.length === 0 ? "No open requests" : "No matches"}
                 </h3>
-                <p className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                <p className={themeClasses.text.secondary}>
                   {requests.length === 0
                     ? "Add a request when a customer asks for something you need to look into."
                     : `No requests match "${searchTerm}". Try a different search term.`}
@@ -257,20 +250,20 @@ const StaffRequests = () => {
           ) : (
             <div className="space-y-4">
               {filteredRequests.map((request) => (
-                <Card key={request.id} className={`shadow-2xl transition-all duration-300 ${themeClasses.card.primary}`}>
+                <Card key={request.id} className={`rounded-xl ${themeClasses.card.primary}`}>
                   <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 flex-1 min-w-0">
-                      <div className={`flex items-center space-x-2 min-w-0 transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                      <div className={`flex items-center gap-2 min-w-0 ${themeClasses.text.secondary}`}>
                         <User className="h-4 w-4 shrink-0" />
-                        <span className={`text-sm font-semibold truncate transition-colors duration-300 ${themeClasses.text.primary}`}>
+                        <span className={`text-sm font-semibold truncate ${themeClasses.text.primary}`}>
                           {request.customerName}
                         </span>
                       </div>
-                      <div className={`flex items-center space-x-2 min-w-0 transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                      <div className={`flex items-center gap-2 min-w-0 ${themeClasses.text.secondary}`}>
                         <Phone className="h-4 w-4 shrink-0" />
-                        <span className="text-sm truncate">{request.customerPhone}</span>
+                        <span className="text-sm truncate font-mono tabular-nums">{request.customerPhone}</span>
                       </div>
-                      <div className={`flex items-center space-x-2 min-w-0 transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                      <div className={`flex items-center gap-2 min-w-0 ${themeClasses.text.secondary}`}>
                         <Package className="h-4 w-4 shrink-0" />
                         <span className="text-sm truncate">{request.item}</span>
                       </div>
@@ -279,8 +272,8 @@ const StaffRequests = () => {
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button
-                          size="sm"
-                          className={`font-semibold rounded-xl shadow-lg transition-all duration-300 hover:scale-105 ${themeClasses.button.primary}`}
+                          size="lg"
+                          className={`font-semibold ${themeClasses.button.primary}`}
                           title="Mark this request complete"
                         >
                           <Check className="h-4 w-4 mr-2" />

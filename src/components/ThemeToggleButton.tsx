@@ -11,9 +11,9 @@ const ThemeToggleButton = () => {
     <Button
       onClick={toggleTheme}
       variant="ghost"
-      size="sm"
-      aria-label="Toggle dark mode"
-      className={`p-2 rounded-lg transition-all duration-300 hover:scale-105 border ${themeClasses.button.secondary} ${themeClasses.interactive.focus}`}
+      size="icon"
+      aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+      className={`h-11 w-11 shrink-0 rounded-lg border transition-colors ${themeClasses.button.secondary} ${themeClasses.interactive.focus}`}
     >
       {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
     </Button>
