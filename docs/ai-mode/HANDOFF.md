@@ -3,6 +3,65 @@
 Update this at the end of every phase and before any context handoff. To resume,
 read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this file.
 
+## Exit state (2026-09-05, phase 8 deploy + dev environment session)
+- **Next session is for:** finishing the staging smoke-test on the dev DB (in
+  progress when this session ended), then phase 9 (final review). Phase 8 code AND
+  infra are done and live. No phase-8 code left to write.
+- **Where things stand:** branch `ai-mode-overhaul`, tree CLEAN, local == origin at
+  `331f6e9`. `corepack yarn build` GREEN; `corepack yarn eslint` on the provider
+  files = 0 errors, 0 warnings. A long-lived `dev` branch exists on origin
+  (`01ba552`, = ai-mode-overhaul tip + one empty commit that triggers Cloudflare
+  builds). This session's commits on ai-mode-overhaul: `pto ttk pmp psx wnq lty mxs`,
+  all pushed.
+- **LIVE INFRA now stood up (do NOT rebuild or re-provision):**
+  - **Proxy Worker:** deployed at `https://inktonermoore-ai-proxy.inktonermoore.workers.dev`.
+    Holds `GEMINI_API_KEY` as a Worker secret. `ALLOWED_ORIGIN` in `proxy/wrangler.toml`
+    is `https://ink-toner-moore.pages.dev`. Verified end to end with curl: routing JSON
+    comes back from Gemini. Cloudflare account: `parsa-cloudflare-acc@laketrouthq.com`,
+    account id `73a4f935ed801ea9299664d719bb9180`, workers.dev subdomain `inktonermoore`.
+  - **Staging site:** Cloudflare Pages project `ink-toner-moore`, production branch set
+    to `dev`, stable URL `https://ink-toner-moore.pages.dev` (per-deploy URLs look like
+    `<hash>.ink-toner-moore.pages.dev` and will NOT pass the proxy CORS check - always
+    test on the stable URL).
+  - **Dev Firebase project:** a SEPARATE Firebase project (isolated from prod) with
+    Email/Password auth, a test staff user, Firestore (Standard edition, production
+    rules copied from prod), and `ink-toner-moore.pages.dev` added to authorized
+    domains. Its `VITE_FIREBASE_*` values are set as Cloudflare Pages env vars
+    (production/`dev`). Prod Firebase is untouched.
+- **NEW two-environment model (documented in `docs/ENVIRONMENTS.md` - read it):**
+  `main -> GitHub Pages -> PROD Firebase -> inktonermoore.ca` and
+  `dev -> Cloudflare Pages -> DEV Firebase -> ink-toner-moore.pages.dev`. Feature work
+  merges into `dev` to test on staging, then into `main` to ship. `deploy-staging.md`
+  updated to deploy from `dev`. NEVER point Pages at `main`; NEVER put prod Firebase
+  values in Cloudflare.
+- **Build trap fixed this session:** Cloudflare auto-detected `bun.lockb` and ran a
+  frozen bun install that failed. Removed `bun.lockb` + `package-lock.json` (vestigial;
+  CLAUDE.md says yarn is authoritative) and pinned `"packageManager": "yarn@1.22.22"`
+  in package.json. Do NOT re-add those lockfiles. `proxy/` has its own npm lockfile,
+  which is correct (the Worker uses npm/wrangler).
+- **KNOWN ROUTING QUIRK to tune in phase 9 (not a bug):** the LLM routes "refill for
+  Sarah, HP 65, $34" to `cartridge_create` (conf 1), while the deterministic engine
+  routes "refill" to `receipt:refill`. "Refill" is genuinely ambiguous (refill receipt
+  vs logging a refill order). Fix is a one-line-ish edit to `SYSTEM_PROMPT` in
+  `proxy/src/worker.js` + `npx wrangler deploy` (no SPA change). Watch for other odd
+  routings while testing and tune them in one pass.
+- **IN PROGRESS when session ended:** user was about to (1) confirm the new `dev` Pages
+  build went green, (2) log in on staging with the dev test account, (3) create a
+  throwaway note and confirm it lands in DEV Firestore (not prod). Pick up here.
+- **UNVERIFIED / watch-outs for next session:**
+  - Confirm the proxy CORS redeploy (`cd proxy && npx wrangler deploy` after the
+    `ALLOWED_ORIGIN` change) actually completed. If the AI router 403s on staging,
+    that redeploy is the likely cause; also re-check the stable Pages domain really is
+    `ink-toner-moore.pages.dev` and matches `ALLOWED_ORIGIN`.
+  - The LLM path and all Firestore-writing actions have NOT been exercised against real
+    config yet (couldn't be, locally). That is exactly what the staging smoke-test is
+    for. Deterministic routing WAS re-verified in the browser after the refactor.
+- **How to trigger a staging build:** push to `dev`. This session used a gh-API empty
+  commit to fire the webhook because GitButler pushes to `origin/ai-mode-overhaul`, not
+  `origin/dev`. To promote new work: fast-forward/merge `ai-mode-overhaul` into `dev`
+  (e.g. `gh api -X PATCH .../git/refs/heads/dev -f sha=<new tip>` when it's a
+  fast-forward, or a PR into `dev`).
+
 ## Exit state (2026-09-04, phase 8 build session)
 - **Next session is for:** finishing the phase 8 deploy STEPS (user-run: Cloudflare
   account, Gemini key, Worker deploy, Pages project), then phase 9 (final review).
