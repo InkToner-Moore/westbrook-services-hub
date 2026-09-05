@@ -101,3 +101,13 @@ export function generateInventoryId(): string {
   }
   return result;
 }
+
+// Generate random refill catalog ID like "REF-M2K7Q9"
+export function generateRefillId(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = 'REF-';
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
