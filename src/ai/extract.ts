@@ -31,6 +31,9 @@ export function extractMoney(text: string): number | null {
   if (dollar) return Number(dollar[1]);
   const priced = text.match(/(?:price|for|costs?|is)\s+\$?(\d+(?:\.\d{1,2})?)/i);
   if (priced) return Number(priced[1]);
+  // "34 dollars" / "34 bucks" — counter staff say it out loud this way.
+  const spoken = text.match(/\b(\d+(?:\.\d{1,2})?)\s*(?:dollars?|bucks)\b/i);
+  if (spoken) return Number(spoken[1]);
   return null;
 }
 
@@ -70,11 +73,53 @@ export function extractModel(text: string): string | null {
   return null;
 }
 
-// A customer name after "for" / "customer" / "name". Captures 1-2 capitalized
-// words; falls back to a single following word.
+// Words that follow a name cue but are never a name: brands, cartridge types,
+// and common service nouns. Guards the lowercase fallback below from grabbing
+// "for hp 65" as a customer named "hp".
+const NAME_STOPWORDS = new Set(
+  [
+    ...CARTRIDGE_BRANDS.map((b) => b.toLowerCase()),
+    ...CARTRIDGE_TYPES.map((t) => t.label.toLowerCase()),
+    'a',
+    'an',
+    'the',
+    'toner',
+    'ink',
+    'refill',
+    'cartridge',
+    'key',
+    'shipping',
+    'pickup',
+    'pick',
+    'receipt',
+    'order',
+    'today',
+    'tomorrow',
+  ].flatMap((w) => w.split(/\s+/)),
+);
+
+function titleCase(name: string): string {
+  return name
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
+// A customer name after "for" / "customer" / "name". First tries the strict
+// capitalized form (the verified path), then a lowercase fallback so a fast,
+// lowercase "refill for sarah chen" still fills the name. The fallback rejects
+// stopwords and any token with a digit so a model or price is never read as a
+// name. Everything here is confirmable in the check.
 export function extractName(text: string): string | null {
-  const m = text.match(/\b(?:for|customer|name(?:d)?(?:\s+is)?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);
-  return m ? m[1].trim() : null;
+  const strict = text.match(/\b(?:for|customer|name(?:d)?(?:\s+is)?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);
+  if (strict) return strict[1].trim();
+
+  const loose = text.match(/\b(?:for|customer|name(?:d)?(?:\s+is)?)\s+([a-z]{2,}(?:\s+[a-z]{2,})?)/i);
+  if (!loose) return null;
+  const candidate = loose[1].trim();
+  const first = candidate.split(/\s+/)[0].toLowerCase();
+  if (NAME_STOPWORDS.has(first) || /\d/.test(candidate)) return null;
+  return titleCase(candidate);
 }
 
 export interface CourierMatch {
