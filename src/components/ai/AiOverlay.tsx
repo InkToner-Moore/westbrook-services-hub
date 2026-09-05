@@ -211,6 +211,9 @@ const AiOverlay: React.FC = () => {
   };
 
   const artifactOpen = !!artifact && artifact.kind !== 'none';
+  // The ink accent (from Ink, Toner & Moore) is AI Mode's signature, used only on
+  // the wordmark and the confirmation slip; blue stays the action colour.
+  const ink = isDarkMode ? 'text-indigo-300' : 'text-indigo-700';
 
   return (
     <div className={`fixed inset-0 z-[60] flex print:hidden ${artifactOpen ? 'md:justify-start md:pl-[4%]' : 'justify-center'}`}>
@@ -221,7 +224,9 @@ const AiOverlay: React.FC = () => {
       <div className="relative flex w-full max-w-2xl flex-col px-4 pt-5 pb-24">
         <header className="mb-4 flex items-center justify-between">
           <div className={`flex items-center gap-2.5 ${themeClasses.text.primary}`}>
-            <Sparkles className="h-6 w-6" />
+            <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${isDarkMode ? 'bg-indigo-900/40' : 'bg-indigo-50'}`}>
+              <Sparkles className={`h-5 w-5 ${ink}`} />
+            </span>
             <span className="text-2xl font-semibold tracking-tight">AI Mode</span>
           </div>
           <div className="flex items-center gap-2">
@@ -248,29 +253,32 @@ const AiOverlay: React.FC = () => {
 
         <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto pr-1">
           {turns.length === 0 && (
-            <div className="space-y-3">
-              <div className={`rounded-2xl border p-5 ${themeClasses.card.primary}`}>
-                <p className={`text-base leading-relaxed ${themeClasses.text.secondary}`}>
-                  Tell me what you need in plain words. I can make receipts, manage
-                  cartridge orders, track packages, and keep your notes, inventory,
-                  and follow-ups in order.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {EXAMPLES.map((ex) => (
-                  <button
-                    key={ex}
-                    type="button"
-                    onClick={() => handleSend(ex)}
-                    className={`rounded-full border px-3 py-1.5 text-[13px] transition-colors ${
-                      isDarkMode
-                        ? 'border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700'
-                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    {ex}
-                  </button>
-                ))}
+            <div className="pt-6">
+              <p className={`text-xl font-semibold tracking-tight ${themeClasses.text.primary}`}>
+                What can I help with?
+              </p>
+              <p className={`mt-2 max-w-md text-[15px] leading-relaxed ${themeClasses.text.secondary}`}>
+                Say it in plain words. I make receipts, manage cartridge orders, track
+                packages, and keep your notes, inventory, and follow-ups in order.
+              </p>
+              <div className="mt-5 flex items-start gap-2">
+                <span className={`mt-1.5 text-[13px] ${themeClasses.text.muted}`}>Try</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {EXAMPLES.map((ex) => (
+                    <button
+                      key={ex}
+                      type="button"
+                      onClick={() => handleSend(ex)}
+                      className={`rounded-full border px-3 py-1.5 text-left text-[13px] transition-colors ${
+                        isDarkMode
+                          ? 'border-slate-700 text-slate-300 hover:border-indigo-700 hover:bg-indigo-900/20'
+                          : 'border-slate-200 text-slate-600 hover:border-indigo-200 hover:bg-indigo-50'
+                      }`}
+                    >
+                      {ex}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -281,19 +289,25 @@ const AiOverlay: React.FC = () => {
               turn.role === 'assistant' && turn.intent && !specs && turn.status === 'pending';
             return (
               <div key={turn.id} className="space-y-2">
-                {turn.text && (
-                  <div className={turn.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
-                    <div
-                      className={`max-w-[88%] rounded-2xl border px-4 py-3 text-[15px] leading-relaxed shadow-sm ${
-                        turn.role === 'user'
-                          ? themeClasses.button.primary
-                          : `${themeClasses.card.primary} ${themeClasses.text.primary}`
-                      }`}
-                    >
+                {turn.text &&
+                  (turn.role === 'user' ? (
+                    // The user's words: a calm filled bubble, clearly theirs.
+                    <div className="flex justify-end">
+                      <div
+                        className={`max-w-[88%] rounded-2xl rounded-br-md px-4 py-2.5 text-[15px] leading-relaxed ${
+                          isDarkMode ? 'bg-slate-700 text-slate-50' : 'bg-slate-200 text-slate-900'
+                        }`}
+                      >
+                        {turn.text}
+                      </div>
+                    </div>
+                  ) : (
+                    // The assistant speaks as plain text, not another card, so the
+                    // slip and results are the only framed things in the thread.
+                    <div className={`max-w-[92%] text-[15px] leading-relaxed ${themeClasses.text.primary}`}>
                       {turn.text}
                     </div>
-                  </div>
-                )}
+                  ))}
 
                 {turn.receipt && (
                   <div className="pl-1">
@@ -353,16 +367,13 @@ const AiOverlay: React.FC = () => {
           })}
 
           {busy && (
-            <div className="flex justify-start">
-              <div
-                className={`inline-flex items-center gap-1.5 rounded-2xl border px-4 py-3 shadow-sm ${themeClasses.card.primary}`}
-                aria-live="polite"
-                aria-label="Working on it"
-              >
-                <span className={`h-2 w-2 animate-bounce rounded-full ${isDarkMode ? 'bg-slate-400' : 'bg-slate-500'}`} style={{ animationDelay: '0ms' }} />
-                <span className={`h-2 w-2 animate-bounce rounded-full ${isDarkMode ? 'bg-slate-400' : 'bg-slate-500'}`} style={{ animationDelay: '120ms' }} />
-                <span className={`h-2 w-2 animate-bounce rounded-full ${isDarkMode ? 'bg-slate-400' : 'bg-slate-500'}`} style={{ animationDelay: '240ms' }} />
-              </div>
+            <div className={`flex items-center gap-2 text-[15px] ${themeClasses.text.muted}`} aria-live="polite" aria-label="Working on it">
+              <span className="flex items-center gap-1">
+                <span className={`h-1.5 w-1.5 animate-bounce rounded-full ${ink}`} style={{ animationDelay: '0ms', backgroundColor: 'currentColor' }} />
+                <span className={`h-1.5 w-1.5 animate-bounce rounded-full ${ink}`} style={{ animationDelay: '120ms', backgroundColor: 'currentColor' }} />
+                <span className={`h-1.5 w-1.5 animate-bounce rounded-full ${ink}`} style={{ animationDelay: '240ms', backgroundColor: 'currentColor' }} />
+              </span>
+              Reading that
             </div>
           )}
         </div>

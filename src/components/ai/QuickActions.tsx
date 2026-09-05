@@ -1,8 +1,11 @@
-// Quick-action pills for the composer. Two groups, no nested menus:
-//  - Tracking: FedEx / Purolator / UPS, visually grouped. Hovering one reveals a
-//    small field; type a tracking number and press Enter to track immediately.
-//    Clicking the pill instead drops a courier chip into the prompt.
-//  - Actions: Receipt / Refill / Purchase / Note / Inventory drop a colored chip.
+// Quick-action shortcuts for the composer, kept as one calm row so the text input
+// stays the clear focus. Three quiet segments separated by hairlines:
+//  - Track: FedEx / Purolator / UPS. Hovering one reveals a small field; type a
+//    number and press Enter to track now. Clicking drops a courier chip instead.
+//  - Pack: fixed-price packing supplies, added straight to the receipt.
+//  - Actions: Receipt / Refill / Purchase / Note / Inventory drop a primed chip.
+// Pills are low-weight outlines with a small colour dot, not filled tags, so they
+// do not compete with the input above them.
 import React, { useState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { ComposerChip } from '@/ai/types';
@@ -29,93 +32,70 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack, onAddPa
   const [hovered, setHovered] = useState<Courier | null>(null);
   const [entry, setEntry] = useState('');
 
-  const pill = `rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors`;
+  const pill = `inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] transition-colors ${
+    isDarkMode
+      ? 'border-slate-700 text-slate-300 hover:bg-slate-800'
+      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+  }`;
+  const groupLabel = `text-[13px] ${themeClasses.text.muted}`;
+  const divider = `mx-0.5 h-4 w-px ${isDarkMode ? 'bg-slate-700' : 'bg-slate-200'}`;
 
   return (
-    <div className="mb-2 flex flex-wrap items-center gap-1.5">
-      {/* Tracking group */}
-      <div
-        className={`flex items-center gap-1 rounded-full border px-1 py-0.5 ${
-          isDarkMode ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-slate-50'
-        }`}
-      >
-        <span className={`px-1.5 text-[11px] font-semibold uppercase tracking-wide ${themeClasses.text.muted}`}>
-          Track
-        </span>
-        {TRACKING.map((t) => (
-          <div
-            key={t.courier}
-            className="relative"
-            onMouseEnter={() => {
-              setHovered(t.courier);
-              setEntry('');
-            }}
-            onMouseLeave={() => setHovered((h) => (h === t.courier ? null : h))}
-          >
-            <button
-              type="button"
-              onClick={() => onAddChip(TRACK_CHIP_SPECS[t.kind])}
-              className={`${pill} ${
-                isDarkMode ? 'border-indigo-700 bg-indigo-900/40 text-indigo-200' : 'border-indigo-300 bg-indigo-50 text-indigo-800'
-              }`}
-            >
-              {t.label}
-            </button>
-            {hovered === t.courier && (
-              <div
-                className={`absolute bottom-full left-0 z-10 mb-1 w-52 rounded-xl border p-1.5 shadow-lg ${themeClasses.card.primary}`}
-              >
-                <input
-                  autoFocus
-                  value={entry}
-                  onChange={(e) => setEntry(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && entry.trim()) {
-                      onTrack(t.courier, entry.trim());
-                      setHovered(null);
-                      setEntry('');
-                    }
-                  }}
-                  placeholder={`${t.label} tracking number`}
-                  className={`w-full rounded-lg border px-2 py-1 text-xs outline-none ${themeClasses.input}`}
-                />
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Packing group: fixed-price supplies added straight to the receipt. */}
-      <div
-        className={`flex items-center gap-1 rounded-full border px-1 py-0.5 ${
-          isDarkMode ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-slate-50'
-        }`}
-      >
-        <span className={`px-1.5 text-[11px] font-semibold uppercase tracking-wide ${themeClasses.text.muted}`}>
-          Pack
-        </span>
-        {PACKING_PRESETS.filter((p) => !p.custom).map((p) => (
-          <button
-            key={p.type}
-            type="button"
-            onClick={() => onAddPacking(p)}
-            className={`${pill} ${
-              isDarkMode ? 'border-teal-700 bg-teal-900/40 text-teal-200' : 'border-teal-300 bg-teal-50 text-teal-800'
-            }`}
-          >
-            {p.type} ${p.cost}
-          </button>
-        ))}
-      </div>
-
-      {/* Action group */}
-      {ACTION_CHIPS.map((spec) => (
-        <button
-          key={spec.kind}
-          type="button"
-          onClick={() => onAddChip(spec)}
-          className={`${pill} ${isDarkMode ? 'border-slate-700 bg-slate-800 text-slate-200' : spec.tone}`}
+    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5">
+      {/* Track */}
+      <span className={groupLabel}>Track</span>
+      {TRACKING.map((t) => (
+        <div
+          key={t.courier}
+          className="relative"
+          onMouseEnter={() => {
+            setHovered(t.courier);
+            setEntry('');
+          }}
+          onMouseLeave={() => setHovered((h) => (h === t.courier ? null : h))}
         >
+          <button type="button" onClick={() => onAddChip(TRACK_CHIP_SPECS[t.kind])} className={pill}>
+            <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+            {t.label}
+          </button>
+          {hovered === t.courier && (
+            <div className={`absolute bottom-full left-0 z-10 mb-1 w-52 rounded-xl border p-1.5 shadow-lg ${themeClasses.card.primary}`}>
+              <input
+                autoFocus
+                value={entry}
+                onChange={(e) => setEntry(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && entry.trim()) {
+                    onTrack(t.courier, entry.trim());
+                    setHovered(null);
+                    setEntry('');
+                  }
+                }}
+                placeholder={`${t.label} tracking number`}
+                className={`w-full rounded-lg border px-2 py-1 text-xs outline-none ${themeClasses.input}`}
+              />
+            </div>
+          )}
+        </div>
+      ))}
+
+      <span className={divider} />
+
+      {/* Pack: fixed-price supplies added straight to the receipt. */}
+      <span className={groupLabel}>Pack</span>
+      {PACKING_PRESETS.filter((p) => !p.custom).map((p) => (
+        <button key={p.type} type="button" onClick={() => onAddPacking(p)} className={pill}>
+          <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
+          {p.type} <span className="tabular-nums opacity-70">${p.cost}</span>
+        </button>
+      ))}
+
+      <span className={divider} />
+
+      {/* Actions */}
+      {ACTION_CHIPS.map((spec) => (
+        <button key={spec.kind} type="button" onClick={() => onAddChip(spec)} className={pill}>
+          <span className={`h-1.5 w-1.5 rounded-full ${spec.dot}`} />
           {spec.label}
         </button>
       ))}

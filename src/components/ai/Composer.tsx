@@ -51,12 +51,13 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
     setChips([]);
   };
 
-  return (
-    <div className={`rounded-2xl border p-2 ${themeClasses.card.primary}`}>
-      <QuickActions onAddChip={addChip} onTrack={onTrack} onAddPacking={onAddPacking} />
+  const divider = isDarkMode ? 'border-slate-700' : 'border-slate-200';
 
+  return (
+    <div className={`rounded-2xl border p-2 shadow-sm ${themeClasses.card.primary}`}>
+      {/* Primed chips sit right on the input they modify. */}
       {chips.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-1.5">
+        <div className="mb-2 flex flex-wrap gap-1.5 px-1 pt-1">
           {chips.map((chip) => (
             <span
               key={chip.id}
@@ -73,6 +74,7 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
         </div>
       )}
 
+      {/* The input is the primary way in, so it leads. */}
       <div className="flex items-end gap-2">
         <textarea
           ref={inputRef}
@@ -93,10 +95,15 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
           onClick={send}
           disabled={disabled || (!text.trim() && chips.length === 0)}
           aria-label="Send"
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors disabled:opacity-40 ${themeClasses.button.primary}`}
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors disabled:opacity-40 ${themeClasses.button.primary}`}
         >
           <ArrowUp className="h-5 w-5" />
         </button>
+      </div>
+
+      {/* Shortcuts are secondary help, kept quiet below a hairline. */}
+      <div className={`mt-2 border-t pt-2 ${divider}`}>
+        <QuickActions onAddChip={addChip} onTrack={onTrack} onAddPacking={onAddPacking} />
       </div>
     </div>
   );
