@@ -3,7 +3,35 @@
 Update this at the end of every phase and before any context handoff. To resume,
 read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this file.
 
-## Exit state (2026-09-06, LLM-assisted extraction, LATEST)
+## Exit state (2026-09-06, Inventory price lists - keys + refills, LATEST)
+- **Separate track from AI Mode** (same session/branch `ai-mode-overhaul`). The user asked to
+  import the shop's key and toner/cartridge refill price lists into the app. The Inventory page
+  had no price field and no refills concept, so this repurposes Inventory to hold both.
+- **Landed (commit `mpw`, build GREEN, `StaffInventory.tsx` eslint clean):**
+  - `keyInventory` items gained `price` (before-tax, nullable) + optional `notes` (alternate
+    key names, used in search). Key cards show a price badge; the add form takes a price.
+  - New **Refills tab** on `src/pages/StaffInventory.tsx`, backed by new `refillInventory` +
+    `deletedRefillInventory` collections and a `REF-` id generator (`lib/firestore.ts`). A
+    refill has brand, cartridge, and up to three prices (Black/Colour/XL); rows whose source
+    price is not a single number keep the original text in `priceNote`. Same add/search/
+    stock-toggle/soft-delete pattern as keys.
+  - The 2 pre-existing `any` lint errors in `lib/firestore.ts` (generic helper signatures,
+    lines 42/54) are NOT from this work; do not "fix" them here.
+- **Import prepared but NOT yet run** (blocked on a credential, user chose DEV ONLY):
+  - Parsed both spreadsheets: **397 keys** (col A code -> model, col B -> notes, col K
+    "2019 + tax" -> price, treated as before-tax) and **130 refills** (107 clean numeric,
+    23 with a preserved `priceNote`). **4 edge keys held back** for the user to decide:
+    `1069b` (no price), `cisa/abus` (no price), `1620` ("8.82*1.05"), `B63` ("5.4*1.05").
+  - Import tooling lives in the job tmp dir `/home/user/.claude/jobs/dddc3020/tmp/`
+    (NOT committed - it is the shop's data): `seed.json` (the payload), `import.mjs`
+    (firebase-admin bulk insert, defaults to dry-run, needs `--commit`), `build_seed.py`.
+  - **To run it:** user provides a service-account JSON for the **inktonermoore-dev** project;
+    then `node import.mjs <sa.json> seed.json --commit` writes to `keyInventory` +
+    `refillInventory` in dev, all `inStock: true`. PROD stays untouched (user's call).
+  - If the job tmp is gone by next session, re-generate with `build_seed.py` from the two
+    uploaded xlsx (Sunridge clean DB + Key Price List 2022).
+
+## Exit state (2026-09-06, LLM-assisted extraction)
 - **State:** branch `ai-mode-overhaul`, tree CLEAN after this session's commits.
   `corepack yarn build` GREEN; `corepack yarn eslint src/ai/providers/llm.ts
   src/ai/providers/routingSchema.ts` = 0 errors/0 warnings; `node --check
