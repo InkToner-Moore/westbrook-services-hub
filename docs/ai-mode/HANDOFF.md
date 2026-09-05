@@ -3,6 +3,67 @@
 Update this at the end of every phase and before any context handoff. To resume,
 read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this file.
 
+## Exit state (2026-09-05, AI Mode UX + routing-intelligence session)
+- **What this was for:** the user asked for extensive work on AI Mode usability, "the
+  AI part since the model is weak," and UX. This session did that; it did NOT run the
+  staging smoke-test (still outstanding from the phase-8 exit below).
+- **Where things stand:** branch `ai-mode-overhaul`, tree CLEAN after four commits
+  `mvz nut qpv ptt` (NOT yet pushed as of writing - push them). `corepack yarn build`
+  GREEN. `corepack yarn eslint` on every changed AI file = 0 errors; the only warning
+  is the pre-existing benign react-refresh one on `context.tsx` (same as ThemeContext).
+- **Two Sonnet research agents informed the work** (Gemini Flash-Lite prompting; hybrid
+  deterministic+LLM routing / RAG). Their top findings were adopted; the heavy ones are
+  deferred (see below).
+- **The big architectural change - the LLM is now GATED, not unconditional.** Before,
+  `LlmProvider` called the proxy on every utterance. Now it runs the instant
+  deterministic router first and only calls the model when local routing is unsure
+  (`action === 'unknown'` or `confidence < 0.7`). Most utterances are now instant and
+  free; the weak model is spent only where it helps. `deterministic.ts` grades
+  confidence from keyword-match strength and emits a `runnerUp` on a cross-action tie -
+  the ROUTING DECISION is unchanged (still first-match-wins in priority order), only
+  confidence + runner-up are new. Browser-verified that all prior route decisions hold.
+- **Weak-model handling (new):**
+  - Proxy (`proxy/src/worker.js`) prompt + schema sharpened per the Gemini research:
+    `propertyOrdering`, per-field `description`s carrying tie-break rules, few-shot
+    examples for the confusable pairs, `candidateCount: 1`, tight `maxOutputTokens`,
+    and confidence as a coarse `high|medium|low` bucket (a small model's raw float is
+    poorly calibrated). `routingSchema.ts` accepts the bucket OR a number; `llm.ts`
+    maps either onto 0..1. **This is the fix for the known refill-vs-cartridge quirk**
+    (plus gating now trusts the deterministic refill->receipt route and skips the model
+    on that phrasing entirely).
+  - **REQUIRED DEPLOY:** the worker changes only take effect after
+    `cd proxy && npx wrangler deploy`. Un-redeployed, the old proxy still works (client
+    accepts its numeric confidence), so this is safe to defer but the prompt/bucket
+    improvements are inert until you deploy.
+- **UX (new), all browser-verified on the dev server:**
+  - Misroute recovery: a close call shows "Or did you mean <runner-up>?" as one tap; every
+    proposal has a quiet "Not right? Change what this is"; an unroutable ask shows a
+    "did you mean" grid. All re-parse the SAME utterance under a forced action (no
+    retyping) via new `forceAction`/`forceSubtype` on `AiParseContext`. New files:
+    `src/ai/intentOptions.ts`, `src/components/ai/IntentSuggestions.tsx`.
+  - Thinking indicator + disabled composer while parsing (the LLM path can take seconds;
+    dead air read as broken). LLM hard-failure now falls back immediately instead of
+    burning a second timeout; timeout cut to 4s.
+  - Clickable example prompts on an empty thread; composer autofocus on open; Escape
+    closes; `activeTab` (current staff page) is now passed to the router as a hint.
+  - Extraction recall widened (safe/additive): spoken money ("12 dollars", "20 bucks")
+    and a lowercase name after a cue ("refill for sarah"), guarded so a brand or a
+    digit-bearing token is never read as a name. Strict capitalized path unchanged.
+  - Correction log (`src/ai/corrections.ts`): every reroute is logged to localStorage
+    (private, capped). Nothing reads it yet; it is fuel for the deferred kNN bank below.
+- **DEFERRED research items (not built; recommend next):**
+  - **Client-side embedding kNN intent classifier** (transformers.js + a small labeled
+    example bank) as a free, offline second opinion - the biggest accuracy win and the
+    most direct way to reduce reliance on the weak model, but it adds a tens-of-MB model
+    download and a dep, so it was out of scope for this pass. The correction log is
+    already capturing the training signal for it.
+  - Fuzzy/typo-tolerant keyword matching; a brand/model alias table for the weakest
+    regex extractors; constraining the Gemini prompt to the deterministic top-2/3
+    (rerank instead of classify cold) once the model is called less often.
+- **UNCHANGED invariants held:** model still only routes (never extracts/executes);
+  `orderStatus` untouched; no em dashes; theme via `themeClasses`; prod deploy path
+  untouched. Firestore-writing actions still cannot be exercised locally (demo config).
+
 ## Exit state (2026-09-05, phase 8 deploy + dev environment session)
 - **Next session is for:** finishing the staging smoke-test on the dev DB (in
   progress when this session ended), then phase 9 (final review). Phase 8 code AND
