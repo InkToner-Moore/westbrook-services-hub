@@ -1,15 +1,18 @@
 # Staging deploy (Cloudflare Pages)
 
-The AI Mode overhaul deploys to a separate staging site on Cloudflare Pages. It does
-not touch production: `main`, `.github/workflows/deploy.yml`, and `public/CNAME` are
-left alone, and prod keeps deploying to GitHub Pages at inktonermoore.ca exactly as
-before. Staging exists so Firestore-writing AI features (which the demo Firebase
-config rejects) can be exercised against real config, and so the LLM router can be
-tried end to end.
+The staging site is the **dev** environment: it deploys from the `dev` branch to
+Cloudflare Pages and uses a **separate dev Firebase project**, so testing never
+touches prod data. Prod (`main` -> GitHub Pages -> prod Firebase, at inktonermoore.ca)
+is left alone: `.github/workflows/deploy.yml` and `public/CNAME` are untouched. See
+`docs/ENVIRONMENTS.md` for the full prod/dev model and the dev Firebase setup.
 
-Staging serves the `ai-mode-overhaul` branch. SPA routing is handled by
-`public/_redirects` (a `/* -> /index.html 200` fallback); that file is inert on
-GitHub Pages, so it does not affect prod.
+Staging exists so Firestore-writing AI features (which the demo Firebase config
+rejects) can be exercised against real config, and so the LLM router can be tried end
+to end.
+
+Staging serves the `dev` branch. SPA routing is handled by `public/_redirects`
+(a `/* -> /index.html 200` fallback); that file is inert on GitHub Pages, so it does
+not affect prod.
 
 ## What you need
 
@@ -24,8 +27,8 @@ GitHub Pages, so it does not affect prod.
 
 1. Cloudflare dashboard -> **Workers & Pages** -> **Create** -> **Pages** ->
    **Connect to Git**. Authorize the `InkToner-Moore/westbrook-services-hub` repo.
-2. **Production branch:** set it to `ai-mode-overhaul` (this Pages project's
-   "production" is our staging; it has nothing to do with the real prod site).
+2. **Production branch:** set it to `dev` (this Pages project's "production" is our
+   staging; it has nothing to do with the real prod site).
 3. **Build settings:**
    - Framework preset: none / Vite
    - Build command: `yarn build`
@@ -50,7 +53,7 @@ GitHub Pages, so it does not affect prod.
    `ALLOWED_ORIGIN`, then `cd proxy && npx wrangler deploy` again so the Worker
    accepts calls from staging.
 
-Every push to `ai-mode-overhaul` now redeploys staging automatically.
+Every push to `dev` now redeploys staging automatically.
 
 ## Option B: direct upload (no Git connection)
 
