@@ -1,5 +1,5 @@
-// Quick-action shortcuts for the composer, kept as one calm row so the text input
-// stays the clear focus. Three quiet segments separated by hairlines:
+// Quick-action shortcuts for the composer, one group per line so each reads
+// cleanly and the eye can scan down them:
 //  - Track: FedEx / Purolator / UPS. Hovering one reveals a small field; type a
 //    number and press Enter to track now. Clicking drops a courier chip instead.
 //  - Pack: fixed-price packing supplies, added straight to the receipt.
@@ -37,68 +37,71 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack, onAddPa
       ? 'border-slate-700 text-slate-300 hover:bg-slate-800'
       : 'border-slate-200 text-slate-600 hover:bg-slate-50'
   }`;
-  const groupLabel = `text-[13px] ${themeClasses.text.muted}`;
-  const divider = `mx-0.5 h-4 w-px ${isDarkMode ? 'bg-slate-700' : 'bg-slate-200'}`;
+  // Fixed-width group labels so the pills on each line start at the same x.
+  const groupLabel = `w-12 shrink-0 text-[13px] ${themeClasses.text.muted}`;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5">
+    <div className="space-y-1.5">
       {/* Track */}
-      <span className={groupLabel}>Track</span>
-      {TRACKING.map((t) => (
-        <div
-          key={t.courier}
-          className="relative"
-          onMouseEnter={() => {
-            setHovered(t.courier);
-            setEntry('');
-          }}
-          onMouseLeave={() => setHovered((h) => (h === t.courier ? null : h))}
-        >
-          <button type="button" onClick={() => onAddChip(TRACK_CHIP_SPECS[t.kind])} className={pill}>
-            <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-            {t.label}
-          </button>
-          {hovered === t.courier && (
-            <div className={`absolute bottom-full left-0 z-10 mb-1 w-52 rounded-xl border p-1.5 shadow-lg ${themeClasses.card.primary}`}>
-              <input
-                autoFocus
-                value={entry}
-                onChange={(e) => setEntry(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && entry.trim()) {
-                    onTrack(t.courier, entry.trim());
-                    setHovered(null);
-                    setEntry('');
-                  }
-                }}
-                placeholder={`${t.label} tracking number`}
-                className={`w-full rounded-lg border px-2 py-1 text-xs outline-none ${themeClasses.input}`}
-              />
-            </div>
-          )}
-        </div>
-      ))}
-
-      <span className={divider} />
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className={groupLabel}>Track</span>
+        {TRACKING.map((t) => (
+          <div
+            key={t.courier}
+            className="relative"
+            onMouseEnter={() => {
+              setHovered(t.courier);
+              setEntry('');
+            }}
+            onMouseLeave={() => setHovered((h) => (h === t.courier ? null : h))}
+          >
+            <button type="button" onClick={() => onAddChip(TRACK_CHIP_SPECS[t.kind])} className={pill}>
+              <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+              {t.label}
+            </button>
+            {hovered === t.courier && (
+              <div className={`absolute bottom-full left-0 z-10 mb-1 w-52 rounded-xl border p-1.5 shadow-lg ${themeClasses.card.primary}`}>
+                <input
+                  autoFocus
+                  value={entry}
+                  onChange={(e) => setEntry(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && entry.trim()) {
+                      onTrack(t.courier, entry.trim());
+                      setHovered(null);
+                      setEntry('');
+                    }
+                  }}
+                  placeholder={`${t.label} tracking number`}
+                  className={`w-full rounded-lg border px-2 py-1 text-xs outline-none ${themeClasses.input}`}
+                />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
 
       {/* Pack: fixed-price supplies added straight to the receipt. */}
-      <span className={groupLabel}>Pack</span>
-      {PACKING_PRESETS.filter((p) => !p.custom).map((p) => (
-        <button key={p.type} type="button" onClick={() => onAddPacking(p)} className={pill}>
-          <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
-          {p.type} <span className="tabular-nums opacity-70">${p.cost}</span>
-        </button>
-      ))}
-
-      <span className={divider} />
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className={groupLabel}>Pack</span>
+        {PACKING_PRESETS.filter((p) => !p.custom).map((p) => (
+          <button key={p.type} type="button" onClick={() => onAddPacking(p)} className={pill}>
+            <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
+            {p.type} <span className="tabular-nums opacity-70">${p.cost}</span>
+          </button>
+        ))}
+      </div>
 
       {/* Actions */}
-      {ACTION_CHIPS.map((spec) => (
-        <button key={spec.kind} type="button" onClick={() => onAddChip(spec)} className={pill}>
-          <span className={`h-1.5 w-1.5 rounded-full ${spec.dot}`} />
-          {spec.label}
-        </button>
-      ))}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className={groupLabel}>Start</span>
+        {ACTION_CHIPS.map((spec) => (
+          <button key={spec.kind} type="button" onClick={() => onAddChip(spec)} className={pill}>
+            <span className={`h-1.5 w-1.5 rounded-full ${spec.dot}`} />
+            {spec.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 };
