@@ -25,15 +25,30 @@ export function extractPhone(text: string): string | null {
   return digits.length >= 10 ? m[0].trim() : null;
 }
 
-// A money amount, preferring one prefixed with $ or the word price/for.
+// A number with optional thousands commas and up to two decimals, e.g. "34",
+// "34.5", "1,299.99". Used as the money capture group.
+const AMOUNT = '(\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d+(?:\\.\\d{1,2})?)';
+const toAmount = (raw: string): number => Number(raw.replace(/,/g, ''));
+
+// A money amount, however staff type it. Explicit money signals win over a bare
+// number after a price cue, and the "$" is accepted on either side, so "$20",
+// "20$", "20 bucks", "20.00", "1,299.99", and "for 20" all read as 20. Bare
+// numbers with no signal are left alone (they are usually a model or quantity),
+// and everything is confirmable in the check.
 export function extractMoney(text: string): number | null {
-  const dollar = text.match(/\$\s?(\d+(?:\.\d{1,2})?)/);
-  if (dollar) return Number(dollar[1]);
-  const priced = text.match(/(?:price|for|costs?|is)\s+\$?(\d+(?:\.\d{1,2})?)/i);
-  if (priced) return Number(priced[1]);
-  // "34 dollars" / "34 bucks" — counter staff say it out loud this way.
-  const spoken = text.match(/\b(\d+(?:\.\d{1,2})?)\s*(?:dollars?|bucks)\b/i);
-  if (spoken) return Number(spoken[1]);
+  // $ before the number: "$20", "$ 20.00".
+  const dollarBefore = text.match(new RegExp(`\\$\\s?${AMOUNT}`));
+  if (dollarBefore) return toAmount(dollarBefore[1]);
+  // $ after the number: "20$", "20.00 $".
+  const dollarAfter = text.match(new RegExp(`${AMOUNT}\\s?\\$`));
+  if (dollarAfter) return toAmount(dollarAfter[1]);
+  // Spoken: "20 dollars", "20 bucks".
+  const spoken = text.match(new RegExp(`${AMOUNT}\\s*(?:dollars?|bucks)\\b`, 'i'));
+  if (spoken) return toAmount(spoken[1]);
+  // A price cue word then a number: "price 20", "for 20", "costs 20", "is 20",
+  // "at 20", "each 20", "@ 20".
+  const priced = text.match(new RegExp(`(?:price|priced|cost|costs|for|is|at|each|@)\\s+\\$?${AMOUNT}`, 'i'));
+  if (priced) return toAmount(priced[1]);
   return null;
 }
 
