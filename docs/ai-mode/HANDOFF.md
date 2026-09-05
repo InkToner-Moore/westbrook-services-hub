@@ -63,6 +63,24 @@ read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this fi
 - **UNCHANGED invariants held:** model still only routes (never extracts/executes);
   `orderStatus` untouched; no em dashes; theme via `themeClasses`; prod deploy path
   untouched. Firestore-writing actions still cannot be exercised locally (demo config).
+- **VISUAL PASS also landed this session (commit `zxq`, browser-verified light + dark).**
+  The user asked for a full visual pass after the interaction work. AI Mode had the
+  uniform SaaS-card look (every element the same `rounded-2xl border shadow-sm`); it now
+  has a purposeful identity:
+  - **The confirmation check is styled as a counter slip** (what it becomes): an
+    ink-accented titled header naming the action (via `routeLabel`) + an icon, a ruled
+    ledger (`divide-y`) with values right-aligned and money/quantity in `tabular-nums`,
+    and a total rule above Confirm. This is the ONE bold element; keep it the hero.
+  - **"Ink" (indigo, from Ink, Toner & Moore) is the surface signature** - used only on
+    the wordmark chip and the slip header. **Blue stays the action colour** (Confirm,
+    Send) for consistency with the classic pages. Do not spread ink onto action buttons.
+  - Assistant turns now render as **plain text**, not cards; user turns are a calm filled
+    slate bubble. The composer's three stacked pill rows became **one quiet dotted row
+    below the input** (`QuickActions` rewritten; `quickActionSpecs` gained a `dot`
+    colour); the input leads. Empty state ("What can I help with?") and the thinking
+    state ("Reading that" + ink dots) are warmer.
+  - `ReceiptControls` and `ArtifactPanel` were left as-is; they already inherit
+    `themeClasses` and read fine against the new surface.
 
 ## Exit state (2026-09-05, phase 8 deploy + dev environment session)
 - **Next session is for:** finishing the staging smoke-test on the dev DB (in
