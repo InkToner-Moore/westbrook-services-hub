@@ -2,6 +2,77 @@
 
 Read `DESIGN-SPEC.md` and `PLAN.md` first. This records where the rehaul stands.
 
+## PHASE 2 BUILT (2026-09-05) - the latest track
+
+Parsa lifted the review gate and asked to build Phase 2 in one session. It is
+built and on staging. Architecture contract for the whole phase:
+`docs/ui-rehaul/PHASE-2-ARCH.md` (read it before touching the AI layer - it
+defines the action model, the artifact-renderer registry, and the compound-attach
+seam). Built foundation-first, then fanned out to per-action agents.
+
+- **Branch `ui-rehaul-phase2`** (stacked on `ui-rehaul`), pushed, tip `3f5506c`.
+  `origin/dev` fast-forwarded to it, so `ink-toner-moore.pages.dev` rebuilds with
+  Phase 2. **Prod (`main`) untouched.** Six commits (contract, Wave-1 foundation,
+  Wave-2 docs, Wave-2 slip, Wave-2 cards, Wave-3).
+- **Gate:** `corepack yarn build` GREEN and the REAL type-check
+  `corepack yarn tsc -p tsconfig.app.json --noEmit` clean. NOTE: the root
+  `tsconfig.json` is solution-style with empty `files`, so plain
+  `corepack yarn tsc --noEmit` is a NO-OP - always type-check with `-p
+  tsconfig.app.json`. Lint: no new errors; only the documented baseline
+  (`firestore.ts:42/54` any) and benign `react-refresh/only-export-components`
+  warnings inherent to the card `register()` hook pattern.
+- **What landed:**
+  - New six-action AI model (Purchase, Receipt, Record, Note, Inventory,
+    Timesheet). Internal cartridge_* ids kept and surfaced as "Record". Added
+    `inventory_lookup` (read, immediate). **Follow-Ups removed end to end.**
+  - **Compound `attach`** (pay + 4x6 label) chained around one transaction, with
+    toggles on the confirmation slip foot.
+  - **Artifact renderer registry** (`src/components/shell/artifactRegistry.tsx`):
+    each action-state has a bespoke card in its own file under
+    `src/components/ai/artifacts/` (ReceiptCard, RecordCard, NoteCard,
+    InventoryCard, TimesheetCard, PaymentCard), registered one line each.
+  - **Bug fixes:** both-sidebars-open no longer deforms the tool pages; the
+    artifact persists after leaving AI Mode (with "show last"); tracking page UI
+    fixed in the shell; the confusing "Model" field is gone from a supplies sale.
+  - **Confirmation slip:** per-field OMIT toggle (circle left of a row, omits even
+    a required field); GST two-way pricing (type pre-tax or tax-inclusive, other
+    auto-derives, after-GST total shown); Note category is a fixed dropdown.
+  - **Timesheet** feature end to end: `employees` + `timeEntries` collections,
+    punch clock, CSV export, AI add/punch/view, tile enabled + route + card.
+  - **Purchase (minimal, per Parsa's "simply note"):** a confirmed "charge card"
+    attachment records the transaction to a `transactions` collection for later
+    Moneris reconciliation and shows a payment card the counter marks approved or
+    declined by hand. Device send is STUBBED (Moneris backend + certification not
+    built - see `docs/moneris-a920-integration-research.md`).
+- **NEXT SESSION is Parsa's staging review + smoke test** (needs the dev staff
+  login; Firestore writes and the LLM path could not be exercised locally). Log in
+  on `ink-toner-moore.pages.dev`, run each action, and confirm writes land in DEV
+  Firestore. Watch-outs / follow-ups:
+  1. **Proxy not redeployed.** `proxy/src/worker.js` gained the new actions in its
+     prompt/schema but was NOT deployed (needs `cd proxy && npx wrangler deploy`,
+     Cloudflare account). The deterministic router handles every new action offline,
+     so staging works; the LLM path just will not route to the new actions until
+     redeployed. A stale `followup` LLM response now fails schema and degrades to
+     deterministic (fine).
+  2. **New Firestore collections need rules + edition on DEV (and later PROD):**
+     `employees`, `timeEntries`, `transactions` need `allow read, write: if
+     request.auth != null` added to the ruleset (managed in Firebase, not in the
+     repo), like the earlier `refillInventory` fix. Without it the timesheet and
+     purchase writes will be permission-denied.
+  3. **Single artifact slot:** in a compound "refill + charge + label" flow the
+     chain runs primary -> pay -> label and each `addResult` replaces the one
+     artifact, so the last step's card wins the rail (the chat carries the full
+     trail). Fine for now; revisit if Parsa wants all three visible at once.
+  4. **Key location map:** InventoryCard scaffolds a model -> cut-code lookup
+     (`KEY_LOCATIONS` in InventoryCard.tsx, empty). Fill it when Parsa provides the
+     A1:KW1 / A2:SC1 style map; the location edit persists a `cutCode` field on
+     `keyInventory` docs (additive, StaffInventory ignores it).
+  5. **Standalone `purchase` action** is in the union/schema but has no route or
+     executor - only the `attach.pay` path is wired. Add one only if needed.
+  6. **CLAUDE.md + the WESTBROOK entry** still describe the pre-rehaul overlay
+     design; update them as part of the eventual merge-to-main PR (as the earlier
+     handoff already flagged).
+
 ## At a glance (2026-09-05, session close)
 - **Done and shipped to staging, awaiting Parsa's review.** Branch `ui-rehaul`,
   stacked above `ai-mode-overhaul`, pushed to `origin/ui-rehaul` (tip `a627dac`).
