@@ -33,20 +33,24 @@ read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this fi
     misses a value. When local is confident and complete, still instant and free.
   - Deliberately NOT candidates: date, gst, orderId, status, url, categories, inStock,
     linkName - system-generated or regex-reliable, where the model adds risk not help.
-- **REQUIRED before this works on staging (in order):**
-  1. `cd proxy && npx wrangler deploy` - the new schema/prompt are INERT until the
-     worker redeploys. (You redeployed the PRIOR prompt sharpening already; this is a
-     SECOND, new deploy for the `fields` schema.)
-  2. Re-sync `origin/dev` to the `ai-mode-overhaul` tip so Cloudflare Pages rebuilds
-     staging with the SPA merge changes (fast-forward now, per the deploy note below).
-  3. Smoke-test on the STABLE `https://ink-toner-moore.pages.dev` only: try vague input
-     the regex misses (e.g. "refill for mrs o'brien, the hp 65 thing, twenty bucks") and
-     confirm the guessed fields fill and are flagged for check on the slip; confirm an
-     explicit value is never overwritten; confirm turning the proxy off still yields the
-     deterministic result.
-- **Still outstanding from before:** the staging smoke-test on the dev DB (login, create a
-  throwaway note, confirm it lands in DEV Firestore) was never finished - fold it into the
-  same staging pass.
+- **DEPLOYED + VERIFIED this session:**
+  1. Worker redeployed with the `fields` schema (`npx wrangler deploy`, version
+     `c232829f`, account Ink Toner Moore). Verified END TO END with real Gemini via curl
+     (Origin = the staging origin): "refill for mrs o'brien, the hp 65 thing, twenty
+     bucks" -> `{customerName:"mrs o'brien", brand:"hp", model:"65", price:20}`; "sold 2
+     reams of paper for 12 dollars" -> `{quantity:2, price:12, supply:"paper"}`; "call back
+     dave 403-555-1212 about his toner" -> `{customerName:"dave",
+     customerPhone:"403-555-1212", item:"toner"}`. Routing correct in all three. So the
+     proxy extraction half is confirmed working, not just built.
+  2. `origin/dev` fast-forwarded to the `ai-mode-overhaul` tip (`576c11c`); Cloudflare
+     Pages rebuilt and the `dev`/Production deployment at `576c11c` is ACTIVE on
+     `https://ink-toner-moore.pages.dev`.
+- **STILL NEEDS A HUMAN (blocked on the dev staff login, not in keyvault):** the in-app
+  click-through on `https://ink-toner-moore.pages.dev` - log in with the dev test account,
+  type vague input, and confirm on the slip that the guessed fields fill and are flagged,
+  that an explicit value is never overwritten, and that a throwaway note lands in DEV
+  Firestore (the older outstanding smoke-test). The proxy is proven; this last step just
+  needs the login to exercise the SPA merge + the guessed-chip UI in a real browser.
 
 ## Exit state (2026-09-05, polish + deploy sync + research)
 - **State:** branch `ai-mode-overhaul`, tree CLEAN. `corepack yarn build` GREEN, eslint on
