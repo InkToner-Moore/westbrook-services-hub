@@ -3,6 +3,60 @@
 Update this at the end of every phase and before any context handoff. To resume,
 read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this file.
 
+## Exit state (2026-09-05, polish + deploy sync + research, LATEST)
+- **State:** branch `ai-mode-overhaul`, tree CLEAN. `corepack yarn build` GREEN, eslint on
+  changed files 0 errors (only the pre-existing `context.tsx` react-refresh warning).
+  `origin/dev` was force-synced to the `ai-mode-overhaul` tip this session (see deploy note),
+  so future dev promotions are clean fast-forwards. RE-SYNC `dev` after the final commits of
+  this session so staging rebuilds with them (the doc + handoff commits landed after the sync).
+- **Landed this session:**
+  - Money extraction widened (commit `rry`): reads `$` on either side (the reported "20$"
+    bug is fixed), thousands commas ("1,299.99"), spoken ("20 bucks"), and more cue words
+    (at / each / @). Guards intact: a bare number with no money signal is still ignored, and
+    phone numbers are not read as prices. Browser-verified against ~17 cases.
+  - Composer quick actions are back to ONE GROUP PER LINE (commit `qvl`): Track / Pack /
+    Start each on their own row with an aligned fixed-width label, keeping the quiet dotted
+    pills from the visual pass. (The user preferred per-line over the single-row version.)
+- **DEPLOY FIX done this session (important, explains a confusing symptom):** the stable
+  staging URL `https://ink-toner-moore.pages.dev` was showing OLD code while a per-deploy
+  hash URL showed new code but talked to the PROD Firestore. Cause: all work lands on
+  `ai-mode-overhaul`, but Cloudflare Pages' production branch is `dev`, which was 8 commits
+  behind and diverged (an empty "trigger" commit). Fix applied: force-reset `origin/dev` to
+  the `ai-mode-overhaul` tip via `gh api PATCH .../git/refs/heads/dev -f sha=<full> -F force=true`.
+  RULES for this project's staging: only ever test on the STABLE `ink-toner-moore.pages.dev`.
+  Per-deploy/preview hash URLs (a) lack the dev Firebase env vars (those are set in
+  Cloudflare's PRODUCTION env scope only, so previews hit prod/old Firestore), (b) fail the
+  proxy CORS check (`ALLOWED_ORIGIN` is the stable origin), and (c) are not in the dev
+  Firebase authorized domains. To promote future work: fast-forward `dev` to the
+  `ai-mode-overhaul` tip (now clean).
+- **NEXT SESSION, BIG ONE the user asked for: LLM-assisted extraction.** Today the model ONLY
+  routes; all field extraction is deterministic regex, per the standing invariant "model never
+  touches business values." The user wants the LLM to help parse vague/unformatted input
+  ("that's the whole point of the llm eh?"). Proposed design (RELAXES that invariant, so raise
+  it with the user before building):
+  - Extend the proxy to OPTIONALLY return structured field CANDIDATES (name, amount, model,
+    qty, phone, ...) alongside the routing decision. Keep it structured-output + validated.
+  - Client keeps deterministic extraction as the FLOOR: run it first, and let LLM candidates
+    only FILL fields deterministic left empty (`not_provided`), never overwrite an explicit
+    deterministic value. Mark every LLM-filled field `source: 'guessed'` (provenance +
+    the "guessed" chip already exist) so the confirmation slip flags it for a human check.
+  - The confirmation slip is the safety net: nothing acts without Confirm, so a wrong LLM
+    guess is just an edit, and a proxy failure degrades to exactly today's deterministic result.
+  - Touches: `proxy/src/worker.js` (schema + prompt), `routingSchema.ts`, `llm.ts` (merge
+    candidates into `intent.fields` as guessed), maybe `types.ts`. Gate it behind the same
+    proxy URL so local/offline stays deterministic-only.
+  - Also still-outstanding from before: the sharpened routing prompt/schema needs
+    `cd proxy && npx wrangler deploy` to take effect on staging.
+- **FUTURE FEATURE (noted, not started): send payments to the Moneris A920 terminal.** Full
+  research note at `docs/moneris-a920-integration-research.md`. TL;DR: use Moneris Go **Cloud
+  integration** (semi-integrated); a backend is required to hold `apiToken`/`storeId`/
+  `istConfigCode` and broker the call (extend the existing `proxy/` Cloudflare Worker, which
+  can also serve the `postBackUrl`); the response is TWO-PHASE (a sync validation ack, then the
+  real approve/decline via postback or polling, so do not treat the first response as the
+  result); card data never touches the SPA; certification with Moneris is required before
+  go-live and is the top schedule risk. The doc has a "What to nail down with Moneris first"
+  checklist.
+
 ## Exit state (2026-09-05, AI Mode UX + routing-intelligence session)
 - **What this was for:** the user asked for extensive work on AI Mode usability, "the
   AI part since the model is weak," and UX. This session did that; it did NOT run the
