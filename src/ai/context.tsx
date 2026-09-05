@@ -37,7 +37,10 @@ interface AiModeContextValue {
   // Chat thread.
   turns: ChatTurn[];
   addUserTurn: (text: string) => ChatTurn;
-  addAssistantTurn: (text: string, intent?: Intent) => ChatTurn;
+  addAssistantTurn: (text: string, intent?: Intent, sourceText?: string) => ChatTurn;
+  // Merge a partial update into one turn (used to re-route a misrouted proposal
+  // in place: new text, new intent, back to pending).
+  patchTurn: (id: string, patch: Partial<ChatTurn>) => void;
   // Add an assistant turn from an executed action's result (message + optional
   // receipt), opening its Artifact if it carries one.
   addResult: (result: ActionResult) => void;
@@ -88,17 +91,22 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return turn;
   }, []);
 
-  const addAssistantTurn = useCallback((text: string, intent?: Intent) => {
+  const addAssistantTurn = useCallback((text: string, intent?: Intent, sourceText?: string) => {
     const turn: ChatTurn = {
       id: nextId('a'),
       role: 'assistant',
       text,
       intent,
+      sourceText,
       status: intent ? 'pending' : undefined,
       createdAt: Date.now(),
     };
     setTurns((prev) => [...prev, turn]);
     return turn;
+  }, []);
+
+  const patchTurn = useCallback((id: string, patch: Partial<ChatTurn>) => {
+    setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
   }, []);
 
   const addResult = useCallback((result: ActionResult) => {
@@ -165,6 +173,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       turns,
       addUserTurn,
       addAssistantTurn,
+      patchTurn,
       addResult,
       setTurnStatus,
       updateTurnIntent,
@@ -186,6 +195,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       turns,
       addUserTurn,
       addAssistantTurn,
+      patchTurn,
       addResult,
       setTurnStatus,
       updateTurnIntent,

@@ -2,7 +2,7 @@
 // the text input. Chips prime the intent; on send their keywords are prepended to
 // the text so the deterministic router picks them up. Enter sends; Shift+Enter
 // makes a newline.
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ArrowUp, X } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import QuickActions from './QuickActions';
@@ -27,6 +27,13 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
   const { themeClasses, isDarkMode } = useTheme();
   const [text, setText] = useState('');
   const [chips, setChips] = useState<ActiveChip[]>([]);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // AiOverlay unmounts the composer when it closes, so this mount-time focus fires
+  // each time the overlay opens: the cursor is in the box, ready to type.
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   const addChip = (spec: ChipSpec) => {
     // Avoid stacking the same chip twice.
@@ -68,6 +75,7 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
 
       <div className="flex items-end gap-2">
         <textarea
+          ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {

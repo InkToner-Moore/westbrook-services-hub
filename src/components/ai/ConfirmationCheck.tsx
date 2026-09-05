@@ -4,12 +4,14 @@
 // optional. Guessed values are marked so the user can trust what was inferred.
 // See docs/ai-mode/01-design.md.
 import React, { useMemo, useState } from 'react';
-import { Check, Pencil } from 'lucide-react';
+import { Check, Pencil, HelpCircle } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import type { FieldValue, Intent } from '@/ai/types';
+import type { AiAction, FieldValue, Intent, ReceiptSubtype } from '@/ai/types';
 import { type FieldSpec, isFieldVisible, missingRequired } from '@/ai/fieldSpecs';
 import { isItemComplete, toShipmentItems, type ShipmentItem } from '@/ai/shipping';
 import ShipmentItemsEditor from './ShipmentItemsEditor';
+import IntentSuggestions from './IntentSuggestions';
+import { routeLabel } from '@/ai/intentOptions';
 
 interface ConfirmationCheckProps {
   intent: Intent;
@@ -17,6 +19,8 @@ interface ConfirmationCheckProps {
   confirmLabel?: string;
   onConfirm: (finalIntent: Intent) => void;
   onDismiss?: () => void;
+  // Re-route this utterance to a different action when the router guessed wrong.
+  onReroute?: (action: AiAction, subtype?: ReceiptSubtype) => void;
   // When already resolved, the check renders read-only.
   readOnly?: boolean;
 }
@@ -53,9 +57,18 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({
   confirmLabel = 'Confirm',
   onConfirm,
   onDismiss,
+  onReroute,
   readOnly,
 }) => {
   const { themeClasses, isDarkMode } = useTheme();
+  // A low-confidence route is worth a gentle "double-check" nudge. The model
+  // returns 0..1; the deterministic engine uses coarse buckets (<= 0.5 is a
+  // weak keyword hit). Only nudge while the check is still actionable.
+  const lowConfidence = !readOnly && typeof intent.confidence === 'number' && intent.confidence > 0 && intent.confidence < 0.5;
+  // A close-call route gives us a concrete second guess: offer it as one tap
+  // instead of the generic "not sure" nudge or the full grid.
+  const runnerUpLabel =
+    !readOnly && onReroute && intent.runnerUp ? routeLabel(intent.runnerUp.action, intent.runnerUp.subtype) : null;
   // Local editable copy of field values; edits mark the field explicit.
   const [fields, setFields] = useState<Record<string, FieldValue<unknown>>>(() => ({ ...intent.fields }));
   const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -145,6 +158,37 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({
 
   return (
     <div className={`rounded-2xl border p-4 shadow-sm ${themeClasses.card.primary}`}>
+      {runnerUpLabel ? (
+        <div
+          className={`mb-3 flex flex-wrap items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] ${
+            isDarkMode ? 'bg-amber-900/30 text-amber-200' : 'bg-amber-50 text-amber-800'
+          }`}
+        >
+          <HelpCircle className="h-3.5 w-3.5 shrink-0" />
+          <span>Or did you mean</span>
+          <button
+            type="button"
+            onClick={() => onReroute?.(intent.runnerUp!.action, intent.runnerUp!.subtype)}
+            className={`rounded-full border px-2.5 py-0.5 text-[13px] font-medium ${
+              isDarkMode ? 'border-amber-600/60 hover:bg-amber-800/40' : 'border-amber-300 hover:bg-amber-100'
+            }`}
+          >
+            {runnerUpLabel}
+          </button>
+          <span>?</span>
+        </div>
+      ) : (
+        lowConfidence && (
+          <div
+            className={`mb-3 flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] ${
+              isDarkMode ? 'bg-amber-900/30 text-amber-200' : 'bg-amber-50 text-amber-800'
+            }`}
+          >
+            <HelpCircle className="h-3.5 w-3.5 shrink-0" />
+            <span>I wasn't fully sure this is right. Give it a quick look.</span>
+          </div>
+        )
+      )}
       <ul className="space-y-1.5">
         {visibleSpecs.map((spec) => {
           const fv = fields[spec.key];
@@ -218,6 +262,15 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({
             </button>
           </div>
         </div>
+      )}
+
+      {!readOnly && onReroute && (
+        <IntentSuggestions
+          variant="inline"
+          currentAction={intent.action}
+          currentSubtype={intent.subtype}
+          onPick={onReroute}
+        />
       )}
     </div>
   );
