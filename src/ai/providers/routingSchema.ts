@@ -61,6 +61,8 @@ export const routingSchema = z.object({
     'inventory_lookup',
     'directory',
     'purchase',
+    // The model only routes to `timesheet`; the deterministic filler decides the
+    // op (punch in/out, view, add employee) from the words and owns the values.
     'timesheet',
     'track',
     'clarify',

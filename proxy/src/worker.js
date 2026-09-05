@@ -105,7 +105,7 @@ Actions:
 - inventory_lookup: a READ-ONLY question about stock, price, or a key's location, e.g. "is the HP 65 in stock?", "do we have Kwikset KW1?", "what's the price of a Canon 137?", "where is that key?". Choose this over inventory when the words ask a question rather than tell you to add or change stock.
 - directory: save a website link / bookmark to the internal directory.
 - purchase: send a payment to the card machine and record the transaction. Only when the words are about taking a payment on its own (e.g. "charge $40 to a card"). A priced receipt that also says "charge her card" is still a receipt; the payment rides along as an attachment, not this action.
-- timesheet: employee punch-in / punch-out clock, or add / view / change time entries.
+- timesheet: employee punch-in / punch-out clock, adding an employee, or viewing today's punches or a person's hours, e.g. "clock in Sarah", "clock out Dave", "add employee Priya", "who is on the clock?", "hours for Sarah".
 - track: look up a parcel by courier and/or tracking number.
 - clarify: the request is a real task but too ambiguous to route; put your one short question in "clarify".
 - unknown: not a task this tool handles.
@@ -128,6 +128,10 @@ Examples (utterance -> action[/subtype]):
 - "is the HP 65 in stock?" -> inventory_lookup
 - "what's the price of a Canon 137?" -> inventory_lookup
 - "where is that key?" -> inventory_lookup
+- "clock in Sarah" -> timesheet
+- "clock out Dave" -> timesheet
+- "add employee Priya" -> timesheet
+- "who is on the clock?" -> timesheet
 
 confidence is high, medium, or low.
 

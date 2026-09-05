@@ -1,7 +1,7 @@
 // Registry of action executors, keyed by intent action. AiOverlay looks up an
 // executor when the user confirms an intent. Missing actions fall back to a plain
 // acknowledgement until their executor is added in a later phase.
-import type { AiAction } from '../types';
+import type { AiAction, Intent } from '../types';
 import type { ActionExecutor } from './types';
 import { executeReceipt } from './receipt';
 import { executeTrack } from './track';
@@ -12,6 +12,7 @@ import {
   executeCartridgeStatus,
 } from './cartridge';
 import { executeDirectory, executeInventory, executeInventoryLookup, executeNote } from './collections';
+import { executeTimesheet } from './timesheet';
 
 const REGISTRY: Partial<Record<AiAction, ActionExecutor>> = {
   receipt: executeReceipt,
@@ -24,6 +25,7 @@ const REGISTRY: Partial<Record<AiAction, ActionExecutor>> = {
   inventory: executeInventory,
   inventory_lookup: executeInventoryLookup,
   directory: executeDirectory,
+  timesheet: executeTimesheet,
 };
 
 export function getExecutor(action: AiAction): ActionExecutor | undefined {
@@ -38,6 +40,13 @@ const IMMEDIATE: Set<AiAction> = new Set([
   'inventory_lookup',
 ]);
 
-export function isImmediate(action: AiAction): boolean {
-  return IMMEDIATE.has(action);
+// Whether an intent runs immediately (no confirmation slip). Timesheet is
+// op-aware: punch in/out and the read views run at once (like track/list), but
+// adding an employee goes through the confirmation slip. See PHASE-2.md item 6.
+export function isImmediate(intent: Intent): boolean {
+  if (intent.action === 'timesheet') {
+    const op = intent.fields?.op?.value;
+    return op !== 'add_employee';
+  }
+  return IMMEDIATE.has(intent.action);
 }

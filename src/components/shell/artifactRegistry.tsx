@@ -26,6 +26,8 @@ import { register as registerReceipt } from '@/components/ai/artifacts/ReceiptCa
 import { register as registerRecord } from '@/components/ai/artifacts/RecordCard';
 import { register as registerNote } from '@/components/ai/artifacts/NoteCard';
 import { register as registerInventory } from '@/components/ai/artifacts/InventoryCard';
+import { register as registerTimesheet } from '@/components/ai/artifacts/TimesheetCard';
+import { register as registerPayment } from '@/components/ai/artifacts/PaymentCard';
 
 export interface ArtifactRenderer {
   // The scrollable body of the rail for this kind. The rail supplies the
@@ -118,3 +120,5 @@ registerReceipt(ARTIFACT_RENDERERS); // kind 'receipt'
 registerRecord(ARTIFACT_RENDERERS); // kind 'refill'
 registerNote(ARTIFACT_RENDERERS); // kind 'note'
 registerInventory(ARTIFACT_RENDERERS); // kind 'inventory'
+registerTimesheet(ARTIFACT_RENDERERS); // kind 'timesheet'
+registerPayment(ARTIFACT_RENDERERS); // kind 'payment'

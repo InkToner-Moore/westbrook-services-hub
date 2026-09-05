@@ -50,6 +50,7 @@ const TAB_NAMES: Record<string, string> = {
   '/staff/notes': 'Notes',
   '/staff/inventory': 'Inventory',
   '/staff/directory': 'Directory',
+  '/staff/timesheet': 'Timesheet',
 };
 
 // A short, warm line describing what the engine understood.
@@ -73,6 +74,13 @@ function describeIntent(intent: Intent): string {
       return "Let me check the inventory.";
     case 'directory':
       return "I'll take care of that directory entry.";
+    case 'timesheet': {
+      const op = intent.fields?.op?.value;
+      if (op === 'add_employee') return "Let's add an employee.";
+      if (op === 'punch_in') return 'Clocking in.';
+      if (op === 'punch_out') return 'Clocking out.';
+      return 'Here is the timesheet.';
+    }
     case 'track':
       return "Let's track that package.";
     default:
@@ -257,7 +265,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const presentIntent = useCallback(
     (intent: Intent, sourceText: string) => {
       const executor = getExecutor(intent.action);
-      if (executor && isImmediate(intent.action)) {
+      if (executor && isImmediate(intent)) {
         return Promise.resolve(executor(intent))
           .then(addResult)
           .catch(() => addAssistantTurn('Something went wrong with that. Please try again.'));
@@ -307,7 +315,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         // A route with no confirmation (tracking, listing) runs now; the old turn
         // steps aside and the pending slip (if any) clears.
-        if (isImmediate(intent.action)) {
+        if (isImmediate(intent)) {
           patchTurn(turnId, { intent: undefined, status: 'dismissed', text: describeIntent(intent) || 'On it.' });
           setArtifact(null);
           const executor = getExecutor(intent.action);

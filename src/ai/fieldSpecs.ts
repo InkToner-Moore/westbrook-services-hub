@@ -123,21 +123,30 @@ export const FIELD_SPECS: Record<string, FieldSpec[]> = {
     { key: 'linkCategory', label: 'Category', marker: 'optional', alwaysShown: true, kind: 'text' },
     { key: 'linkDescription', label: 'Description', marker: 'optional', alwaysShown: false, kind: 'text' },
   ],
+  // The only confirmable timesheet variant: adding an employee. Punch in/out and
+  // the read views run immediately, with no slip. See PHASE-2.md item 6.
+  'timesheet_add_employee': [
+    { key: 'employeeName', label: 'Employee name', marker: 'required', alwaysShown: true, kind: 'text', blocking: true, hint: 'e.g. Sarah Chen' },
+  ],
 };
 
-// Derive the spec id from an intent.
-export function specIdFor(action: AiAction, subtype?: ReceiptSubtype): string | null {
+// Derive the spec id from an intent. `op` is the timesheet operation carried on
+// intent.fields.op; only add_employee is confirmable, so the other timesheet ops
+// return null (they run immediately with no slip).
+export function specIdFor(action: AiAction, subtype?: ReceiptSubtype, op?: string): string | null {
   if (action === 'receipt') return subtype ? `receipt:${subtype}` : null;
   if (action === 'cartridge_create') return 'cartridge_create';
   if (action === 'cartridge_status') return 'cartridge_status';
   if (action === 'note') return 'note';
   if (action === 'inventory') return 'inventory';
   if (action === 'directory') return 'directory';
+  if (action === 'timesheet') return op === 'add_employee' ? 'timesheet_add_employee' : null;
   return null;
 }
 
 export function getFieldSpecs(intent: Intent): FieldSpec[] | null {
-  const id = specIdFor(intent.action, intent.subtype);
+  const op = intent.fields.op?.value != null ? String(intent.fields.op.value) : undefined;
+  const id = specIdFor(intent.action, intent.subtype, op);
   return id ? FIELD_SPECS[id] ?? null : null;
 }
 

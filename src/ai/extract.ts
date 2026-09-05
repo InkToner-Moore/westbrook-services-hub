@@ -265,3 +265,51 @@ export function extractAttachments(text: string): IntentAttachments | undefined 
   if (label) attach.label = true;
   return attach;
 }
+
+// The four timesheet operations the single `timesheet` action fans into. Decided
+// here from the words so the executor and the confirm/immediate split (add_employee
+// confirms, the rest run immediately) both key off one classifier. Order matters:
+// add_employee is checked before the punch verbs, and clock-OUT before clock-IN so
+// "clock out" is never mistaken for "clock in".
+export type TimesheetOp = 'punch_in' | 'punch_out' | 'add_employee' | 'view';
+
+export function classifyTimesheetOp(text: string): TimesheetOp {
+  const lower = text.toLowerCase();
+  if (/\bemployee\b/.test(lower) && /\b(?:add|new|register|create|hire|onboard)\b/.test(lower)) {
+    return 'add_employee';
+  }
+  if (/\b(?:clock|punch|sign|check)\s*out\b|\b(?:clock|punch)\s*off\b|\bclocking out\b/.test(lower)) {
+    return 'punch_out';
+  }
+  if (/\b(?:clock|punch|sign|check)\s*in\b|\b(?:clock|punch)\s*on\b|\bstart(?:ing)?\s+(?:shift|work)\b|\bclocking in\b/.test(lower)) {
+    return 'punch_in';
+  }
+  return 'view';
+}
+
+// Words that follow a timesheet cue but are never a name (shift nouns, adverbs).
+const TIMESHEET_NAME_STOPWORDS = new Set([
+  'in', 'out', 'off', 'on', 'now', 'today', 'for', 'of', 'lunch', 'break',
+  'shift', 'work', 'the', 'a', 'an', 'me', 'myself', 'please', 'employee',
+  'again', 'early', 'late', 'is', 'and',
+]);
+
+// An employee name spoken in a timesheet utterance: after a punch verb ("clock in
+// Sarah"), after "add employee ...", after "hours for ...", or the capitalized
+// "for <Name>" fallback. Rejects stopwords and any token with a digit, so a shift
+// noun or a time is never read as a name. Confirmable in the check for add_employee;
+// used directly for the immediate punch/view ops.
+export function extractEmployeeName(text: string): string | null {
+  const nameToken = "([A-Za-z][A-Za-z'.-]*(?:\\s+[A-Za-z][A-Za-z'.-]*)?)";
+  const m1 = text.match(new RegExp(`\\b(?:clock|punch|sign|check)\\s*(?:in|out|off|on)\\s+(?:for\\s+)?${nameToken}`, 'i'));
+  const m2 = text.match(new RegExp(`\\b(?:add|new|register|create|hire|onboard)\\s+(?:an?\\s+)?employee\\s+(?:named\\s+|called\\s+)?${nameToken}`, 'i'));
+  const m3 = text.match(new RegExp(`\\b(?:hours?|timesheet|time|shifts?|punches?)\\s+(?:for|of)\\s+${nameToken}`, 'i'));
+  const m4 = text.match(/\bfor\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);
+  const raw = (m1?.[1] || m2?.[1] || m3?.[1] || m4?.[1] || '').trim();
+  if (!raw) return null;
+  const tokens = raw
+    .split(/\s+/)
+    .filter((t) => !TIMESHEET_NAME_STOPWORDS.has(t.toLowerCase()) && !/\d/.test(t));
+  if (tokens.length === 0) return null;
+  return tokens.map((t) => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()).join(' ');
+}

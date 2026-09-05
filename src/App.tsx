@@ -12,6 +12,7 @@ import StaffCartridges from "./pages/StaffCartridges";
 import StaffDirectory from "./pages/StaffDirectory";
 import StaffNotes from "./pages/StaffNotes";
 import StaffInventory from "./pages/StaffInventory";
+import StaffTimesheet from "./pages/StaffTimesheet";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./hooks/useAuth";
@@ -19,10 +20,13 @@ import { AiModeProvider } from "./ai/context";
 import StaffShell from "./components/shell/StaffShell";
 import AiChatPane from "./components/shell/AiChatPane";
 import { registerReceiptSeams } from "./ai/actions/label";
+import { registerPurchaseSeams } from "./ai/actions/purchaseRecorder";
 
-// Register the real 4x6 label builder once at startup. Until this runs, the
-// compound "also print a 4x6 label" attachment degrades to a friendly no-op.
+// Register the compound-chain seams once at startup. Until these run, the
+// "also print a 4x6 label" and "also charge card" attachments degrade to a
+// friendly no-op.
 registerReceiptSeams();
+registerPurchaseSeams();
 
 const queryClient = new QueryClient();
 
@@ -59,6 +63,7 @@ const AppRoutes = () => {
           <Route path="directory" element={<StaffDirectory />} />
           <Route path="notes" element={<StaffNotes />} />
           <Route path="inventory" element={<StaffInventory />} />
+          <Route path="timesheet" element={<StaffTimesheet />} />
         </Route>
       </Route>
 

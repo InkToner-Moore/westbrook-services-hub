@@ -25,6 +25,9 @@ export const ROUTE_OPTIONS: RouteOption[] = [
   { label: 'Check inventory', action: 'inventory_lookup' },
   { label: 'Update inventory', action: 'inventory' },
   { label: 'Directory link', action: 'directory' },
+  // The only confirmable timesheet variant; punch/view run immediately. Used as
+  // the slip title for an add-employee proposal and as a "did you mean" choice.
+  { label: 'Add employee', action: 'timesheet' },
   { label: 'Track a parcel', action: 'track' },
 ];
 

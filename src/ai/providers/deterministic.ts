@@ -6,12 +6,14 @@
 import type { AiAction, AiParseContext, AiProvider, FieldValue, Intent, ReceiptSubtype } from '../types';
 import { getFieldSpecs } from '../fieldSpecs';
 import {
+  classifyTimesheetOp,
   cleanRemainder,
   domainName,
   extractAttachments,
   extractBrand,
   extractCartridgeStatus,
   extractEmail,
+  extractEmployeeName,
   extractModel,
   extractMoney,
   extractName,
@@ -38,6 +40,19 @@ const ROUTES: Array<{ action: AiAction; subtype?: ReceiptSubtype; words: string[
   // order (the id and Firestore stay cartridge_*). Kept specific ("record a
   // refill", not bare "record") so "record a note" still routes to note.
   { action: 'cartridge_create', words: ['new order', 'cartridge order', 'refill order', 'create order', 'log an order', 'record a refill', 'record refill'] },
+  // Timesheet cues are distinctive (punch/clock verbs, "timesheet", "add
+  // employee"), so this sits with the other explicit noun-intents. The single
+  // action fans into punch_in / punch_out / view / add_employee in
+  // populateIntentFields (classifyTimesheetOp). See PHASE-2.md item 6.
+  {
+    action: 'timesheet',
+    words: [
+      'clock in', 'clock out', 'clock-in', 'clock-out', 'clocked in', 'clocked out',
+      'punch in', 'punch out', 'punch the clock', 'punch clock', 'punch',
+      'timesheet', 'time sheet', 'timecard', 'time card',
+      'add employee', 'new employee', 'on the clock', 'hours for',
+    ],
+  },
   { action: 'directory', words: ['directory', 'website', 'bookmark', 'add link', 'save link'] },
   // A READ lookup ("is the HP 65 in stock?", "do we have", "price of", "where is
   // that key") must be checked BEFORE the inventory WRITE and before track, so a
@@ -255,6 +270,20 @@ export class DeterministicProvider implements AiProvider {
 // business values. Mutates intent.fields in place.
 export function populateIntentFields(intent: Intent, text: string): void {
   const { action, subtype } = intent;
+
+  // Timesheet fans into ops via a classifier; it does not use the generic
+  // spec-driven filler. `op` decides both the executor branch and (for
+  // add_employee) which confirmation spec getFieldSpecs returns. Handled up front
+  // and returned so the generic path never runs for it.
+  if (action === 'timesheet') {
+    const op = classifyTimesheetOp(text);
+    const name = extractEmployeeName(text);
+    intent.fields = {
+      op: explicit(op),
+      employeeName: name ? explicit(name) : absent(),
+    };
+    return;
+  }
 
   // Fill fields for actions that have a confirmation spec.
   const specs = getFieldSpecs(intent);
