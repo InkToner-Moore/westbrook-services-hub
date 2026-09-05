@@ -22,6 +22,10 @@ import { useAiMode, type ConfirmationArtifactData } from '@/ai/context';
 import { getFieldSpecs } from '@/ai/fieldSpecs';
 import ConfirmationCheck, { useConfirmationDraft, type ConfirmationDraft } from '@/components/ai/ConfirmationCheck';
 import ArtifactActions from '@/components/ai/ArtifactActions';
+import { register as registerReceipt } from '@/components/ai/artifacts/ReceiptCard';
+import { register as registerRecord } from '@/components/ai/artifacts/RecordCard';
+import { register as registerNote } from '@/components/ai/artifacts/NoteCard';
+import { register as registerInventory } from '@/components/ai/artifacts/InventoryCard';
 
 export interface ArtifactRenderer {
   // The scrollable body of the rail for this kind. The rail supplies the
@@ -105,6 +109,12 @@ export const ARTIFACT_RENDERERS: ArtifactRegistry = {
     Foot: ConfirmationFoot,
     Provider: ConfirmationProvider,
   },
-  // Wave-2/3 agents ADD their kind here via the register(reg) hook described at
-  // the top of this file, e.g. ARTIFACT_RENDERERS.refill = { Body, Foot }.
 };
+
+// Wave-2 cards register themselves here, one line each, via their register(reg)
+// hook (see the pattern at the top of this file). Each writes its renderer in its
+// own file under src/components/ai/artifacts/; the integrator wires the calls.
+registerReceipt(ARTIFACT_RENDERERS); // kind 'receipt'
+registerRecord(ARTIFACT_RENDERERS); // kind 'refill'
+registerNote(ARTIFACT_RENDERERS); // kind 'note'
+registerInventory(ARTIFACT_RENDERERS); // kind 'inventory'

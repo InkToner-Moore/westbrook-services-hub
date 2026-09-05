@@ -18,6 +18,11 @@ import { useAuth } from "./hooks/useAuth";
 import { AiModeProvider } from "./ai/context";
 import StaffShell from "./components/shell/StaffShell";
 import AiChatPane from "./components/shell/AiChatPane";
+import { registerReceiptSeams } from "./ai/actions/label";
+
+// Register the real 4x6 label builder once at startup. Until this runs, the
+// compound "also print a 4x6 label" attachment degrades to a friendly no-op.
+registerReceiptSeams();
 
 const queryClient = new QueryClient();
 

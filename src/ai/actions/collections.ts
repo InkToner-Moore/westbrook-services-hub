@@ -10,6 +10,7 @@ import {
 } from '@/lib/firestore';
 import type { Intent } from '../types';
 import type { ActionResult } from './types';
+import { NOTE_CATEGORIES } from '../fieldSpecs';
 
 function str(intent: Intent, key: string): string {
   const v = intent.fields[key]?.value;
@@ -22,41 +23,65 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-const NOTE_CATEGORIES = ['general', 'customer', 'inventory', 'shipping', 'urgent'];
-
 export async function executeNote(intent: Intent): Promise<ActionResult> {
   const content = str(intent, 'content');
-  const rawCategory = str(intent, 'noteCategory').toLowerCase();
-  const category = NOTE_CATEGORIES.includes(rawCategory) ? rawCategory : 'general';
+  // Match the counter's dropdown choice (fieldSpecs NOTE_CATEGORIES) case
+  // insensitively and store the canonical cased form; fall back to the first.
+  const rawCategory = str(intent, 'noteCategory');
+  const category =
+    NOTE_CATEGORIES.find((c) => c.toLowerCase() === rawCategory.toLowerCase()) ?? NOTE_CATEGORIES[0];
   const title = content.length > 42 ? `${content.slice(0, 42).trim()}...` : content || 'Note';
   const id = generateNoteId();
+  const now = nowIso();
 
   await setDocument('notes', id, {
     id,
     title,
     content,
     category,
-    createdAt: nowIso(),
-    updatedAt: nowIso(),
+    createdAt: now,
+    updatedAt: now,
   });
 
-  return { message: `Saved a ${category} note.` };
+  // The 'note' artifact the NoteCard renders as a saved note slip.
+  return {
+    message: `Saved a ${category} note.`,
+    artifact: {
+      kind: 'note',
+      title: 'Note',
+      data: { saved: true, id, title, content, category, createdAt: now },
+    },
+  };
 }
 
 export async function executeInventory(intent: Intent): Promise<ActionResult> {
   const model = str(intent, 'keyName');
   const inStock = intent.fields.inStock ? bool(intent, 'inStock') : true;
   const id = generateInventoryId();
+  const now = nowIso();
 
   await setDocument('keyInventory', id, {
     id,
     model,
     inStock,
-    createdAt: nowIso(),
-    updatedAt: nowIso(),
+    createdAt: now,
+    updatedAt: now,
   });
 
-  return { message: `Added ${model} to key inventory, ${inStock ? 'in stock' : 'out of stock'}.` };
+  // The 'inventory' artifact (save variant) the InventoryCard renders as a
+  // success slip with an inline edit for price / stock / location.
+  return {
+    message: `Added ${model} to key inventory, ${inStock ? 'in stock' : 'out of stock'}.`,
+    artifact: {
+      kind: 'inventory',
+      title: 'Inventory',
+      data: {
+        mode: 'saved',
+        savedKind: 'key',
+        item: { id, model, price: null, inStock },
+      },
+    },
+  };
 }
 
 // The two inventory record shapes, mirroring StaffInventory.tsx. Kept minimal to

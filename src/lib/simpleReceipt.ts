@@ -52,6 +52,10 @@ export interface SimpleReceiptOptions {
   taxLines?: { label: string; amount: number }[];
   fileNameBase: string;      // e.g. "cartridge-receipt-ORD-AB12"
   footnote?: string[];       // small print at the foot (e.g. shipping final-sale terms)
+  // When true, no pricing block is drawn at all. Used by 4x6 labels that carry no
+  // price (a refill label handed over before the price is known). The rest of the
+  // slip (customer, item, id) still prints.
+  hidePrice?: boolean;
 }
 
 const STORE_NAME = 'Ink, Toner & Moore';
@@ -153,23 +157,25 @@ export const buildSimpleReceiptPdf = (opts: SimpleReceiptOptions, size: ReceiptS
     });
   }
 
-  // Pricing block
-  y += isLetter ? 0.1 : 0.06;
-  doc.setLineWidth(0.008);
-  doc.line(margin, y, pageWidth - margin, y);
-  y += isLetter ? 0.3 : 0.24;
+  // Pricing block (skipped entirely for a price-less label).
+  if (!opts.hidePrice) {
+    y += isLetter ? 0.1 : 0.06;
+    doc.setLineWidth(0.008);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += isLetter ? 0.3 : 0.24;
 
-  if (opts.taxLines?.length) {
-    const taxTotal = opts.taxLines.reduce((sum, t) => round2(sum + t.amount), 0);
-    addRow('Subtotal', `$${opts.price.toFixed(2)}`);
-    opts.taxLines.forEach((t) => addRow(t.label, `$${t.amount.toFixed(2)}`));
-    addRow('Total', `$${round2(opts.price + taxTotal).toFixed(2)}`, true);
-  } else if (opts.gst != null) {
-    addRow('Subtotal', `$${opts.price.toFixed(2)}`);
-    addRow(`GST (${(GST_RATE * 100).toFixed(0)}%)`, `$${opts.gst.toFixed(2)}`);
-    addRow('Total', `$${round2(opts.price + opts.gst).toFixed(2)}`, true);
-  } else {
-    addRow(opts.items?.length ? 'Total' : 'Price', `$${opts.price.toFixed(2)}`, true);
+    if (opts.taxLines?.length) {
+      const taxTotal = opts.taxLines.reduce((sum, t) => round2(sum + t.amount), 0);
+      addRow('Subtotal', `$${opts.price.toFixed(2)}`);
+      opts.taxLines.forEach((t) => addRow(t.label, `$${t.amount.toFixed(2)}`));
+      addRow('Total', `$${round2(opts.price + taxTotal).toFixed(2)}`, true);
+    } else if (opts.gst != null) {
+      addRow('Subtotal', `$${opts.price.toFixed(2)}`);
+      addRow(`GST (${(GST_RATE * 100).toFixed(0)}%)`, `$${opts.gst.toFixed(2)}`);
+      addRow('Total', `$${round2(opts.price + opts.gst).toFixed(2)}`, true);
+    } else {
+      addRow(opts.items?.length ? 'Total' : 'Price', `$${opts.price.toFixed(2)}`, true);
+    }
   }
 
   // Footnote (small print). Rendered in flow so it works on both sizes.
