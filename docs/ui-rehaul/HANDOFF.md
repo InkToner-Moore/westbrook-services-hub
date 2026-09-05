@@ -2,13 +2,29 @@
 
 Read `DESIGN-SPEC.md` and `PLAN.md` first. This records where the rehaul stands.
 
-## At a glance (2026-09-05)
-- **Done and shipped to staging.** Branch `ui-rehaul`, stacked above
-  `ai-mode-overhaul`, pushed to `origin/ui-rehaul`. `origin/dev` was
-  fast-forwarded to the `ui-rehaul` tip (`f0fd840`), so Cloudflare Pages rebuilds
+## At a glance (2026-09-05, session close)
+- **Done and shipped to staging, awaiting Parsa's review.** Branch `ui-rehaul`,
+  stacked above `ai-mode-overhaul`, pushed to `origin/ui-rehaul` (tip `a627dac`).
+  `origin/dev` is fast-forwarded to that same tip, so Cloudflare Pages rebuilds
   `https://ink-toner-moore.pages.dev` with the rehaul. **Prod (`main`) untouched.**
-- **Two commits:** `chore(cleanup)` (remove Lovable scaffolding, dead code, unused
-  deps) and `feat(ui)` (the whole rehaul).
+- **Four commits:** `chore(cleanup)` (remove Lovable scaffolding, dead code, unused
+  deps), `feat(ui)` (the whole rehaul), a docs handoff, and `feat(ui)` revisions
+  (below).
+- **Revisions after first review (commit `sxn`):** AI Mode tile is now a wide 2x1
+  hero (was 1x2 tall); tool tiles redesigned with soft hue-tinted icon badges; the
+  rail got an "Ink, Toner & Moore / Staff Dashboard" header; both side rails
+  collapse on desktop to a slim reopen strip (state persisted in localStorage under
+  `shell-left-collapsed` / `shell-right-collapsed`); the composer Pack quick-actions
+  no longer wrap a lone pill (labels shortened, wrapped pills align under the first).
+- **Parsa is reviewing next.** He verified the rail iteration; the rest of the
+  redesign still needs his eye, plus the staging smoke-test.
+- **Phase 2 is specified and waiting in `docs/ui-rehaul/PHASE-2.md`** (do not
+  build it before Parsa's review lands). It reworks the AI Mode actions into
+  Purchase / Receipt / Record / Note / Inventory / Timesheet (each with a
+  purpose-built artifact card), builds the Timesheet feature, removes Follow-Ups,
+  and carries a bug list (both-rails-open deforms tools, tracking UI, artifact not
+  shown after leaving AI Mode, confusing receipt "Model" label, GST two-way /
+  after-tax). Read that doc for the full spec.
 - **Gate:** `corepack yarn build` GREEN. Lint is the documented baseline only
   (pre-existing `any` in `firestore.ts`/`validation.ts`/`tailwind.config.ts`/some
   `ui/*`, plus benign react-refresh warnings from shared-hook exports). No new
@@ -57,3 +73,14 @@ Read `DESIGN-SPEC.md` and `PLAN.md` first. This records where the rehaul stands.
   but disabled ("Soon"), not built.
 - To revert the staging promotion: point `origin/dev` back to `f1edae6` (its prior
   tip) via the GitHub refs API. `main`/prod was never touched.
+- **Doc drift to fix before merging the rehaul to `main`.** The repo `CLAUDE.md`
+  and the WESTBROOK project entry still describe AI Mode as an additive overlay
+  that "mounts once in App.tsx outside <Routes> and touches no page component" and
+  list the classic dashboard - all of which the rehaul deliberately replaced (with
+  the user's go-ahead): AI Mode is the main screen via a shell layout route, tools
+  render inside it, `StaffDashboard` and `FeatureProtectedRoute` are gone. Left
+  those binding docs alone this session on purpose (they are still accurate for
+  `main`, and rewriting the contract's invariants is Parsa's call). README's
+  dep line was corrected (html2canvas/recharts removed); `CLAUDE.md` lines 48
+  (lockfiles: only `yarn.lock` exists now) and 68-69 (html2canvas/recharts) are
+  still stale. Update `CLAUDE.md` + the entry as part of the merge-to-main PR.

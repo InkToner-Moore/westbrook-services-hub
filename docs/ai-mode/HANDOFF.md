@@ -3,6 +3,39 @@
 Update this at the end of every phase and before any context handoff. To resume,
 read `00-research.md`, `01-design.md`, `02-implementation-plan.md`, then this file.
 
+## LATEST: UI rehaul (2026-09-05) - the active track
+
+A big UI rehaul landed this session, on top of the AI Mode overhaul below.
+**Its current state lives in `docs/ui-rehaul/HANDOFF.md`** - read that first, plus
+`docs/ui-rehaul/DESIGN-SPEC.md` and `PLAN.md`. In short:
+
+- AI Mode is now the MAIN staff screen: a three-pane shell (left tile rail / center
+  chat-or-tool / right artifact rail), NOT the additive overlay described further
+  down this file. Confirmation of details moved into the right artifact rail with a
+  pinned action foot. Today's tools are reused, restyled to render chromeless inside
+  the shell. Public site restyled mobile-first. Lovable scaffolding + dead code
+  removed. New counter/paper identity on IBM Plex via the `themeClasses` tokens.
+- Branch `ui-rehaul` (stacked on `ai-mode-overhaul`), tip `a627dac`, pushed;
+  `origin/dev` fast-forwarded to it so `ink-toner-moore.pages.dev` rebuilt. Prod
+  (`main`) untouched.
+- Gate: `corepack yarn build` GREEN; lint is the documented baseline only (no new
+  errors). Browser-verified locally, light and dark, desktop + a phone width.
+- **Next session is for Parsa's review**, not a build: eyeball the redesign on
+  staging (light + dark, mobile), run the Firestore smoke-test with the dev staff
+  login (writes could not be exercised locally), then decide on merge to `main`.
+  Before that merge, update `CLAUDE.md` + the WESTBROOK entry, which still describe
+  the old overlay design (see the doc-drift note in the ui-rehaul handoff).
+
+**Phase 2 is already specified** in `docs/ui-rehaul/PHASE-2.md` (a new AI Mode
+action model - Purchase / Receipt / Record / Note / Inventory / Timesheet, each
+with a bespoke artifact card - plus building Timesheet, removing Follow-Ups, and a
+bug list). Do not start it until Parsa's review of the current rehaul lands.
+
+The AI Mode overhaul history below remains valid; the rehaul reorganised where that
+work renders, it did not undo it.
+
+---
+
 ## At a glance (session close 2026-09-06)
 - **Next session is for:** verification and small follow-ups, not a big build. Namely: (1)
   in-browser staging smoke-test of the LLM-assisted extraction AND the new Inventory tabs (needs
