@@ -12,6 +12,7 @@ import {
   extractAttachments,
   extractBrand,
   extractCartridgeStatus,
+  extractCity,
   extractEmail,
   extractEmployeeName,
   extractModel,
@@ -110,6 +111,54 @@ const ROUTES: Array<{ action: AiAction; subtype?: ReceiptSubtype; words: string[
   },
   { action: 'receipt', subtype: 'supplies', words: ['purchase', 'buy', 'bought', 'sold', 'sale', 'supply', 'supplies'] },
 ];
+
+// Separators between shipment pieces: "and"/"plus"/"+", a semicolon, a newline, or
+// a comma that is NOT inside a number (so "$1,299.99" stays whole). A comma also
+// separates fields within one item ("to Vancouver, UPS, $22"), so the pieces are
+// regrouped below, not taken as items one-for-one.
+const SHIPMENT_PIECE_SPLIT = /\s*(?:,(?!\d)|\band\b|\bplus\b|\+|;|\n)\s*/i;
+
+const pieceHasCourier = (piece: string): boolean => {
+  const { courier, trackingNumber } = extractTracking(piece);
+  return Boolean(courier || trackingNumber);
+};
+
+// Parse one or more shipment items from a shipping utterance. Pieces are grouped
+// into items: a new item starts only when a piece names a NEW courier/tracking
+// while the current item already has one, so "UPS to Toronto ON $22 and FedEx to
+// Vancouver BC $30" is two items but "to Vancouver, UPS, $22" is one. Always
+// returns at least one item so the editor has a row.
+function extractShipmentItems(text: string) {
+  const base = emptyShipmentItem();
+  const build = (piece: string) => {
+    const { courier, trackingNumber } = extractTracking(piece);
+    return {
+      ...emptyShipmentItem(),
+      courier: courier ?? '',
+      trackingNumber: trackingNumber ?? '',
+      city: extractCity(piece) ?? '',
+      province: extractProvince(piece) ?? base.province,
+      cost: extractShippingCost(piece, trackingNumber, extractPhone(piece)) ?? null,
+    };
+  };
+
+  const pieces = text.split(SHIPMENT_PIECE_SPLIT).map((s) => s.trim()).filter(Boolean);
+  const groups: string[] = [];
+  let current: string | null = null;
+  for (const piece of pieces) {
+    if (current === null) current = piece;
+    else if (pieceHasCourier(piece) && pieceHasCourier(current)) {
+      groups.push(current);
+      current = piece;
+    } else current = `${current} ${piece}`;
+  }
+  if (current !== null) groups.push(current);
+
+  const items = groups
+    .map(build)
+    .filter((it) => it.courier || it.trackingNumber || it.cost != null || it.city);
+  return items.length > 0 ? items : [build(text)];
+}
 
 // Signals that a courier/tracking utterance is a shipment SALE (a receipt), not a
 // bare parcel trace: a stated price, a Canadian province, a decimal amount, or a
@@ -370,17 +419,7 @@ export function populateIntentFields(intent: Intent, text: string): void {
   // utterance names (courier, tracking, province, cost); the rest is confirmed
   // in the item editor.
   if (action === 'receipt' && subtype === 'shipping') {
-    const { courier, trackingNumber } = extractTracking(text);
-    const cost = extractShippingCost(text, trackingNumber, extractPhone(text));
-    const province = extractProvince(text);
-    const item = {
-      ...emptyShipmentItem(),
-      courier: courier ?? '',
-      trackingNumber: trackingNumber ?? '',
-      province: province ?? emptyShipmentItem().province,
-      cost: cost ?? null,
-    };
-    intent.fields.shipmentItems = { value: [item], source: 'explicit' };
+    intent.fields.shipmentItems = { value: extractShipmentItems(text), source: 'explicit' };
   }
 
   // Tracking has no confirmation spec; fill courier + number directly.

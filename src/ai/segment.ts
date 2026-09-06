@@ -24,11 +24,19 @@ const STRONG_SEPARATOR = /\s*(?:\r?\n+|;+|\bthen\b|\balso\b|\bplus\b)\s*/i;
 // alone); "clock in Dave, clock in Sarah" becomes two.
 const SOFT_SEPARATOR = /(\s*,\s*|\s+and\s+)/i;
 
-async function routesAlone(text: string): Promise<boolean> {
+async function routeOf(text: string): Promise<{ action: string; subtype?: string }> {
   const t = text.trim();
-  if (!t) return false;
+  if (!t) return { action: 'unknown' };
   const intent = await probe.parse(t);
-  return intent.action !== 'unknown';
+  return { action: intent.action, subtype: intent.subtype };
+}
+
+const isShipping = (r: { action: string; subtype?: string }) => r.action === 'receipt' && r.subtype === 'shipping';
+
+// The deterministic route for a message, exposed so the chat can tell a follow-up
+// edit ("make it $40") from a new action ("clock in Dave").
+export async function probeRoute(text: string): Promise<{ action: string; subtype?: string }> {
+  return routeOf(text);
 }
 
 // Split a chunk on soft separators, then greedily glue back any piece that does not
@@ -44,8 +52,12 @@ async function splitSoft(chunk: string): Promise<string[]> {
   const segments: string[] = [];
   let current = parts[0];
   for (let i = 1; i < parts.length; i += 1) {
-    const [currentOk, partOk] = await Promise.all([routesAlone(current), routesAlone(parts[i])]);
-    if (currentOk && partOk) {
+    const [currentRoute, partRoute] = await Promise.all([routeOf(current), routeOf(parts[i])]);
+    const bothRoute = currentRoute.action !== 'unknown' && partRoute.action !== 'unknown';
+    // Two shipments in a row stay one receipt: the shipping receipt holds several
+    // items ("two labels"), so they are glued, not split into separate receipts.
+    const bothShipping = isShipping(currentRoute) && isShipping(partRoute);
+    if (bothRoute && !bothShipping) {
       segments.push(current);
       current = parts[i];
     } else {

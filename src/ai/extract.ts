@@ -304,6 +304,24 @@ export function extractProvince(text: string): string | null {
   return null;
 }
 
+// Courier names, so "change courier to FedEx" is not read as a city called FedEx.
+const COURIER_WORDS = new Set(['ups', 'fedex', 'purolator', 'dhl', 'canada', 'post']);
+
+// A destination city after "to", e.g. "to Toronto", "to Quebec City". Rejects a
+// province name ("to Ontario") and a courier name ("to FedEx") so neither is read
+// as a city.
+export function extractCity(text: string): string | null {
+  // Capture the whole first token (so mixed-case "FedEx" is caught in full and
+  // rejected below, not truncated to "Fed"), plus an optional second word.
+  const m = text.match(/\bto\s+([A-Z][A-Za-z]*(?:\s+[A-Z][a-z]+)?)/);
+  if (!m) return null;
+  const city = m[1].trim();
+  const lower = city.toLowerCase();
+  if (PROVINCES.some((p) => p.names.includes(lower))) return null;
+  if (city.split(/\s+/).some((w) => COURIER_WORDS.has(w.toLowerCase()))) return null;
+  return city;
+}
+
 // Side-action cues for the compound "chain around one transaction". A pay cue
 // ("charge her card", "tap", "moneris") means also send the amount to the payment
 // device and record it (Purchase); a label cue ("print a label", "4x6", "sticker")
