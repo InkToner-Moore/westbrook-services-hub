@@ -81,5 +81,21 @@ export async function segmentUtterance(text: string): Promise<string[]> {
     const pieces = await splitSoft(chunk);
     out.push(...pieces);
   }
-  return out.length > 0 ? out : [trimmed];
+  const segments = out.length > 0 ? out : [trimmed];
+
+  // Merge ADJACENT shipping segments into one receipt, even across a newline or
+  // other strong separator. Two labels typed on two lines are one shipping receipt
+  // with two items (the item parser re-splits the joined text), not two receipts
+  // queued one behind the other.
+  const merged: string[] = [];
+  const routes = await Promise.all(segments.map(routeOf));
+  segments.forEach((seg, i) => {
+    const prevRoute = merged.length > 0 ? routes[i - 1] : null;
+    if (prevRoute && isShipping(prevRoute) && isShipping(routes[i])) {
+      merged[merged.length - 1] = `${merged[merged.length - 1]}\n${seg}`;
+    } else {
+      merged.push(seg);
+    }
+  });
+  return merged;
 }
