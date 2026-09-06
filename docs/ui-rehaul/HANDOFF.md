@@ -2,6 +2,56 @@
 
 Read `DESIGN-SPEC.md` and `PLAN.md` first. This records where the rehaul stands.
 
+## Real manager protection + slip GST (2026-09-05, same session cont.)
+
+All on branch `manager-schedule`, pushed, and `origin/dev` fast-forwarded to it
+(Cloudflare staging rebuilds). Prod untouched. The user asked to (a) handle git
+and dev promotion autonomously (see the WESTBROOK memory), (b) make manager
+protection REAL, not just a client PIN, keeping one shared login + a PIN.
+
+- **Slip GST rework** (`ConfirmationCheck.tsx`): removed the confusing "tax incl."
+  toggle. The price field is just the pre-tax price. When GST is on, the
+  "Total (incl. GST)" row is itself editable and two-way with the price (type the
+  after-GST total and the price back-solves, and vice versa) using
+  `netFromGross`/`grossFromNet`. Browser-verified both directions.
+
+- **Real manager mode (server-enforced).** A client PIN can't be a security
+  boundary, so:
+  - **Worker** `proxy/src/manager.js` (routed under `/manager/*` in `worker.js`,
+    AI routing untouched): verifies the PIN server-side (SHA-256 with a
+    `PIN_PEPPER` secret; hashes stored in Firestore `accessPins`, which clients
+    cannot read) and mints a Firebase custom token with a `manager` claim for the
+    caller's uid. Endpoints: `status`, `set-pin` (change needs the current PIN),
+    `unlock`, `lock`. Secrets set on the worker: `FIREBASE_SA` (dev admin SA),
+    `PIN_PEPPER`. Deployed to `inktonermoore-ai-proxy` (URL
+    `https://inktonermoore-ai-proxy.inktonermoore.workers.dev`).
+  - **Client** (`lib/managerAuth.ts`, `ManagerModeContext.tsx`): unlock calls the
+    worker then `signInWithCustomToken`, so the session's ID token gains the
+    claim; `isManager` is read from the claim via `onIdTokenChanged`. Lock mints a
+    claimless token. Dev bypass keeps a local toggle. `ManagerPinDialog` gained a
+    current-PIN field for changes.
+  - **DEV Firestore rules** (console, not in repo) now: `scheduleShifts` and
+    `appSettings` writes require `request.auth.token.manager == true` (reads still
+    any authed staff); `accessPins` is admin-only (`if false`). Verified end to
+    end on dev: manager token writes 200, staff token 403, staff read of
+    accessPins 403. Current released ruleset `791d84cc-...`.
+  - **Manager mode persists until Lock or logout** (the claim rides the session).
+    Noted as a possible footgun on a shared counter browser; auto-lock-on-reload
+    is a easy follow-up if wanted.
+
+**Still open / follow-ups:**
+- **PROD**: none of this is on prod. When the rehaul ships to `main`, mirror the
+  DEV rules to PROD, deploy the worker with the PROD service account + a
+  `PIN_PEPPER`, and confirm `VITE_AI_PROXY_URL` is set for prod. There is no prod
+  SA on this machine.
+- **Brute-force**: `/manager/unlock` has no rate limiting yet. Recommend a 6+
+  digit PIN and add per-IP/uid throttling (KV or Durable Object) as hardening.
+- **Employee PINs (maybe later, per the user):** `accessPins` carries a `role`
+  per record and the worker matches by PIN, so per-employee PINs/roles can be
+  added without changing the client/worker contract.
+- No PIN is set on dev yet (test data cleaned up); first "Manager sign in" runs
+  the set-PIN flow.
+
 ## Schedule + manager PIN (2026-09-05, later session)
 
 Branch **`manager-schedule`** stacked on `phase2-followups`, pushed to
