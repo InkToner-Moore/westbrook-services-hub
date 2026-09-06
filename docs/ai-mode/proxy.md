@@ -1,9 +1,10 @@
 # AI Mode routing proxy
 
 The proxy is a tiny Cloudflare Worker that holds the Gemini API key server-side and
-turns a staff utterance into a routing decision. It does one thing: pick an action
-(and receipt subtype). It never extracts names, prices, or any field value, and it
-never touches Firestore. Field extraction and all business logic stay in the SPA's
+turns a staff utterance into a routing decision: it picks an action (and receipt
+subtype). For routing it never extracts names, prices, or any field value, and it
+never touches Firestore. (The same Worker also serves manager-session endpoints
+under `/manager/*`, a separate concern documented at the end of this file.) Field extraction and all business logic stay in the SPA's
 deterministic engine (`src/ai/providers/deterministic.ts`), so the model cannot emit
 customer data or run store logic. If the proxy or Gemini fails for any reason, the
 client falls back to the deterministic engine and AI Mode keeps working, for free.
@@ -101,3 +102,35 @@ the client only sends the utterance and validates whatever routing comes back ag
   has little upside.
 - The proxy sees only the raw utterance a staff member typed. It returns only a
   routing label. No customer records pass through it.
+
+## Manager sessions (added later)
+
+The same Worker also serves manager-session endpoints under `/manager/*`
+(`proxy/src/manager.js`), separate from and independent of the routing path above.
+Manager-only actions (editing the schedule, app settings) cannot be enforced by a
+client PIN, so the Worker turns a correct PIN into a real, server-enforced manager
+session: it verifies the PIN, then mints a Firebase custom token carrying a
+`manager: true` claim for the caller's uid. The client signs in with it, and
+Firestore rules that require `request.auth.token.manager == true` then allow the
+write. See `src/lib/managerAuth.ts` and `src/contexts/ManagerModeContext.tsx`.
+
+Endpoints (all POST, JSON, same CORS as routing):
+`/manager/status` -> `{pinSet}`; `/manager/set-pin {newPin, currentPin?}` (change
+needs the current PIN); `/manager/unlock {pin, uid}` -> `{token}`;
+`/manager/lock {uid}` -> a claimless `{token}`.
+
+PIN hashes live in the Firestore `accessPins` collection (locked to admin-only in
+the rules; clients never read them), hashed with a server pepper. Each record has a
+`role`, leaving room for per-employee PINs later.
+
+Two extra Worker secrets are required for these endpoints (routing works without
+them):
+```sh
+# the Firebase Admin service account JSON for the project, as one line
+node -e "process.stdout.write(JSON.stringify(require('./sa.json')))" | npx wrangler secret put FIREBASE_SA
+# a random, stable pepper mixed into every PIN hash
+npx wrangler secret put PIN_PEPPER
+```
+Rules are managed in the Firebase console (not in this repo); mirror the manager
+rules to each environment. There is no rate limiting on `/manager/unlock` yet: use
+a longer PIN and add throttling before this carries real weight.
