@@ -2,6 +2,42 @@
 
 Read `DESIGN-SPEC.md` and `PLAN.md` first. This records where the rehaul stands.
 
+## Phase 2 follow-ups (2026-09-05, later session)
+
+Cleared several of the "watch-outs" the Phase 2 build left. Two new branches, both
+pushed:
+- **`phase2-followups`** (stacked on `ui-rehaul-phase2`, tip `40a2336`): fixes the
+  deep-linked standalone tool-page icon badge (StaffHeader used `iconColor` as a
+  gradient, but the pages pass a text-color class matching the in-shell path, so
+  the badge rendered as a stopless/broken gradient - now a neutral badge with the
+  icon in its tool hue, consistent both paths), and drops the stale `AiOverlay`
+  comment in `src/ai/actions/index.ts`. Gate: `tsc -p tsconfig.app.json --noEmit`
+  clean, `yarn build` green, lint clean on changed files.
+- **`docs-rehaul-drift`** (stacked on Parsa's `docs-align-claude-md`, tip
+  `422da28`): fixes doc drift in `CLAUDE.md` and `README.md` to match the shipped
+  rehaul (AI Mode as the main screen via the shell layout route, StaffDashboard /
+  FeatureProtectedRoute / customer Requests gone, only `yarn.lock`, html2canvas /
+  recharts removed, real type-check command, new timesheet/transactions
+  collections + console-rules note). It went on its own branch because CLAUDE.md's
+  content lives on `docs-align-claude-md`, not on the rehaul stack, so the doc edit
+  depends on that branch while the code fix depends on the rehaul stack. The
+  WESTBROOK project entry (`~/.claude/projects.d/WESTBROOK.md`, not in the repo)
+  was updated the same way.
+
+Resolved from the Phase 2 watch-out list below:
+1. **Proxy redeployed** by Parsa (`cd proxy && npx wrangler deploy`), version
+   `996712c4`. The LLM path now routes to the new actions.
+2. **DEV Firestore rules added** for `employees`, `timeEntries`, `transactions`
+   (auth-gated read/write) via the Firebase Rules API using the dev service
+   account. New DEV ruleset `37ff7ca4-d89d-4700-99fa-dbbb9a3db910` released.
+   **PROD still needs the same three rules added when the rehaul ships to `main`.**
+
+Still open: single artifact slot in compound flows (design decision, needs Parsa);
+`KEY_LOCATIONS` map in InventoryCard is empty (needs Parsa's A1:KW1-style data);
+standalone `purchase` action has no route/executor (only `attach.pay` is wired).
+Not pushed to `origin/dev` - staging promotion of these follow-ups is Parsa's call
+during his review.
+
 ## PHASE 2 BUILT (2026-09-05) - the latest track
 
 Parsa lifted the review gate and asked to build Phase 2 in one session. It is
