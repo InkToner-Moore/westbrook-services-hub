@@ -2,48 +2,63 @@
 
 Read `DESIGN-SPEC.md` and `PLAN.md` first. This records where the rehaul stands.
 
-## START HERE (fresh-session brief, 2026-09-05)
+## START HERE (fresh-session brief, 2026-09-06)
 
-**Next session is for:** Parsa's staging review + smoke-test of this session's work
-on `ink-toner-moore.pages.dev` (theme reset, the Timesheet Schedule tab, real
-manager mode, the slip GST rework), then folding in his feedback. Not a numbered
-plan step; this is post-rehaul feature work stacked above the rehaul.
+**Next session is for:** Parsa's staging review + smoke-test of the AI-Mode parsing
+overhaul on `ink-toner-moore.pages.dev`, then folding in his feedback. Not a numbered
+plan step; this is post-rehaul work on the AI intent parser, stacked above the rehaul.
+Earlier open work still stands too (manager mode / schedule / slip GST review from the
+2026-09-05 sessions below).
 
 **Where things stand (verify against `but status` before trusting):**
-- Branch **`manager-schedule`** stacked on `phase2-followups`, pushed. `origin/dev`
-  is fast-forwarded to its tip, so Cloudflare staging rebuilds with all of it.
-  **Prod (`main`) untouched.**
-- Tree **clean**, local == `origin/manager-schedule` == `origin/dev`.
+- Branch **`ai-extract-routing-fixes`** stacked on `manager-schedule`, pushed.
+  `origin/dev` is fast-forwarded to its tip (`902259b`), so Cloudflare staging
+  rebuilds with all of it. **Prod (`main`) untouched.**
+- Tree **clean**, local `ai-extract-routing-fixes` == `origin/dev`.
 - Open PRs: only **#1 `docs-align-claude-md`** (pre-existing, not this session's).
-- **Gate as observed:** `tsc -p tsconfig.app.json --noEmit` clean; `yarn build`
-  green; `eslint` on changed files is baseline-only (pre-existing `any` in
-  `firestore.ts:42/54` and `ThemeContext.tsx:6`; benign react-refresh warnings on
-  `useManagerMode`/`useTheme`/`useConfirmationDraft`). No new problems.
+- **Gate as observed (2026-09-06):** `tsc -p tsconfig.app.json --noEmit` clean;
+  `yarn build` green; `eslint` on changed files is baseline-only (pre-existing `any`
+  in `firestore.ts`; one benign `react-refresh/only-export-components` on
+  `ConfirmationCheck.tsx` because it exports `useConfirmationDraft` beside the
+  component - same pattern as the other flagged hooks). No new problems.
+- **Testing:** a standalone offline harness (esbuild-bundles the real `ai/` modules,
+  no network) covering ~90 routing/extraction/segmentation/follow-up/shipping
+  assertions was run green. It lives in this session's scratchpad, NOT committed
+  (repo has no test framework). If you want it in-repo, add under `scripts/`.
 
-**Already built this session - do NOT rebuild (details in the sections below):**
-1. **Theme hard-reset to light** for everyone (bumped the `staff-theme` ->
-   `staff-theme-v2` localStorage key in `ThemeContext.tsx`).
-2. **Schedule tab** on the Timesheet page (`StaffTimesheet.tsx`, `lib/schedule.ts`,
-   `scheduleShifts` collection): weekly planned shifts, staff read-only, manager
-   edits.
-3. **Real, server-enforced manager mode**: Worker `/manager/*`
-   (`proxy/src/manager.js`) mints a Firebase `manager` claim from a correct PIN;
-   client (`lib/managerAuth.ts`, `ManagerModeContext.tsx`) signs in with it; DEV
-   Firestore rules require the claim to write `scheduleShifts`/`appSettings`.
-   Verified end to end on dev (manager 200 / staff 403). The dialog is
-   `ManagerPinDialog.tsx`.
-4. **Slip GST rework** (`ConfirmationCheck.tsx`): no "tax incl." toggle; editable
-   two-way "Total (incl. GST)".
+**Already built this session - do NOT rebuild (see "AI-Mode parsing overhaul" below):**
+1. **Extractor fixes:** money no longer misreads a trailing `$` (`53$ 4167382277`);
+   phone no longer slices a tracking number (digit-boundary guards).
+2. **Router:** bare code (`KW1` / `KW1?`) -> inventory_lookup; a courier/tracking with
+   a real sale signal -> shipping receipt, a bare courier/tracking -> track;
+   phrase-tolerant key + inventory-write routes; tightened status guard.
+3. **Clarify card** shows only the routes in question (proxy emits `clarifyOptions`).
+4. **Multi-action:** one utterance can hold several actions; immediates run, confirms
+   queue one slip at a time (`ai/segment.ts` + `ai/context.tsx`).
+5. **Multi-item shipping:** several parcels in one utterance -> one receipt with an
+   item each. Splits on separators AND at each courier name (handles run-ons and no
+   spaces), keeps commas-inside-numbers/one-item intact.
+6. **Conversational follow-ups:** with a slip open, "make it $40" / "no gst" / "change
+   the courier to FedEx" / "add another Purolator to Calgary $15" edit that slip
+   (`ai/followup.ts`).
+7. **City + packing:** known Canadian cities recognized however typed (lowercase, no
+   "to" cue); packing supplies (`box $4`, `large box $10`) captured, shown on the slip
+   as a "Packing" section, and added to the receipt total on confirm.
 
 **Constraints that bite (append, never trim):**
 - **Prod path untouched:** never edit `.github/workflows/deploy.yml`, `public/CNAME`;
   never point anything at `main`. Prod deploys `main` -> GitHub Pages.
 - **The Worker is SHARED** (`inktonermoore-ai-proxy`, serves both AI routing and
   `/manager/*`). Do not break the root routing path when editing it; re-test with a
-  POST `{"utterance":"..."}` after any deploy.
-- **DEV rules now require the manager claim** to write `scheduleShifts`/`appSettings`.
-  A signed-in but non-manager session gets 403 on those writes - that is correct,
-  not a bug.
+  POST `{"utterance":"..."}` after any deploy. Current worker version deployed this
+  session includes `clarifyOptions` in the routing schema/prompt (verified: KW1?,
+  the shipping utterance, an ambiguous clarify, and `/manager/status` 200).
+- **Routing vs extraction split:** the LLM (Gemini Flash Lite) only picks the ACTION;
+  the deterministic engine owns every field value AND segmentation/multi-item/packing
+  extraction. So parsing is consistent regardless of the model, and a confident local
+  route is never flipped by the LLM. Do not move value extraction into the model.
+- **DEV rules require the manager claim** to write `scheduleShifts`/`appSettings`.
+  A signed-in but non-manager session gets 403 on those writes - correct, not a bug.
 - **No prod Firebase SA on this machine.** DEV rules/claims are done via the dev SA
   at `/home/user/Programming/InkTonerMoore/inktonermoore-dev-firebase-adminsdk-*.json`
   (outside the repo). PROD activation is a separate, manual step.
@@ -51,14 +66,20 @@ plan step; this is post-rehaul feature work stacked above the rehaul.
 - **Wrangler is authenticated** on Parsa's Cloudflare account; `cd proxy && npx
   wrangler deploy` works from here. Worker secrets set on dev: `GEMINI_API_KEY`,
   `FIREBASE_SA`, `PIN_PEPPER`.
+- **`gh`'s git credential helper is broken in this sandbox** (`.gh-wrapped: No such
+  file`). Push with an inline helper:
+  `git -c credential.helper='!f(){ echo username=x-access-token; echo "password=$(gh auth token)"; };f' push origin <sha>:refs/heads/<branch>`.
+  `but push` fails on the same cause.
 
 **Open questions (fold answers in as their own commits; do not invent one):**
-- Auto-lock manager mode on reload? Today it persists until Lock/logout (footgun on
-  a shared counter browser). Parsa to decide.
-- Rate-limit `/manager/unlock` + enforce a longer (6+ digit) PIN? Recommended before
-  this carries real weight.
-- Start per-employee PINs now or later? `accessPins` already carries a `role` per
-  record, so it is additive.
+- Deterministic parser has a ceiling on free-form text; the real fix for arbitrary
+  multi-item shipping is LLM-driven structured item extraction (proxy returns a
+  `shipmentItems`/`packing` array), which is a bigger change. Do it if Parsa wants
+  robustness beyond the current heuristics.
+- Per-item follow-up targeting ("change item 1 to FedEx") - today a follow-up edit
+  merges into the LAST shipment item or appends. Add index targeting if wanted.
+- (Carried) Auto-lock manager mode on reload? Rate-limit `/manager/unlock` + longer
+  PIN? Per-employee PINs now or later? (see 2026-09-05 sections).
 
 **Working rules:**
 - Env: `export PATH="/nix/store/zm0k3k5802qlww0llyl13s7hiw0jd6yl-nodejs-24.18.1/bin:$PATH"`
@@ -66,15 +87,63 @@ plan step; this is post-rehaul feature work stacked above the rehaul.
 - Gate before every commit: `corepack yarn tsc -p tsconfig.app.json --noEmit`,
   `corepack yarn build`, and `corepack yarn eslint <changed files>` (baseline-only
   is the bar).
+- To exercise the parser offline fast: esbuild-bundle `ai/providers/deterministic.ts`
+  + `ai/segment.ts` (+ `ai/shipping.ts`, `ai/followup.ts`) with an `@`->`src` alias,
+  import from a data: URL, call `new DeterministicProvider().parse(...)`. Runs with no
+  network; the LLM only affects routing on ambiguous cases.
 - VC via GitButler, one branch per session, coherent commits. Git + dev promotion
   are handled autonomously for this project (per the user).
 - Firestore rules are console-managed (not in repo); deploy to dev by minting an SA
-  token and calling the Rules REST API (a working script pattern was used this
-  session).
+  token and calling the Rules REST API (a working script pattern was used earlier).
 
 **Still placeholder / not customer-ready:** no manager PIN is set on dev yet (first
 "Manager sign in" runs the set-PIN flow); Moneris device-send remains stubbed
-(pre-existing).
+(pre-existing); packing edit in the slip is remove-only (add is via the utterance or
+the Pack quick-actions); item-2 shipment tax uses the province default when the city
+is unknown.
+
+---
+
+## AI-Mode parsing overhaul (2026-09-06)
+
+All on branch `ai-extract-routing-fixes` (stacked on `manager-schedule`), pushed, and
+`origin/dev` fast-forwarded to its tip (`902259b`). Prod untouched. This was a
+multi-round session driven by Parsa testing the AI-Mode Receipt/shipping flow and
+reporting failures; each was fixed at the root with an offline test harness rather
+than case-by-case. Commits (bottom to top):
+
+- `fix(ai): stop money and phone extractors from grabbing the wrong number`
+- `feat(ai): route bare codes and priced shipments right, tighten clarify`
+- `feat(ai): sturdier extraction and routing across the board`
+- `feat(ai): handle several actions in one utterance`
+- `fix(ai): a bare courier + tracking number is a lookup, not a receipt`
+- `feat(ai): parse several shipment items from one utterance`
+- `feat(ai): conversational follow-ups edit the open slip`
+- `fix(ai): two labels on separate lines are one receipt, not two`
+- `fix(ai): split a run-on shipment at each courier name`
+- `feat(ai): recognize cities however typed, and packing supplies on a receipt`
+
+Key files: `src/ai/extract.ts` (all field extractors incl. `extractShippingCost`,
+`extractCity` + Canadian-cities list, `extractPacking`), `src/ai/providers/
+deterministic.ts` (router + `extractShipmentItems` with courier-boundary splitting +
+`looksLikeInventoryLookup`/`looksLikeShipmentSale`), `src/ai/segment.ts` (multi-action
+split + adjacent-shipping coalesce + `probeRoute`), `src/ai/followup.ts` (slip edits),
+`src/ai/context.tsx` (batch flow + queue + follow-up branch), `src/ai/actions/
+cartLines.ts` (packing lines), `src/components/ai/ConfirmationCheck.tsx` (Packing
+section), plus `proxy/src/worker.js` (clarifyOptions + KW1/shipping prompt examples,
+DEPLOYED this session).
+
+Verified in a real browser (dev server + `VITE_DEV_BYPASS_AUTH=true`): the reported
+shipping utterance, a mixed punch+note+refill queue, multi-item shipping (2-3 items),
+run-on and glued couriers, follow-up field edits / tax toggle / item append, cities,
+and packing (`box 4$` shows a Packing line and lands on the receipt). Firestore-writing
+executors error on the demo config locally (expected); routing/extraction/UI are what
+was checked.
+
+**Known ceiling (told to Parsa):** this is a heuristic deterministic parser. It handles
+the common orderings and the reported edge cases, but pathological reorderings/interleaving
+can still mis-split. The durable fix is LLM-driven structured item extraction (see open
+questions). Item-2 tax uses the province default when a city is unknown.
 
 ---
 
