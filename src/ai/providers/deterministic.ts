@@ -91,14 +91,12 @@ const ROUTES: Array<{ action: AiAction; subtype?: ReceiptSubtype; words: string[
   // so a shipping receipt that names its courier is not mistaken for a lookup.
   { action: 'track', words: ['track', 'where is', 'trace'] },
   { action: 'receipt', subtype: 'refill', words: ['refill', 'refilled', 'toner refill'] },
-  {
-    action: 'receipt',
-    subtype: 'shipping',
-    words: ['ship', 'shipment', 'courier', 'parcel', 'drop off', 'dropoff'],
-    // A carrier named with a destination or a price is a shipment, even without
-    // the word "ship" (e.g. "UPS to Toronto $22").
-    patterns: [/\b(ups|fedex|purolator|canada post|dhl)\b/i],
-  },
+  // Explicit shipment words only. A bare courier name is deliberately NOT here: on
+  // its own it is a tracking lookup ("UPS 2818387529719764"), and a courier named
+  // with a real sale signal (price/province/destination) is caught as a shipping
+  // receipt by the courier+sale-signal fallback further down. Putting the courier
+  // here would misroute every parcel trace into a receipt.
+  { action: 'receipt', subtype: 'shipping', words: ['ship', 'shipment', 'courier', 'parcel', 'drop off', 'dropoff'] },
   {
     action: 'receipt',
     subtype: 'key',
