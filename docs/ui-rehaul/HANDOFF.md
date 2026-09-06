@@ -32,6 +32,15 @@ Resolved from the Phase 2 watch-out list below:
    account. New DEV ruleset `37ff7ca4-d89d-4700-99fa-dbbb9a3db910` released.
    **PROD still needs the same three rules added when the rehaul ships to `main`.**
 
+Public-home polish (same `phase2-followups` branch, also on `origin/dev`): the
+Track-a-parcel and refill-status cards now fill their width (were pinned to a
+narrow left column, leaving a big empty right gap) and sit in a 2-col grid on
+desktop; public content widened to `max-w-6xl`; the contact email wraps
+(`break-all`) so its `.com` no longer spills under the store map; the map zooms
+slightly on hover/focus. Theme default confirmed **light** for a fresh visitor
+(verified: no `dark` class, `colorScheme: light`) - any dark view is a saved
+`staff-theme` toggle in that browser, not the default.
+
 Still open: single artifact slot in compound flows (design decision, needs Parsa);
 `KEY_LOCATIONS` map in InventoryCard is empty (needs Parsa's A1:KW1-style data);
 standalone `purchase` action has no route/executor (only `attach.pay` is wired).
