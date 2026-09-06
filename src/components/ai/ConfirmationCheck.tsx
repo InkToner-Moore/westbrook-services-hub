@@ -214,17 +214,10 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
   // always the pre-tax (net) amount, since that is what the receipt builder taxes.
   const gstSpec = specs.find((s) => s.key === 'gst' && s.kind === 'toggle');
   const gstOn = gstSpec ? fields.gst?.value === true : false;
-  // Which money fields the counter is currently entering tax-inclusive. A field
-  // not in the set is entered pre-tax (the default). Keyed so it generalises past
-  // the single 'price' field, though today only that field is money-on-a-receipt.
-  const [taxInclKeys, setTaxInclKeys] = useState<Set<string>>(() => new Set());
-  const toggleTaxIncl = (key: string) =>
-    setTaxInclKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
+  // When GST is on, the after-GST total is editable too: the counter can type the
+  // pre-tax price OR the tax-inclusive total and the other follows. Both are always
+  // shown (no mode toggle). This flag tracks whether the total row is being edited.
+  const [editingTotal, setEditingTotal] = useState(false);
 
   // A low-confidence route is worth a gentle "double-check" nudge. The model
   // returns 0..1; the deterministic engine uses coarse buckets (<= 0.5 is a
@@ -236,96 +229,54 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
 
   const visibleSpecs = specs.filter((s) => isFieldVisible(s, fields[s.key]?.value));
 
-  // The two-way money field. `value` in fields is always the pre-tax (net) price.
-  // When GST is on the counter can flip a "tax incl." toggle to type the tax-
-  // inclusive figure instead; we convert back to net on entry so downstream never
-  // changes. When GST is off it is a plain price field.
+  // The price field. `value` in fields is always the pre-tax (net) price, and this
+  // field only ever shows and edits that net price. The after-GST total lives in
+  // its own editable row at the foot of the slip (see below), so there is no mode
+  // toggle here: just the price.
   const renderMoney = (spec: FieldSpec, fv: FieldValue<unknown> | undefined) => {
     const value = fv?.value;
     const isEmpty = value === null || value === undefined || value === '';
     const net = isEmpty ? null : Number(value);
-    const twoWay = gstOn; // only offer the incl/excl choice when GST applies
-    const taxIncl = twoWay && taxInclKeys.has(spec.key);
-    // Primary figure follows the chosen mode; the secondary line shows the other.
-    const primary = net == null ? null : taxIncl ? grossFromNet(net) : net;
-    const secondary = net == null ? null : taxIncl ? net : grossFromNet(net);
-
-    const taxToggle = twoWay ? (
-      <button
-        type="button"
-        role="switch"
-        aria-checked={taxIncl}
-        onClick={() => toggleTaxIncl(spec.key)}
-        title={taxIncl ? 'Entering the tax-inclusive price. Click for pre-tax.' : 'Entering the pre-tax price. Click for tax-inclusive.'}
-        className={`rounded-full border px-2 py-0.5 text-[11px] font-medium leading-none ${
-          taxIncl
-            ? isDarkMode
-              ? 'border-amber-600/60 bg-amber-800/50 text-amber-200'
-              : 'border-amber-300 bg-amber-100 text-amber-800'
-            : isDarkMode
-              ? 'border-[#2a2f3a] text-[#9aa4b2] hover:bg-[#1f232c]'
-              : 'border-[#e4e1d9] text-[#5b6270] hover:bg-[#f1efe9]'
-        }`}
-      >
-        tax incl.
-      </button>
-    ) : null;
 
     if (editingKey === spec.key) {
       return (
-        <div className="flex flex-col items-end gap-1.5">
-          <input
-            autoFocus
-            inputMode="decimal"
-            defaultValue={primary == null ? '' : primary.toFixed(2)}
-            onBlur={(e) => {
-              const raw = e.target.value.trim();
-              if (raw === '') {
-                setValue(spec.key, null);
-                setEditingKey(null);
-                return;
-              }
-              const typed = Number(raw);
-              const nextNet = Number.isFinite(typed) ? (taxIncl ? netFromGross(typed) : typed) : null;
-              setValue(spec.key, nextNet);
+        <input
+          autoFocus
+          inputMode="decimal"
+          defaultValue={net == null ? '' : net.toFixed(2)}
+          onBlur={(e) => {
+            const raw = e.target.value.trim();
+            if (raw === '') {
+              setValue(spec.key, null);
               setEditingKey(null);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-              if (e.key === 'Escape') setEditingKey(null);
-            }}
-            placeholder={taxIncl ? 'tax-inclusive price' : spec.hint ?? 'pre-tax price'}
-            className={`w-32 rounded-lg border px-2.5 py-1.5 text-right font-mono text-[15px] tabular-nums outline-none ${themeClasses.input}`}
-          />
-          {taxToggle}
-        </div>
+              return;
+            }
+            const typed = Number(raw);
+            setValue(spec.key, Number.isFinite(typed) ? typed : null);
+            setEditingKey(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+            if (e.key === 'Escape') setEditingKey(null);
+          }}
+          placeholder={spec.hint ?? 'price'}
+          className={`w-32 rounded-lg border px-2.5 py-1.5 text-right font-mono text-[15px] tabular-nums outline-none ${themeClasses.input}`}
+        />
       );
     }
 
-    const display = isEmpty ? (spec.marker === 'required' ? 'Add' : 'Optional') : `$${primary!.toFixed(2)}`;
+    const display = isEmpty ? (spec.marker === 'required' ? 'Add' : 'Optional') : `$${net!.toFixed(2)}`;
     return (
-      <div className="flex flex-col items-end gap-1">
-        <button
-          type="button"
-          onClick={() => setEditingKey(spec.key)}
-          className={`group inline-flex items-center gap-1 font-mono text-[15px] tabular-nums ${
-            isEmpty ? themeClasses.text.muted : themeClasses.text.primary
-          }`}
-        >
-          <span className={isEmpty ? 'font-sans underline decoration-dotted underline-offset-4' : ''}>{display}</span>
-          <Pencil className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-60" />
-        </button>
-        {twoWay && (
-          <div className="flex items-center gap-2">
-            {!isEmpty && (
-              <span className={`font-mono text-[11px] tabular-nums ${themeClasses.text.muted}`}>
-                {taxIncl ? `$${secondary!.toFixed(2)} before GST` : `$${secondary!.toFixed(2)} with GST`}
-              </span>
-            )}
-            {taxToggle}
-          </div>
-        )}
-      </div>
+      <button
+        type="button"
+        onClick={() => setEditingKey(spec.key)}
+        className={`group inline-flex items-center gap-1 font-mono text-[15px] tabular-nums ${
+          isEmpty ? themeClasses.text.muted : themeClasses.text.primary
+        }`}
+      >
+        <span className={isEmpty ? 'font-sans underline decoration-dotted underline-offset-4' : ''}>{display}</span>
+        <Pencil className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-60" />
+      </button>
     );
   };
 
@@ -521,7 +472,41 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
             )}
             <div className={`flex items-center justify-between text-[15px] font-semibold ${themeClasses.text.primary}`}>
               <span>{gstOn ? 'Total (incl. GST)' : 'Total'}</span>
-              <span className="font-mono tabular-nums">${totalDue.toFixed(2)}</span>
+              {gstOn && moneySpec && !omitted.has(moneySpec.key) ? (
+                editingTotal ? (
+                  <input
+                    autoFocus
+                    inputMode="decimal"
+                    defaultValue={totalDue.toFixed(2)}
+                    onBlur={(e) => {
+                      const raw = e.target.value.trim();
+                      const typed = Number(raw);
+                      // Typing the after-GST total sets the pre-tax price it implies,
+                      // so the price row above updates to match.
+                      if (raw !== '' && Number.isFinite(typed)) {
+                        setValue(moneySpec.key, netFromGross(typed));
+                      }
+                      setEditingTotal(false);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                      if (e.key === 'Escape') setEditingTotal(false);
+                    }}
+                    className={`w-32 rounded-lg border px-2.5 py-1.5 text-right font-mono text-[15px] tabular-nums outline-none ${themeClasses.input}`}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setEditingTotal(true)}
+                    className="group inline-flex items-center gap-1 font-mono tabular-nums"
+                  >
+                    ${totalDue.toFixed(2)}
+                    <Pencil className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-60" />
+                  </button>
+                )
+              ) : (
+                <span className="font-mono tabular-nums">${totalDue.toFixed(2)}</span>
+              )}
             </div>
           </div>
         )}
