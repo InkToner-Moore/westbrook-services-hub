@@ -5,13 +5,14 @@
 // parsing an utterance, proposing or running the result, and re-routing a
 // misroute, so both the chat (send) and the artifact rail (reroute, confirm) can
 // share one source of truth. See docs/ui-rehaul/DESIGN-SPEC.md.
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import type { AiAction, ArtifactState, ChatTurn, Intent, ReceiptSubtype } from './types';
 import type { ActionResult } from './actions/types';
 import type { CartCustomer, CartLine } from './cart';
 import { buildCartReceiptOpts } from './cart';
 import { getProvider } from './providers';
+import { segmentUtterance } from './segment';
 import { getFieldSpecs } from './fieldSpecs';
 import { getExecutor, isImmediate } from './actions';
 import { receiptIntentToCartLines } from './actions/cartLines';
@@ -143,6 +144,9 @@ interface AiModeContextValue {
   confirmArtifactIntent: (turnId: string, finalIntent: Intent) => Promise<void>;
   // "Not now": the turn is dismissed and the slip clears without running anything.
   dismissArtifactIntent: (turnId: string) => void;
+  // How many more confirmation slips wait behind the active one (from a multi-
+  // action utterance). 0 when the active slip is the last or the only one.
+  pendingCount: number;
 
   // The single Artifact panel (a receipt, tracking, an order list, or a pending
   // confirmation slip).
@@ -170,6 +174,16 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [artifact, setArtifact] = useState<ArtifactState | null>(null);
   const [cart, setCart] = useState<CartLine[]>(readCart);
   const [busy, setBusy] = useState(false);
+  // Confirmations still to review when one utterance held several actions. The
+  // active slip lives in `artifact`; these wait behind it and surface one at a
+  // time as each is confirmed or dismissed. The ref mirrors the state so the
+  // advance logic reads the current queue without a stale closure.
+  const [pendingCount, setPendingCount] = useState(0);
+  const pendingRef = useRef<Array<{ intent: Intent; sourceText: string }>>([]);
+  const setQueue = useCallback((items: Array<{ intent: Intent; sourceText: string }>) => {
+    pendingRef.current = items;
+    setPendingCount(items.length);
+  }, []);
 
   // Persist the open receipt across reloads.
   useEffect(() => {
@@ -227,7 +241,8 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const clear = useCallback(() => {
     setTurns([]);
     setArtifact(null);
-  }, []);
+    setQueue([]);
+  }, [setQueue]);
 
   const showArtifact = useCallback((next: ArtifactState) => setArtifact(next), []);
   const hideArtifact = useCallback(() => setArtifact(null), []);
@@ -259,26 +274,43 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     [cart],
   );
 
-  // Run an already-built intent: immediate actions execute; anything with a
-  // confirmation spec is proposed (its details go to the rail); the rest becomes
-  // a "did you mean" card in the chat.
-  const presentIntent = useCallback(
-    (intent: Intent, sourceText: string) => {
+  // Put one confirmable intent's details on the rail as the active slip, posting a
+  // short pointer line in the chat. `remaining` is how many more wait behind it, so
+  // the counter knows there is a queue.
+  const presentConfirmable = useCallback(
+    (intent: Intent, sourceText: string, remaining: number) => {
+      const more = remaining > 0 ? ` Then I have ${remaining} more to go through with you.` : '';
+      const turn = addAssistantTurn(`${pointToArtifact(intent)}${more}`, intent, sourceText);
+      const data: ConfirmationArtifactData = { turnId: turn.id, intent, sourceText };
+      setArtifact({ kind: 'confirmation', title: routeLabel(intent.action, intent.subtype) ?? 'Confirm details', data });
+    },
+    [addAssistantTurn],
+  );
+
+  // Surface the next queued confirmation, if any. Called after a slip is confirmed,
+  // dismissed, or rerouted away, so a multi-action utterance walks its slips one by
+  // one.
+  const activateNext = useCallback(() => {
+    const [next, ...rest] = pendingRef.current;
+    if (!next) return;
+    setQueue(rest);
+    presentConfirmable(next.intent, next.sourceText, rest.length);
+  }, [presentConfirmable, setQueue]);
+
+  // Run one intent that has no confirmation step: immediate executors (track, list,
+  // punch) run now; anything else with no spec becomes a "did you mean" card.
+  const runNonConfirmable = useCallback(
+    async (intent: Intent, sourceText: string) => {
       const executor = getExecutor(intent.action);
       if (executor && isImmediate(intent)) {
-        return Promise.resolve(executor(intent))
-          .then(addResult)
-          .catch(() => addAssistantTurn('Something went wrong with that. Please try again.'));
-      }
-      const specs = getFieldSpecs(intent);
-      if (specs) {
-        const turn = addAssistantTurn(pointToArtifact(intent), intent, sourceText);
-        const data: ConfirmationArtifactData = { turnId: turn.id, intent, sourceText };
-        setArtifact({ kind: 'confirmation', title: routeLabel(intent.action, intent.subtype) ?? 'Confirm details', data });
+        try {
+          addResult(await executor(intent));
+        } catch {
+          addAssistantTurn('Something went wrong with that. Please try again.');
+        }
       } else {
         addAssistantTurn(describeUnsure(intent), intent, sourceText);
       }
-      return Promise.resolve();
     },
     [addAssistantTurn, addResult],
   );
@@ -290,13 +322,31 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       addUserTurn(trimmed);
       setBusy(true);
       try {
-        const intent = await getProvider().parse(trimmed, { activeTab });
-        await presentIntent(intent, trimmed);
+        // One utterance may hold several actions. Split it, parse each segment, then
+        // run the immediate ones in order and queue the confirmations to review one
+        // at a time. A plain single-action utterance is just a one-item batch.
+        const segments = (await segmentUtterance(trimmed)).slice(0, 8);
+        const provider = getProvider();
+        const parsed = await Promise.all(
+          segments.map((s) => provider.parse(s, { activeTab }).then((intent) => ({ intent, sourceText: s }))),
+        );
+
+        const confirmables: Array<{ intent: Intent; sourceText: string }> = [];
+        for (const item of parsed) {
+          if (getFieldSpecs(item.intent) && !isImmediate(item.intent)) confirmables.push(item);
+          else await runNonConfirmable(item.intent, item.sourceText);
+        }
+
+        if (confirmables.length > 0) {
+          const [first, ...rest] = confirmables;
+          setQueue(rest);
+          presentConfirmable(first.intent, first.sourceText, rest.length);
+        }
       } finally {
         setBusy(false);
       }
     },
-    [activeTab, addUserTurn, presentIntent],
+    [activeTab, addUserTurn, runNonConfirmable, presentConfirmable, setQueue],
   );
 
   // The user corrected a route (from the rail's slip or a "did you mean" card).
@@ -326,6 +376,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               addAssistantTurn('Something went wrong with that. Please try again.');
             }
           }
+          activateNext();
           return;
         }
 
@@ -342,7 +393,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setBusy(false);
       }
     },
-    [activeTab, turns, patchTurn, addAssistantTurn, addResult],
+    [activeTab, turns, patchTurn, addAssistantTurn, addResult, activateNext],
   );
 
   const confirmArtifactIntent = useCallback(
@@ -380,6 +431,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const lines = receiptIntentToCartLines(finalIntent);
         if (lines.length === 0) {
           addAssistantTurn('That receipt has nothing complete to add yet. Fill in a price and try again.');
+          activateNext();
           return;
         }
         addCartLines(lines);
@@ -388,6 +440,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           `Added to the receipt. ${count} ${count === 1 ? 'item' : 'items'} so far. Finish it from the open receipt when you are ready.`,
         );
         await runAttachments();
+        activateNext();
         return;
       }
 
@@ -402,8 +455,9 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         addAssistantTurn('Done. That is all set.');
       }
       await runAttachments();
+      activateNext();
     },
-    [updateTurnIntent, setTurnStatus, addAssistantTurn, addCartLines, cart, addResult],
+    [updateTurnIntent, setTurnStatus, addAssistantTurn, addCartLines, cart, addResult, activateNext],
   );
 
   const dismissArtifactIntent = useCallback(
@@ -411,8 +465,9 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setTurnStatus(turnId, 'dismissed');
       setArtifact(null);
       addAssistantTurn('Okay, not now.');
+      activateNext();
     },
-    [setTurnStatus, addAssistantTurn],
+    [setTurnStatus, addAssistantTurn, activateNext],
   );
 
   const value = useMemo<AiModeContextValue>(
@@ -430,6 +485,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       rerouteIntent,
       confirmArtifactIntent,
       dismissArtifactIntent,
+      pendingCount,
       artifact,
       showArtifact,
       hideArtifact,
@@ -453,6 +509,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       rerouteIntent,
       confirmArtifactIntent,
       dismissArtifactIntent,
+      pendingCount,
       artifact,
       showArtifact,
       hideArtifact,
