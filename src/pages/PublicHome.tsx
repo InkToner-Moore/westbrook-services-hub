@@ -208,10 +208,10 @@ const PublicHome = () => {
         </section>
 
         {/* The two jobs a customer came here to do, ahead of anything else */}
-        <section aria-label="Self-serve tools" className="grid gap-5 lg:grid-cols-2 lg:items-start">
-          <SmartTracker />
+        <section aria-label="Self-serve tools" className="grid gap-5 lg:grid-cols-2 lg:items-stretch">
+          <SmartTracker className="h-full" />
 
-          <div className={`rounded-xl border p-5 sm:p-6 ${themeClasses.card.primary}`}>
+          <div className={`flex h-full flex-col rounded-xl border p-5 sm:p-6 ${themeClasses.card.primary}`}>
             <div className="flex items-center gap-3">
               <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${isDarkMode ? "bg-violet-950/60" : "bg-violet-50"}`}>
                 <Printer className={`h-5 w-5 ${isDarkMode ? "text-violet-300" : "text-violet-700"}`} />
@@ -226,7 +226,7 @@ const PublicHome = () => {
               </div>
             </div>
 
-            <div className="mt-5 space-y-4">
+            <div className="mt-5 flex flex-1 flex-col justify-center space-y-4">
               <div>
                 <Label htmlFor="refill-last-name" className={`mb-1.5 block text-sm font-medium ${themeClasses.text.primary}`}>
                   Last name

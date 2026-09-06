@@ -131,7 +131,7 @@ const SmartTracker = ({ className = "", showHeader = true }: SmartTrackerProps) 
               Shipping company, tap to track
             </label>
           )}
-          <div className="grid grid-cols-1 gap-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             {couriers.map((courier) => {
               const isSelected = selectedCourier === courier.id;
               return (
@@ -139,7 +139,8 @@ const SmartTracker = ({ className = "", showHeader = true }: SmartTrackerProps) 
                   key={courier.id}
                   onClick={() => handleCourierClick(courier.id)}
                   disabled={!!transferringTo}
-                  className={`min-h-[44px] rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
+                  aria-label={`Track with ${courier.name}`}
+                  className={`relative flex min-h-[76px] flex-col items-center justify-center gap-2 rounded-lg border p-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
                     isSelected
                       ? `${courier.color} border-transparent text-white`
                       : `${themeClasses.card.secondary}`
@@ -147,34 +148,28 @@ const SmartTracker = ({ className = "", showHeader = true }: SmartTrackerProps) 
                     transferringTo && !isSelected ? "opacity-40" : ""
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className={`flex h-12 w-20 items-center justify-center rounded-lg p-2 ${
-                        isSelected ? "bg-white/20" : "bg-white dark:bg-[#f1efe9]"
-                      }`}>
-                        <img
-                          src={courier.logo}
-                          alt={`${courier.name} logo`}
-                          className="max-h-full max-w-full object-contain"
-                          onError={(e) => {
-                            // Fallback to text if logo fails to load
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            target.nextElementSibling!.textContent = courier.name;
-                          }}
-                        />
-                        <span className="hidden text-xs font-bold text-gray-700"></span>
-                      </div>
-                      <div className={`text-lg font-semibold ${isSelected ? "text-white" : themeClasses.text.primary}`}>
-                        {courier.name}
-                      </div>
-                    </div>
-                    {transferringTo && isSelected ? (
-                      <Loader2 className="h-6 w-6 animate-spin text-white" />
-                    ) : isSelected ? (
-                      <ExternalLink className="h-6 w-6 text-white" />
-                    ) : null}
+                  <div className={`flex h-8 w-full max-w-[76px] items-center justify-center rounded-md p-1 ${
+                    isSelected ? "bg-white/20" : "bg-white dark:bg-[#f1efe9]"
+                  }`}>
+                    <img
+                      src={courier.logo}
+                      alt=""
+                      className="max-h-full max-w-full object-contain"
+                      onError={(e) => {
+                        // Bundled asset, but hide gracefully if it ever fails; the
+                        // name label below still identifies the courier.
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
                   </div>
+                  <span className={`text-xs font-semibold ${isSelected ? "text-white" : themeClasses.text.primary}`}>
+                    {courier.name}
+                  </span>
+                  {transferringTo && isSelected ? (
+                    <Loader2 className="absolute right-1.5 top-1.5 h-4 w-4 animate-spin text-white" />
+                  ) : isSelected ? (
+                    <ExternalLink className="absolute right-1.5 top-1.5 h-4 w-4 text-white" />
+                  ) : null}
                 </button>
               );
             })}
