@@ -24,13 +24,16 @@ interface ManagerPinDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "unlock" | "set";
-  onSubmit: (pin: string) => Promise<{ ok: boolean; error?: string }>;
+  // In 'set' mode, whether a current PIN must be entered (changing an existing PIN).
+  requireCurrent?: boolean;
+  onSubmit: (pin: string, currentPin?: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
-const ManagerPinDialog = ({ open, onOpenChange, mode, onSubmit }: ManagerPinDialogProps) => {
+const ManagerPinDialog = ({ open, onOpenChange, mode, requireCurrent, onSubmit }: ManagerPinDialogProps) => {
   const { themeClasses } = useTheme();
   const [pin, setPin] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [current, setCurrent] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -40,6 +43,7 @@ const ManagerPinDialog = ({ open, onOpenChange, mode, onSubmit }: ManagerPinDial
     if (open) {
       setPin("");
       setConfirm("");
+      setCurrent("");
       setError("");
       setBusy(false);
     }
@@ -50,6 +54,10 @@ const ManagerPinDialog = ({ open, onOpenChange, mode, onSubmit }: ManagerPinDial
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
+    if (setting && requireCurrent && !isValidPin(current)) {
+      setError("Enter your current PIN.");
+      return;
+    }
     if (!isValidPin(pin)) {
       setError("Use 4 to 8 digits.");
       return;
@@ -60,7 +68,7 @@ const ManagerPinDialog = ({ open, onOpenChange, mode, onSubmit }: ManagerPinDial
     }
     setBusy(true);
     setError("");
-    const result = await onSubmit(pin);
+    const result = await onSubmit(pin, setting && requireCurrent ? current : undefined);
     if (result.ok) {
       onOpenChange(false);
     } else {
@@ -75,16 +83,33 @@ const ManagerPinDialog = ({ open, onOpenChange, mode, onSubmit }: ManagerPinDial
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5" />
-            {setting ? "Set the manager PIN" : "Manager sign in"}
+            {setting ? (requireCurrent ? "Change the manager PIN" : "Set the manager PIN") : "Manager sign in"}
           </DialogTitle>
           <DialogDescription>
             {setting
-              ? "Choose a PIN of 4 to 8 digits. Anyone who knows it can edit the schedule and manager settings."
+              ? "Use a PIN of 4 to 8 digits. Anyone who knows it can edit the schedule and manager settings."
               : "Enter the manager PIN to make changes."}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {setting && requireCurrent && (
+            <div className="space-y-1.5">
+              <Label htmlFor="manager-pin-current" className={themeClasses.text.secondary}>
+                Current PIN
+              </Label>
+              <Input
+                id="manager-pin-current"
+                type="password"
+                inputMode="numeric"
+                autoComplete="off"
+                value={current}
+                onChange={(e) => setCurrent(e.target.value.replace(/\D/g, ""))}
+                placeholder="Current PIN"
+                className={`min-h-[44px] font-mono tabular-nums tracking-widest ${themeClasses.input}`}
+              />
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="manager-pin" className={themeClasses.text.secondary}>
               {setting ? "New PIN" : "PIN"}

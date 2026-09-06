@@ -1,62 +1,86 @@
-// Manager PIN: a soft gate for manager-only actions (editing the schedule now,
-// and later site-content editing and settings). One shared PIN for the shop, set
-// in-app and stored HASHED in a single Firestore settings doc, never in plain
-// text. Unlocking flips a browser-session "manager mode" (held in React state, so
-// it resets on reload). This is a guardrail against accidental edits by counter
-// staff, NOT a security boundary: any signed-in user with devtools can bypass it
-// until Firestore rules enforce a manager identity. See ManagerModeContext.
-import { getDocument, setDocument } from './firestore';
+// Manager session (client side). Manager-only actions are enforced by the SERVER:
+// a correct PIN is checked by the Cloudflare Worker (proxy/src/manager.js), which
+// mints a Firebase custom token carrying a `manager: true` claim for the current
+// user. We sign in with it, so Firestore rules that require
+// request.auth.token.manager == true then allow manager writes. The PIN hash never
+// reaches the browser. Locking mints a token without the claim. See the worker for
+// the storage model (Firestore `accessPins`, hashed with a server pepper) which
+// also leaves room for per-employee PINs/roles later.
+import { auth } from './firebase';
+import { signInWithCustomToken } from 'firebase/auth';
 
-// A single settings collection we reuse for app-wide config (manager PIN today,
-// site content and settings later). One doc per concern; the manager PIN is here.
-export const APP_SETTINGS_COLLECTION = 'appSettings';
-export const MANAGER_DOC_ID = 'manager';
+// The worker base URL is the same one AI Mode already uses. Manager endpoints hang
+// off /manager/*. When unset (no proxy configured), real manager mode is
+// unavailable and callers fall back (dev bypass) or surface an error.
+const PROXY = (import.meta.env.VITE_AI_PROXY_URL as string | undefined)?.replace(/\/$/, '') || '';
 
-// Fixed app salt so the stored hash is not a bare SHA-256 of a short PIN. This is
-// a soft gate, not real key derivation; it just keeps the plaintext PIN out of
-// Firestore and off a trivial rainbow table.
-const PIN_SALT = 'itm-manager-pin-v1';
-
-export interface ManagerSettings {
-  id?: string;
-  pinHash: string;
-  updatedAt: string; // ISO
+export function managerConfigured(): boolean {
+  return !!PROXY;
 }
 
-// SHA-256 of salt + PIN, hex encoded. Web Crypto is available in every browser
-// the staff use; no new dependency.
-export async function hashPin(pin: string): Promise<string> {
-  const data = new TextEncoder().encode(`${PIN_SALT}:${pin}`);
-  const buf = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-export async function loadManagerSettings(): Promise<ManagerSettings | null> {
-  return getDocument<ManagerSettings>(APP_SETTINGS_COLLECTION, MANAGER_DOC_ID);
-}
-
-// Set or change the manager PIN (create-or-overwrite of the single manager doc).
-export async function saveManagerPin(pin: string): Promise<void> {
-  const pinHash = await hashPin(pin);
-  await setDocument(APP_SETTINGS_COLLECTION, MANAGER_DOC_ID, {
-    pinHash,
-    updatedAt: new Date().toISOString(),
-  });
-}
-
-// True when the entered PIN matches the stored hash.
-export async function verifyManagerPin(
-  pin: string,
-  settings: ManagerSettings | null,
-): Promise<boolean> {
-  if (!settings?.pinHash) return false;
-  return (await hashPin(pin)) === settings.pinHash;
-}
-
-// Shared PIN format rule (4 to 8 digits). Kept here so the dialog and any future
-// caller validate the same way.
+// Shared PIN format rule (4 to 8 digits), matched by the worker.
 export function isValidPin(pin: string): boolean {
   return /^\d{4,8}$/.test(pin);
+}
+
+async function post(path: string, body: Record<string, unknown>) {
+  const res = await fetch(`${PROXY}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({} as Record<string, unknown>));
+  return { ok: res.ok, status: res.status, data: data as Record<string, unknown> };
+}
+
+// Whether a manager PIN has been set for the shop yet.
+export async function fetchPinStatus(): Promise<boolean> {
+  const { ok, data } = await post('/manager/status', {});
+  return ok && data.pinSet === true;
+}
+
+// Set or change the manager PIN. Changing requires the current PIN (enforced by
+// the worker); the first-time set does not.
+export async function setManagerPin(
+  newPin: string,
+  currentPin?: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { ok, data } = await post('/manager/set-pin', { newPin, currentPin });
+  if (ok && data.ok) return { ok: true };
+  return { ok: false, error: (data.error as string) || 'set_failed' };
+}
+
+// Verify the PIN with the worker and, on success, upgrade this browser session to
+// a manager session (the ID token gains the manager claim).
+export async function unlockManagerSession(pin: string): Promise<{ ok: boolean; error?: string }> {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return { ok: false, error: 'not_signed_in' };
+  const { ok, data } = await post('/manager/unlock', { pin, uid });
+  if (!ok || !data.token) return { ok: false, error: (data.error as string) || 'unlock_failed' };
+  await signInWithCustomToken(auth, data.token as string);
+  await auth.currentUser?.getIdToken(true); // refresh so the claim is live now
+  return { ok: true };
+}
+
+// Drop the manager claim from this session (no PIN needed to give up privilege).
+export async function lockManagerSession(): Promise<void> {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+  const { ok, data } = await post('/manager/lock', { uid });
+  if (ok && data.token) {
+    await signInWithCustomToken(auth, data.token as string);
+    await auth.currentUser?.getIdToken(true);
+  }
+}
+
+// Read the manager claim from the current ID token.
+export async function currentUserIsManager(): Promise<boolean> {
+  const u = auth.currentUser;
+  if (!u) return false;
+  try {
+    const res = await u.getIdTokenResult();
+    return res.claims.manager === true;
+  } catch {
+    return false;
+  }
 }

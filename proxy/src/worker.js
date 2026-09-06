@@ -1,3 +1,5 @@
+import { handleManager } from './manager.js';
+
 // AI Mode routing proxy (Cloudflare Worker).
 //
 // Holds the Gemini key server-side and does one job: take a staff utterance and
@@ -178,15 +180,28 @@ export default {
     if (allowed && origin && origin !== allowed) {
       return json({ error: 'forbidden_origin' }, 403, corsOrigin);
     }
-    if (!env.GEMINI_API_KEY) {
-      return json({ error: 'not_configured' }, 500, corsOrigin);
-    }
 
     let payload;
     try {
       payload = await request.json();
     } catch {
       return json({ error: 'bad_request' }, 400, corsOrigin);
+    }
+
+    // Manager-session endpoints live under /manager/* and are independent of the
+    // AI routing path below (they do not need the Gemini key).
+    const pathname = new URL(request.url).pathname;
+    if (pathname.startsWith('/manager/')) {
+      try {
+        const { status, body } = await handleManager(pathname, payload, env);
+        return json(body, status, corsOrigin);
+      } catch {
+        return json({ error: 'manager_failed' }, 500, corsOrigin);
+      }
+    }
+
+    if (!env.GEMINI_API_KEY) {
+      return json({ error: 'not_configured' }, 500, corsOrigin);
     }
     const utterance = typeof payload?.utterance === 'string' ? payload.utterance.slice(0, 2000) : '';
     if (!utterance.trim()) {

@@ -1,13 +1,15 @@
-// Manager mode: a browser-session flag that unlocks manager-only actions once the
-// shared manager PIN is entered. Held in React state (not persisted), so it clears
-// on reload. The provider owns the PIN dialog and exposes prompts so any component
-// can gate an action behind it:
+// Manager mode: whether the current session may perform manager-only actions
+// (editing the schedule and app settings today; more later). This is now backed by
+// a REAL server gate: unlocking verifies the PIN with the worker and upgrades this
+// browser's Firebase session to carry a `manager` claim, which Firestore rules
+// enforce. See lib/managerAuth.ts and proxy/src/manager.js.
 //
 //   const { isManager, promptUnlock } = useManagerMode();
 //   {isManager ? <EditControls/> : <Button onClick={promptUnlock}>Manager sign in</Button>}
 //
-// This is a soft guardrail against accidental edits, not a security boundary; see
-// lib/managerAuth.ts. Reused later for site-content editing and settings.
+// Manager mode stays on until Lock or logout (the claim rides the session). In the
+// local dev bypass (no real Firebase auth) it degrades to a local toggle so the UI
+// is still demoable.
 import React, {
   createContext,
   useCallback,
@@ -17,62 +19,68 @@ import React, {
   useState,
   type ReactNode,
 } from "react";
+import { auth } from "@/lib/firebase";
 import ManagerPinDialog from "@/components/ManagerPinDialog";
 import {
-  loadManagerSettings,
-  saveManagerPin,
-  verifyManagerPin,
-  type ManagerSettings,
+  currentUserIsManager,
+  fetchPinStatus,
+  lockManagerSession,
+  managerConfigured,
+  setManagerPin,
+  unlockManagerSession,
 } from "@/lib/managerAuth";
 import { toast } from "@/hooks/use-toast";
 
 interface ManagerModeContextValue {
-  // Unlocked for this browser session.
   isManager: boolean;
-  // A manager PIN exists in Firestore (false = first-time setup needed).
   pinIsSet: boolean;
-  // Initial load of the PIN state is in flight.
   loading: boolean;
-  // Open the dialog to unlock (or to set the PIN on first use).
   promptUnlock: () => void;
-  // Open the dialog to set or change the PIN (used from manager mode).
   promptChangePin: () => void;
-  // Drop back out of manager mode.
   lock: () => void;
 }
 
 const ManagerModeContext = createContext<ManagerModeContextValue | undefined>(undefined);
 
+// Local dev bypass: no real Firebase auth, so manager mode is a local toggle.
+const DEV_BYPASS =
+  import.meta.env.VITE_NODE_ENV === "development" &&
+  import.meta.env.VITE_DEV_BYPASS_AUTH === "true";
+
 export const ManagerModeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [settings, setSettings] = useState<ManagerSettings | null>(null);
   const [isManager, setIsManager] = useState(false);
+  const [pinIsSet, setPinIsSet] = useState(false);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"unlock" | "set">("unlock");
 
-  const refreshSettings = useCallback(async (): Promise<ManagerSettings | null> => {
+  const refreshPinStatus = useCallback(async () => {
+    if (DEV_BYPASS || !managerConfigured()) return;
     try {
-      const s = await loadManagerSettings();
-      setSettings(s);
-      return s;
+      setPinIsSet(await fetchPinStatus());
     } catch {
-      // Demo config or a read error: treat as "no PIN set yet" rather than crash.
-      setSettings(null);
-      return null;
+      setPinIsSet(false);
     }
   }, []);
 
+  // Track the manager claim on the live Firebase session.
   useEffect(() => {
+    if (DEV_BYPASS) {
+      setLoading(false);
+      return;
+    }
+    const unsub = auth.onIdTokenChanged(async () => {
+      setIsManager(await currentUserIsManager());
+    });
     (async () => {
-      await refreshSettings();
+      await refreshPinStatus();
+      setIsManager(await currentUserIsManager());
       setLoading(false);
     })();
-  }, [refreshSettings]);
-
-  const pinIsSet = !!settings?.pinHash;
+    return unsub;
+  }, [refreshPinStatus]);
 
   const promptUnlock = useCallback(() => {
-    // First time (no PIN yet): go straight to the set flow, which also unlocks.
     setDialogMode(pinIsSet ? "unlock" : "set");
     setDialogOpen(true);
   }, [pinIsSet]);
@@ -82,33 +90,59 @@ export const ManagerModeProvider: React.FC<{ children: ReactNode }> = ({ childre
     setDialogOpen(true);
   }, []);
 
-  const lock = useCallback(() => setIsManager(false), []);
+  const lock = useCallback(async () => {
+    if (DEV_BYPASS) {
+      setIsManager(false);
+      return;
+    }
+    await lockManagerSession();
+    setIsManager(await currentUserIsManager());
+  }, []);
 
   const handleSubmit = useCallback(
-    async (pin: string): Promise<{ ok: boolean; error?: string }> => {
-      if (dialogMode === "set") {
-        try {
-          await saveManagerPin(pin);
-          await refreshSettings();
-          setIsManager(true);
-          toast({ title: "Manager PIN set", description: "Manager mode is on." });
-          return { ok: true };
-        } catch {
-          return { ok: false, error: "Could not save the PIN. Check your connection and try again." };
-        }
-      }
-      // Unlock: verify against the current stored hash, reloading once if we have
-      // nothing cached (e.g. set on another device this session).
-      let current = settings;
-      if (!current) current = await refreshSettings();
-      const ok = await verifyManagerPin(pin, current);
-      if (ok) {
+    async (pin: string, currentPin?: string): Promise<{ ok: boolean; error?: string }> => {
+      // Dev bypass: accept locally so the flow is demoable without a backend.
+      if (DEV_BYPASS) {
+        if (dialogMode === "set") setPinIsSet(true);
         setIsManager(true);
         return { ok: true };
       }
-      return { ok: false, error: "Incorrect PIN." };
+      if (!managerConfigured()) {
+        return { ok: false, error: "Manager service is not set up (no proxy URL)." };
+      }
+
+      if (dialogMode === "set") {
+        const res = await setManagerPin(pin, currentPin);
+        if (!res.ok) {
+          const msg =
+            res.error === "wrong_current_pin"
+              ? "That current PIN is not right."
+              : "Could not save the PIN. Try again.";
+          return { ok: false, error: msg };
+        }
+        await refreshPinStatus();
+        // First-time set: go straight into manager mode with the new PIN.
+        const unlock = await unlockManagerSession(pin);
+        if (unlock.ok) setIsManager(true);
+        toast({ title: "Manager PIN saved", description: "Manager mode is on." });
+        return { ok: true };
+      }
+
+      // Unlock.
+      const res = await unlockManagerSession(pin);
+      if (!res.ok) {
+        const msg =
+          res.error === "wrong_pin"
+            ? "Incorrect PIN."
+            : res.error === "not_signed_in"
+              ? "Sign in first, then unlock manager mode."
+              : "Could not unlock. Try again.";
+        return { ok: false, error: msg };
+      }
+      setIsManager(true);
+      return { ok: true };
     },
-    [dialogMode, settings, refreshSettings],
+    [dialogMode, refreshPinStatus],
   );
 
   const value = useMemo<ManagerModeContextValue>(
@@ -123,6 +157,7 @@ export const ManagerModeProvider: React.FC<{ children: ReactNode }> = ({ childre
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         mode={dialogMode}
+        requireCurrent={dialogMode === "set" && pinIsSet}
         onSubmit={handleSubmit}
       />
     </ManagerModeContext.Provider>
