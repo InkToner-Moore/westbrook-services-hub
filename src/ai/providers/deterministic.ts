@@ -21,6 +21,7 @@ import {
   extractPhone,
   extractProvince,
   extractQuantity,
+  extractShippingCost,
   extractTracking,
   extractType,
   extractUrl,
@@ -32,7 +33,7 @@ import { emptyShipmentItem } from '../shipping';
 // notes, inventory, directory) are checked before the receipt subtypes so a
 // category word like "shipping" inside "add directory link ... shipping" does not
 // get mistaken for a shipping receipt.
-const ROUTES: Array<{ action: AiAction; subtype?: ReceiptSubtype; words: string[] }> = [
+const ROUTES: Array<{ action: AiAction; subtype?: ReceiptSubtype; words: string[]; patterns?: RegExp[] }> = [
   { action: 'cartridge_status', words: ['mark ready', 'set status', 'picked up', 'is ready', 'change status', 'mark as'] },
   { action: 'cartridge_list', words: ['list orders', 'show orders', 'pending orders', 'all orders', 'open orders'] },
   { action: 'cartridge_modify', words: ['modify order', 'edit order', 'update order', 'change order'] },
@@ -77,17 +78,52 @@ const ROUTES: Array<{ action: AiAction; subtype?: ReceiptSubtype; words: string[
       'location of',
     ],
   },
-  { action: 'inventory', words: ['inventory', 'in stock', 'out of stock', 'restock', 'key model'] },
+  {
+    action: 'inventory',
+    words: ['inventory', 'in stock', 'out of stock', 'restock', 'key model'],
+    // A write verb aimed at a stock count, so "set KW1 to 10 units" or "adjust the
+    // HP 65 quantity" route to the inventory editor.
+    patterns: [/\b(set|add|adjust|update|change|restock|remove|reduce)\b[^.?!]*\b(stock|units?|qty|quantity|count|shelf|on hand)\b/i],
+  },
   { action: 'note', words: ['note', 'remember', 'jot'] },
   // Only explicit tracking verbs route here. A bare courier name (from a Track
   // pill) or a lone tracking number falls back to track after the receipt routes,
   // so a shipping receipt that names its courier is not mistaken for a lookup.
   { action: 'track', words: ['track', 'where is', 'trace'] },
   { action: 'receipt', subtype: 'refill', words: ['refill', 'refilled', 'toner refill'] },
-  { action: 'receipt', subtype: 'shipping', words: ['ship', 'shipment', 'courier', 'parcel', 'drop off', 'dropoff'] },
-  { action: 'receipt', subtype: 'key', words: ['key cut', 'key cutting', 'cut a key', 'key copy', 'copy a key'] },
+  {
+    action: 'receipt',
+    subtype: 'shipping',
+    words: ['ship', 'shipment', 'courier', 'parcel', 'drop off', 'dropoff'],
+    // A carrier named with a destination or a price is a shipment, even without
+    // the word "ship" (e.g. "UPS to Toronto $22").
+    patterns: [/\b(ups|fedex|purolator|canada post|dhl)\b/i],
+  },
+  {
+    action: 'receipt',
+    subtype: 'key',
+    words: ['key cut', 'key cutting', 'cut a key', 'key copy', 'copy a key'],
+    // Phrase-tolerant: any cut/copy/duplicate verb near "key(s)", so "cut 2 keys"
+    // and "make me 3 key copies" both land here.
+    patterns: [
+      /\bkeys?\b[^.?!]*\b(?:cut|copy|copies|duplicat\w*|made|make)\b/i,
+      /\b(?:cut|copy|copies|duplicat\w*)\b[^.?!]*\bkeys?\b/i,
+    ],
+  },
   { action: 'receipt', subtype: 'supplies', words: ['purchase', 'buy', 'bought', 'sold', 'sale', 'supply', 'supplies'] },
 ];
+
+// Signals that a courier/tracking utterance is a shipment SALE (a receipt), not a
+// bare parcel trace: a stated price, a Canadian province, a decimal amount, or a
+// "to <Place>" destination. A lone courier or tracking number has none of these.
+function looksLikeShipmentSale(text: string): boolean {
+  return (
+    extractMoney(text) !== null ||
+    extractProvince(text) !== null ||
+    /\b\d{1,4}\.\d{2}\b/.test(text) ||
+    /\bto\s+[A-Z][a-z]+/.test(text)
+  );
+}
 
 const RECEIPT_HINT = ['receipt', 'invoice'];
 
@@ -223,8 +259,12 @@ export class DeterministicProvider implements AiProvider {
     // Content-based routing for a cartridge status change: a status word, plus an
     // order id or a clear "mark/set/order/status" cue. This catches phrasings the
     // fixed keyword list misses (e.g. "mark ORD-AB12CD as ready"). Strong signal.
+    // A status CHANGE needs an order id or an explicit change verb. A bare mention
+    // of "pickup" is not enough (e.g. "dropped off a Canon for pickup" is a new
+    // order, not a status change), so the guard no longer fires on "order"/"pickup"
+    // alone.
     const statusHint = extractCartridgeStatus(text);
-    if (statusHint && (extractOrderId(text) || /\b(mark|set|status|order|pickup|pick up)\b/i.test(lower))) {
+    if (statusHint && (extractOrderId(text) || /\b(mark|marked|set|change|update|status)\b/i.test(lower))) {
       action = 'cartridge_status';
       confidence = 0.8;
     }
@@ -247,7 +287,9 @@ export class DeterministicProvider implements AiProvider {
       // confirmation card can offer a one-tap correction on a close call.
       const matches = ROUTES.map((route) => ({
         route,
-        hits: route.words.filter((w) => lower.includes(w)).length,
+        hits:
+          route.words.filter((w) => lower.includes(w)).length +
+          (route.patterns?.filter((re) => re.test(text)).length ?? 0),
       })).filter((m) => m.hits > 0);
 
       if (matches.length > 0) {
@@ -281,7 +323,7 @@ export class DeterministicProvider implements AiProvider {
     if (action === 'unknown') {
       const { courier, trackingNumber } = extractTracking(text);
       if (courier || trackingNumber) {
-        if (extractMoney(text) !== null) {
+        if (looksLikeShipmentSale(text)) {
           action = 'receipt';
           subtype = 'shipping';
           confidence = 0.75;
@@ -331,7 +373,7 @@ export function populateIntentFields(intent: Intent, text: string): void {
   // in the item editor.
   if (action === 'receipt' && subtype === 'shipping') {
     const { courier, trackingNumber } = extractTracking(text);
-    const cost = extractMoney(text);
+    const cost = extractShippingCost(text, trackingNumber, extractPhone(text));
     const province = extractProvince(text);
     const item = {
       ...emptyShipmentItem(),

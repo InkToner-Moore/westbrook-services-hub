@@ -58,6 +58,33 @@ export function extractMoney(text: string): number | null {
   return null;
 }
 
+// The shipping cost from an utterance, tolerant of a missing "$". A shipping line
+// almost always states a price, but staff rarely type the symbol ("...NS 12.99").
+// Tries the strict money extractor first (a $ or a price cue always wins), then
+// falls back to a plausible bare amount, after removing the tracking number and
+// phone so a long id or a 10-digit phone is never mistaken for the cost.
+export function extractShippingCost(
+  text: string,
+  trackingNumber?: string | null,
+  phone?: string | null,
+): number | null {
+  const strict = extractMoney(text);
+  if (strict !== null) return strict;
+
+  let t = ` ${text} `;
+  if (trackingNumber) t = t.split(trackingNumber).join(' ');
+  if (phone) t = t.split(phone).join(' ');
+  // Strip any remaining long digit run (an unknown tracking id) and any bare
+  // 10-digit run (a phone we did not capture), so only real amounts remain.
+  t = t.replace(/\d[\d\s.-]{9,}\d/g, ' ').replace(/(?<!\d)\d{7,}(?!\d)/g, ' ');
+
+  const decimal = t.match(/(?<!\d)\d{1,4}\.\d{1,2}(?!\d)/);
+  if (decimal) return Number(decimal[0]);
+  const integer = t.match(/(?<!\d)(\d{1,4})(?!\d)/);
+  if (integer) return Number(integer[1]);
+  return null;
+}
+
 export function extractQuantity(text: string): number | null {
   const qty = text.match(/(?:qty|quantity|x)\s*[:=]?\s*(\d{1,3})\b/i);
   if (qty) return Number(qty[1]);
@@ -95,8 +122,9 @@ export function extractModel(text: string): string | null {
 }
 
 // Words that follow a name cue but are never a name: brands, cartridge types,
-// and common service nouns. Guards the lowercase fallback below from grabbing
-// "for hp 65" as a customer named "hp".
+// couriers, and common service nouns. Guards the lowercase fallback and the
+// leading-name heuristic below from grabbing "for hp 65" as a customer named
+// "hp", or "Canada Post to ..." as a customer named "Canada Post".
 const NAME_STOPWORDS = new Set(
   [
     ...CARTRIDGE_BRANDS.map((b) => b.toLowerCase()),
@@ -116,6 +144,21 @@ const NAME_STOPWORDS = new Set(
     'order',
     'today',
     'tomorrow',
+    // Couriers and shipment nouns, so a shipping utterance's carrier is not read
+    // as the customer's name.
+    'ups',
+    'fedex',
+    'purolator',
+    'canada',
+    'post',
+    'dhl',
+    'express',
+    'saver',
+    'ground',
+    'parcel',
+    'package',
+    'ship',
+    'shipment',
   ].flatMap((w) => w.split(/\s+/)),
 );
 
@@ -134,6 +177,16 @@ function titleCase(name: string): string {
 export function extractName(text: string): string | null {
   const strict = text.match(/\b(?:for|customer|name(?:d)?(?:\s+is)?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);
   if (strict) return strict[1].trim();
+
+  // A capitalized "First Last" (up to three words) at the very start, when the
+  // first word is not a stopword. Staff often type the customer name first, with
+  // no cue word, e.g. "Hannah Lemmington UPS ...". Requires at least two words so
+  // a lone leading verb like "Refill" is never taken as a name.
+  const leading = text.match(/^\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b/);
+  if (leading) {
+    const words = leading[1].trim().split(/\s+/);
+    if (!words.some((w) => NAME_STOPWORDS.has(w.toLowerCase()))) return words.join(' ');
+  }
 
   const loose = text.match(/\b(?:for|customer|name(?:d)?(?:\s+is)?)\s+([a-z]{2,}(?:\s+[a-z]{2,})?)/i);
   if (!loose) return null;
