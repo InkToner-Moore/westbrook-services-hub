@@ -17,7 +17,7 @@ const StaffHeader = ({
   title, 
   subtitle = "Staff Portal", 
   icon: Icon,
-  iconColor = "from-blue-400 to-indigo-600",
+  iconColor = "text-blue-600 dark:text-blue-400",
   backTo = "/staff/dashboard",
   backLabel = "Back to Dashboard"
 }: StaffHeaderProps) => {
@@ -41,8 +41,8 @@ const StaffHeader = ({
               {backLabel}
             </Link>
             {Icon && (
-              <div className={`bg-gradient-to-br ${iconColor} p-3 rounded-xl shadow-2xl`}>
-                <Icon className="h-8 w-8 text-white drop-shadow-lg" />
+              <div className={`flex items-center justify-center p-3 rounded-xl shadow-lg ${themeClasses.card.secondary}`}>
+                <Icon className={`h-8 w-8 drop-shadow-lg ${iconColor}`} />
               </div>
             )}
             <div>
