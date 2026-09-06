@@ -2,6 +2,59 @@
 
 Read `DESIGN-SPEC.md` and `PLAN.md` first. This records where the rehaul stands.
 
+## Schedule + manager PIN (2026-09-05, later session)
+
+Branch **`manager-schedule`** stacked on `phase2-followups`, pushed to
+`origin/manager-schedule` (tip `41e5a72`). Two commits:
+- `fix(theme): hard-reset the default to light for everyone` - bumps the theme
+  localStorage key (`staff-theme` -> `staff-theme-v2`) so every browser's saved
+  preference is dropped once and lands on light. This closes the long-open
+  "theme force-reset" question. A later toggle persists under the new key.
+- `feat(timesheet): manager-PIN-gated weekly schedule` - answers "timesheets
+  should be doable through classic too" (they already were; the real ask was a
+  manager-built schedule).
+
+What landed for the feature:
+- A **reusable manager mode** (soft gate): `src/lib/managerAuth.ts` (SHA-256 of a
+  salt + PIN via Web Crypto, stored in a single `appSettings/manager` Firestore
+  doc as `pinHash`), `src/contexts/ManagerModeContext.tsx` (`useManagerMode()`
+  exposing `isManager`, `pinIsSet`, `promptUnlock`, `promptChangePin`, `lock`;
+  renders the dialog itself), and `src/components/ManagerPinDialog.tsx` (set-PIN
+  / unlock modal). Mounted in `App.tsx` wrapping the app. `isManager` is
+  session-only React state (clears on reload). Built generic on purpose so the
+  future site-content editor and settings can gate the same way.
+- A **Schedule tab** on the Timesheet page (`src/pages/StaffTimesheet.tsx`): a
+  Sunday-start weekly view (prev/next/this-week) of planned shifts grouped by
+  day; all staff read it. Add / edit / delete shifts show only in manager mode;
+  a locked user sees "Manager sign in". Shifts: `src/lib/schedule.ts` model +
+  helpers, new `scheduleShifts` collection, `generateShiftId` (`SHF-`) in
+  `lib/firestore.ts`. AI Mode is untouched (this is the classic-page path).
+- Gate: `tsc -p tsconfig.app.json --noEmit` clean, `yarn build` green, lint on
+  changed files is baseline-only (pre-existing `any` in `firestore.ts`/
+  `ThemeContext.tsx`, plus the benign react-refresh warning on `useManagerMode`,
+  same pattern as ThemeContext/AiContext). Browser-verified locally (auth
+  bypass, light theme default confirmed): tab switch, schedule week view,
+  read-only lock state, and the set-PIN dialog all render with no React errors.
+  Firestore reads/writes are permission-denied on the demo config (expected).
+
+**BLOCKERS before this works on staging (needs Parsa):**
+1. **Two new Firestore collections need auth-gated rules on DEV** (and later
+   PROD): `appSettings` and `scheduleShifts` both need
+   `allow read, write: if request.auth != null`, like the earlier
+   `employees`/`timeEntries`/`transactions` fix. No Firebase service account is
+   in keyvault this session, so this must be added in the Firebase console.
+   Without it the schedule loads empty and the PIN cannot be set.
+2. **Not promoted to `origin/dev`.** `origin/dev` is still at `phase2-followups`
+   (`4958ca2`). Promoting is a clean fast-forward to `41e5a72` once the rules
+   are in; left as Parsa's call.
+
+**Design note (flagged to Parsa):** the PIN is a SOFT gate - it stops accidental
+edits by counter staff, but any signed-in user with devtools can bypass it while
+Firestore rules still allow any authed write. Real enforcement means a rule keyed
+on a manager identity (a manager-UID allowlist or a custom claim). Harden when
+ready. Open follow-up: the schedule is not exposed through AI Mode (classic only,
+as asked); add a `schedule` action later if wanted.
+
 ## Phase 2 follow-ups (2026-09-05, later session)
 
 Cleared several of the "watch-outs" the Phase 2 build left. Two new branches, both
