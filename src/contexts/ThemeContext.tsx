@@ -14,14 +14,18 @@ interface ThemeProviderProps {
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    // Check localStorage for saved preference, default to false (light mode)
-    const saved = localStorage.getItem('staff-theme');
+    // Check localStorage for saved preference, default to false (light mode).
+    // The storage key is versioned: bumping it (staff-theme -> staff-theme-v2)
+    // is a one-time hard reset that drops every browser's old saved preference,
+    // so everyone lands on the light default once. A later toggle persists under
+    // the new key as usual.
+    const saved = localStorage.getItem('staff-theme-v2');
     return saved !== null ? JSON.parse(saved) : false;
   });
 
   useEffect(() => {
     // Save theme preference to localStorage
-    localStorage.setItem('staff-theme', JSON.stringify(isDarkMode));
+    localStorage.setItem('staff-theme-v2', JSON.stringify(isDarkMode));
 
     // Drive Tailwind's `dark` variant and the shadcn CSS variables from the
     // same state. Without this, every Radix portal surface (Select menus,
