@@ -66,6 +66,20 @@ const RESPONSE_SCHEMA = {
       nullable: true,
       description: 'Only when action is clarify: one short question to disambiguate. Null otherwise.',
     },
+    clarifyOptions: {
+      type: 'ARRAY',
+      nullable: true,
+      description:
+        'Only when action is clarify: the 2 or 3 routes you are choosing between, so the counter can pick with one tap. Each is an action (and subtype for receipts). Null otherwise.',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          action: { type: 'STRING', enum: ACTIONS },
+          subtype: { type: 'STRING', enum: SUBTYPES, nullable: true },
+        },
+        propertyOrdering: ['action', 'subtype'],
+      },
+    },
     // Optional field CANDIDATES. Suggestions only: the client fills one in only
     // where its own extraction found nothing, marks it "guessed", and asks a human
     // to confirm. Copy values verbatim from the utterance; never invent one.
@@ -91,7 +105,7 @@ const RESPONSE_SCHEMA = {
     },
   },
   required: ['action', 'confidence'],
-  propertyOrdering: ['action', 'subtype', 'confidence', 'clarify', 'fields'],
+  propertyOrdering: ['action', 'subtype', 'confidence', 'clarify', 'clarifyOptions', 'fields'],
 };
 
 const SYSTEM_PROMPT = `You route a single staff utterance from an office-services shop's counter tool into one action. Return ONLY the structured object.
@@ -109,12 +123,14 @@ Actions:
 - purchase: send a payment to the card machine and record the transaction. Only when the words are about taking a payment on its own (e.g. "charge $40 to a card"). A priced receipt that also says "charge her card" is still a receipt; the payment rides along as an attachment, not this action.
 - timesheet: employee punch-in / punch-out clock, adding an employee, or viewing today's punches or a person's hours, e.g. "clock in Sarah", "clock out Dave", "add employee Priya", "who is on the clock?", "hours for Sarah".
 - track: look up a parcel by courier and/or tracking number.
-- clarify: the request is a real task but too ambiguous to route; put your one short question in "clarify".
+- clarify: the request is a real task but too ambiguous to route; put your one short question in "clarify" AND list the 2 or 3 routes you are torn between in "clarifyOptions".
 - unknown: not a task this tool handles.
 
 Disambiguation rules:
 - "refill for <name>, <model>, <price>" with a price is a receipt (subtype refill), NOT cartridge_create. Choose cartridge_create only when the words say to log/create an order.
-- A bare courier name or tracking number is track. But a shipping receipt names a courier too, so "ship this / parcel drop-off / shipping for <name>" is a receipt (subtype shipping).
+- A bare courier name or tracking number is track. But if there is ALSO a price, it is a shipping SALE being rung up: receipt (subtype shipping), not track. A named courier plus a customer and a dollar amount is a shipping receipt.
+- A lone SKU or key code with no verb (e.g. "KW1", "KW1?", "SC4") is a price/stock/location question: inventory_lookup, not inventory. Inventory (the write) always has a verb like add, set, mark, restock, out of stock.
+- Whenever you choose clarify, fill clarifyOptions with the exact routes in question (e.g. [{action:"receipt",subtype:"refill"},{action:"cartridge_create"}]).
 - Use the active tab, if given, only as a tiebreaker when the words are ambiguous; the words always win.
 
 Examples (utterance -> action[/subtype]):
@@ -130,6 +146,9 @@ Examples (utterance -> action[/subtype]):
 - "is the HP 65 in stock?" -> inventory_lookup
 - "what's the price of a Canon 137?" -> inventory_lookup
 - "where is that key?" -> inventory_lookup
+- "KW1?" -> inventory_lookup
+- "SC4" -> inventory_lookup
+- "Hannah Lemmington UPS express saver 2818387529719764 ontario 53$ 4167382277" -> receipt/shipping
 - "clock in Sarah" -> timesheet
 - "clock out Dave" -> timesheet
 - "add employee Priya" -> timesheet

@@ -10,7 +10,7 @@
 import React, { useState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { AiAction, ReceiptSubtype } from '@/ai/types';
-import { ROUTE_OPTIONS, sameRoute } from '@/ai/intentOptions';
+import { ROUTE_OPTIONS, sameRoute, type RouteOption } from '@/ai/intentOptions';
 
 interface Props {
   onPick: (action: AiAction, subtype?: ReceiptSubtype) => void;
@@ -18,13 +18,16 @@ interface Props {
   // The current route, hidden from the options so it is not offered again.
   currentAction?: AiAction;
   currentSubtype?: ReceiptSubtype;
+  // When the engine is stuck between a specific few routes, pass just those so the
+  // picker offers the real choices instead of the whole menu. Defaults to all.
+  choices?: RouteOption[];
 }
 
-const IntentSuggestions: React.FC<Props> = ({ onPick, variant, currentAction, currentSubtype }) => {
+const IntentSuggestions: React.FC<Props> = ({ onPick, variant, currentAction, currentSubtype, choices }) => {
   const { themeClasses, isDarkMode } = useTheme();
   const [expanded, setExpanded] = useState(variant === 'card');
 
-  const options = ROUTE_OPTIONS.filter((o) => !sameRoute(o, currentAction, currentSubtype));
+  const options = (choices ?? ROUTE_OPTIONS).filter((o) => !sameRoute(o, currentAction, currentSubtype));
 
   const chip = `rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors ${
     isDarkMode

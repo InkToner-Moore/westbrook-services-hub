@@ -17,7 +17,29 @@ import type { Intent } from '@/ai/types';
 import type { Courier } from '@/ai/tracking';
 import Composer from '@/components/ai/Composer';
 import IntentSuggestions from '@/components/ai/IntentSuggestions';
+import { ROUTE_OPTIONS, sameRoute } from '@/ai/intentOptions';
 import CartPanel from '@/components/ai/CartPanel';
+
+// When the engine narrowed it to two routes (a winner plus a runner-up), the
+// "did you mean" card should offer just those, not the whole menu. Returns the
+// two matching options, or undefined to fall back to the full list when there is
+// no runner-up (a genuine "no idea", where any route is fair game).
+function stuckBetween(intent: Intent) {
+  // Prefer the model's own list of the routes it is choosing between.
+  if (intent.clarifyOptions && intent.clarifyOptions.length >= 2) {
+    const named = ROUTE_OPTIONS.filter((o) =>
+      intent.clarifyOptions!.some((c) => sameRoute(o, c.action, c.subtype)),
+    );
+    if (named.length >= 2) return named;
+  }
+  if (!intent.runnerUp) return undefined;
+  const pair = ROUTE_OPTIONS.filter(
+    (o) =>
+      sameRoute(o, intent.action, intent.subtype) ||
+      sameRoute(o, intent.runnerUp!.action, intent.runnerUp!.subtype),
+  );
+  return pair.length >= 2 ? pair : undefined;
+}
 
 // A few one-tap starters shown on an empty thread. They teach the shape of a
 // good utterance and save typing at a busy counter.
@@ -156,6 +178,7 @@ const AiChatPane: React.FC = () => {
               {showSuggestions && (
                 <IntentSuggestions
                   variant="card"
+                  choices={stuckBetween(turn.intent!)}
                   onPick={(action, subtype) => rerouteIntent(turn.id, turn.sourceText, action, subtype)}
                 />
               )}

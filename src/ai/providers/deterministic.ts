@@ -91,6 +91,23 @@ const ROUTES: Array<{ action: AiAction; subtype?: ReceiptSubtype; words: string[
 
 const RECEIPT_HINT = ['receipt', 'invoice'];
 
+// Words that make an inventory utterance a WRITE (add or change stock). Their
+// absence, on a lone code, is what marks a read lookup.
+const INVENTORY_WRITE_VERB =
+  /\b(add|added|set|mark|marked|restock|restocked|remove|removed|update|updated|change|changed|received|count|counted|out of stock|in stock)\b/i;
+
+// A lone SKU / key code, optionally ending in "?", e.g. "KW1", "KW1?", "SC4",
+// "564XL", "5268". This is a price / stock / location lookup, not a stock edit,
+// so it routes to inventory_lookup. Requires the whole utterance to be that one
+// token (so a real sentence is never swallowed) and no write verb present.
+function looksLikeInventoryLookup(text: string): boolean {
+  const t = text.trim().replace(/\?+$/, '').trim();
+  if (INVENTORY_WRITE_VERB.test(text)) return false;
+  // One short alphanumeric token that contains a digit: a key code (KW1, SC4) or a
+  // cartridge SKU (564XL, TN660), whichever way the letters and digits fall.
+  return /^[A-Za-z0-9]{2,7}$/.test(t) && /\d/.test(t);
+}
+
 // Provenance helpers.
 const explicit = <T>(value: T): FieldValue<T> => ({ value, source: 'explicit' });
 const guessed = <T>(value: T, reason: string): FieldValue<T> => ({ value, source: 'guessed', reason });
@@ -212,6 +229,16 @@ export class DeterministicProvider implements AiProvider {
       confidence = 0.8;
     }
 
+    // A lone SKU / key code, with or without a trailing "?", is a READ lookup of
+    // its price / stock / location, not a stock edit. Inventory WRITES always carry
+    // a verb (add, mark, restock, set, out of stock); a bare code does not. This
+    // decides it deterministically so "KW1" and "KW1?" never depend on the model,
+    // which tends to guess the write. See the inventory_lookup route below.
+    if (action === 'unknown' && looksLikeInventoryLookup(text)) {
+      action = 'inventory_lookup';
+      confidence = 0.8;
+    }
+
     if (action === 'unknown') {
       // Score every route by how many of its keywords hit. The DECISION is
       // unchanged from the original first-match-wins: the winner is the earliest
@@ -248,12 +275,20 @@ export class DeterministicProvider implements AiProvider {
 
     // Bare courier name or lone tracking number, with no other intent: a lookup.
     // This is what a Track pill (which prepends just the courier) relies on. A
-    // courier or a full tracking number is unambiguous, so trust it.
+    // courier or a full tracking number is unambiguous, so trust it. But a price in
+    // the same breath means this is a shipping SALE being rung up (a receipt), not a
+    // parcel trace, so route it to a shipping receipt instead.
     if (action === 'unknown') {
       const { courier, trackingNumber } = extractTracking(text);
       if (courier || trackingNumber) {
-        action = 'track';
-        confidence = 0.75;
+        if (extractMoney(text) !== null) {
+          action = 'receipt';
+          subtype = 'shipping';
+          confidence = 0.75;
+        } else {
+          action = 'track';
+          confidence = 0.75;
+        }
       }
     }
 

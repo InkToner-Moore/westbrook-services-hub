@@ -85,6 +85,12 @@ export class LlmProvider implements AiProvider {
       fields: {},
       confidence: bucketToConfidence(routing.confidence),
       clarify: routing.clarify ?? undefined,
+      clarifyOptions: routing.clarifyOptions
+        ? routing.clarifyOptions.map((o) => ({
+            action: o.action as Intent['action'],
+            subtype: o.subtype ?? undefined,
+          }))
+        : undefined,
       runnerUp,
     };
     populateIntentFields(intent, utterance);

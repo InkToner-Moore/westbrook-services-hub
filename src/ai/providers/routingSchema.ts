@@ -74,6 +74,17 @@ export const routingSchema = z.object({
   // llm.ts maps either form onto the app's 0..1 scale.
   confidence: z.union([z.enum(['high', 'medium', 'low']), z.number().min(0).max(1)]),
   clarify: z.string().optional().nullable(),
+  // The routes a clarify is choosing between, so the picker shows just those.
+  // Older proxies omit this; the client falls back to the full menu then.
+  clarifyOptions: z
+    .array(
+      z.object({
+        action: z.string(),
+        subtype: z.enum(['refill', 'supplies', 'shipping', 'key']).optional().nullable(),
+      }),
+    )
+    .optional()
+    .nullable(),
   // Optional field candidates (older proxies omit this; still validates).
   fields: candidateSchema,
 });

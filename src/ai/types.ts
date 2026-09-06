@@ -53,6 +53,9 @@ export interface Intent {
   attach?: IntentAttachments;
   // Present when action === 'clarify'.
   clarify?: string;
+  // The two or three routes a clarify is choosing between, so the "did you mean"
+  // card offers just those instead of the whole menu. Only set on a clarify.
+  clarifyOptions?: Array<{ action: AiAction; subtype?: ReceiptSubtype }>;
   // 0..1. Deterministic provider grades from match strength; the LLM maps its
   // coarse high/medium/low bucket onto this scale.
   confidence: number;
