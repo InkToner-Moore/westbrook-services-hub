@@ -35,18 +35,18 @@ with the code, **the code wins**. Specifically:
   `main`. Netlify is not the target.
 - **Default theme is light**, not dark (the older CLAUDE.md said dark).
 - The **feature-module gating** (`FeatureProtectedRoute`, `feature-toggle.tsx`,
-  `modules.*.enabled` paths in `App.tsx`) is dead scaffolding: `isFeatureEnabled`
-  is hardcoded to `true` because the settings panel was removed. Routes render
-  regardless. Don't build on it without reviving the settings store first.
+  `modules.*.enabled` paths) was dead scaffolding and has been **removed** in the
+  UI rehaul, along with the `modules.*.enabled` routing. Don't reintroduce it
+  without a real settings store.
 
 If you find another doc that contradicts the code, fix or flag it rather than
 coding to it.
 
 ## Commands
 
-Package manager: **yarn** is authoritative — CI runs `yarn install --frozen-lockfile`
-on Node 22. (`bun.lockb`, `package-lock.json`, and `yarn.lock` all exist in the
-tree; ignore the first two, keep `yarn.lock` in sync.)
+Package manager: **yarn** is authoritative. CI runs `yarn install --frozen-lockfile`
+on Node 22. Only `yarn.lock` exists now (the stray `bun.lockb` and
+`package-lock.json` were removed); keep `yarn.lock` in sync.
 
 - `yarn dev` — dev server on **port 8080** (`host: "::"`, so reachable on the LAN)
 - `yarn build` — production build to `dist/`
@@ -54,9 +54,11 @@ tree; ignore the first two, keep `yarn.lock` in sync.)
 - `yarn lint` — ESLint
 - `yarn preview` — preview the production build
 
-There is **no test framework and no type-check script** configured. Don't invent
-`yarn test` or `yarn type-check` in instructions or CI. Verify changes with
-`yarn build` and `yarn lint`.
+There is **no test framework and no `yarn type-check` script** configured. Don't
+invent `yarn test` or a `yarn type-check` script in instructions or CI. Verify
+changes with `yarn build` and `yarn lint`. For a real type-check, run
+`yarn tsc -p tsconfig.app.json --noEmit` directly (the root `tsconfig.json` is
+solution-style with empty `files`, so a bare `tsc --noEmit` is a no-op).
 
 ## Stack
 
@@ -65,36 +67,47 @@ There is **no test framework and no type-check script** configured. Don't invent
 - **React Router** (`BrowserRouter`, `basename={import.meta.env.BASE_URL}`).
 - **TanStack Query** for async state, **React Hook Form** + **Zod** for forms.
 - **Firebase** Auth and Firestore.
-- **jsPDF** + **html2canvas** for receipt/PDF export; **lucide-react** icons;
-  **recharts** for the analytics dashboard.
+- **jsPDF** for receipt/PDF export; **lucide-react** icons. (html2canvas and
+  recharts were removed in cleanup; don't reintroduce them without cause.)
 - TypeScript is intentionally relaxed (`noImplicitAny: false`,
   `strictNullChecks: false`). Path alias `@/*` → `src/*`.
 
 ## Layout
 
+The UI rehaul made **AI Mode the main staff screen**: `/staff/*` renders inside a
+3-pane shell (`components/shell/`) via a layout route in `App.tsx`, tools render
+chromeless in the center pane, and `/staff/dashboard` redirects to `/staff/ai`.
+The old `StaffDashboard` grid and `FeatureProtectedRoute` are gone.
+
 ```
 src/
-  App.tsx              routing; public + protected staff routes
+  App.tsx              routing; /staff/* is a StaffShell layout route (tools nested)
   main.tsx             entry
   pages/
     PublicHome.tsx     customer portal (tracking, refill status, services, contact)
     StaffLogin.tsx     Firebase email/password login
-    StaffDashboard.tsx staff landing / module launcher
-    StaffTracking.tsx  StaffReceipts.tsx  StaffCartridges.tsx
-    StaffDirectory.tsx StaffNotes.tsx     StaffInventory.tsx  StaffRequests.tsx
+    StaffTracking.tsx  StaffReceipts.tsx  StaffCartridges.tsx  StaffDirectory.tsx
+    StaffNotes.tsx     StaffInventory.tsx StaffTimesheet.tsx
     NotFound.tsx
   components/
+    shell/             the 3-pane staff shell: StaffShell (frame + responsive),
+                       TileRail, AiChatPane, ArtifactRail, artifactRegistry,
+                       ShellContext (the `inShell` chromeless signal), tiles, UserMenu
+    ai/                AI chat + artifact layer: Composer, ConfirmationCheck,
+                       ArtifactPanel/ArtifactActions, artifacts/ (per-action cards)
     SmartTracker.tsx   courier detection + tracking UI (shared public/staff)
-    StaffHeader.tsx StaffLayout.tsx   staff chrome
+    StaffHeader.tsx StaffLayout.tsx   chrome for deep-linked standalone tool pages
     ProtectedRoute.tsx        auth gate
-    FeatureProtectedRoute.tsx module gate (currently a no-op — see above)
     ui/                shadcn/ui components; edit here for shared primitives
+  ai/                  intent model + actions (types, extract, fieldSpecs,
+                       actions/, providers/) that drive the AI layer
   contexts/ThemeContext.tsx   theme state + themeClasses bag
   hooks/               useAuth, useTheme, useValidation, usePrint, useUndoRedo, ...
   lib/
     firebase.ts        app/auth/db init from VITE_FIREBASE_* env
     firestore.ts       generic CRUD helpers + ID generators (ORD-/NOTE-/REQ-/INV-)
     orderStatus.ts     public order-status mirror (schema + name normalizing)
+    timesheet.ts       employees + timeEntries collections and punch-clock helpers
     cartridges.ts simpleReceipt.ts utils.ts
   utils/               dataExport, validation
   styles/print.css     src/index.css  src/App.css
@@ -102,12 +115,16 @@ src/
 
 ## Data model (Firestore)
 
-Firestore is the only persistence. Pages that read/write it: `PublicHome`,
+Firestore is the only persistence. Pages/features that read/write it: `PublicHome`,
 `StaffCartridges`, `StaffNotes`, `StaffDirectory`, `StaffInventory`,
-`StaffRequests`. Use the generic helpers in `lib/firestore.ts`
-(`getCollection`, `queryCollection`, `getDocument`, `setDocument`,
-`updateDocument`, `deleteDocument`) rather than calling the SDK inline, and the
-`generate*Id` helpers for document IDs.
+`StaffTimesheet`, and the AI actions (`src/ai/actions/`). Newer collections:
+`employees` and `timeEntries` (timesheet), `transactions` (Purchase recording).
+Use the generic helpers in `lib/firestore.ts` (`getCollection`,
+`queryCollection`, `getDocument`, `setDocument`, `updateDocument`,
+`deleteDocument`) rather than calling the SDK inline, and the `generate*Id`
+helpers for document IDs. Rules live in the Firebase console per project (see
+`docs/ENVIRONMENTS.md`): a new collection needs an auth-gated rule added there or
+writes are permission-denied.
 
 The public/staff privacy split matters:
 

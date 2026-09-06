@@ -18,7 +18,7 @@ Live at [inktonermoore.ca](https://inktonermoore.ca).
 - Tailwind CSS + shadcn/ui (Radix primitives)
 - React Router, TanStack Query, React Hook Form + Zod
 - Firebase — Authentication (staff email/password) and Firestore (data)
-- jsPDF + html2canvas for receipt PDF export, Recharts for the analytics dashboard
+- jsPDF for receipt PDF export; lucide-react icons
 - Deployed to GitHub Pages on every push to `main`
 
 ## Getting started
