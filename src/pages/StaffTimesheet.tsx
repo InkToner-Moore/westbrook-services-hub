@@ -25,11 +25,20 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ArrowLeft,
+  CalendarDays,
+  CalendarPlus,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Download,
   Loader2,
+  Lock,
   LogIn,
   LogOut,
+  Pencil,
+  Plus,
+  ShieldCheck,
+  Trash2,
   User,
   UserMinus,
   UserPlus,
@@ -38,11 +47,22 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { toast } from "@/hooks/use-toast";
+import { useManagerMode } from "@/contexts/ManagerModeContext";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  deleteDocument,
   getCollection,
   setDocument,
   updateDocument,
   generateEmployeeId,
+  generateShiftId,
   generateTimeEntryId,
 } from "@/lib/firestore";
 import {
@@ -60,6 +80,20 @@ import {
   type Employee,
   type TimeEntry,
 } from "@/lib/timesheet";
+import {
+  SCHEDULE_COLLECTION,
+  addDays,
+  formatDayHeading,
+  formatShiftDuration,
+  formatTime12,
+  formatWeekRange,
+  shiftMinutes,
+  shiftsOnDay,
+  startOfWeek,
+  toDateKey,
+  weekDayKeys,
+  type ScheduleShift,
+} from "@/lib/schedule";
 import ThemeToggleButton from "@/components/ThemeToggleButton";
 
 // Trigger a client-side CSV download without a new dependency.
@@ -88,15 +122,39 @@ const StaffTimesheet = () => {
 
   const newEmployeeForm = useForm<{ name: string }>({ defaultValues: { name: "" } });
 
+  // Which tab is showing: the punch clock (actual hours) or the schedule (planned).
+  const [tab, setTab] = useState<"timesheet" | "schedule">("timesheet");
+
+  // Manager mode gates every schedule edit. Staff can always view the schedule.
+  const { isManager, pinIsSet, promptUnlock, promptChangePin, lock } = useManagerMode();
+
+  // Planned shifts and the week being viewed (Sunday-start).
+  const [shifts, setShifts] = useState<ScheduleShift[]>([]);
+  const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
+
+  // The add/edit shift dialog and its form.
+  const [shiftDialogOpen, setShiftDialogOpen] = useState(false);
+  const [editingShift, setEditingShift] = useState<ScheduleShift | null>(null);
+  const [shiftForm, setShiftForm] = useState({
+    employeeId: "",
+    date: "",
+    start: "09:00",
+    end: "17:00",
+    note: "",
+  });
+  const [savingShift, setSavingShift] = useState(false);
+
   useEffect(() => {
     const load = async () => {
       try {
-        const [emps, ents] = await Promise.all([
+        const [emps, ents, shfts] = await Promise.all([
           getCollection<Employee>(EMPLOYEES_COLLECTION, "createdAt"),
           getCollection<TimeEntry>(TIME_ENTRIES_COLLECTION, "createdAt"),
+          getCollection<ScheduleShift>(SCHEDULE_COLLECTION, "createdAt"),
         ]);
         setEmployees(emps);
         setEntries(ents);
+        setShifts(shfts);
       } catch (error) {
         console.error("Failed to load timesheet:", error);
         toast({ title: "Error", description: "Failed to load timesheet from database" });
@@ -217,6 +275,127 @@ const StaffTimesheet = () => {
     const base = todayOnly ? "today" : "all";
     downloadCsv(`timesheet-${base}.csv`, entriesToCsv(shownEntries));
   };
+
+  // Open the shift dialog to add a new shift, optionally pre-set to a day.
+  const openAddShift = (dayKey?: string) => {
+    if (!isManager) {
+      promptUnlock();
+      return;
+    }
+    setEditingShift(null);
+    setShiftForm({
+      employeeId: activeEmployees[0]?.id ?? "",
+      date: dayKey ?? toDateKey(new Date()),
+      start: "09:00",
+      end: "17:00",
+      note: "",
+    });
+    setShiftDialogOpen(true);
+  };
+
+  // Open the shift dialog to edit an existing shift.
+  const openEditShift = (shift: ScheduleShift) => {
+    if (!isManager) {
+      promptUnlock();
+      return;
+    }
+    setEditingShift(shift);
+    setShiftForm({
+      employeeId: shift.employeeId,
+      date: shift.date,
+      start: shift.start,
+      end: shift.end,
+      note: shift.note ?? "",
+    });
+    setShiftDialogOpen(true);
+  };
+
+  const saveShift = async () => {
+    if (!isManager) {
+      promptUnlock();
+      return;
+    }
+    const employee = employees.find((e) => e.id === shiftForm.employeeId);
+    if (!employee) {
+      toast({ title: "Pick an employee", description: "Choose who works this shift." });
+      return;
+    }
+    if (!shiftForm.date || !shiftForm.start || !shiftForm.end) {
+      toast({ title: "Missing details", description: "Set the day, start, and end." });
+      return;
+    }
+    if (shiftForm.end <= shiftForm.start) {
+      toast({ title: "Check the times", description: "The end time must be after the start." });
+      return;
+    }
+    setSavingShift(true);
+    const note = shiftForm.note.trim();
+    try {
+      if (editingShift) {
+        const updated: ScheduleShift = {
+          ...editingShift,
+          employeeId: employee.id,
+          employeeName: employee.name,
+          date: shiftForm.date,
+          start: shiftForm.start,
+          end: shiftForm.end,
+          note: note || undefined,
+        };
+        await updateDocument(SCHEDULE_COLLECTION, editingShift.id, {
+          employeeId: updated.employeeId,
+          employeeName: updated.employeeName,
+          date: updated.date,
+          start: updated.start,
+          end: updated.end,
+          note: note || "",
+        });
+        setShifts((prev) => prev.map((s) => (s.id === editingShift.id ? updated : s)));
+        toast({ title: "Shift updated", description: `${employee.name}, ${formatDayHeading(updated.date)}` });
+      } else {
+        const shift: ScheduleShift = {
+          id: generateShiftId(),
+          employeeId: employee.id,
+          employeeName: employee.name,
+          date: shiftForm.date,
+          start: shiftForm.start,
+          end: shiftForm.end,
+          note: note || undefined,
+          createdAt: new Date().toISOString(),
+        };
+        await setDocument(SCHEDULE_COLLECTION, shift.id, {
+          ...shift,
+          note: note || "",
+        });
+        setShifts((prev) => [shift, ...prev]);
+        toast({ title: "Shift added", description: `${employee.name}, ${formatDayHeading(shift.date)}` });
+      }
+      setShiftDialogOpen(false);
+      setEditingShift(null);
+    } catch (error) {
+      console.error("Failed to save shift:", error);
+      toast({ title: "Error", description: "Failed to save the shift to the database" });
+    } finally {
+      setSavingShift(false);
+    }
+  };
+
+  const deleteShift = async (shift: ScheduleShift) => {
+    if (!isManager) {
+      promptUnlock();
+      return;
+    }
+    try {
+      await deleteDocument(SCHEDULE_COLLECTION, shift.id);
+      setShifts((prev) => prev.filter((s) => s.id !== shift.id));
+      toast({ title: "Shift removed", description: `${shift.employeeName}, ${formatDayHeading(shift.date)}` });
+    } catch (error) {
+      console.error("Failed to delete shift:", error);
+      toast({ title: "Error", description: "Failed to remove the shift" });
+    }
+  };
+
+  const weekKeys = weekDayKeys(weekStart);
+  const todayKey = toDateKey(new Date(now));
 
   // Slate signature accents, per theme. State is never colour-only (buttons and
   // pills carry text/icons too).
@@ -442,6 +621,350 @@ const StaffTimesheet = () => {
     </div>
   );
 
+  const edgeBorder = isDarkMode ? "border-[#2a2f3a]" : "border-[#e4e1d9]";
+  const edgeDivide = isDarkMode ? "divide-[#2a2f3a]" : "divide-[#e4e1d9]";
+
+  const scheduleContent = (
+    <div className="space-y-4">
+      <div className={`rounded-xl border ${themeClasses.card.primary}`}>
+        {/* Header: title + manager controls */}
+        <div className={`flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 ${edgeBorder}`}>
+          <div className="flex items-center gap-2">
+            <CalendarDays className={`h-5 w-5 ${themeClasses.text.secondary}`} />
+            <h2 className={`text-lg font-semibold ${themeClasses.text.primary}`}>Schedule</h2>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {isManager ? (
+              <>
+                <Button
+                  onClick={() => openAddShift()}
+                  className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.primary}`}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add shift
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={promptChangePin}
+                  className={`min-h-[44px] rounded-lg ${themeClasses.button.ghost}`}
+                >
+                  <ShieldCheck className="mr-2 h-4 w-4" />
+                  {pinIsSet ? "Change PIN" : "Set PIN"}
+                </Button>
+                <Button
+                  onClick={lock}
+                  className={`min-h-[44px] rounded-lg ${themeClasses.button.secondary}`}
+                >
+                  <Lock className="mr-2 h-4 w-4" />
+                  Lock
+                </Button>
+              </>
+            ) : (
+              <Button
+                onClick={promptUnlock}
+                className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.secondary}`}
+              >
+                <Lock className="mr-2 h-4 w-4" />
+                Manager sign in
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Week navigator */}
+        <div className={`flex items-center justify-between gap-3 border-b px-4 py-3 ${edgeBorder}`}>
+          <Button
+            variant="ghost"
+            onClick={() => setWeekStart(startOfWeek(new Date()))}
+            className={`min-h-[44px] rounded-lg ${themeClasses.button.ghost}`}
+          >
+            This week
+          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Previous week"
+              onClick={() => setWeekStart((w) => addDays(w, -7))}
+              className={`min-h-[44px] ${themeClasses.button.ghost}`}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <span className={`font-mono text-sm tabular-nums ${themeClasses.text.primary}`}>
+              {formatWeekRange(weekStart)}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Next week"
+              onClick={() => setWeekStart((w) => addDays(w, 7))}
+              className={`min-h-[44px] ${themeClasses.button.ghost}`}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Days of the week */}
+        <div className="p-4">
+          {loading ? (
+            <div className="flex flex-col items-center py-10 text-center">
+              <Loader2 className={`mb-3 h-10 w-10 animate-spin ${themeClasses.text.muted}`} />
+              <p className={themeClasses.text.secondary}>Loading schedule...</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {weekKeys.map((dayKey) => {
+                const dayShifts = shiftsOnDay(shifts, dayKey);
+                const isToday = dayKey === todayKey;
+                return (
+                  <div key={dayKey} className={`rounded-lg border ${themeClasses.card.secondary}`}>
+                    <div className={`flex items-center justify-between gap-2 border-b px-3 py-2 ${edgeBorder}`}>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm font-semibold ${themeClasses.text.primary}`}>
+                          {formatDayHeading(dayKey)}
+                        </span>
+                        {isToday && (
+                          <Badge variant="outline" className={`${onClockPill} border text-xs`}>
+                            Today
+                          </Badge>
+                        )}
+                      </div>
+                      {isManager && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openAddShift(dayKey)}
+                          className={`min-h-[44px] rounded-lg ${themeClasses.button.ghost}`}
+                        >
+                          <Plus className="mr-1 h-4 w-4" />
+                          Add
+                        </Button>
+                      )}
+                    </div>
+                    <div className="px-3 py-1.5">
+                      {dayShifts.length === 0 ? (
+                        <p className={`py-1.5 text-[13px] ${themeClasses.text.muted}`}>No one scheduled</p>
+                      ) : (
+                        <div className={`divide-y ${edgeDivide}`}>
+                          {dayShifts.map((shift) => (
+                            <div key={shift.id} className="flex items-center justify-between gap-3 py-2">
+                              <div className="min-w-0">
+                                <p className={`truncate text-sm font-medium ${themeClasses.text.primary}`}>
+                                  {shift.employeeName}
+                                </p>
+                                <p className={`truncate text-[13px] ${themeClasses.text.secondary}`}>
+                                  <span className="font-mono tabular-nums">
+                                    {formatTime12(shift.start)} to {formatTime12(shift.end)}
+                                  </span>
+                                  <span className={themeClasses.text.muted}>
+                                    , {formatShiftDuration(shiftMinutes(shift))}
+                                  </span>
+                                </p>
+                                {shift.note && (
+                                  <p className={`truncate text-[13px] ${themeClasses.text.muted}`}>{shift.note}</p>
+                                )}
+                              </div>
+                              {isManager && (
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    aria-label={`Edit ${shift.employeeName}'s shift`}
+                                    onClick={() => openEditShift(shift)}
+                                    className={`min-h-[44px] ${themeClasses.button.ghost}`}
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        aria-label={`Remove ${shift.employeeName}'s shift`}
+                                        className={`min-h-[44px] ${themeClasses.button.ghost}`}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Remove this shift?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          This removes {shift.employeeName}'s shift on{" "}
+                                          {formatDayHeading(shift.date)}, {formatTime12(shift.start)} to{" "}
+                                          {formatTime12(shift.end)}.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => deleteShift(shift)}
+                                          className="bg-red-600 text-white hover:bg-red-700"
+                                        >
+                                          Remove
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {!isManager && (
+        <p className={`text-center text-[13px] ${themeClasses.text.muted}`}>
+          Viewing only. Sign in as manager to add or change shifts.
+        </p>
+      )}
+    </div>
+  );
+
+  // Segmented tab control: actual hours (Timesheet) vs planned shifts (Schedule).
+  const tabButton = (key: "timesheet" | "schedule", label: string, Icon: typeof Clock) => (
+    <button
+      type="button"
+      onClick={() => setTab(key)}
+      className={`flex min-h-[44px] items-center gap-2 rounded-md px-4 text-sm font-medium transition-colors ${
+        tab === key
+          ? `${themeClasses.card.primary} ${themeClasses.text.primary} shadow-sm`
+          : themeClasses.text.secondary
+      }`}
+    >
+      <Icon className="h-4 w-4" />
+      {label}
+    </button>
+  );
+
+  const shiftDialog = (
+    <Dialog open={shiftDialogOpen} onOpenChange={setShiftDialogOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CalendarPlus className="h-5 w-5" />
+            {editingShift ? "Edit shift" : "Add a shift"}
+          </DialogTitle>
+          <DialogDescription>Plan who works and when. Staff see this on the schedule.</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="shift-employee" className={themeClasses.text.secondary}>
+              Employee
+            </Label>
+            <select
+              id="shift-employee"
+              value={shiftForm.employeeId}
+              onChange={(e) => setShiftForm((f) => ({ ...f, employeeId: e.target.value }))}
+              className={`min-h-[44px] w-full rounded-lg border px-3 ${themeClasses.input}`}
+            >
+              {activeEmployees.length === 0 && <option value="">No employees yet</option>}
+              {activeEmployees.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="shift-date" className={themeClasses.text.secondary}>
+              Day
+            </Label>
+            <Input
+              id="shift-date"
+              type="date"
+              value={shiftForm.date}
+              onChange={(e) => setShiftForm((f) => ({ ...f, date: e.target.value }))}
+              className={`min-h-[44px] ${themeClasses.input}`}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="shift-start" className={themeClasses.text.secondary}>
+                Start
+              </Label>
+              <Input
+                id="shift-start"
+                type="time"
+                value={shiftForm.start}
+                onChange={(e) => setShiftForm((f) => ({ ...f, start: e.target.value }))}
+                className={`min-h-[44px] font-mono tabular-nums ${themeClasses.input}`}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="shift-end" className={themeClasses.text.secondary}>
+                End
+              </Label>
+              <Input
+                id="shift-end"
+                type="time"
+                value={shiftForm.end}
+                onChange={(e) => setShiftForm((f) => ({ ...f, end: e.target.value }))}
+                className={`min-h-[44px] font-mono tabular-nums ${themeClasses.input}`}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="shift-note" className={themeClasses.text.secondary}>
+              Note (optional)
+            </Label>
+            <Input
+              id="shift-note"
+              value={shiftForm.note}
+              onChange={(e) => setShiftForm((f) => ({ ...f, note: e.target.value }))}
+              placeholder="e.g. opening, covering Sam"
+              className={`min-h-[44px] ${themeClasses.input}`}
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2 sm:gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setShiftDialogOpen(false)}
+            className={`min-h-[44px] rounded-lg ${themeClasses.button.ghost}`}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={saveShift}
+            disabled={savingShift}
+            className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.primary}`}
+          >
+            {savingShift && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {editingShift ? "Save changes" : "Add shift"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const body = (
+    <>
+      <div className={`mb-5 inline-flex gap-1 rounded-lg border p-1 ${themeClasses.card.secondary}`}>
+        {tabButton("timesheet", "Timesheet", Clock)}
+        {tabButton("schedule", "Schedule", CalendarDays)}
+      </div>
+      {tab === "timesheet" ? content : scheduleContent}
+      {shiftDialog}
+    </>
+  );
+
   if (inShell) {
     return (
       <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
@@ -451,10 +974,10 @@ const StaffTimesheet = () => {
           </span>
           <div>
             <h1 className={`text-xl font-semibold tracking-tight ${themeClasses.text.primary}`}>Timesheet</h1>
-            <p className={`text-sm ${themeClasses.text.secondary}`}>Employees, the punch clock, and hours</p>
+            <p className={`text-sm ${themeClasses.text.secondary}`}>The punch clock, hours, and the schedule</p>
           </div>
         </div>
-        {content}
+        {body}
       </div>
     );
   }
@@ -506,10 +1029,10 @@ const StaffTimesheet = () => {
             Timesheet
           </h2>
           <p className={`mx-auto mt-2 max-w-2xl ${themeClasses.text.secondary}`}>
-            Add employees, punch the clock, and export hours.
+            Punch the clock, export hours, and plan the week's schedule.
           </p>
         </div>
-        {content}
+        {body}
       </main>
     </div>
   );

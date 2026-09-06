@@ -141,3 +141,13 @@ export function generateTransactionId(): string {
   }
   return result;
 }
+
+// Generate random schedule-shift ID like "SHF-Q9M2K7"
+export function generateShiftId(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = 'SHF-';
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}

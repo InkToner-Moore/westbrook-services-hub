@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { ManagerModeProvider } from "@/contexts/ManagerModeContext";
 import PublicHome from "./pages/PublicHome";
 import StaffLogin from "./pages/StaffLogin";
 import StaffTracking from "./pages/StaffTracking";
@@ -85,9 +86,13 @@ const App = () => (
           {/* AI Mode state (chat, artifact, open receipt) is shared across the
               staff shell, so the provider wraps all routes. It renders nothing on
               public routes or when signed out. */}
-          <AiModeProvider>
-            <AppRoutes />
-          </AiModeProvider>
+          {/* Manager mode (the shared PIN gate) wraps the app so any staff screen
+              can gate an action behind it. It renders only its dialog until asked. */}
+          <ManagerModeProvider>
+            <AiModeProvider>
+              <AppRoutes />
+            </AiModeProvider>
+          </ManagerModeProvider>
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
