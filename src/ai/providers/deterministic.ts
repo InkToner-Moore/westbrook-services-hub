@@ -123,6 +123,24 @@ const pieceHasCourier = (piece: string): boolean => {
   return Boolean(courier || trackingNumber);
 };
 
+// Courier names, used to break a run-on shipment into items when there is no
+// punctuation between them ("... UPS ... $53 fedex ... $33").
+const COURIER_TOKENS = /\b(ups|fedex|fed\s?ex|purolator|canada\s?post|dhl)\b/gi;
+
+// Split one chunk at each courier name after the first, so several parcels typed
+// with no separator still become separate items. Text before the first courier
+// (a leading customer name) is dropped from the items; receipt-level name/phone
+// extraction reads the whole utterance separately. Returns the chunk unchanged
+// when it names fewer than two couriers.
+function splitByCourier(chunk: string): string[] {
+  const starts: number[] = [];
+  let m: RegExpExecArray | null;
+  COURIER_TOKENS.lastIndex = 0;
+  while ((m = COURIER_TOKENS.exec(chunk)) !== null) starts.push(m.index);
+  if (starts.length < 2) return [chunk];
+  return starts.map((start, i) => chunk.slice(start, starts[i + 1] ?? chunk.length).trim()).filter(Boolean);
+}
+
 // Parse one or more shipment items from a shipping utterance. Pieces are grouped
 // into items: a new item starts only when a piece names a NEW courier/tracking
 // while the current item already has one, so "UPS to Toronto ON $22 and FedEx to
@@ -154,7 +172,10 @@ function extractShipmentItems(text: string) {
   }
   if (current !== null) groups.push(current);
 
-  const items = groups
+  // Each grouped piece may still name several couriers with no separator between
+  // them; break those apart so every parcel is its own item.
+  const chunks = groups.flatMap(splitByCourier);
+  const items = chunks
     .map(build)
     .filter((it) => it.courier || it.trackingNumber || it.cost != null || it.city);
   return items.length > 0 ? items : [build(text)];
