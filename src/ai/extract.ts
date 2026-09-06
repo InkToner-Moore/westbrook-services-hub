@@ -18,9 +18,12 @@ export function extractEmail(text: string): string | null {
   return m ? m[0] : null;
 }
 
-// North American 10-digit phone, tolerant of separators and a leading 1.
+// North American 10-digit phone, tolerant of separators and a leading 1. The
+// digit-boundary guards (no digit immediately before or after) stop it from
+// slicing a 10-digit run out of a longer number, like a 16-digit tracking
+// number, so a real trailing phone is picked instead.
 export function extractPhone(text: string): string | null {
-  const m = text.match(/(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/);
+  const m = text.match(/(?<!\d)(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?!\d)/);
   if (!m) return null;
   const digits = m[0].replace(/\D/g, '');
   return digits.length >= 10 ? m[0].trim() : null;
@@ -37,8 +40,10 @@ const toAmount = (raw: string): number => Number(raw.replace(/,/g, ''));
 // numbers with no signal are left alone (they are usually a model or quantity),
 // and everything is confirmable in the check.
 export function extractMoney(text: string): number | null {
-  // $ before the number: "$20", "$ 20.00".
-  const dollarBefore = text.match(new RegExp(`\\$\\s?${AMOUNT}`));
+  // $ before the number: "$20", "$ 20.00". The lookbehind keeps a TRAILING "$"
+  // (as in "53$") from being read as a leading one for a later number, so
+  // "53$ 4167382277" does not price at the phone number.
+  const dollarBefore = text.match(new RegExp(`(?<!\\d)\\$\\s?${AMOUNT}`));
   if (dollarBefore) return toAmount(dollarBefore[1]);
   // $ after the number: "20$", "20.00 $".
   const dollarAfter = text.match(new RegExp(`${AMOUNT}\\s?\\$`));
