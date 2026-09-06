@@ -41,6 +41,17 @@ slightly on hover/focus. Theme default confirmed **light** for a fresh visitor
 (verified: no `dark` class, `colorScheme: light`) - any dark view is a saved
 `staff-theme` toggle in that browser, not the default.
 
+Follow-up redesign (Parsa's review of the above): the courier picker in
+`SmartTracker` was three large stacked buttons, so Track-a-parcel overflowed the
+viewport and towered over the short refill card. Now the couriers are a compact
+3-across row of logo tiles (fits without scrolling), the two self-serve cards are
+equal height (`lg:items-stretch` + `h-full`), and the refill form is vertically
+centered so the pair reads as a balanced set. Verified in-browser at 1280px and
+390px, both cards ~equal height, mobile couriers in one row. **This is the state
+Parsa will review next session; open question is still the theme force-reset (see
+below) - the default is already light, but existing browsers with a saved dark
+toggle keep it until they toggle back or we bump the `staff-theme` storage key.**
+
 Still open: single artifact slot in compound flows (design decision, needs Parsa);
 `KEY_LOCATIONS` map in InventoryCard is empty (needs Parsa's A1:KW1-style data);
 standalone `purchase` action has no route/executor (only `attach.pay` is wired).
