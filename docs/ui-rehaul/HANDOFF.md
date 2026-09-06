@@ -2,6 +2,82 @@
 
 Read `DESIGN-SPEC.md` and `PLAN.md` first. This records where the rehaul stands.
 
+## START HERE (fresh-session brief, 2026-09-05)
+
+**Next session is for:** Parsa's staging review + smoke-test of this session's work
+on `ink-toner-moore.pages.dev` (theme reset, the Timesheet Schedule tab, real
+manager mode, the slip GST rework), then folding in his feedback. Not a numbered
+plan step; this is post-rehaul feature work stacked above the rehaul.
+
+**Where things stand (verify against `but status` before trusting):**
+- Branch **`manager-schedule`** stacked on `phase2-followups`, pushed. `origin/dev`
+  is fast-forwarded to its tip, so Cloudflare staging rebuilds with all of it.
+  **Prod (`main`) untouched.**
+- Tree **clean**, local == `origin/manager-schedule` == `origin/dev`.
+- Open PRs: only **#1 `docs-align-claude-md`** (pre-existing, not this session's).
+- **Gate as observed:** `tsc -p tsconfig.app.json --noEmit` clean; `yarn build`
+  green; `eslint` on changed files is baseline-only (pre-existing `any` in
+  `firestore.ts:42/54` and `ThemeContext.tsx:6`; benign react-refresh warnings on
+  `useManagerMode`/`useTheme`/`useConfirmationDraft`). No new problems.
+
+**Already built this session - do NOT rebuild (details in the sections below):**
+1. **Theme hard-reset to light** for everyone (bumped the `staff-theme` ->
+   `staff-theme-v2` localStorage key in `ThemeContext.tsx`).
+2. **Schedule tab** on the Timesheet page (`StaffTimesheet.tsx`, `lib/schedule.ts`,
+   `scheduleShifts` collection): weekly planned shifts, staff read-only, manager
+   edits.
+3. **Real, server-enforced manager mode**: Worker `/manager/*`
+   (`proxy/src/manager.js`) mints a Firebase `manager` claim from a correct PIN;
+   client (`lib/managerAuth.ts`, `ManagerModeContext.tsx`) signs in with it; DEV
+   Firestore rules require the claim to write `scheduleShifts`/`appSettings`.
+   Verified end to end on dev (manager 200 / staff 403). The dialog is
+   `ManagerPinDialog.tsx`.
+4. **Slip GST rework** (`ConfirmationCheck.tsx`): no "tax incl." toggle; editable
+   two-way "Total (incl. GST)".
+
+**Constraints that bite (append, never trim):**
+- **Prod path untouched:** never edit `.github/workflows/deploy.yml`, `public/CNAME`;
+  never point anything at `main`. Prod deploys `main` -> GitHub Pages.
+- **The Worker is SHARED** (`inktonermoore-ai-proxy`, serves both AI routing and
+  `/manager/*`). Do not break the root routing path when editing it; re-test with a
+  POST `{"utterance":"..."}` after any deploy.
+- **DEV rules now require the manager claim** to write `scheduleShifts`/`appSettings`.
+  A signed-in but non-manager session gets 403 on those writes - that is correct,
+  not a bug.
+- **No prod Firebase SA on this machine.** DEV rules/claims are done via the dev SA
+  at `/home/user/Programming/InkTonerMoore/inktonermoore-dev-firebase-adminsdk-*.json`
+  (outside the repo). PROD activation is a separate, manual step.
+- No em dashes anywhere. Style off `themeClasses`, not raw `dark:`.
+- **Wrangler is authenticated** on Parsa's Cloudflare account; `cd proxy && npx
+  wrangler deploy` works from here. Worker secrets set on dev: `GEMINI_API_KEY`,
+  `FIREBASE_SA`, `PIN_PEPPER`.
+
+**Open questions (fold answers in as their own commits; do not invent one):**
+- Auto-lock manager mode on reload? Today it persists until Lock/logout (footgun on
+  a shared counter browser). Parsa to decide.
+- Rate-limit `/manager/unlock` + enforce a longer (6+ digit) PIN? Recommended before
+  this carries real weight.
+- Start per-employee PINs now or later? `accessPins` already carries a `role` per
+  record, so it is additive.
+
+**Working rules:**
+- Env: `export PATH="/nix/store/zm0k3k5802qlww0llyl13s7hiw0jd6yl-nodejs-24.18.1/bin:$PATH"`
+  and `COREPACK_ENABLE_DOWNLOAD_PROMPT=0`, then `corepack yarn ...`.
+- Gate before every commit: `corepack yarn tsc -p tsconfig.app.json --noEmit`,
+  `corepack yarn build`, and `corepack yarn eslint <changed files>` (baseline-only
+  is the bar).
+- VC via GitButler, one branch per session, coherent commits. Git + dev promotion
+  are handled autonomously for this project (per the user).
+- Firestore rules are console-managed (not in repo); deploy to dev by minting an SA
+  token and calling the Rules REST API (a working script pattern was used this
+  session).
+
+**Still placeholder / not customer-ready:** no manager PIN is set on dev yet (first
+"Manager sign in" runs the set-PIN flow); Moneris device-send remains stubbed
+(pre-existing).
+
+---
+
 ## Real manager protection + slip GST (2026-09-05, same session cont.)
 
 All on branch `manager-schedule`, pushed, and `origin/dev` fast-forwarded to it
