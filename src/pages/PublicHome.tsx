@@ -120,7 +120,7 @@ const PublicHome = () => {
     <div className={`min-h-screen ${themeClasses.background}`}>
       {/* Header */}
       <header className={`sticky top-0 z-40 border-b backdrop-blur-xl ${themeClasses.header}`}>
-        <div className="mx-auto max-w-5xl px-4 sm:px-6">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="flex items-center justify-between gap-3 py-3">
             <div className="flex min-w-0 items-center gap-3">
               <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${inkBg}`}>
@@ -171,7 +171,7 @@ const PublicHome = () => {
       </header>
 
       {/* Main Content */}
-      <main className="mx-auto max-w-5xl space-y-12 px-4 py-8 sm:space-y-16 sm:px-6 sm:py-12">
+      <main className="mx-auto max-w-6xl space-y-12 px-4 py-8 sm:space-y-16 sm:px-6 sm:py-12">
         {/* Hero: what we do and how to reach us, plain, not a marketing headline */}
         <section>
           <h1 className={`max-w-2xl text-2xl font-semibold tracking-tight sm:text-3xl ${themeClasses.text.primary}`}>
@@ -208,7 +208,7 @@ const PublicHome = () => {
         </section>
 
         {/* The two jobs a customer came here to do, ahead of anything else */}
-        <section aria-label="Self-serve tools" className="space-y-5">
+        <section aria-label="Self-serve tools" className="grid gap-5 lg:grid-cols-2 lg:items-start">
           <SmartTracker />
 
           <div className={`rounded-xl border p-5 sm:p-6 ${themeClasses.card.primary}`}>
@@ -226,7 +226,7 @@ const PublicHome = () => {
               </div>
             </div>
 
-            <div className="mt-5 max-w-sm space-y-4">
+            <div className="mt-5 space-y-4">
               <div>
                 <Label htmlFor="refill-last-name" className={`mb-1.5 block text-sm font-medium ${themeClasses.text.primary}`}>
                   Last name
@@ -386,7 +386,7 @@ const PublicHome = () => {
                   <p className={`font-medium ${themeClasses.text.primary}`}>Email</p>
                   <a
                     href="mailto:inktonerandmoore@gmail.com"
-                    className={`rounded-sm hover:underline ${themeClasses.text.accent} ${focusRing}`}
+                    className={`block break-all rounded-sm hover:underline ${themeClasses.text.accent} ${focusRing}`}
                   >
                     inktonerandmoore@gmail.com
                   </a>
@@ -405,7 +405,7 @@ const PublicHome = () => {
                   <img
                     src={storeMap}
                     alt="Map showing Ink, Toner & Moore inside Westbrook Mall, Calgary"
-                    className="block aspect-[817/700] w-full object-cover"
+                    className="block aspect-[817/700] w-full object-cover transition-transform duration-300 ease-out group-hover:scale-105 group-focus-visible:scale-105"
                     loading="lazy"
                   />
                   <span className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-black/70 px-3 py-2 text-xs font-medium text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
@@ -432,7 +432,7 @@ const PublicHome = () => {
 
       {/* Footer */}
       <footer className={`mt-4 border-t py-8 ${themeClasses.header}`}>
-        <div className="mx-auto max-w-5xl px-4 text-center sm:px-6">
+        <div className="mx-auto max-w-6xl px-4 text-center sm:px-6">
           <p className={themeClasses.text.secondary}>
             Ink, Toner &amp; Moore, Westbrook Mall, Calgary. Open 7 days a week.
           </p>

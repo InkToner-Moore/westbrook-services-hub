@@ -99,7 +99,7 @@ const SmartTracker = ({ className = "", showHeader = true }: SmartTrackerProps) 
         </div>
       )}
 
-      <div className={`${showHeader ? "mt-5" : ""} max-w-md space-y-5`}>
+      <div className={`${showHeader ? "mt-5" : ""} space-y-5`}>
         {/* Tracking Number Input */}
         <div>
           <label htmlFor="tracking-number" className={`mb-1.5 block text-sm font-medium ${themeClasses.text.primary}`}>
