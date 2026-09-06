@@ -3,6 +3,7 @@
 // not_provided). Heuristic by design: everything is confirmable and editable in
 // the check, and the optional LLM improves recall later without changing this.
 import { CARTRIDGE_BRANDS, CARTRIDGE_TYPES } from '@/lib/cartridges';
+import type { PackingItem } from '@/lib/packing';
 import type { IntentAttachments } from './types';
 
 export function todayIso(): string {
@@ -307,12 +308,34 @@ export function extractProvince(text: string): string | null {
 // Courier names, so "change courier to FedEx" is not read as a city called FedEx.
 const COURIER_WORDS = new Set(['ups', 'fedex', 'purolator', 'dhl', 'canada', 'post']);
 
-// A destination city after "to", e.g. "to Toronto", "to Quebec City". Rejects a
-// province name ("to Ontario") and a courier name ("to FedEx") so neither is read
-// as a city.
+// Known Canadian destinations, so a city is recognized however it is typed
+// (lowercase, no "to" cue): "... toronto ontario ...". Multi-word names are listed
+// with single spaces and matched with flexible whitespace. Longest first so
+// "quebec city" wins over the "quebec" province word. Not exhaustive, but covers
+// the destinations a Westbrook counter actually ships to; the "to <City>" fallback
+// still catches anything not listed.
+const CANADIAN_CITIES = [
+  'quebec city', 'thunder bay', 'red deer', 'grande prairie', 'prince george',
+  'niagara falls', 'st johns', "st john's", 'st catharines', 'sault ste marie',
+  'toronto', 'vancouver', 'calgary', 'edmonton', 'ottawa', 'montreal', 'winnipeg',
+  'halifax', 'victoria', 'hamilton', 'kitchener', 'waterloo', 'london', 'windsor',
+  'saskatoon', 'regina', 'kelowna', 'barrie', 'guelph', 'kingston', 'moncton',
+  'sudbury', 'burnaby', 'richmond', 'surrey', 'mississauga', 'brampton', 'markham',
+  'vaughan', 'laval', 'gatineau', 'longueuil', 'oshawa', 'whitby', 'ajax',
+  'lethbridge', 'kamloops', 'nanaimo', 'abbotsford', 'fredericton', 'charlottetown',
+  'yellowknife', 'whitehorse', 'iqaluit', 'brandon', 'medicine hat', 'airdrie',
+  'okotoks', 'cochrane', 'sherbrooke', 'trois rivieres', 'peterborough', 'belleville',
+];
+
+// A destination city. First matches a known Canadian city however it is typed, then
+// falls back to a "to <Capitalized>" phrase. Rejects a province name ("to Ontario")
+// and a courier name ("to FedEx").
 export function extractCity(text: string): string | null {
-  // Capture the whole first token (so mixed-case "FedEx" is caught in full and
-  // rejected below, not truncated to "Fed"), plus an optional second word.
+  for (const city of CANADIAN_CITIES) {
+    const re = new RegExp(`\\b${city.replace(/\s+/g, '\\s+').replace(/'/g, "'?")}\\b`, 'i');
+    if (re.test(text)) return titleCase(city);
+  }
+
   const m = text.match(/\bto\s+([A-Z][A-Za-z]*(?:\s+[A-Z][a-z]+)?)/);
   if (!m) return null;
   const city = m[1].trim();
@@ -320,6 +343,45 @@ export function extractCity(text: string): string | null {
   if (PROVINCES.some((p) => p.names.includes(lower))) return null;
   if (city.split(/\s+/).some((w) => COURIER_WORDS.has(w.toLowerCase()))) return null;
   return city;
+}
+
+// Packing supplies named in an utterance ("box $4", "large box $10", "padded
+// envelope $3", "bubble wrap"), most often added onto a shipment. Each is matched
+// most-specific first so "large box" is not also read as a generic "box". The price
+// is taken from a money amount right after the keyword, else the preset price.
+const PACKING_MATCHERS: Array<{ re: RegExp; name: string; preset: number }> = [
+  { re: /\bsmall\s*box\b/i, name: 'Small Box', preset: 5 },
+  { re: /\b(?:medium|med)\s*box\b/i, name: 'Medium Box', preset: 7 },
+  { re: /\b(?:large|lg)\s*box\b/i, name: 'Large Box', preset: 10 },
+  { re: /\bpadded\s*(?:envelope|mailer)?\b/i, name: 'Padded Envelope', preset: 3 },
+  { re: /\benvelope\b/i, name: 'Envelope', preset: 1 },
+  { re: /\bbubble\s*wrap\b/i, name: 'Bubble Wrap', preset: 2 },
+  { re: /\bmailer\b/i, name: 'Mailer', preset: 3 },
+  { re: /\bbox\b/i, name: 'Box', preset: 5 },
+];
+
+function priceNear(text: string, fromIndex: number): number | null {
+  const window = text.slice(fromIndex, fromIndex + 16);
+  const m = window.match(/\$?\s?(\d{1,4}(?:\.\d{1,2})?)\s?\$/) || window.match(/\$\s?(\d{1,4}(?:\.\d{1,2})?)/);
+  return m ? Number(m[1]) : null;
+}
+
+export function extractPacking(text: string): PackingItem[] {
+  const items: PackingItem[] = [];
+  let anyBox = false;
+  let anyEnvelope = false;
+  for (const matcher of PACKING_MATCHERS) {
+    // Generic "box"/"envelope" only when a specific size was not already matched.
+    if (matcher.name === 'Box' && anyBox) continue;
+    if (matcher.name === 'Envelope' && anyEnvelope) continue;
+    const m = matcher.re.exec(text);
+    if (!m) continue;
+    if (/box/i.test(matcher.name)) anyBox = true;
+    if (/envelope/i.test(matcher.name)) anyEnvelope = true;
+    const price = priceNear(text, m.index + m[0].length);
+    items.push({ name: matcher.name, cost: price ?? matcher.preset, quantity: 1, taxable: true });
+  }
+  return items;
 }
 
 // Side-action cues for the compound "chain around one transaction". A pay cue

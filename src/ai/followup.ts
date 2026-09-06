@@ -11,8 +11,9 @@
 // into the last item or append a new one.
 import type { FieldValue, Intent } from './types';
 import { populateIntentFields } from './providers/deterministic';
-import { extractCity, extractPhone, extractProvince, extractShippingCost, extractTracking } from './extract';
+import { extractCity, extractPacking, extractPhone, extractProvince, extractShippingCost, extractTracking } from './extract';
 import { emptyShipmentItem, toShipmentItems } from './shipping';
+import type { PackingItem } from '@/lib/packing';
 
 const NO_TAX = /\b(no|without|remove|drop|skip)\s+(gst|tax)\b/i;
 const YES_TAX = /\b(add|with|include|apply|charge|keep)\s+(gst|tax)\b/i;
@@ -41,6 +42,16 @@ export function applyFollowUp(active: Intent, text: string): Intent {
   // Tax is a phrase toggle: "no gst" / "with gst".
   if (NO_TAX.test(text)) next.fields.gst = explicit(false);
   else if (YES_TAX.test(text)) next.fields.gst = explicit(true);
+
+  // Packing named in the follow-up ("add a box $4") is appended to any already on
+  // the slip.
+  const newPacking = extractPacking(text);
+  if (newPacking.length > 0) {
+    const existing = Array.isArray(active.fields.packing?.value)
+      ? (active.fields.packing!.value as PackingItem[])
+      : [];
+    next.fields.packing = explicit([...existing, ...newPacking]);
+  }
 
   // Shipping items: merge into the last item, or append a new one when the counter
   // says "add another ...".

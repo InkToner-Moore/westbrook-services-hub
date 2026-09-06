@@ -19,6 +19,7 @@ import {
   extractMoney,
   extractName,
   extractOrderId,
+  extractPacking,
   extractPhone,
   extractProvince,
   extractQuantity,
@@ -124,8 +125,10 @@ const pieceHasCourier = (piece: string): boolean => {
 };
 
 // Courier names, used to break a run-on shipment into items when there is no
-// punctuation between them ("... UPS ... $53 fedex ... $33").
-const COURIER_TOKENS = /\b(ups|fedex|fed\s?ex|purolator|canada\s?post|dhl)\b/gi;
+// punctuation between them ("... UPS ... $53 fedex ... $33"). Letter-boundaries
+// (not \b word-boundaries) so a courier glued to digits still matches
+// ("...4167382277fedex..."), while "groups"/"backups" do not.
+const COURIER_TOKENS = /(?<![a-z])(ups|fedex|fed\s?ex|purolator|canada\s?post|dhl)(?![a-z])/gi;
 
 // Split one chunk at each courier name after the first, so several parcels typed
 // with no separator still become separate items. Text before the first courier
@@ -441,6 +444,14 @@ export function populateIntentFields(intent: Intent, text: string): void {
   // in the item editor.
   if (action === 'receipt' && subtype === 'shipping') {
     intent.fields.shipmentItems = { value: extractShipmentItems(text), source: 'explicit' };
+  }
+
+  // Packing supplies ("box $4", "large box $10") can ride on any receipt, most
+  // often a shipment. Captured so they are not silently dropped; they show on the
+  // slip and are added to the receipt total on confirm.
+  if (action === 'receipt') {
+    const packing = extractPacking(text);
+    if (packing.length > 0) intent.fields.packing = { value: packing, source: 'explicit' };
   }
 
   // Tracking has no confirmation spec; fill courier + number directly.

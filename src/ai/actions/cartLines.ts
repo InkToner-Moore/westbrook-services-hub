@@ -85,11 +85,21 @@ export function packingToCartLine(item: PackingItem): CartLine {
   };
 }
 
+// Packing supplies captured on the intent ("box $4") as their own cart lines, so
+// they land on the receipt and its total alongside the shipment or sale.
+function packingLines(intent: Intent): CartLine[] {
+  const raw = intent.fields.packing?.value;
+  if (!Array.isArray(raw)) return [];
+  return (raw as PackingItem[])
+    .filter((item) => item && (item.cost ?? 0) > 0)
+    .map((item) => packingToCartLine(item));
+}
+
 // Convert a confirmed receipt intent to cart lines. Returns [] for anything that
 // is not a receipt type or has nothing complete to add.
 export function receiptIntentToCartLines(intent: Intent): CartLine[] {
   if (intent.action !== 'receipt') return [];
   const subtype = (intent.subtype ?? 'refill') as ReceiptSubtype;
-  if (subtype === 'shipping') return shippingLines(intent);
-  return flatLine(intent, subtype);
+  const base = subtype === 'shipping' ? shippingLines(intent) : flatLine(intent, subtype);
+  return [...base, ...packingLines(intent)];
 }

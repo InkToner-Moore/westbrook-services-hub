@@ -18,6 +18,7 @@ import {
   BookMarked,
   Package,
   FileText,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -25,6 +26,7 @@ import type { AiAction, FieldValue, Intent, IntentAttachments, ReceiptSubtype } 
 import { type FieldSpec, isFieldVisible, missingRequired } from '@/ai/fieldSpecs';
 import { GST_RATE, grossFromNet, netFromGross, taxOf } from '@/lib/canadaTax';
 import { isItemComplete, toShipmentItems, type ShipmentItem } from '@/ai/shipping';
+import { packingLabel, packingLineTotal, type PackingItem } from '@/lib/packing';
 import ShipmentItemsEditor from './ShipmentItemsEditor';
 import IntentSuggestions from './IntentSuggestions';
 import { routeLabel } from '@/ai/intentOptions';
@@ -519,6 +521,32 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
               taxEnabled={fields.gst?.value === true}
               onChange={(items) => setValue('shipmentItems', items)}
             />
+          </div>
+        )}
+
+        {Array.isArray(fields.packing?.value) && (fields.packing.value as PackingItem[]).length > 0 && (
+          <div className="mt-3">
+            <p className={`mb-1.5 text-xs font-medium ${themeClasses.text.secondary}`}>Packing</p>
+            <ul className={`divide-y rounded-lg border ${divide} ${isDarkMode ? 'border-slate-700' : 'border-slate-200'}`}>
+              {(fields.packing.value as PackingItem[]).map((p, idx) => (
+                <li key={`${p.name}-${idx}`} className="flex items-center justify-between px-3 py-2 text-[14px]">
+                  <span className={themeClasses.text.primary}>{packingLabel(p)}</span>
+                  <span className="flex items-center gap-3">
+                    <span className={`font-mono tabular-nums ${themeClasses.text.secondary}`}>${packingLineTotal(p).toFixed(2)}</span>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${packingLabel(p)}`}
+                      onClick={() =>
+                        setValue('packing', (fields.packing!.value as PackingItem[]).filter((_, i) => i !== idx))
+                      }
+                      className={`rounded-full p-1 ${isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
