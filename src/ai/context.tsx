@@ -12,7 +12,8 @@ import type { ActionResult } from './actions/types';
 import type { CartCustomer, CartLine } from './cart';
 import { buildCartReceiptOpts } from './cart';
 import { getProvider } from './providers';
-import { segmentUtterance } from './segment';
+import { segmentUtterance, probeRoute } from './segment';
+import { applyFollowUp } from './followup';
 import { getFieldSpecs } from './fieldSpecs';
 import { getExecutor, isImmediate } from './actions';
 import { receiptIntentToCartLines } from './actions/cartLines';
@@ -322,6 +323,33 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       addUserTurn(trimmed);
       setBusy(true);
       try {
+        // Follow-up edit: when a slip is already open and this message does not start
+        // a new action of its own, it is a change to the open slip ("make it $40",
+        // "no gst", "change the courier to FedEx", "add another FedEx to Calgary").
+        if (artifact?.kind === 'confirmation') {
+          const data = artifact.data as ConfirmationArtifactData;
+          const active = data.intent;
+          const route = await probeRoute(trimmed);
+          const shippingAppend =
+            active.action === 'receipt' &&
+            active.subtype === 'shipping' &&
+            route.action === 'receipt' &&
+            route.subtype === 'shipping' &&
+            /\b(add|another|second|third|also|plus)\b/i.test(trimmed);
+          if (route.action === 'unknown' || shippingAppend) {
+            const nextIntent = applyFollowUp(active, trimmed);
+            const sourceText = `${data.sourceText ?? ''} ${trimmed}`.trim();
+            patchTurn(data.turnId, { intent: nextIntent, sourceText });
+            setArtifact({
+              kind: 'confirmation',
+              title: routeLabel(nextIntent.action, nextIntent.subtype) ?? 'Confirm details',
+              data: { turnId: data.turnId, intent: nextIntent, sourceText },
+            });
+            addAssistantTurn('Updated the slip on the right. Confirm when it looks right, or tell me another change.');
+            return;
+          }
+        }
+
         // One utterance may hold several actions. Split it, parse each segment, then
         // run the immediate ones in order and queue the confirmations to review one
         // at a time. A plain single-action utterance is just a one-item batch.
@@ -346,7 +374,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setBusy(false);
       }
     },
-    [activeTab, addUserTurn, runNonConfirmable, presentConfirmable, setQueue],
+    [activeTab, addUserTurn, runNonConfirmable, presentConfirmable, setQueue, artifact, patchTurn, addAssistantTurn],
   );
 
   // The user corrected a route (from the rail's slip or a "did you mean" card).
