@@ -19,10 +19,20 @@ exercise pricing/writes), then folding in feedback.
   export a hook beside a component).
 
 **Built this session (do NOT rebuild):**
-1. **Key location map** (`key-location-map`): filled `KEY_LOCATIONS` in
-   `InventoryCard.tsx` from Parsa's board layout (A1=01122BE, C1=C088, D1=CO10,
-   G1=CLB2, H1=HR1 Brass, I1=HR1 Nickel-Plated, J1=IN33, K1=LRD-1D/LD1; B1 and F1
-   empty). Maps model -> slot, lowercased (the lookup normalizes).
+1. **Key location map + visual board** (`key-location-map`, then `key-board-map`):
+   the board layout is now one source of truth in `src/lib/keyLocations.ts`
+   (`KEY_BOARD` -> derived `KEY_LOCATIONS` model->slot). Rendered as a **"Key board"**
+   on the classic Inventory page (`StaffInventory.tsx`) showing every slot with its
+   blank, F1 as **Empty** and B1 as **Not identified**; clicking an occupied slot
+   searches it, and each key card shows its board location. The AI inventory card
+   reads the same map. Layout: A1=01122BE, C1=C088, D1=CO10, G1=CLB2, H1=HR1 Brass,
+   I1=HR1 Nickel-Plated, J1=IN33, K1=LRD-1D/LD1; B1 unknown, F1 empty. HR1 sits in
+   H1 and I1 and resolves to "H1 / I1".
+   - **Verified against DEV keyInventory:** only 01122BE, CLB2, HR1 (stored as ONE
+     model, not split by finish), and IN33 exist as models; **C088, CO10, LRD-1D,
+     LD1 are NOT in the DB**, so their per-key badge will not show until a matching
+     model is added (the board map shows them regardless). Equivalents live in the
+     `notes` field on each key (e.g. 01122BR notes "Y104").
 2. **Receipt/label PDF redesign** (`receipt-redesign`, `src/lib/simpleReceipt.ts`):
    rewrote the one shared generator. Editorial header, details block, itemized
    table with a column header, boxed totals, footnote, footer. Ink-light for B&W
