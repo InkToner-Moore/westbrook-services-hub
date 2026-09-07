@@ -67,12 +67,27 @@ export type InventoryArtifactData = InventoryLookupData | InventorySavedData;
 const KEY_INVENTORY_COLLECTION = 'keyInventory';
 const REFILL_INVENTORY_COLLECTION = 'refillInventory';
 
-// --- Location scaffold -------------------------------------------------------
-// The model -> cut-code map is coming later (e.g. Kwikset KW1 -> "KW1",
-// Schlage SC1 -> "SC1"). Fill this in when the mapping lands; the card reads it
-// today and shows "Location coming soon" while it is empty. A cut code a clerk
-// set on the item itself wins over the map.
-export const KEY_LOCATIONS: Record<string, string> = {};
+// --- Location map ------------------------------------------------------------
+// Maps a key blank model to its slot on the board so the card can tell a clerk
+// where to find it. Keys are lowercased because lookupKeyLocation normalizes the
+// item's model with .trim().toLowerCase() before indexing here. A cut code a
+// clerk set on the item itself still wins over this map.
+//
+// Board layout (slot = model held there): A1=01122BE, C1=C088, D1=CO10,
+// G1=CLB2, H1=HR1 Brass, I1=HR1 Nickel-Plated, J1=IN33, K1=LRD-1D / LD1.
+// B1 and F1 are empty for now. Where a blank goes by more than one name, each
+// name maps to the same slot.
+export const KEY_LOCATIONS: Record<string, string> = {
+  '01122be': 'A1',
+  'c088': 'C1',
+  'co10': 'D1',
+  'clb2': 'G1',
+  'hr1 (brass)': 'H1',
+  'hr1 (nickel-plated)': 'I1',
+  'in33': 'J1',
+  'lrd-1d': 'K1',
+  'ld1': 'K1',
+};
 
 const normModel = (model: string): string => model.trim().toLowerCase();
 
