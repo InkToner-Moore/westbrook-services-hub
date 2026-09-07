@@ -31,6 +31,8 @@ import {
   ChevronRight,
   Clock,
   Download,
+  LayoutGrid,
+  List,
   Loader2,
   Lock,
   LogIn,
@@ -87,6 +89,7 @@ import {
   formatShiftDuration,
   formatTime12,
   formatWeekRange,
+  parseDateKey,
   shiftMinutes,
   shiftsOnDay,
   startOfWeek,
@@ -107,6 +110,381 @@ function downloadCsv(fileName: string, csv: string): void {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+// The theme bag shape, borrowed from the hook so the presentational components
+// below can be typed without repeating it (and without a bare `any`).
+type ThemeClasses = ReturnType<typeof useTheme>["themeClasses"];
+
+// --- Visual mode helpers -----------------------------------------------------
+
+// One spent colour per person, so the same employee reads in the same colour
+// across the schedule grid and the hours bars. Both themes are defined so the
+// light/dark switch only changes value, never the layout.
+const EMPLOYEE_HUES = [
+  { block: { light: "bg-blue-100 text-blue-900 border-blue-300", dark: "bg-blue-500/25 text-blue-50 border-blue-400/40" }, bar: { light: "bg-blue-500", dark: "bg-blue-400" }, dot: "bg-blue-500" },
+  { block: { light: "bg-emerald-100 text-emerald-900 border-emerald-300", dark: "bg-emerald-500/25 text-emerald-50 border-emerald-400/40" }, bar: { light: "bg-emerald-500", dark: "bg-emerald-400" }, dot: "bg-emerald-500" },
+  { block: { light: "bg-amber-100 text-amber-900 border-amber-300", dark: "bg-amber-500/25 text-amber-50 border-amber-400/40" }, bar: { light: "bg-amber-500", dark: "bg-amber-400" }, dot: "bg-amber-500" },
+  { block: { light: "bg-violet-100 text-violet-900 border-violet-300", dark: "bg-violet-500/25 text-violet-50 border-violet-400/40" }, bar: { light: "bg-violet-500", dark: "bg-violet-400" }, dot: "bg-violet-500" },
+  { block: { light: "bg-rose-100 text-rose-900 border-rose-300", dark: "bg-rose-500/25 text-rose-50 border-rose-400/40" }, bar: { light: "bg-rose-500", dark: "bg-rose-400" }, dot: "bg-rose-500" },
+  { block: { light: "bg-teal-100 text-teal-900 border-teal-300", dark: "bg-teal-500/25 text-teal-50 border-teal-400/40" }, bar: { light: "bg-teal-500", dark: "bg-teal-400" }, dot: "bg-teal-500" },
+  { block: { light: "bg-indigo-100 text-indigo-900 border-indigo-300", dark: "bg-indigo-500/25 text-indigo-50 border-indigo-400/40" }, bar: { light: "bg-indigo-500", dark: "bg-indigo-400" }, dot: "bg-indigo-500" },
+  { block: { light: "bg-orange-100 text-orange-900 border-orange-300", dark: "bg-orange-500/25 text-orange-50 border-orange-400/40" }, bar: { light: "bg-orange-500", dark: "bg-orange-400" }, dot: "bg-orange-500" },
+];
+
+// Stable colour per employee id so a person keeps their colour week to week.
+function hueFor(id: string) {
+  let h = 0;
+  for (let i = 0; i < id.length; i += 1) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return EMPLOYEE_HUES[h % EMPLOYEE_HUES.length];
+}
+
+// 'HH:MM' to minutes past midnight, or null if malformed.
+function hhmmToMin(hhmm: string): number | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm || "");
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h > 23 || min > 59) return null;
+  return h * 60 + min;
+}
+
+// A packed shift carries its lane and the lane count of its overlap cluster, so
+// overlapping shifts sit side by side instead of stacking on top of each other.
+interface PackedShift {
+  shift: ScheduleShift;
+  start: number;
+  end: number;
+  lane: number;
+  lanes: number;
+}
+
+// Greedy interval packing for one day: overlapping shifts share a cluster and
+// split the column into even lanes; a shift with no overlap gets the full width.
+function packDay(dayShifts: ScheduleShift[]): PackedShift[] {
+  const items = dayShifts
+    .map((s) => {
+      const start = hhmmToMin(s.start) ?? 0;
+      const end = Math.max(hhmmToMin(s.end) ?? 0, start + 15);
+      return { s, start, end };
+    })
+    .sort((a, b) => a.start - b.start || a.end - b.end);
+  const out: PackedShift[] = [];
+  let cluster: typeof items = [];
+  let clusterEnd = -1;
+  const flush = () => {
+    const laneEnds: number[] = [];
+    const laneOf: number[] = [];
+    cluster.forEach((it) => {
+      let lane = laneEnds.findIndex((e) => e <= it.start);
+      if (lane === -1) {
+        lane = laneEnds.length;
+        laneEnds.push(it.end);
+      } else {
+        laneEnds[lane] = it.end;
+      }
+      laneOf.push(lane);
+    });
+    const laneCount = laneEnds.length || 1;
+    cluster.forEach((it, i) => out.push({ shift: it.s, start: it.start, end: it.end, lane: laneOf[i], lanes: laneCount }));
+    cluster = [];
+    clusterEnd = -1;
+  };
+  items.forEach((it) => {
+    if (cluster.length && it.start >= clusterEnd) flush();
+    cluster.push(it);
+    clusterEnd = Math.max(clusterEnd, it.end);
+  });
+  if (cluster.length) flush();
+  return out;
+}
+
+const HOUR_PX = 56;
+
+// A segmented List / Visual switch, persisted by the caller.
+function ViewToggle({
+  value,
+  onChange,
+  themeClasses,
+  isDarkMode,
+}: {
+  value: "list" | "visual";
+  onChange: (v: "list" | "visual") => void;
+  themeClasses: ThemeClasses;
+  isDarkMode: boolean;
+}) {
+  const opt = (v: "list" | "visual", label: string, Icon: typeof List) => (
+    <button
+      type="button"
+      onClick={() => onChange(v)}
+      aria-pressed={value === v}
+      className={`flex min-h-[40px] items-center gap-1.5 rounded-md px-3 text-xs font-medium transition-colors ${
+        value === v
+          ? `${isDarkMode ? "bg-[#171a21]" : "bg-white"} ${themeClasses.text.primary} shadow-sm`
+          : themeClasses.text.secondary
+      }`}
+    >
+      <Icon className="h-3.5 w-3.5" />
+      {label}
+    </button>
+  );
+  return (
+    <div className={`inline-flex gap-1 rounded-lg border p-1 ${themeClasses.card.secondary}`}>
+      {opt("list", "List", List)}
+      {opt("visual", "Visual", LayoutGrid)}
+    </div>
+  );
+}
+
+// The weekly calendar grid: an hour rail on the left and seven day columns with
+// shift blocks positioned by their start and end, colour-coded per employee.
+function VisualSchedule({
+  weekKeys,
+  shifts,
+  todayKey,
+  nowMin,
+  isManager,
+  onEditShift,
+  onAddShift,
+  themeClasses,
+  isDarkMode,
+}: {
+  weekKeys: string[];
+  shifts: ScheduleShift[];
+  todayKey: string;
+  nowMin: number;
+  isManager: boolean;
+  onEditShift: (s: ScheduleShift) => void;
+  onAddShift: (dayKey: string) => void;
+  themeClasses: ThemeClasses;
+  isDarkMode: boolean;
+}) {
+  const weekShifts = weekKeys.flatMap((k) => shiftsOnDay(shifts, k));
+
+  // Time window: default 8:00 to 20:00, widened to fit the actual shifts and
+  // aligned to whole hours so the rail reads cleanly.
+  let winStart = 8 * 60;
+  let winEnd = 20 * 60;
+  weekShifts.forEach((s) => {
+    const a = hhmmToMin(s.start);
+    const b = hhmmToMin(s.end);
+    if (a != null) winStart = Math.min(winStart, a);
+    if (b != null) winEnd = Math.max(winEnd, b);
+  });
+  winStart = Math.floor(winStart / 60) * 60;
+  winEnd = Math.ceil(winEnd / 60) * 60;
+  if (winEnd - winStart < 240) winEnd = winStart + 240;
+
+  const pxPerMin = HOUR_PX / 60;
+  const gridHeight = (winEnd - winStart) * pxPerMin;
+  const hours: number[] = [];
+  for (let h = winStart; h <= winEnd; h += 60) hours.push(h);
+
+  const edge = isDarkMode ? "border-[#2a2f3a]" : "border-[#e4e1d9]";
+  const todayCol = isDarkMode ? "bg-blue-500/[0.06]" : "bg-blue-50/70";
+  const todayBadge = isDarkMode ? "bg-blue-500 text-white" : "bg-blue-600 text-white";
+  const hasAny = weekShifts.length > 0;
+
+  const hourText = (min: number) =>
+    formatTime12(`${String(Math.floor(min / 60)).padStart(2, "0")}:00`);
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="min-w-[760px]">
+        {/* Day headers */}
+        <div className="flex">
+          <div className="w-14 shrink-0" />
+          {weekKeys.map((dayKey) => {
+            const d = parseDateKey(dayKey);
+            const isToday = dayKey === todayKey;
+            return (
+              <div key={dayKey} className={`flex-1 min-w-[96px] border-l px-1 py-2 text-center ${edge}`}>
+                <div className={`text-[11px] font-semibold uppercase tracking-wide ${isToday ? themeClasses.text.accent : themeClasses.text.secondary}`}>
+                  {d.toLocaleDateString(undefined, { weekday: "short" })}
+                </div>
+                <div className="mt-1 flex items-center justify-center gap-1">
+                  <span className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-sm font-semibold ${isToday ? todayBadge : themeClasses.text.primary}`}>
+                    {d.getDate()}
+                  </span>
+                  {isManager && (
+                    <button
+                      type="button"
+                      onClick={() => onAddShift(dayKey)}
+                      aria-label={`Add a shift on ${formatDayHeading(dayKey)}`}
+                      className={`inline-flex h-7 w-7 items-center justify-center rounded-full ${themeClasses.button.ghost}`}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Grid body */}
+        <div className="relative flex">
+          {/* Hour rail */}
+          <div className="relative w-14 shrink-0" style={{ height: gridHeight }}>
+            {hours.map((min) => (
+              <div
+                key={min}
+                className="absolute right-1 flex justify-end"
+                style={{ top: (min - winStart) * pxPerMin - 6 }}
+              >
+                <span className={`text-[10px] font-mono tabular-nums ${themeClasses.text.muted}`}>{hourText(min)}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Day columns */}
+          {weekKeys.map((dayKey) => {
+            const packed = packDay(shiftsOnDay(shifts, dayKey));
+            const isToday = dayKey === todayKey;
+            return (
+              <div
+                key={dayKey}
+                className={`relative flex-1 min-w-[96px] border-l ${edge} ${isToday ? todayCol : ""}`}
+                style={{ height: gridHeight }}
+              >
+                {/* Hour gridlines */}
+                {hours.map((min) => (
+                  <div
+                    key={min}
+                    className={`absolute inset-x-0 border-t ${edge}`}
+                    style={{ top: (min - winStart) * pxPerMin }}
+                  />
+                ))}
+
+                {/* Current-time line on today */}
+                {isToday && nowMin >= winStart && nowMin <= winEnd && (
+                  <div className="absolute inset-x-0 z-20" style={{ top: (nowMin - winStart) * pxPerMin }}>
+                    <div className="relative h-px bg-red-500">
+                      <span className="absolute -left-1 -top-[3px] h-1.5 w-1.5 rounded-full bg-red-500" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Shift blocks */}
+                {packed.map((p) => {
+                  const hue = hueFor(p.shift.employeeId);
+                  const block = isDarkMode ? hue.block.dark : hue.block.light;
+                  const top = (p.start - winStart) * pxPerMin;
+                  const height = Math.max(22, (p.end - p.start) * pxPerMin - 2);
+                  const widthPct = 100 / p.lanes;
+                  const leftPct = p.lane * widthPct;
+                  const tall = height >= 40;
+                  const title = `${p.shift.employeeName}, ${formatTime12(p.shift.start)} to ${formatTime12(
+                    p.shift.end,
+                  )}${p.shift.note ? `, ${p.shift.note}` : ""}`;
+                  const cls = `absolute z-10 overflow-hidden rounded-md border px-1.5 py-1 text-left ${block} ${
+                    isManager ? "cursor-pointer transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-blue-500/40" : ""
+                  }`;
+                  const style = {
+                    top,
+                    height,
+                    left: `calc(${leftPct}% + 2px)`,
+                    width: `calc(${widthPct}% - 4px)`,
+                  };
+                  const inner = (
+                    <>
+                      <div className="truncate text-[11px] font-semibold leading-tight">{p.shift.employeeName}</div>
+                      {tall && (
+                        <div className="truncate text-[10px] font-mono tabular-nums leading-tight opacity-80">
+                          {formatTime12(p.shift.start)} to {formatTime12(p.shift.end)}
+                        </div>
+                      )}
+                    </>
+                  );
+                  return isManager ? (
+                    <button key={p.shift.id} type="button" title={title} onClick={() => onEditShift(p.shift)} className={cls} style={style}>
+                      {inner}
+                    </button>
+                  ) : (
+                    <div key={p.shift.id} title={title} className={cls} style={style}>
+                      {inner}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+
+          {/* Empty-week overlay */}
+          {!hasAny && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <div className={`rounded-lg border px-4 py-3 text-center text-sm ${themeClasses.card.secondary} ${themeClasses.text.secondary}`}>
+                No shifts this week.
+                {isManager ? " Use a day's plus button to add one." : ""}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// The hours view: one horizontal bar per employee for the shown entries, longest
+// first, sharing the employee colours used on the schedule grid.
+function VisualTimesheet({
+  entries,
+  now,
+  themeClasses,
+  isDarkMode,
+}: {
+  entries: TimeEntry[];
+  now: number;
+  themeClasses: ThemeClasses;
+  isDarkMode: boolean;
+}) {
+  const byEmp = new Map<string, { name: string; ms: number; open: boolean }>();
+  entries.forEach((e) => {
+    const cur = byEmp.get(e.employeeId) ?? { name: e.employeeName, ms: 0, open: false };
+    cur.ms += entryMs(e, now);
+    if (isOpen(e)) cur.open = true;
+    cur.name = e.employeeName;
+    byEmp.set(e.employeeId, cur);
+  });
+  const rows = Array.from(byEmp.entries())
+    .map(([id, v]) => ({ id, ...v }))
+    .sort((a, b) => b.ms - a.ms);
+  const maxMs = Math.max(1, ...rows.map((r) => r.ms));
+  const grand = rows.reduce((s, r) => s + r.ms, 0);
+  const track = isDarkMode ? "bg-[#1f232c]" : "bg-[#f1efe9]";
+  const onPill = isDarkMode ? "bg-blue-500/20 text-blue-200 border-blue-400/50" : "bg-blue-100 text-blue-800 border-blue-300";
+
+  return (
+    <div className="space-y-3">
+      {rows.map((r) => {
+        const hue = hueFor(r.id);
+        const bar = isDarkMode ? hue.bar.dark : hue.bar.light;
+        const pct = Math.max(3, Math.round((r.ms / maxMs) * 100));
+        return (
+          <div key={r.id} className="flex items-center gap-3">
+            <div className={`flex w-32 shrink-0 items-center gap-1.5 ${themeClasses.text.primary}`}>
+              <span className="truncate text-sm font-medium">{r.name}</span>
+              {r.open && <span className={`shrink-0 rounded-full border px-1.5 text-[10px] ${onPill}`}>now</span>}
+            </div>
+            <div className={`relative h-7 flex-1 overflow-hidden rounded-md ${track}`}>
+              <div className={`h-full rounded-md ${bar}`} style={{ width: `${pct}%` }} />
+            </div>
+            <div className={`w-24 shrink-0 text-right font-mono text-sm tabular-nums ${themeClasses.text.primary}`}>
+              {formatDuration(r.ms)}
+              <span className={`ml-1 text-[11px] ${themeClasses.text.muted}`}>{formatHoursDecimal(r.ms)}h</span>
+            </div>
+          </div>
+        );
+      })}
+      <div className={`flex items-center justify-between border-t pt-3 ${isDarkMode ? "border-[#2a2f3a]" : "border-[#e4e1d9]"}`}>
+        <span className={`text-sm font-semibold ${themeClasses.text.primary}`}>Total</span>
+        <span className={`font-mono text-sm font-semibold tabular-nums ${themeClasses.text.primary}`}>
+          {formatDuration(grand)}
+          <span className={`ml-2 text-[13px] font-normal ${themeClasses.text.muted}`}>{formatHoursDecimal(grand)} h</span>
+        </span>
+      </div>
+    </div>
+  );
 }
 
 const StaffTimesheet = () => {
@@ -131,6 +509,21 @@ const StaffTimesheet = () => {
   // Planned shifts and the week being viewed (Sunday-start).
   const [shifts, setShifts] = useState<ScheduleShift[]>([]);
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
+
+  // List vs Visual for each tab, remembered per browser. Visual is the default
+  // so the calendar grid and hours bars are what a clerk sees first.
+  const [scheduleView, setScheduleView] = useState<"list" | "visual">(
+    () => (localStorage.getItem("schedule-view") as "list" | "visual") || "visual",
+  );
+  const [entriesView, setEntriesView] = useState<"list" | "visual">(
+    () => (localStorage.getItem("timesheet-entries-view") as "list" | "visual") || "visual",
+  );
+  useEffect(() => {
+    localStorage.setItem("schedule-view", scheduleView);
+  }, [scheduleView]);
+  useEffect(() => {
+    localStorage.setItem("timesheet-entries-view", entriesView);
+  }, [entriesView]);
 
   // The add/edit shift dialog and its form.
   const [shiftDialogOpen, setShiftDialogOpen] = useState(false);
@@ -395,7 +788,9 @@ const StaffTimesheet = () => {
   };
 
   const weekKeys = weekDayKeys(weekStart);
-  const todayKey = toDateKey(new Date(now));
+  const nowDate = new Date(now);
+  const todayKey = toDateKey(nowDate);
+  const nowMin = nowDate.getHours() * 60 + nowDate.getMinutes();
 
   // Slate signature accents, per theme. State is never colour-only (buttons and
   // pills carry text/icons too).
@@ -544,7 +939,8 @@ const StaffTimesheet = () => {
             <Clock className={`h-5 w-5 ${themeClasses.text.secondary}`} />
             <h2 className={`text-lg font-semibold ${themeClasses.text.primary}`}>Time entries</h2>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <ViewToggle value={entriesView} onChange={setEntriesView} themeClasses={themeClasses} isDarkMode={isDarkMode} />
             <Button
               variant="ghost"
               onClick={() => setTodayOnly((v) => !v)}
@@ -576,6 +972,8 @@ const StaffTimesheet = () => {
               </h3>
               <p className={themeClasses.text.secondary}>Clock someone in to start the record.</p>
             </div>
+          ) : entriesView === "visual" ? (
+            <VisualTimesheet entries={shownEntries} now={now} themeClasses={themeClasses} isDarkMode={isDarkMode} />
           ) : (
             <>
               <div className={`divide-y ${isDarkMode ? "divide-[#2a2f3a]" : "divide-[#e4e1d9]"}`}>
@@ -634,6 +1032,7 @@ const StaffTimesheet = () => {
             <h2 className={`text-lg font-semibold ${themeClasses.text.primary}`}>Schedule</h2>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <ViewToggle value={scheduleView} onChange={setScheduleView} themeClasses={themeClasses} isDarkMode={isDarkMode} />
             {isManager ? (
               <>
                 <Button
@@ -712,6 +1111,18 @@ const StaffTimesheet = () => {
               <Loader2 className={`mb-3 h-10 w-10 animate-spin ${themeClasses.text.muted}`} />
               <p className={themeClasses.text.secondary}>Loading schedule...</p>
             </div>
+          ) : scheduleView === "visual" ? (
+            <VisualSchedule
+              weekKeys={weekKeys}
+              shifts={shifts}
+              todayKey={todayKey}
+              nowMin={nowMin}
+              isManager={isManager}
+              onEditShift={openEditShift}
+              onAddShift={openAddShift}
+              themeClasses={themeClasses}
+              isDarkMode={isDarkMode}
+            />
           ) : (
             <div className="space-y-3">
               {weekKeys.map((dayKey) => {
@@ -932,6 +1343,43 @@ const StaffTimesheet = () => {
         </div>
 
         <DialogFooter className="gap-2 sm:gap-2">
+          {editingShift && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className={`min-h-[44px] rounded-lg text-red-600 hover:text-red-700 sm:mr-auto ${themeClasses.button.ghost}`}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Remove this shift?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This removes {editingShift.employeeName}'s shift on {formatDayHeading(editingShift.date)},{" "}
+                    {formatTime12(editingShift.start)} to {formatTime12(editingShift.end)}.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={async () => {
+                      const target = editingShift;
+                      if (target) await deleteShift(target);
+                      setShiftDialogOpen(false);
+                      setEditingShift(null);
+                    }}
+                    className="bg-red-600 text-white hover:bg-red-700"
+                  >
+                    Remove
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           <Button
             type="button"
             variant="ghost"
