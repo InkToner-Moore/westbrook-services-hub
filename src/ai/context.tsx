@@ -14,6 +14,7 @@ import { buildCartReceiptOpts } from './cart';
 import { getProvider } from './providers';
 import { segmentUtterance, probeRoute } from './segment';
 import { applyFollowUp } from './followup';
+import { resolveKeyPrices } from './keys';
 import { getFieldSpecs } from './fieldSpecs';
 import { getExecutor, isImmediate } from './actions';
 import { receiptIntentToCartLines } from './actions/cartLines';
@@ -174,6 +175,10 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [artifact, setArtifact] = useState<ArtifactState | null>(null);
   const [cart, setCart] = useState<CartLine[]>(readCart);
+  // Customer captured from confirmed receipt intents, so the finished receipt
+  // carries their name/phone/email even though Finish is a single tap with no
+  // form. Filled field by field; a later receipt only fills what is still blank.
+  const [cartCustomer, setCartCustomer] = useState<CartCustomer>({});
   const [busy, setBusy] = useState(false);
   // Confirmations still to review when one utterance held several actions. The
   // active slip lives in `artifact`; these wait behind it and surface one at a
@@ -255,12 +260,18 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const removeCartLine = useCallback((id: string) => {
     setCart((prev) => prev.filter((l) => l.id !== id));
   }, []);
-  const clearCart = useCallback(() => setCart([]), []);
+  const clearCart = useCallback(() => {
+    setCart([]);
+    setCartCustomer({});
+  }, []);
 
   const finalizeCart = useCallback(
-    (customer: CartCustomer = {}): ActionResult | null => {
+    (customer?: CartCustomer): ActionResult | null => {
       if (cart.length === 0) return null;
-      const opts = buildCartReceiptOpts(cart, customer);
+      // Use the explicitly passed customer, else what we captured across the
+      // confirmed receipts.
+      const who = { ...cartCustomer, ...(customer ?? {}) };
+      const opts = buildCartReceiptOpts(cart, who);
       const result: ActionResult = {
         message: `Here is the combined receipt with ${cart.length} ${
           cart.length === 1 ? 'item' : 'items'
@@ -270,9 +281,10 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       };
       setArtifact(result.artifact);
       setCart([]);
+      setCartCustomer({});
       return result;
     },
-    [cart],
+    [cart, cartCustomer],
   );
 
   // Put one confirmable intent's details on the rail as the active slip, posting a
@@ -356,7 +368,13 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const segments = (await segmentUtterance(trimmed)).slice(0, 8);
         const provider = getProvider();
         const parsed = await Promise.all(
-          segments.map((s) => provider.parse(s, { activeTab }).then((intent) => ({ intent, sourceText: s }))),
+          segments.map((s) =>
+            provider.parse(s, { activeTab }).then(async (intent) => {
+              // Price any key items from inventory before the slip is shown.
+              await resolveKeyPrices(intent);
+              return { intent, sourceText: s };
+            }),
+          ),
         );
 
         const confirmables: Array<{ intent: Intent; sourceText: string }> = [];
@@ -390,6 +408,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setBusy(true);
       try {
         const intent = await getProvider().parse(sourceText, { activeTab, forceAction: action, forceSubtype: subtype });
+        await resolveKeyPrices(intent);
 
         // A route with no confirmation (tracking, listing) runs now; the old turn
         // steps aside and the pending slip (if any) clears.
@@ -463,6 +482,18 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           return;
         }
         addCartLines(lines);
+        // Capture the customer so Finish can put them on the receipt. Only fill a
+        // field that is still blank, so the first receipt to name them wins.
+        const f = finalIntent.fields;
+        const pick = (k: string) => {
+          const v = f[k]?.value;
+          return v == null ? '' : String(v).trim();
+        };
+        setCartCustomer((prev) => ({
+          name: prev.name || pick('customerName') || undefined,
+          phone: prev.phone || pick('customerPhone') || undefined,
+          email: prev.email || pick('customerEmail') || undefined,
+        }));
         const count = cart.length + lines.length;
         addAssistantTurn(
           `Added to the receipt. ${count} ${count === 1 ? 'item' : 'items'} so far. Finish it from the open receipt when you are ready.`,

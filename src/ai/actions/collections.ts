@@ -146,16 +146,34 @@ export async function executeInventoryLookup(intent: Intent): Promise<ActionResu
     return { message: 'I could not reach the inventory just now. Please try again.' };
   }
 
-  const score = (hay: string): number =>
-    tokens.reduce((n, t) => (hay.toLowerCase().includes(t) ? n + 1 : n), 0);
+  // Rank matches so an exact hit wins: a full-string match ranks highest, then a
+  // whole-token match, then a prefix, then a loose substring. This is what puts a
+  // searched "Y1" at the top instead of burying it under everything that merely
+  // contains "y1". `primary` is the item's identifying text (a key's model, a
+  // refill's name); `extra` is secondary text (notes) that only breaks ties.
+  const q = query.toLowerCase().trim();
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const rank = (primary: string, extra = ''): number => {
+    const p = primary.toLowerCase().trim();
+    if (p === q) return 10000;
+    let s = 0;
+    for (const t of tokens) {
+      if (p === t) s += 500;
+      else if (new RegExp(`(?:^|[^a-z0-9])${esc(t)}(?:[^a-z0-9]|$)`, 'i').test(p)) s += 100;
+      else if (p.startsWith(t)) s += 40;
+      else if (p.includes(t)) s += 10;
+      if (extra && extra.toLowerCase().includes(t)) s += 2;
+    }
+    return s;
+  };
 
   const keyMatches = keys
-    .map((k) => ({ k, s: score(`${k.model} ${k.notes ?? ''}`) }))
+    .map((k) => ({ k, s: rank(k.model, k.notes ?? '') }))
     .filter((m) => m.s > 0)
     .sort((a, b) => b.s - a.s)
     .map((m) => m.k);
   const refillMatches = refills
-    .map((r) => ({ r, s: score(`${r.brand} ${r.cartridge} ${r.priceNote ?? ''}`) }))
+    .map((r) => ({ r, s: rank(`${r.brand} ${r.cartridge}`.trim(), r.priceNote ?? '') }))
     .filter((m) => m.s > 0)
     .sort((a, b) => b.s - a.s)
     .map((m) => m.r);

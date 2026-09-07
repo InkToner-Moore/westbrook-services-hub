@@ -199,7 +199,44 @@ export function extractName(text: string): string | null {
 
 export interface CourierMatch {
   courier: 'FedEx' | 'Purolator' | 'UPS' | 'Canada Post' | 'DHL' | null;
+  // The service level named after the courier, e.g. "Express Saver", "Ground".
+  // Empty when none was stated. Kept separate from `courier` so the track action
+  // can still key its tracking URL off the bare company.
+  service: string;
   trackingNumber: string | null;
+}
+
+// Service-level words that can follow a courier name ("UPS Express Saver",
+// "FedEx Ground", "Canada Post Expedited Parcel"). Read only immediately after the
+// courier, so a city or a number ends the run.
+const SERVICE_WORDS = new Set([
+  'express', 'saver', 'ground', 'standard', 'priority', 'overnight', 'expedited',
+  'economy', 'regular', 'worldwide', 'international', 'next', 'day', 'nextday',
+  '2day', '3day', 'am', 'home', 'delivery', 'xpresspost', 'tracked', 'packet',
+  'small', 'parcel', 'select', 'plus', 'air', 'sameday', 'same', 'freight',
+]);
+
+// The service phrase stated right after `keyword` in `text` (up to four words),
+// title cased. Stops at the first word that is not a service word.
+function serviceAfter(text: string, keyword: string): string {
+  const idx = text.toLowerCase().indexOf(keyword);
+  if (idx < 0) return '';
+  const after = text.slice(idx + keyword.length);
+  const tokens = after.split(/[^A-Za-z0-9]+/).filter(Boolean);
+  const picked: string[] = [];
+  for (const tok of tokens) {
+    if (!SERVICE_WORDS.has(tok.toLowerCase())) break;
+    picked.push(tok);
+    if (picked.length >= 4) break;
+  }
+  return picked.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
+
+// The courier plus its service level as one label ("UPS Express Saver"), or the
+// bare company, or "" when no courier is named.
+export function courierLabel(m: CourierMatch): string {
+  if (!m.courier) return '';
+  return m.service ? `${m.courier} ${m.service}` : m.courier;
 }
 
 // Detect a courier and/or a tracking number. Patterns from research
@@ -208,11 +245,16 @@ export interface CourierMatch {
 export function extractTracking(text: string): CourierMatch {
   const lower = text.toLowerCase();
   let courier: CourierMatch['courier'] = null;
-  if (lower.includes('fedex')) courier = 'FedEx';
-  else if (lower.includes('purolator')) courier = 'Purolator';
-  else if (lower.includes('ups')) courier = 'UPS';
-  else if (lower.includes('canada post') || lower.includes('canadapost')) courier = 'Canada Post';
-  else if (lower.includes('dhl')) courier = 'DHL';
+  let keyword = '';
+  if (lower.includes('fedex')) { courier = 'FedEx'; keyword = 'fedex'; }
+  else if (lower.includes('purolator')) { courier = 'Purolator'; keyword = 'purolator'; }
+  else if (lower.includes('ups')) { courier = 'UPS'; keyword = 'ups'; }
+  else if (lower.includes('canada post') || lower.includes('canadapost')) {
+    courier = 'Canada Post';
+    keyword = lower.includes('canada post') ? 'canada post' : 'canadapost';
+  } else if (lower.includes('dhl')) { courier = 'DHL'; keyword = 'dhl'; }
+
+  const service = keyword ? serviceAfter(text, keyword) : '';
 
   // Candidate tracking tokens, whitespace-stripped.
   const compact = text.replace(/\s+/g, ' ');
@@ -232,7 +274,33 @@ export function extractTracking(text: string): CourierMatch {
     if (!courier) courier = 'FedEx';
   }
 
-  return { courier, trackingNumber };
+  return { courier, service, trackingNumber };
+}
+
+// One key blank on a key-cutting order: the model and how many to cut. `unitPrice`
+// is filled later from inventory (resolveKeyPrices); it is absent at parse time.
+export interface KeyOrderItem {
+  model: string;
+  qty: number;
+  unitPrice?: number | null;
+}
+
+// Key codes on an order, each with an optional leading quantity: "kw1",
+// "2 kw1s", "2 kw1s 1 y1 and 2 sc4s". A key code is 1-3 letters then 1-3 digits
+// (KW1, SC4, Y1, WR5, CO10, IN33), as a standalone token. The lookarounds keep it
+// from matching a fragment inside a tracking number ("1Z999AA10..." never yields
+// "Z999") or a phone/price run. Plural "s" is tolerated and dropped.
+const KEY_ORDER_RE = /(?:(\d{1,3})\s*(?:x|×)?\s+)?(?<![A-Za-z0-9])([A-Za-z]{1,3}\d{1,3})s?(?![A-Za-z0-9])/gi;
+
+export function extractKeyItems(text: string): KeyOrderItem[] {
+  const items: KeyOrderItem[] = [];
+  KEY_ORDER_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = KEY_ORDER_RE.exec(text)) !== null) {
+    const qty = m[1] ? Math.max(1, parseInt(m[1], 10)) : 1;
+    items.push({ model: m[2].toUpperCase(), qty });
+  }
+  return items;
 }
 
 // A URL or bare domain in the text.

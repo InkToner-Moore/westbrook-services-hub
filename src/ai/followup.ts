@@ -11,7 +11,7 @@
 // into the last item or append a new one.
 import type { FieldValue, Intent } from './types';
 import { populateIntentFields } from './providers/deterministic';
-import { extractCity, extractPacking, extractPhone, extractProvince, extractShippingCost, extractTracking } from './extract';
+import { extractCity, extractPacking, extractPhone, extractProvince, extractShippingCost, extractTracking, courierLabel } from './extract';
 import { emptyShipmentItem, toShipmentItems } from './shipping';
 import type { PackingItem } from '@/lib/packing';
 
@@ -57,7 +57,9 @@ export function applyFollowUp(active: Intent, text: string): Intent {
   // says "add another ...".
   if (active.action === 'receipt' && active.subtype === 'shipping' && hasShipmentDetail(text)) {
     const items = toShipmentItems(active.fields.shipmentItems?.value);
-    const { courier, trackingNumber } = extractTracking(text);
+    const match = extractTracking(text);
+    const { trackingNumber } = match;
+    const courier = courierLabel(match) || null;
     const city = extractCity(text);
     const province = extractProvince(text);
     const cost = extractShippingCost(text, trackingNumber, extractPhone(text));

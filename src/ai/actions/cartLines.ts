@@ -6,6 +6,7 @@
 import { GST_RATE, round2 } from '@/lib/simpleReceipt';
 import { taxesForProvince, type TaxAmount } from '@/lib/canadaTax';
 import type { Intent, ReceiptSubtype } from '../types';
+import type { KeyOrderItem } from '../extract';
 import { isItemComplete, itemTaxLines, toShipmentItems } from '../shipping';
 import { packingLabel, packingLineTotal, packingTaxLines, type PackingItem } from '@/lib/packing';
 import type { CartLine, CartLineSource } from '../cart';
@@ -62,6 +63,7 @@ function shippingLines(intent: Intent): CartLine[] {
   const gstOn = intent.fields.gst?.value === true;
   return items.map((item) => {
     const parts = [item.courier.trim() || 'Shipment'];
+    if (item.trackingNumber.trim()) parts.push(`Tracking: ${item.trackingNumber.trim()}`);
     const dest = [item.city.trim(), item.province.trim(), item.country.trim()].filter(Boolean).join(', ');
     if (dest) parts.push(`To: ${dest}`);
     return {
@@ -72,6 +74,28 @@ function shippingLines(intent: Intent): CartLine[] {
       source: 'shipping' as CartLineSource,
     };
   });
+}
+
+// Key-cutting line items, one per key, priced from inventory (resolveKeyPrices
+// filled unitPrice before confirm). A key can be the whole receipt or ride on a
+// shipment, so this is called for both.
+function keyLines(intent: Intent): CartLine[] {
+  const raw = intent.fields.keyItems?.value;
+  if (!Array.isArray(raw)) return [];
+  const gstOn = intent.fields.gst?.value === true;
+  return (raw as KeyOrderItem[])
+    .filter((it) => it && it.model)
+    .map((it) => {
+      const price = round2((it.unitPrice ?? 0) * (it.qty || 1));
+      const desc = `Key Cutting: ${it.model}${it.qty > 1 ? ` x${it.qty}` : ''}`;
+      return {
+        id: lineId(),
+        description: desc,
+        price,
+        taxLines: albertaGst(price, gstOn),
+        source: 'key' as CartLineSource,
+      };
+    });
 }
 
 // A packing item (from the packing page or a chat pill) as one cart line.
@@ -100,6 +124,12 @@ function packingLines(intent: Intent): CartLine[] {
 export function receiptIntentToCartLines(intent: Intent): CartLine[] {
   if (intent.action !== 'receipt') return [];
   const subtype = (intent.subtype ?? 'refill') as ReceiptSubtype;
-  const base = subtype === 'shipping' ? shippingLines(intent) : flatLine(intent, subtype);
-  return [...base, ...packingLines(intent)];
+  const hasKeys = Array.isArray(intent.fields.keyItems?.value) && (intent.fields.keyItems!.value as unknown[]).length > 0;
+  let base: CartLine[];
+  if (subtype === 'shipping') base = shippingLines(intent);
+  else if (subtype === 'key' && hasKeys) base = keyLines(intent);
+  else base = flatLine(intent, subtype);
+  // Keys can also ride a shipment ("... KW1" on a shipping receipt).
+  const ridingKeys = subtype === 'shipping' ? keyLines(intent) : [];
+  return [...base, ...ridingKeys, ...packingLines(intent)];
 }

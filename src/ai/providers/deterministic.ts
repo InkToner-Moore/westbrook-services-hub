@@ -15,6 +15,7 @@ import {
   extractCity,
   extractEmail,
   extractEmployeeName,
+  extractKeyItems,
   extractModel,
   extractMoney,
   extractName,
@@ -25,6 +26,7 @@ import {
   extractQuantity,
   extractShippingCost,
   extractTracking,
+  courierLabel,
   extractType,
   extractUrl,
   todayIso,
@@ -152,10 +154,11 @@ function splitByCourier(chunk: string): string[] {
 function extractShipmentItems(text: string) {
   const base = emptyShipmentItem();
   const build = (piece: string) => {
-    const { courier, trackingNumber } = extractTracking(piece);
+    const match = extractTracking(piece);
+    const { trackingNumber } = match;
     return {
       ...emptyShipmentItem(),
-      courier: courier ?? '',
+      courier: courierLabel(match),
       trackingNumber: trackingNumber ?? '',
       city: extractCity(piece) ?? '',
       province: extractProvince(piece) ?? base.province,
@@ -213,6 +216,18 @@ function looksLikeInventoryLookup(text: string): boolean {
   // One short alphanumeric token that contains a digit: a key code (KW1, SC4) or a
   // cartridge SKU (564XL, TN660), whichever way the letters and digits fall.
   return /^[A-Za-z0-9]{2,7}$/.test(t) && /\d/.test(t);
+}
+
+// Several keys, or a key with a quantity, or the word "key" alongside a code:
+// "2 kw1s 1 y1 and 2 sc4s", "2 kw1s", "cut a kw1". This is a key-cutting SALE, so
+// it routes to a key receipt. A single bare code with no quantity is handled by
+// looksLikeInventoryLookup first (a price/stock lookup), so it never reaches here.
+function looksLikeKeyOrder(text: string): boolean {
+  const items = extractKeyItems(text);
+  if (items.length === 0) return false;
+  const hasKeyWord = /\bkeys?\b/i.test(text);
+  const anyQty = items.some((it) => it.qty > 1) || /\b\d{1,3}\s+[A-Za-z]{1,3}\d/.test(text);
+  return items.length >= 2 || hasKeyWord || anyQty;
 }
 
 // Provenance helpers.
@@ -350,6 +365,14 @@ export class DeterministicProvider implements AiProvider {
       confidence = 0.8;
     }
 
+    // Several keys, a quantity, or "key" plus a code is a key-cutting sale. A lone
+    // code was already taken as a lookup above, so this only catches real orders.
+    if (action === 'unknown' && looksLikeKeyOrder(text)) {
+      action = 'receipt';
+      subtype = 'key';
+      confidence = 0.8;
+    }
+
     if (action === 'unknown') {
       // Score every route by how many of its keywords hit. The DECISION is
       // unchanged from the original first-match-wins: the winner is the earliest
@@ -405,6 +428,16 @@ export class DeterministicProvider implements AiProvider {
       }
     }
 
+    // A receipt with no subtype yet (e.g. the "Receipt" quick action prepends the
+    // word "receipt", giving "receipt kw1"): pick one from what the text names, so
+    // it does not fall through to an empty, un-fillable slip. Keys win, then a
+    // courier/tracking shipment, else a plain supplies sale.
+    if (action === 'receipt' && !subtype) {
+      if (extractKeyItems(text).length > 0) subtype = 'key';
+      else if (pieceHasCourier(text)) subtype = 'shipping';
+      else subtype = 'supplies';
+    }
+
     const intent: Intent = { action, subtype, fields: {}, confidence, runnerUp };
     populateIntentFields(intent, text);
     return intent;
@@ -452,6 +485,19 @@ export function populateIntentFields(intent: Intent, text: string): void {
   if (action === 'receipt') {
     const packing = extractPacking(text);
     if (packing.length > 0) intent.fields.packing = { value: packing, source: 'explicit' };
+  }
+
+  // Keys named on a receipt become priced line items (priced from inventory in
+  // resolveKeyPrices). A key can be the whole sale (subtype 'key') or ride on a
+  // shipment ("... KW1" at the end of a shipping utterance). For a supplies/refill
+  // sale we only treat a code as a key when the word "key" is present, so a
+  // cartridge model is never mistaken for a key blank.
+  if (action === 'receipt') {
+    const attachKeys = subtype === 'key' || subtype === 'shipping' || /\bkeys?\b/i.test(text);
+    if (attachKeys) {
+      const keyItems = extractKeyItems(text);
+      if (keyItems.length > 0) intent.fields.keyItems = { value: keyItems, source: 'explicit' };
+    }
   }
 
   // Tracking has no confirmation spec; fill courier + number directly.
