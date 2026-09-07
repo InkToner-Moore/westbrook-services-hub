@@ -2,6 +2,78 @@
 
 Read `DESIGN-SPEC.md` and `PLAN.md` first. This records where the rehaul stands.
 
+## START HERE (fresh-session brief, 2026-09-07)
+
+**Next session is for:** Parsa's staging review of this session's work on
+`ink-toner-moore.pages.dev` (needs the dev staff login and real DEV Firestore to
+exercise pricing/writes), then folding in feedback.
+
+**Where things stand (verify against `but status`):**
+- Stack tip is **`timesheet-visual-mode`** (stacked, bottom to top:
+  `manager-schedule` -> ... -> `ai-extract-routing-fixes` -> `key-location-map`
+  -> `receipt-redesign` -> `ai-keys-shipping-fixes` -> `timesheet-visual-mode`),
+  all pushed. `origin/dev` fast-forwarded to its tip (`f0f141b`). **Prod (`main`)
+  untouched** (still `0ffa16c`).
+- Tree clean. Gate: `tsc -p tsconfig.app.json --noEmit` clean, `yarn build`
+  green, eslint baseline-only (the usual react-refresh warnings on files that
+  export a hook beside a component).
+
+**Built this session (do NOT rebuild):**
+1. **Key location map** (`key-location-map`): filled `KEY_LOCATIONS` in
+   `InventoryCard.tsx` from Parsa's board layout (A1=01122BE, C1=C088, D1=CO10,
+   G1=CLB2, H1=HR1 Brass, I1=HR1 Nickel-Plated, J1=IN33, K1=LRD-1D/LD1; B1 and F1
+   empty). Maps model -> slot, lowercased (the lookup normalizes).
+2. **Receipt/label PDF redesign** (`receipt-redesign`, `src/lib/simpleReceipt.ts`):
+   rewrote the one shared generator. Editorial header, details block, itemized
+   table with a column header, boxed totals, footnote, footer. Ink-light for B&W
+   (no heavy fills, only hairlines + faint gray tints). Fixes a real bug where a
+   long item list ran off the page: now paginates (repeats the table header, slim
+   continuation header, Page X of Y) and auto-picks a compact density to fit one
+   page when it can. Price-less 4x6 label drops the amount column (no misleading
+   $0.00). Switched to the named `{ jsPDF }` import.
+3. **AI: keys + fuller shipping + lookup ranking** (`ai-keys-shipping-fixes`):
+   - Shipping receipts carry the full service name (UPS Express Saver, FedEx
+     Ground) AND the tracking number on the line, and the finished receipt keeps
+     the customer name/phone/email (the cart's Finish lost them before).
+   - Keys understood: a bare code stays a price/stock lookup; several keys or a
+     quantity ("2 kw1s 1 y1 and 2 sc4s"), or a key on a receipt (or the "Receipt"
+     quick action + "kw1"), become priced key line items pulled from inventory
+     (`resolveKeyPrices` in `src/ai/keys.ts`, run after parse in `context.tsx`).
+   - Inventory lookup ranks exact match first (searching "Y1" puts Y1 at top).
+4. **Timesheet + Schedule visual mode** (`timesheet-visual-mode`,
+   `src/pages/StaffTimesheet.tsx`): a List/Visual toggle on both tabs (persisted,
+   Visual default). Visual Schedule is a weekly calendar time-grid (hour rail, day
+   columns, color-coded shift blocks lane-packed, today tinted with a live
+   current-time line, manager add/edit, read-only when locked). Visual Timesheet
+   is a per-employee hours bar chart. Shift dialog gained a manager Delete.
+
+**DEV data change this session (not code):** set KW1 / SC1 / WR5 prices to **3.57**
+in DEV `keyInventory` via the dev SA REST API (were 3.68). PROD unchanged.
+
+**Verify on staging (could not be done locally; demo Firebase denies reads/writes):**
+- Key receipts price correctly from DEV `keyInventory` and the totals are right.
+- `KEY_LOCATIONS`: the card resolves a slot only when the searched/stored key
+  MODEL string matches a map key. If DEV `keyInventory` stores these under
+  different spellings than Parsa's (e.g. "HR1-B" vs "HR1 (Brass)", "01122" vs
+  "01122BE"), the lookup shows "Location coming soon"; add the stored spelling as
+  an equivalent once seen on staging.
+- Shipping receipt shows service + tracking + customer end to end (verified by
+  offline PDF render; confirm with a real login + LLM path).
+
+**Caveats / follow-ups:**
+- Shipping+key combined: keys land on the FINAL receipt, but the shipping slip
+  PREVIEW total is shipping-only (the shipping spec has no key field); the chat
+  and downloaded receipt are correct. Add a slip "Keys" row if Parsa wants it in
+  the preview.
+- Employee colors repeat past 8 employees (names always shown, so still legible).
+- **Email-to-print feature (discussed, NOT built):** customers email files to an
+  address, staff see them in the portal. Recommended path: move DNS from Porkbun
+  to Cloudflare, use an Email Worker (reuses the existing Worker + `FIREBASE_SA`)
+  to store attachments in Firebase Storage + a `printJobs` Firestore doc, staff
+  "Print Inbox" page reads it. Its own effort; scope it before building.
+- **PROD:** none of this is on prod. Mirror DEV key prices + any new rules and
+  redo the pricing when the rehaul ships to `main`.
+
 ## START HERE (fresh-session brief, 2026-09-06)
 
 **Next session is for:** Parsa's staging review + smoke-test of the AI-Mode parsing
