@@ -23,6 +23,7 @@ import { Boxes, Check, KeyRound, Droplets, MapPin, Pencil, Search, X } from 'luc
 import { useTheme } from '@/contexts/ThemeContext';
 import { toast } from '@/hooks/use-toast';
 import { updateDocument } from '@/lib/firestore';
+import { KEY_LOCATIONS, lookupKeyLocation } from '@/lib/keyLocations';
 import type { ArtifactRegistry } from '@/components/shell/artifactRegistry';
 
 // --- Result shapes (mirror StaffInventory + collections.ts) -----------------
@@ -67,37 +68,9 @@ export type InventoryArtifactData = InventoryLookupData | InventorySavedData;
 const KEY_INVENTORY_COLLECTION = 'keyInventory';
 const REFILL_INVENTORY_COLLECTION = 'refillInventory';
 
-// --- Location map ------------------------------------------------------------
-// Maps a key blank model to its slot on the board so the card can tell a clerk
-// where to find it. Keys are lowercased because lookupKeyLocation normalizes the
-// item's model with .trim().toLowerCase() before indexing here. A cut code a
-// clerk set on the item itself still wins over this map.
-//
-// Board layout (slot = model held there): A1=01122BE, C1=C088, D1=CO10,
-// G1=CLB2, H1=HR1 Brass, I1=HR1 Nickel-Plated, J1=IN33, K1=LRD-1D / LD1.
-// B1 and F1 are empty for now. Where a blank goes by more than one name, each
-// name maps to the same slot.
-export const KEY_LOCATIONS: Record<string, string> = {
-  '01122be': 'A1',
-  'c088': 'C1',
-  'co10': 'D1',
-  'clb2': 'G1',
-  'hr1 (brass)': 'H1',
-  'hr1 (nickel-plated)': 'I1',
-  'in33': 'J1',
-  'lrd-1d': 'K1',
-  'ld1': 'K1',
-};
-
-const normModel = (model: string): string => model.trim().toLowerCase();
-
-// Resolve a key's location: an item-level cut code first, then the shared map.
-// Returns null when neither is known.
-export function lookupKeyLocation(item: Pick<KeyResult, 'model' | 'cutCode'>): string | null {
-  if (item.cutCode && item.cutCode.trim()) return item.cutCode.trim();
-  const mapped = KEY_LOCATIONS[normModel(item.model)];
-  return mapped ?? null;
-}
+// The key board layout and the model -> slot lookup live in one shared source of
+// truth (lib/keyLocations), imported above. Re-exported for any existing importers.
+export { KEY_LOCATIONS, lookupKeyLocation };
 
 // --- formatting --------------------------------------------------------------
 const fmtMoney = (n: number | null | undefined): string | null =>

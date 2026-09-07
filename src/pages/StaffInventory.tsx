@@ -36,6 +36,7 @@ import {
   Loader2,
   Search,
   X,
+  MapPin,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
@@ -49,6 +50,8 @@ import {
   generateRefillId,
 } from "@/lib/firestore";
 import ThemeToggleButton from "@/components/ThemeToggleButton";
+import { KeyBoardMap } from "@/components/KeyBoardMap";
+import { lookupKeyLocation } from "@/lib/keyLocations";
 
 interface KeyInventoryItem {
   id: string;
@@ -57,6 +60,8 @@ interface KeyInventoryItem {
   price: number | null;
   // Alternate names for the same blank, from the price list, kept for search.
   notes?: string;
+  // Optional staff-set board location / cut code; wins over the board map.
+  cutCode?: string;
   inStock: boolean;
   createdAt: string;
   updatedAt: string;
@@ -456,6 +461,13 @@ const StaffInventory = () => {
                 </CardContent>
               </Card>
 
+              {/* The physical key board: every slot, its blank, and the empty spots. */}
+              <Card className={`mb-6 shadow-lg transition-all duration-300 ${themeClasses.card.secondary}`}>
+                <CardContent className="p-4">
+                  <KeyBoardMap onSelect={(model) => setSearchTerm(model)} />
+                </CardContent>
+              </Card>
+
               {/* Search bar — hidden until there's something to search through. */}
               {!loading && keys.length > 0 && (
                 <div className="relative mb-4">
@@ -526,6 +538,7 @@ const StaffInventory = () => {
                   {filteredKeys.map((item) => {
                     const { Icon, gradient } = getKeyIconStyle(item.model);
                     const priceText = money(item.price);
+                    const location = lookupKeyLocation(item);
                     return (
                     <Card key={item.id} className={`shadow-lg transition-all duration-300 ${themeClasses.card.secondary}`}>
                       <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
@@ -540,6 +553,12 @@ const StaffInventory = () => {
                             {item.notes ? (
                               <p className={`text-xs truncate transition-colors duration-300 ${themeClasses.text.muted}`}>
                                 {item.notes}
+                              </p>
+                            ) : null}
+                            {location ? (
+                              <p className={`mt-0.5 flex items-center gap-1 text-xs font-mono tabular-nums transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                                <MapPin className="h-3 w-3 shrink-0 text-orange-500" />
+                                {location}
                               </p>
                             ) : null}
                           </div>
