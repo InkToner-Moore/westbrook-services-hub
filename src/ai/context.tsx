@@ -318,7 +318,8 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (executor && isImmediate(intent)) {
         try {
           addResult(await executor(intent));
-        } catch {
+        } catch (err) {
+          console.error('[ai] immediate executor failed', intent.action, err);
           addAssistantTurn('Something went wrong with that. Please try again.');
         }
       } else {
@@ -419,7 +420,8 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           if (executor) {
             try {
               addResult(await executor(intent));
-            } catch {
+            } catch (err) {
+              console.error('[ai] reroute executor failed', intent.action, err);
               addAssistantTurn('Something went wrong with that. Please try again.');
             }
           }
@@ -459,14 +461,16 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (attach.pay) {
           try {
             addResult(await recordPurchase(finalIntent));
-          } catch {
+          } catch (err) {
+            console.error('[ai] recordPurchase failed', err);
             addAssistantTurn('Could not record the payment just now. The rest is done.');
           }
         }
         if (attach.label) {
           try {
             addResult(await buildLabel(finalIntent));
-          } catch {
+          } catch (err) {
+            console.error('[ai] buildLabel failed', err);
             addAssistantTurn('Could not build the label just now. The rest is done.');
           }
         }
@@ -507,7 +511,8 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (executor) {
         try {
           addResult(await executor(finalIntent));
-        } catch {
+        } catch (err) {
+          console.error('[ai] executor failed', finalIntent.action, err);
           addAssistantTurn('Something went wrong finishing that. Please try again.');
         }
       } else {

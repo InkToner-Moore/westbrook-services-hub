@@ -257,7 +257,10 @@ export async function executeTimesheet(intent: Intent): Promise<ActionResult> {
       default:
         return await viewSummary(name);
     }
-  } catch {
+  } catch (err) {
+    // A punch or employee write that fails silently invites a duplicate on
+    // retry, so log the real cause even though the counter sees a plain message.
+    console.error('[ai] timesheet action failed', err);
     return { message: 'I could not reach the timesheet just now. Please try again.' };
   }
 }

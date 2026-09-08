@@ -186,7 +186,10 @@ export async function executeCartridgeStatus(intent: Intent): Promise<ActionResu
 
   const before = order.status;
   const updates: Partial<CartridgeOrder> = { status };
-  if (status === 'picked_up') updates.dateCompleted = todayIso();
+  // Set the completion date on pickup, and clear a stale one when an order is
+  // re-opened (picked_up -> in_progress/ready), so the card never shows a
+  // "Picked up" date on an order that is no longer picked up.
+  updates.dateCompleted = status === 'picked_up' ? todayIso() : null;
   await updateDocument(ORDERS_COLLECTION, orderId, updates);
   const updated: CartridgeOrder = { ...order, ...updates };
   await syncOrderStatus(updated, status);

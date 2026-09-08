@@ -21,8 +21,9 @@ export interface NoteArtifactData {
   id: string;
   title: string;
   content: string;
-  // One of the fixed note categories (general, customer, inventory, shipping,
-  // urgent). Always a value; the executor defaults unknown categories to general.
+  // One of the fixed note categories (General, Customer, Supplier, Repair,
+  // Reminder, Other; see NOTE_CATEGORIES in fieldSpecs). Always a value; the
+  // executor defaults an unknown category to General.
   category: string;
   createdAt: string; // ISO
 }

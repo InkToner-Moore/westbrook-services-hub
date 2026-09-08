@@ -13,6 +13,8 @@ import { GST_RATE, grossFromNet } from '@/lib/canadaTax';
 import type { Intent } from '../types';
 import type { ActionResult } from './types';
 import { registerPurchaseRecorder } from './purchase';
+import { receiptIntentToCartLines } from './cartLines';
+import { cartTotal } from '../cart';
 
 export type TransactionStatus = 'recorded' | 'approved' | 'declined';
 
@@ -51,9 +53,17 @@ function fieldNum(intent: Intent, key: string): number | null {
   return null;
 }
 
-// The amount to charge: the price field (net), grossed up when the GST toggle is
-// on, so the card shows the real total a customer pays.
-function chargeAmount(intent: Intent): number {
+// The amount to charge: what the customer actually pays. For a receipt this is the
+// receipt total (every line plus its tax), built from the same cart lines the
+// printed receipt uses, so a shipping, key, or packing receipt records the real
+// amount instead of $0 (a flat `price` only covers refill/supplies). For a
+// non-receipt intent (a Record paid on the spot) it is the flat price grossed up
+// when GST is on. Exported for the parser test harness.
+export function chargeAmount(intent: Intent): number {
+  if (intent.action === 'receipt') {
+    const lines = receiptIntentToCartLines(intent);
+    if (lines.length > 0) return cartTotal(lines);
+  }
   const net = fieldNum(intent, 'price') ?? 0;
   const gstOn = intent.fields.gst?.value === true;
   return gstOn ? grossFromNet(net, GST_RATE) : net;
