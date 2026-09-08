@@ -11,6 +11,14 @@ import {
 import type { Intent } from '../types';
 import type { ActionResult } from './types';
 import { NOTE_CATEGORIES } from '../fieldSpecs';
+import {
+  getKeyBoard,
+  buildLocationIndex,
+  boardLocationFor,
+  clearPosition,
+  setPositionModels,
+  type KeyBoardPosition,
+} from '@/lib/keyBoard';
 
 function str(intent: Intent, key: string): string {
   const v = intent.fields[key]?.value;
@@ -178,14 +186,30 @@ export async function executeInventoryLookup(intent: Intent): Promise<ActionResu
     .sort((a, b) => b.s - a.s)
     .map((m) => m.r);
 
-  const total = keyMatches.length + refillMatches.length;
-  const data = { query, keys: keyMatches, refills: refillMatches, total };
+  // Attach each key's live board location so the card shows where it lives.
+  let board: KeyBoardPosition[] = [];
+  try {
+    board = await getKeyBoard();
+  } catch {
+    board = [];
+  }
+  const index = buildLocationIndex(board);
+  const keyMatchesWithLocation = keyMatches.map((k) => ({
+    ...k,
+    location: boardLocationFor(k.model, index),
+  }));
+
+  const total = keyMatchesWithLocation.length + refillMatches.length;
+  const data = { query, keys: keyMatchesWithLocation, refills: refillMatches, total };
 
   let message: string;
   if (total === 0) {
     message = `I could not find "${query}" in the key or refill inventory.`;
   } else {
-    const lead = keyMatches[0] ? summariseKey(keyMatches[0]) : summariseRefill(refillMatches[0]);
+    const leadKey = keyMatchesWithLocation[0];
+    const lead = leadKey
+      ? `${summariseKey(leadKey)}${leadKey.location ? ` Board ${leadKey.location}.` : ''}`
+      : summariseRefill(refillMatches[0]);
     const more = total > 1 ? ` Plus ${total - 1} more on the right.` : '';
     message = `${lead}${more}`;
   }
@@ -231,4 +255,49 @@ export async function executeDirectory(intent: Intent): Promise<ActionResult> {
   });
 
   return { message: `Added ${name} to the website directory.` };
+}
+
+// Set or clear a key's spot on the physical board from AI Mode: "put SC1 in B3",
+// "move HR1 to H1", "B3 is empty". Writes the keyBoard collection (lib/keyBoard),
+// the same data the Inventory board renders and edits. Immediate: it runs on the
+// spot and shows a short confirmation card, since a location edit is low-risk and
+// the board editor is the safety net.
+export async function executeKeyLocation(intent: Intent): Promise<ActionResult> {
+  const op = str(intent, 'op') || 'set';
+  const position = str(intent, 'position').toUpperCase();
+  const modelsRaw = intent.fields.models?.value;
+  const models = Array.isArray(modelsRaw) ? (modelsRaw as string[]) : [];
+
+  if (!position) {
+    return { message: 'Which board slot? Tell me a spot like B3 or H1.' };
+  }
+
+  try {
+    if (op === 'clear') {
+      await clearPosition(position);
+      return {
+        message: `Freed slot ${position} on the board.`,
+        artifact: {
+          kind: 'inventory',
+          title: 'Board updated',
+          data: { mode: 'saved', savedKind: 'key', item: { id: position, model: `${position} is now empty`, price: null, inStock: true } },
+        },
+      };
+    }
+    if (models.length === 0) {
+      return { message: `Which key goes in ${position}? Say something like "put SC1 in ${position}".` };
+    }
+    await setPositionModels(position, models);
+    return {
+      message: `Put ${models.join(' / ')} in ${position} on the board.`,
+      artifact: {
+        kind: 'inventory',
+        title: 'Board updated',
+        data: { mode: 'saved', savedKind: 'key', item: { id: position, model: `${models.join(' / ')} - ${position}`, price: null, inStock: true } },
+      },
+    };
+  } catch (e) {
+    console.error('Failed to update board from AI:', e);
+    return { message: `I could not update ${position} just now. Try the board editor on the Inventory page.` };
+  }
 }

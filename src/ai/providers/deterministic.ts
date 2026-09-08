@@ -16,6 +16,7 @@ import {
   extractEmail,
   extractEmployeeName,
   extractKeyItems,
+  extractKeyLocationOp,
   extractModel,
   extractMoney,
   extractName,
@@ -358,6 +359,14 @@ export class DeterministicProvider implements AiProvider {
       confidence = 0.8;
     }
 
+    // A board move/clear ("put SC1 in B3", "B3 is empty", "move HR1 to H1").
+    // Checked before the lookup so a placing cue wins, while a bare code ("B2")
+    // still falls through to inventory_lookup below.
+    if (action === 'unknown' && extractKeyLocationOp(text)) {
+      action = 'key_location';
+      confidence = 0.9;
+    }
+
     // A lone SKU / key code, with or without a trailing "?", is a READ lookup of
     // its price / stock / location, not a stock edit. Inventory WRITES always carry
     // a verb (add, mark, restock, set, out of stock); a bare code does not. This
@@ -408,8 +417,12 @@ export class DeterministicProvider implements AiProvider {
     }
 
     if (action === 'unknown' && RECEIPT_HINT.some((w) => lower.includes(w))) {
+      // "receipt"/"invoice" is an explicit intent word, most often the Receipt
+      // quick action prepending "receipt" (giving "receipt kw1"). Trust it above
+      // the local-routing threshold so a concrete subtype is resolved below and
+      // the LLM clarify never fires on an already-decided receipt.
       action = 'receipt';
-      confidence = 0.4;
+      confidence = 0.8;
     }
 
     // Bare courier name or lone tracking number, with no other intent: a lookup.
@@ -465,6 +478,18 @@ export function populateIntentFields(intent: Intent, text: string): void {
     intent.fields = {
       op: explicit(op),
       employeeName: name ? explicit(name) : absent(),
+    };
+    return;
+  }
+
+  // A board move/clear carries op + position + models, filled straight from the
+  // dedicated extractor. No confirmation spec: it runs immediately.
+  if (action === 'key_location') {
+    const loc = extractKeyLocationOp(text);
+    intent.fields = {
+      op: loc ? explicit(loc.op) : explicit('set'),
+      position: loc?.position ? explicit(loc.position) : absent(),
+      models: explicit(loc?.models ?? []),
     };
     return;
   }

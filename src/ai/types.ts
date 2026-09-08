@@ -24,6 +24,7 @@ export type AiAction =
   | 'note'
   | 'inventory'         // create/update inventory (write)
   | 'inventory_lookup'  // "is the HP 65 in stock?" (read, immediate)
+  | 'key_location'      // "put SC1 in B3" / "B3 is empty" (board write, immediate)
   | 'directory'
   | 'purchase'          // send a transaction to Moneris + record it (Wave 3)
   | 'timesheet'         // punch clock / employees (Wave 3; may fan into subtypes)

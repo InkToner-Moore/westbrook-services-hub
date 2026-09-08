@@ -303,6 +303,46 @@ export function extractKeyItems(text: string): KeyOrderItem[] {
   return items;
 }
 
+// A board move/clear from an utterance: "put SC1 in B3", "move HR1 to H1",
+// "B3 is empty", "clear A7". Returns null unless there is a clear board cue, so a
+// bare key code ("B2") stays an inventory lookup and never gets read as a slot.
+// The destination is a position preceded by a placing cue (a preposition or the
+// word slot/position/spot/board); the key(s) are read from the rest of the text.
+export interface KeyLocationOp {
+  op: 'set' | 'clear';
+  position: string; // "B3"
+  models: string[]; // for set; [] for clear
+}
+
+const POS = '([A-Ja-j])\\s?-?\\s?(\\d{1,2})';
+
+export function extractKeyLocationOp(text: string): KeyLocationOp | null {
+  // Clear: "B3 is empty/free", or "clear/empty/free/remove ... B3".
+  const isEmpty = new RegExp(`\\b${POS}\\b\\s+is\\s+(?:now\\s+)?(?:empty|free|clear|open|mt)\\b`, 'i').exec(text);
+  if (isEmpty) return { op: 'clear', position: `${isEmpty[1].toUpperCase()}${isEmpty[2]}`, models: [] };
+  const clearVerb = new RegExp(`\\b(?:clear|empty|free|vacate)\\b[^A-Za-z0-9]*(?:slot|position|spot)?\\s*${POS}\\b`, 'i').exec(text);
+  if (clearVerb) return { op: 'clear', position: `${clearVerb[1].toUpperCase()}${clearVerb[2]}`, models: [] };
+
+  // Set: a destination position after a placing cue.
+  let dest: RegExpExecArray | null = null;
+  for (const cue of ['(?:to|into|onto)', '(?:in|at)', '(?:slot|position|spot|board)']) {
+    const re = new RegExp(`\\b${cue}\\s+${POS}\\b`, 'i');
+    const m = re.exec(text);
+    if (m) {
+      dest = m;
+      break;
+    }
+  }
+  if (!dest) return null;
+  const position = `${dest[1].toUpperCase()}${dest[2]}`;
+  // Read the key(s) from the text with the destination token removed, so a
+  // letter+digit destination ("H1") is not itself read as a key model.
+  const without = text.slice(0, dest.index) + ' ' + text.slice(dest.index + dest[0].length);
+  const models = extractKeyItems(without).map((it) => it.model);
+  if (models.length === 0) return null;
+  return { op: 'set', position, models };
+}
+
 // A URL or bare domain in the text.
 export function extractUrl(text: string): string | null {
   const m = text.match(/\b(?:https?:\/\/|www\.)[^\s]+|\b[a-z0-9-]+\.(?:com|ca|net|org|io|co)\b[^\s]*/i);

@@ -11,7 +11,13 @@ import {
   executeCartridgeModify,
   executeCartridgeStatus,
 } from './cartridge';
-import { executeDirectory, executeInventory, executeInventoryLookup, executeNote } from './collections';
+import {
+  executeDirectory,
+  executeInventory,
+  executeInventoryLookup,
+  executeKeyLocation,
+  executeNote,
+} from './collections';
 import { executeTimesheet } from './timesheet';
 
 const REGISTRY: Partial<Record<AiAction, ActionExecutor>> = {
@@ -24,6 +30,7 @@ const REGISTRY: Partial<Record<AiAction, ActionExecutor>> = {
   note: executeNote,
   inventory: executeInventory,
   inventory_lookup: executeInventoryLookup,
+  key_location: executeKeyLocation,
   directory: executeDirectory,
   timesheet: executeTimesheet,
 };
@@ -38,6 +45,7 @@ const IMMEDIATE: Set<AiAction> = new Set([
   'cartridge_list',
   'cartridge_modify',
   'inventory_lookup',
+  'key_location',
 ]);
 
 // Whether an intent runs immediately (no confirmation slip). Timesheet is
