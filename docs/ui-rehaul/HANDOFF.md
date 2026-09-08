@@ -2,7 +2,7 @@
 
 Read `DESIGN-SPEC.md` and `PLAN.md` first. This records where the rehaul stands.
 
-## START HERE (fresh-session brief, 2026-09-07 late)
+## START HERE (fresh-session brief, 2026-09-08)
 
 **Next session is for:** Parsa's staging review of the key-board work on
 `ink-toner-moore.pages.dev` (needs the dev staff login + real DEV Firestore),
@@ -11,11 +11,20 @@ then the key-model research pass.
 **Where things stand (verify against `but status`):**
 - Stack tip is **`key-board-in-app`** (stacked on `ai-receipt-chip-packing-fixes`
   -> the older board stack). Pushed; `origin/dev` fast-forwarded to its tip
-  (`9f962ec`). **Prod (`main`) untouched** (`0ffa16c`).
-- Gate: `tsc -p tsconfig.app.json --noEmit` clean, `yarn build` green, eslint on
-  changed files baseline-only (one react-refresh warning on InventoryCard).
+  (`7428138`). **Prod (`main`) untouched** (`0ffa16c`). Tree clean.
+- Gate (run 2026-09-08): `tsc -p tsconfig.app.json --noEmit` clean, `yarn build`
+  green, eslint on changed files baseline-only (one react-refresh warning on
+  InventoryCard, which exports `register` + types beside components).
+- Open PRs: only **#1 `docs-align-claude-md`** (pre-existing, not this session).
 
 **Built this session (do NOT rebuild):**
+0. **Two AI parsing fixes** (`ai-receipt-chip-packing-fixes`, on dev): the Receipt
+   quick action + a bare key code ("receipt kw1") now routes to a key receipt at
+   0.8 confidence instead of triggering the LLM receipt-or-inventory clarify; and
+   packing ("box $5") is stripped before per-item shipping-cost extraction so
+   reordering it no longer misprices a shipment. Known ceiling stands: arbitrary
+   reordering of courier/tracking/price is still the heuristic parser's limit (the
+   durable fix is LLM structured item extraction via the proxy).
 1. **The key board now lives in the app, not the spreadsheet.** The shop's
    dictated `key_inventory_master.xlsx` (10 rows A-J, up to 92 slots, ~500 keys)
    was a one-time seed. Parsed it (`scripts/keyBoardSeed.json` via
