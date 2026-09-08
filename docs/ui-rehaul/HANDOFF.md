@@ -2,6 +2,60 @@
 
 Read `DESIGN-SPEC.md` and `PLAN.md` first. This records where the rehaul stands.
 
+## START HERE (senior review + fixes, 2026-09-08 later)
+
+**What this session was:** a senior pass over the AI Mode implementation while Parsa
+waited on the ChatGPT/Gemini key research. Read the whole AI layer, ran two audit
+agents (executors/cards + proxy/schema), made safe fixes, and shipped a committed
+parser test harness. Full findings and the recommendation list were given to Parsa
+in chat (not all are in the repo).
+
+**Stack tip is now `ai-mode-review-fixes`** (stacked on `key-board-in-app`), pushed;
+`origin/dev` fast-forwarded to its tip (`c6677df`). **Prod (`main`) untouched**
+(`0ffa16c`). Tree clean. Gate: `tsc -p tsconfig.app.json --noEmit` clean,
+`yarn build` green, eslint baseline-only, and `node scripts/parser-tests/run.mjs`
+green (24/24).
+
+**Shipped this session (two commits):**
+1. `fix(ai): charge the real receipt total, clear stale pickup date, log failed writes`
+   - **Bug:** a compound `attach.pay` ("charge her card") on a shipping / key /
+     packing receipt recorded a **$0.00** transaction, because `chargeAmount`
+     (`purchaseRecorder.ts`) read only the flat `price` field, which those receipts
+     do not carry. Now it charges the receipt TOTAL (every line plus its tax) via the
+     shared `receiptIntentToCartLines` + `cartTotal`, so the recorded amount matches
+     the printed receipt. Flat refill/supplies are unchanged (same value).
+   - **Bug:** `executeCartridgeStatus` never cleared `dateCompleted` when an order
+     left `picked_up`, so a re-opened order still showed a "Picked up" date. Now
+     cleared on any non-pickup status.
+   - Added `console.error` to the silent write-path catches (timesheet executor, the
+     confirm chain's recordPurchase/buildLabel/executor) so a failed Firestore write
+     is not invisible at the counter.
+2. `test(ai): add an offline parser regression harness` (`scripts/parser-tests/`):
+   esbuild-bundles the deterministic engine (jspdf/firestore stubbed) and asserts
+   with `node:test`. Run `node scripts/parser-tests/run.mjs`. **Use this instead of
+   rebuilding a throwaway harness each session**; add the utterance when a parser fix
+   lands.
+
+**Verify on staging (Firestore-writing, could not test locally):**
+- `attach.pay` on a shipping receipt now records the real total, not $0.
+- Re-opening a picked-up refill clears the pickup date on the card.
+
+**Flagged to Parsa, NOT changed this session (his call / needs scope or a redeploy):**
+- **Manager PIN worker security** (`proxy/src/manager.js`): no rate limiting on
+  `/manager/unlock`, single SHA-256 (not a slow KDF), the CORS check is bypassable by
+  omitting the Origin header, `/manager/lock` and `/unlock` mint a Firebase custom
+  token for a caller-supplied `uid`, and first-run set-pin is unauthenticated (TOFU).
+  All on the DEV worker; manager mode is not on prod. Hardening was already an open
+  follow-up; left for a deliberate pass + redeploy.
+- **Payment records per-intent, not per-final-receipt:** `attach.pay` runs on the one
+  confirmed intent, before Finish builds the combined cart receipt, so a multi-item
+  open receipt can still under-record. The $0 bug is fixed; the architectural move
+  (run pay at cart finalize) is a bigger change, deferred.
+- `key_location` is a 7th action beyond the six-action PHASE-2-ARCH contract, and the
+  proxy has no `key_location` enum (fine while the deterministic route stays high
+  confidence, but the LLM would misroute a board write it ever sees). AI inventory
+  create omits `price`/`cutCode`; `purchase` action has no executor (latent).
+
 ## START HERE (fresh-session brief, 2026-09-08)
 
 **Next session is for:** Parsa's staging review of the key-board work on
