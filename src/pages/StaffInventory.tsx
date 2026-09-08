@@ -37,6 +37,12 @@ import {
   Search,
   X,
   MapPin,
+  ClipboardCheck,
+  AlertTriangle,
+  Copy,
+  DollarSign,
+  HelpCircle,
+  CheckCircle2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
@@ -51,7 +57,14 @@ import {
 } from "@/lib/firestore";
 import ThemeToggleButton from "@/components/ThemeToggleButton";
 import { KeyBoardMap } from "@/components/KeyBoardMap";
-import { lookupKeyLocation } from "@/lib/keyLocations";
+import {
+  getKeyBoard,
+  buildLocationIndex,
+  boardLocationFor,
+  computeReviews,
+  comparePositions,
+  type KeyBoardPosition,
+} from "@/lib/keyBoard";
 
 interface KeyInventoryItem {
   id: string;
@@ -88,6 +101,18 @@ const KEY_INVENTORY_COLLECTION = "keyInventory";
 const DELETED_KEY_INVENTORY_COLLECTION = "deletedKeyInventory";
 const REFILL_INVENTORY_COLLECTION = "refillInventory";
 const DELETED_REFILL_INVENTORY_COLLECTION = "deletedRefillInventory";
+
+// Icon + colour per review-alert kind, for the Review tab.
+const REVIEW_META: Record<
+  string,
+  { Icon: typeof Copy; tint: string }
+> = {
+  duplicate: { Icon: Copy, tint: "bg-amber-100 text-amber-700" },
+  no_price: { Icon: DollarSign, tint: "bg-red-100 text-red-700" },
+  flagged: { Icon: AlertTriangle, tint: "bg-amber-100 text-amber-700" },
+  unidentified: { Icon: HelpCircle, tint: "bg-slate-100 text-slate-600" },
+  not_placed: { Icon: MapPin, tint: "bg-blue-100 text-blue-700" },
+};
 
 // Format a before-tax price. Returns null when there is no numeric price so the
 // caller can fall back to a note or an em-free placeholder.
@@ -166,10 +191,13 @@ const StaffInventory = () => {
   const { inShell } = useShell();
   const [keys, setKeys] = useState<KeyInventoryItem[]>([]);
   const [refills, setRefills] = useState<RefillItem[]>([]);
+  const [board, setBoard] = useState<KeyBoardPosition[]>([]);
+  const [boardLoading, setBoardLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [refillsLoading, setRefillsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [refillSearch, setRefillSearch] = useState("");
+  const [activeTab, setActiveTab] = useState("keys");
   const newKeyForm = useForm<{ model: string; price: string }>({
     defaultValues: { model: "", price: "" },
   });
@@ -206,9 +234,34 @@ const StaffInventory = () => {
         setRefillsLoading(false);
       }
     };
+    const loadBoard = async () => {
+      try {
+        setBoard(await getKeyBoard());
+      } catch (error) {
+        console.error("Failed to load key board:", error);
+      } finally {
+        setBoardLoading(false);
+      }
+    };
     load();
     loadRefills();
+    loadBoard();
   }, []);
+
+  // Merge a single edited board position back into state (keeps board order).
+  const applyBoardChange = (updated: KeyBoardPosition) => {
+    setBoard((prev) => {
+      const rest = prev.filter((p) => p.position !== updated.position);
+      return [...rest, updated].sort(comparePositions);
+    });
+  };
+
+  // code -> board positions, for the per-key location badge and the Review tab.
+  const locationIndex = useMemo(() => buildLocationIndex(board), [board]);
+  const reviews = useMemo(
+    () => computeReviews(board, keys.map((k) => ({ model: k.model, price: k.price }))),
+    [board, keys],
+  );
 
   // Case-insensitive substring match on model name or its alternate names.
   // Memoized so we don't re-filter on every unrelated re-render once large.
@@ -401,8 +454,8 @@ const StaffInventory = () => {
 
   const content = (
     <div className={`border rounded-xl p-4 sm:p-6 ${themeClasses.card.primary}`}>
-          <Tabs defaultValue="keys" className="w-full">
-            <TabsList className={`grid w-full grid-cols-2 mb-8 ${themeClasses.card.secondary}`}>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className={`grid w-full grid-cols-3 mb-8 ${themeClasses.card.secondary}`}>
               <TabsTrigger
                 value="keys"
                 className="flex items-center space-x-2 data-[state=active]:bg-orange-600 data-[state=active]:text-white"
@@ -416,6 +469,18 @@ const StaffInventory = () => {
               >
                 <Droplets className="h-4 w-4" />
                 <span>Refills</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="review"
+                className="flex items-center space-x-2 data-[state=active]:bg-orange-600 data-[state=active]:text-white"
+              >
+                <ClipboardCheck className="h-4 w-4" />
+                <span>Review</span>
+                {reviews.some((r) => r.severity === "warn") && (
+                  <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold text-white">
+                    {reviews.filter((r) => r.severity === "warn").length}
+                  </span>
+                )}
               </TabsTrigger>
             </TabsList>
 
@@ -464,7 +529,12 @@ const StaffInventory = () => {
               {/* The physical key board: every slot, its blank, and the empty spots. */}
               <Card className={`mb-6 shadow-lg transition-all duration-300 ${themeClasses.card.secondary}`}>
                 <CardContent className="p-4">
-                  <KeyBoardMap onSelect={(model) => setSearchTerm(model)} />
+                  <KeyBoardMap
+                    board={board}
+                    loading={boardLoading}
+                    onSelect={(model) => setSearchTerm(model)}
+                    onChange={applyBoardChange}
+                  />
                 </CardContent>
               </Card>
 
@@ -538,7 +608,9 @@ const StaffInventory = () => {
                   {filteredKeys.map((item) => {
                     const { Icon, gradient } = getKeyIconStyle(item.model);
                     const priceText = money(item.price);
-                    const location = lookupKeyLocation(item);
+                    const location =
+                      boardLocationFor(item.model, locationIndex) ??
+                      (item.cutCode && item.cutCode.trim() ? item.cutCode.trim() : null);
                     return (
                     <Card key={item.id} className={`shadow-lg transition-all duration-300 ${themeClasses.card.secondary}`}>
                       <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
@@ -829,6 +901,77 @@ const StaffInventory = () => {
                               </AlertDialogContent>
                             </AlertDialog>
                           </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="review">
+              <div className="mb-4">
+                <h3 className={`text-lg font-semibold ${themeClasses.text.primary}`}>Things to look at</h3>
+                <p className={`text-sm ${themeClasses.text.secondary}`}>
+                  Automatic checks across the key board and price list. Clear these as you go; the board is the source of truth.
+                </p>
+              </div>
+              {boardLoading || loading ? (
+                <Card className={themeClasses.card.primary}>
+                  <CardContent className="p-12 text-center">
+                    <Loader2 className={`h-10 w-10 mx-auto mb-3 animate-spin ${themeClasses.text.muted}`} />
+                    <p className={themeClasses.text.secondary}>Running the checks...</p>
+                  </CardContent>
+                </Card>
+              ) : reviews.length === 0 ? (
+                <Card className={themeClasses.card.primary}>
+                  <CardContent className="p-12 text-center">
+                    <CheckCircle2 className="h-10 w-10 mx-auto mb-3 text-green-500" />
+                    <h4 className={`text-lg font-semibold mb-1 ${themeClasses.text.primary}`}>All clear</h4>
+                    <p className={themeClasses.text.secondary}>Nothing on the board needs attention right now.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-2">
+                  {reviews.map((alert, i) => {
+                    const meta = REVIEW_META[alert.kind];
+                    return (
+                      <Card key={`${alert.kind}-${i}`} className={`shadow-sm ${themeClasses.card.secondary}`}>
+                        <CardContent className="flex items-start gap-3 p-4">
+                          <div className={`mt-0.5 rounded-lg p-1.5 shrink-0 ${meta.tint}`}>
+                            <meta.Icon className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className={`font-semibold ${themeClasses.text.primary}`}>{alert.title}</p>
+                            <p className={`text-sm ${themeClasses.text.secondary}`}>{alert.detail}</p>
+                            {alert.positions.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                {alert.positions.map((pos) => (
+                                  <span
+                                    key={pos}
+                                    className={`rounded border px-1.5 py-0.5 text-[11px] font-mono ${themeClasses.card.primary} ${themeClasses.text.muted}`}
+                                  >
+                                    {pos}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          {alert.model && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="shrink-0"
+                              onClick={() => {
+                                setSearchTerm(alert.model!);
+                                setActiveTab("keys");
+                              }}
+                            >
+                              <Search className="h-3.5 w-3.5 mr-1" />
+                              Find
+                            </Button>
+                          )}
                         </CardContent>
                       </Card>
                     );

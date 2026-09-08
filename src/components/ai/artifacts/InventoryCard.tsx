@@ -23,7 +23,6 @@ import { Boxes, Check, KeyRound, Droplets, MapPin, Pencil, Search, X } from 'luc
 import { useTheme } from '@/contexts/ThemeContext';
 import { toast } from '@/hooks/use-toast';
 import { updateDocument } from '@/lib/firestore';
-import { KEY_LOCATIONS, lookupKeyLocation } from '@/lib/keyLocations';
 import type { ArtifactRegistry } from '@/components/shell/artifactRegistry';
 
 // --- Result shapes (mirror StaffInventory + collections.ts) -----------------
@@ -33,10 +32,12 @@ export interface KeyResult {
   price: number | null;
   notes?: string;
   inStock: boolean;
-  // Optional staff-set cut code / location. The future model -> cut-code map
-  // (KEY_LOCATIONS below) is the primary source; this per-item field lets a clerk
-  // set one now from the edit form.
+  // Optional staff-set cut code, kept for back-compat; a clerk can set one from
+  // the edit form.
   cutCode?: string;
+  // Board location resolved server-side (executeInventoryLookup reads the live
+  // keyBoard collection and attaches it), so the card shows where the key lives.
+  location?: string | null;
 }
 export interface RefillResult {
   id: string;
@@ -68,9 +69,10 @@ export type InventoryArtifactData = InventoryLookupData | InventorySavedData;
 const KEY_INVENTORY_COLLECTION = 'keyInventory';
 const REFILL_INVENTORY_COLLECTION = 'refillInventory';
 
-// The key board layout and the model -> slot lookup live in one shared source of
-// truth (lib/keyLocations), imported above. Re-exported for any existing importers.
-export { KEY_LOCATIONS, lookupKeyLocation };
+// A key's board location, preferring the live value the lookup attached, then a
+// staff-set cut code. The board itself lives in Firestore (lib/keyBoard).
+const keyLocation = (item: KeyResult): string | null =>
+  item.location ?? (item.cutCode && item.cutCode.trim() ? item.cutCode.trim() : null);
 
 // --- formatting --------------------------------------------------------------
 const fmtMoney = (n: number | null | undefined): string | null =>
@@ -284,7 +286,7 @@ const KeyRow: React.FC<{ item: KeyResult; onSaved: (next: KeyResult) => void }> 
   const { themeClasses } = useTheme();
   const [editing, setEditing] = useState(false);
   const price = fmtMoney(item.price);
-  const location = lookupKeyLocation(item);
+  const location = keyLocation(item);
 
   return (
     <li className="py-3">
@@ -505,7 +507,7 @@ const SavedCard: React.FC<{ data: InventorySavedData }> = ({ data }) => {
   useEffect(() => setItem(data.item), [data]);
 
   const price = fmtMoney(item.price);
-  const location = lookupKeyLocation(item);
+  const location = keyLocation(item);
 
   return (
     <div className={`overflow-hidden rounded-2xl border ${themeClasses.card.primary}`}>
