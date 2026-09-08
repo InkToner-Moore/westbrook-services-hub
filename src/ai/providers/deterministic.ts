@@ -25,6 +25,7 @@ import {
   extractProvince,
   extractQuantity,
   extractShippingCost,
+  stripPacking,
   extractTracking,
   courierLabel,
   extractType,
@@ -162,7 +163,9 @@ function extractShipmentItems(text: string) {
       trackingNumber: trackingNumber ?? '',
       city: extractCity(piece) ?? '',
       province: extractProvince(piece) ?? base.province,
-      cost: extractShippingCost(piece, trackingNumber, extractPhone(piece)) ?? null,
+      // Strip packing ("box $5") before pricing so a packing amount interleaved
+      // among the shipment fields is never taken as the shipping cost.
+      cost: extractShippingCost(stripPacking(piece), trackingNumber, extractPhone(piece)) ?? null,
     };
   };
 

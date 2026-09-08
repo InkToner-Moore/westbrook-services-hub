@@ -428,6 +428,25 @@ const PACKING_MATCHERS: Array<{ re: RegExp; name: string; preset: number }> = [
   { re: /\bbox\b/i, name: 'Box', preset: 5 },
 ];
 
+// Remove packing phrases (each keyword plus a price attached to it) from a piece
+// of text. A shipment piece may name a box or envelope anywhere among its fields,
+// and its price must not be mistaken for the shipping cost. Packing is captured
+// from the whole utterance separately, so removing it here only affects the
+// per-item shipping-field extraction, which makes packing position-independent.
+export function stripPacking(text: string): string {
+  let t = text;
+  for (const matcher of PACKING_MATCHERS) {
+    // Keyword plus an adjacent price ("box $5", "large box 10$"), then the bare
+    // keyword if no price rode with it.
+    t = t.replace(
+      new RegExp(`${matcher.re.source}\\s*\\$?\\s?\\d{1,4}(?:\\.\\d{1,2})?\\s?\\$?`, 'i'),
+      ' ',
+    );
+    t = t.replace(matcher.re, ' ');
+  }
+  return t.replace(/\s{2,}/g, ' ').trim();
+}
+
 function priceNear(text: string, fromIndex: number): number | null {
   const window = text.slice(fromIndex, fromIndex + 16);
   const m = window.match(/\$?\s?(\d{1,4}(?:\.\d{1,2})?)\s?\$/) || window.match(/\$\s?(\d{1,4}(?:\.\d{1,2})?)/);
