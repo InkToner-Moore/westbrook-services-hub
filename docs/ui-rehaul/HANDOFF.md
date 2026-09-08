@@ -2,6 +2,53 @@
 
 Read `DESIGN-SPEC.md` and `PLAN.md` first. This records where the rehaul stands.
 
+## START HERE (fresh-session brief, 2026-09-07 late)
+
+**Next session is for:** Parsa's staging review of the key-board work on
+`ink-toner-moore.pages.dev` (needs the dev staff login + real DEV Firestore),
+then the key-model research pass.
+
+**Where things stand (verify against `but status`):**
+- Stack tip is **`key-board-in-app`** (stacked on `ai-receipt-chip-packing-fixes`
+  -> the older board stack). Pushed; `origin/dev` fast-forwarded to its tip
+  (`9f962ec`). **Prod (`main`) untouched** (`0ffa16c`).
+- Gate: `tsc -p tsconfig.app.json --noEmit` clean, `yarn build` green, eslint on
+  changed files baseline-only (one react-refresh warning on InventoryCard).
+
+**Built this session (do NOT rebuild):**
+1. **The key board now lives in the app, not the spreadsheet.** The shop's
+   dictated `key_inventory_master.xlsx` (10 rows A-J, up to 92 slots, ~500 keys)
+   was a one-time seed. Parsed it (`scripts/keyBoardSeed.json` via
+   `scripts/seedKeyBoard.mjs`) and wrote one doc per position into a new
+   **`keyBoard`** Firestore collection. **DEV seeded (691 positions)** and an
+   auth-gated `keyBoard` rule released (ruleset `9aff82bb-...`). `src/lib/keyBoard.ts`
+   is the new source of truth (replaces the deleted static `lib/keyLocations.ts`):
+   types, brand-strip normalization, read/write helpers, code->positions index,
+   and the Review checks.
+2. **Editable board grid + Review tab** on the Inventory page
+   (`StaffInventory.tsx`, `KeyBoardMap.tsx`): full A-J grid from Firestore, click
+   a filled slot to search it, an Edit toggle to set/move/free any slot (writes
+   Firestore). New **Review** tab lists auto-checks (same blank in 2+ spots, blank
+   with no price, sheet-flagged slots, unidentified items, priced-but-not-placed)
+   with a Find jump. Per-key badge + AI inventory card read the live board.
+3. **AI Mode board edits** (`key_location` action): "put SC1 in B3", "move HR1 to
+   H1", "B3 is empty", "clear A7". Immediate; only fires on a real placing cue so a
+   bare code stays a lookup. Inventory lookup attaches each key's live location.
+4. **Deep-research prompts** (`docs/ui-rehaul/key-research-prompts.md`): two tuned
+   prompts (ChatGPT + Gemini) + shared schema for key equivalents/keyways/
+   explanations across the ~498 models (`scripts/keyModels.csv`). Research itself
+   is deliberately deferred; run the prompts, save as
+   `scripts/keyResearch.{chatgpt,gemini}.jsonl`, diff, then a human vets before
+   importing into a `keyReference` collection.
+
+**Verify on staging (could not be done locally; demo Firebase denies reads/writes):**
+- The board renders A-J from DEV `keyBoard`, edits persist, Review alerts look right.
+- AI "put SC1 in B3" etc. writes the board and the card shows the new location.
+
+**PROD when this ships to `main`:** add the `keyBoard` auth-gated rule to PROD and
+run `node scripts/seedKeyBoard.mjs <prod-SA> inktonermoore` (no prod SA on this
+machine). The board data is DEV-only right now.
+
 ## START HERE (fresh-session brief, 2026-09-07)
 
 **Next session is for:** Parsa's staging review of this session's work on
