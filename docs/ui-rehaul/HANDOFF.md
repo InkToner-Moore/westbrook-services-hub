@@ -2,6 +2,68 @@
 
 Read `DESIGN-SPEC.md` and `PLAN.md` first. This records where the rehaul stands.
 
+## START HERE (key reference research + integration, 2026-09-09)
+
+**What shipped:** the key-blank research is now in the app as a new `keyReference`
+Firestore collection, surfaced as a collapsible **Key reference** help panel on the AI
+inventory card (keyway, what it fits, sourced equivalents a clerk can cut instead,
+interchangeable keyways, cautions, a "Check" badge when unverified). DEV is seeded and
+live on staging; **prod (`main`) untouched**.
+
+**The research + cross-check (all in `scripts/`):**
+- Three independent passes, saved raw: `keyResearch.chatgpt.jsonl` (497 codes, the
+  primary careful pass; parsed from `Externel-key-research/` batch A+B, ChatGPT
+  `citeturn` citation artifacts stripped, aligned to the master codes),
+  `keyResearch.gemini.jsonl` (68 codes; Gemini returned a prose essay rather than the
+  schema, so a light Sonnet agent extracted its per-code claims), and
+  `keyResearch.claude.jsonl` (498, our own agent pass).
+- `scripts/mergeKeyResearch.mjs` cross-checks them into `keyReference.vetted.jsonl`.
+  **Safety rule:** an equivalent ships as HIGH only when 2+ passes agree, or one pass
+  says high AND cites a manufacturer catalog; anything weaker is held back and the row
+  is flagged `needsReview` (the card shows "Check"). Cautions are unioned so a
+  look-alike warning is never dropped. Result: **345 identified, 300 with a shown
+  equivalent, 200 high / 101 medium, 45 flagged.** Things a human should settle are in
+  `scripts/keyReference.conflicts.md` (section 1 = real decisions, section 2 =
+  unidentified, leave blank).
+- `scripts/importKeyReference.mjs` writes it to Firestore (identified-only, board
+  annotations like "SAME AS B49B" filtered out).
+
+**DEV done (live on staging):** `keyReference` auth-gated rule released (ruleset
+`ea226e27-f862-473e-83d5-e8c7243821a6`), **344 docs imported**, read-back verified
+(SC1 -> Ilco 1145 high, 01122BE -> Cole Y144 high, etc.).
+
+**App (`src/`):** `src/lib/keyReference.ts` (model + index + resolve, reuses the
+keyBoard `normCode` so a reference matches the same model strings); `executeInventoryLookup`
+(`ai/actions/collections.ts`) attaches each key's reference at the same seam as its
+board location and the chat lead line carries a one-line hint; `InventoryCard.tsx`
+renders the panel. Gate: `tsc -p tsconfig.app.json --noEmit` clean, `yarn build` green,
+eslint baseline-only (the one InventoryCard react-refresh warning from `register` beside
+components).
+
+**Verify on staging (`ink-toner-moore.pages.dev`, needs the dev login):** in AI Mode,
+look up a key (SC1, KW1, 01122BE, HR1) -> the inventory card shows a "Key reference"
+panel with keyway + equivalents + cautions.
+
+**PROD when this ships to `main`:** add the `keyReference` auth-gated rule to PROD and
+run `node scripts/importKeyReference.mjs <prod-SA> inktonermoore --identified-only` (no
+prod SA on this machine). DEV-only right now.
+
+**Open / follow-ups:**
+- **45 flagged rows** want a human eye (29 are genuine cross-numbering-system
+  equivalent conflicts, e.g. `1588` Curtis B90 vs Y158). A targeted research agent can
+  adjudicate; then re-run the merge + re-import DEV (no code push needed - the app reads
+  live Firestore). The shared 200-call WebSearch cap limited the fill agents to identity
+  confirmation (no new equivalents) on the batches that ran after it was spent.
+- The **classic StaffInventory key card** does not yet show the reference (only the AI
+  card does). Add it there if wanted.
+- **Transcription-error candidates** the agents surfaced: `01122x` is really Ilco
+  `O1122x` (letter O); `VI1I`/`VI1IG` likely `VR1`/`VR1G`; `CO1O8` likely `CO108`;
+  several board-position collisions (`64D`/`D01M` at A29, etc.). Fix at the board data
+  if confirmed against a physical blank.
+- First research run was **14 Opus agents** and it blew Parsa's usage cap; salvaged 8
+  batches, filled the rest with light Sonnet agents. See the `westbrook-agent-cost`
+  memory: subagents inherit the session model, keep research fan-outs small/cheap.
+
 ## START HERE (senior review + fixes, 2026-09-08 later)
 
 **Next session is for (Parsa, planned xhigh):** integrate the KEY RESEARCH. Parsa now
