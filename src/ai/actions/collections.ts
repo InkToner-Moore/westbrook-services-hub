@@ -19,6 +19,13 @@ import {
   setPositionModels,
   type KeyBoardPosition,
 } from '@/lib/keyBoard';
+import {
+  getKeyReferences,
+  buildReferenceIndex,
+  referenceFor,
+  referenceSummary,
+  type KeyReference,
+} from '@/lib/keyReference';
 
 function str(intent: Intent, key: string): string {
   const v = intent.fields[key]?.value;
@@ -186,17 +193,27 @@ export async function executeInventoryLookup(intent: Intent): Promise<ActionResu
     .sort((a, b) => b.s - a.s)
     .map((m) => m.r);
 
-  // Attach each key's live board location so the card shows where it lives.
+  // Attach each key's live board location so the card shows where it lives, plus
+  // its reference help (keyway, equivalents, cautions) when we have it. Both are
+  // best-effort: a failed read just leaves the field null and the card copes.
   let board: KeyBoardPosition[] = [];
   try {
     board = await getKeyBoard();
   } catch {
     board = [];
   }
+  let references: KeyReference[] = [];
+  try {
+    references = await getKeyReferences();
+  } catch {
+    references = [];
+  }
   const index = buildLocationIndex(board);
+  const refIndex = buildReferenceIndex(references);
   const keyMatchesWithLocation = keyMatches.map((k) => ({
     ...k,
     location: boardLocationFor(k.model, index),
+    reference: referenceFor(k.model, refIndex),
   }));
 
   const total = keyMatchesWithLocation.length + refillMatches.length;
@@ -207,8 +224,9 @@ export async function executeInventoryLookup(intent: Intent): Promise<ActionResu
     message = `I could not find "${query}" in the key or refill inventory.`;
   } else {
     const leadKey = keyMatchesWithLocation[0];
+    const refHint = leadKey ? referenceSummary(leadKey.reference) : '';
     const lead = leadKey
-      ? `${summariseKey(leadKey)}${leadKey.location ? ` Board ${leadKey.location}.` : ''}`
+      ? `${summariseKey(leadKey)}${leadKey.location ? ` Board ${leadKey.location}.` : ''}${refHint ? ` ${refHint}` : ''}`
       : summariseRefill(refillMatches[0]);
     const more = total > 1 ? ` Plus ${total - 1} more on the right.` : '';
     message = `${lead}${more}`;

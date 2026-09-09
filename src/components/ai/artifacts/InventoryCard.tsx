@@ -19,11 +19,15 @@
 // The Body is self-contained (it writes through lib/firestore itself), so no Foot
 // and no Provider are needed.
 import React, { useEffect, useState } from 'react';
-import { Boxes, Check, KeyRound, Droplets, MapPin, Pencil, Search, X } from 'lucide-react';
+import {
+  Boxes, Check, KeyRound, Droplets, MapPin, Pencil, Search, X,
+  Info, ChevronDown, AlertTriangle,
+} from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { toast } from '@/hooks/use-toast';
 import { updateDocument } from '@/lib/firestore';
 import type { ArtifactRegistry } from '@/components/shell/artifactRegistry';
+import { hasReferenceContent, type KeyReference } from '@/lib/keyReference';
 
 // --- Result shapes (mirror StaffInventory + collections.ts) -----------------
 export interface KeyResult {
@@ -38,6 +42,9 @@ export interface KeyResult {
   // Board location resolved server-side (executeInventoryLookup reads the live
   // keyBoard collection and attaches it), so the card shows where the key lives.
   location?: string | null;
+  // Reference help resolved server-side (keyway, equivalents, cautions) from the
+  // keyReference collection, when we have a match. Null when we do not.
+  reference?: KeyReference | null;
 }
 export interface RefillResult {
   id: string;
@@ -281,6 +288,108 @@ const RefillEditForm: React.FC<{
   );
 };
 
+// A dot whose colour reads the confidence, always paired with a title so colour
+// is never the only signal (older/non-technical staff, DESIGN-SPEC).
+const confidenceDot = (c?: string): string =>
+  c === 'high' ? 'bg-emerald-500' : c === 'medium' ? 'bg-amber-500' : 'bg-slate-400';
+
+// The collapsible reference help for a key blank: keyway, what it fits, sourced
+// equivalents a clerk can cut instead, interchangeable keyways, a plain
+// explanation, and any caution. Rendered only when the lookup attached real
+// content. Collapsed by default so the row stays scannable; a caution or a
+// needs-review flag shows on the header even when collapsed.
+const KeyReferencePanel: React.FC<{ reference?: KeyReference | null }> = ({ reference }) => {
+  const { themeClasses } = useTheme();
+  const [open, setOpen] = useState(false);
+  if (!hasReferenceContent(reference)) return null;
+  const ref = reference as KeyReference;
+  const equivalents = ref.equivalents ?? [];
+  const caution = ref.cautions && ref.cautions.trim() ? ref.cautions.trim() : '';
+  const interchangeable = ref.interchangeableKeyways ?? [];
+
+  return (
+    <div className="mt-1.5 pl-6">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`inline-flex w-full items-center gap-1.5 rounded-lg px-2 py-1 text-[13px] ${themeClasses.button.ghost}`}
+      >
+        <Info className="h-3.5 w-3.5 shrink-0" />
+        <span className={`truncate ${themeClasses.text.secondary}`}>
+          Key reference{ref.keyway ? ` · ${ref.keyway}` : ''}
+        </span>
+        {ref.confidence ? (
+          <span
+            className={`h-2 w-2 shrink-0 rounded-full ${confidenceDot(ref.confidence)}`}
+            title={`${ref.confidence} confidence`}
+          />
+        ) : null}
+        {ref.needsReview ? (
+          <span
+            className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] ${themeClasses.status.warning}`}
+          >
+            <AlertTriangle className="h-3 w-3" /> Check
+          </span>
+        ) : null}
+        <ChevronDown
+          className={`ml-auto h-3.5 w-3.5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {open ? (
+        <div className={`mt-1.5 space-y-2 rounded-xl border px-3 py-2.5 text-[13px] ${themeClasses.card.secondary}`}>
+          {ref.fits ? (
+            <p className={themeClasses.text.secondary}>
+              <span className={themeClasses.text.muted}>Fits: </span>
+              {ref.fits}
+            </p>
+          ) : null}
+
+          {equivalents.length ? (
+            <div>
+              <p className={`mb-1 ${themeClasses.text.muted}`}>Cuts as (equivalents)</p>
+              <div className="flex flex-wrap gap-1.5">
+                {equivalents.map((e, i) => (
+                  <span
+                    key={`${e.brand}-${e.ref}-${i}`}
+                    className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 font-mono text-[12px] ${themeClasses.card.primary}`}
+                    title={e.source || undefined}
+                  >
+                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${confidenceDot(e.confidence)}`} />
+                    {`${e.brand} ${e.ref}`.trim()}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {interchangeable.length ? (
+            <p className={themeClasses.text.secondary}>
+              <span className={themeClasses.text.muted}>Interchangeable: </span>
+              {interchangeable.join(', ')}
+            </p>
+          ) : null}
+
+          {ref.explanation ? <p className={themeClasses.text.secondary}>{ref.explanation}</p> : null}
+
+          {caution ? (
+            <p className={`flex items-start gap-1.5 rounded-lg px-2 py-1.5 ${themeClasses.status.warning}`}>
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>{caution}</span>
+            </p>
+          ) : null}
+
+          {ref.needsReview ? (
+            <p className={`text-[12px] italic ${themeClasses.text.muted}`}>
+              The research passes disagreed or only one identified this blank. Confirm before cutting.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
 // --- result rows -------------------------------------------------------------
 const KeyRow: React.FC<{ item: KeyResult; onSaved: (next: KeyResult) => void }> = ({ item, onSaved }) => {
   const { themeClasses } = useTheme();
@@ -328,6 +437,8 @@ const KeyRow: React.FC<{ item: KeyResult; onSaved: (next: KeyResult) => void }> 
           </button>
         )}
       </div>
+
+      <KeyReferencePanel reference={item.reference} />
 
       {editing && (
         <KeyEditForm
