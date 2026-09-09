@@ -1,0 +1,15 @@
+{
+  "passes": [
+    "chatgpt",
+    "gemini",
+    "claude"
+  ],
+  "total": 498,
+  "identified": 345,
+  "needsReview": 45,
+  "withEquivalents": 300,
+  "high": 200,
+  "medium": 101,
+  "low": 197,
+  "noneIdentified": 153
+}
