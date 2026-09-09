@@ -4,11 +4,18 @@ Read `DESIGN-SPEC.md` and `PLAN.md` first. This records where the rehaul stands.
 
 ## START HERE (senior review + fixes, 2026-09-08 later)
 
-**What this session was:** a senior pass over the AI Mode implementation while Parsa
-waited on the ChatGPT/Gemini key research. Read the whole AI layer, ran two audit
-agents (executors/cards + proxy/schema), made safe fixes, and shipped a committed
-parser test harness. Full findings and the recommendation list were given to Parsa
-in chat (not all are in the repo).
+**Next session is for (Parsa, planned xhigh):** integrate the KEY RESEARCH. Parsa now
+has both the ChatGPT and Gemini key-equivalents/keyways research. Plan: agents analyze
+and cross-check the two research outputs against each other AND do their own research,
+then integrate the vetted result into the app (a `keyReference` collection, per the
+2026-09-08 key-board brief below and `docs/ui-rehaul/key-research-prompts.md`). Save the
+raw research as `scripts/keyResearch.{chatgpt,gemini}.jsonl`, diff, human-vet, then
+import. The key models are in `scripts/keyModels.csv` (~498). This is a build session.
+
+**What THIS session was:** a senior pass over the AI Mode implementation while Parsa
+waited on that research. Read the whole AI layer, ran two audit agents (executors/cards
++ proxy/schema), made safe fixes, and shipped a committed parser test harness. Full
+findings and the recommendation list were given to Parsa in chat (not all are in the repo).
 
 **Stack tip is now `ai-mode-review-fixes`** (stacked on `key-board-in-app`), pushed;
 `origin/dev` fast-forwarded to its tip (`c6677df`). **Prod (`main`) untouched**
