@@ -1,0 +1,12 @@
+{
+  "_comment": "Human-vetted corrections applied by mergeKeyResearch.mjs AFTER the cross-check, for rows an adversarial QA pass found the automatic confidence was too high on (self-admitted guesses, brand conflations, off-by-one worries, cross-row contradictions). capConfidence lowers the shipped confidence; needsReview shows the card's Check badge; removeEquivalents drops a specific suspect cross-reference by 'Brand Ref'. Keep this list as the record of what a human settled.",
+  "overrides": [
+    { "code": "WE1", "capConfidence": "low", "needsReview": true, "appendCaution": "Brand unresolved: this may be Weslock (residential) or Welch (commercial). Confirm against the physical key before cutting.", "reason": "QA: reciprocal 1123 row calls the brand unresolved; WE1 asserts Weslock confidently." },
+    { "code": "1123", "capConfidence": "low", "needsReview": true, "appendCaution": "Brand unresolved: Welch vs Weslock. Confirm before cutting.", "reason": "QA: row's own notes admit the brand/keyway is unresolved yet it shipped high." },
+    { "code": "1041E", "removeEquivalents": ["Cole CG16"], "reason": "QA: sibling CG22 row cautions that 1041E is NOT the same as Cole CG16, so listing it as an equivalent is contradictory." },
+    { "code": "CO35", "capConfidence": "low", "needsReview": true, "appendCaution": "Possible off-by-one transcription vs CO36. Confirm the stamped digits before cutting.", "reason": "QA: row's own notes flag a plausible CO35/CO36 transcription mixup." },
+    { "code": "KK2", "capConfidence": "low", "needsReview": true, "appendCaution": "Vehicle application is contradictory in the source (Kia vs Kawasaki). The blank number may be right but do not confirm a vehicle fit to a customer from this.", "reason": "QA: source text says Kia Sportage, category says Kawasaki; KK prefix is usually Kawasaki." },
+    { "code": "AM1", "capConfidence": "low", "needsReview": true, "reason": "QA: row's own caution says 'brand-level guess only' yet it shipped high." },
+    { "code": "AR1", "capConfidence": "low", "needsReview": true, "reason": "QA: code was not found in the Ilco Arrow cross-reference checked; caution says 'brand-level guess only'." }
+  ]
+}

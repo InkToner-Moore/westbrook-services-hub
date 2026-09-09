@@ -6,10 +6,10 @@
   ],
   "total": 498,
   "identified": 345,
-  "needsReview": 45,
+  "needsReview": 61,
   "withEquivalents": 300,
-  "high": 200,
-  "medium": 101,
-  "low": 197,
+  "high": 190,
+  "medium": 94,
+  "low": 214,
   "noneIdentified": 153
 }

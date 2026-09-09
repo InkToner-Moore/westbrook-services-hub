@@ -232,6 +232,16 @@ for (const row of models) {
   for (const e of entries) for (const s of asArray(pick(e, 'sources'))) if (s) sources.add(String(s).trim());
   const notes = [...new Set(entries.map((e) => pick(e, 'notes')).filter(Boolean).map(String))].join(' | ');
 
+  // A row whose own cautions/notes admit a guess or an unresolved identification
+  // must never ship as confident, even when the passes agreed on a number. This
+  // reads the semantics the cross-check counting can't.
+  const DOUBT = /brand-level guess|guess only|\bunresolved\b|unconfirmed|could not (?:identify|verify|be verified|be confirmed)|not verifiable|off-by-one|not among the|transcription (?:error|discrepancy|mixup|issue)|plausible but unconfirmed/i;
+  if (identified && confidence !== 'low' && DOUBT.test(`${cautions} ${notes}`)) {
+    confidence = 'low';
+    needsReview = true;
+    reviewNotes.push('a pass admits doubt in its own cautions/notes');
+  }
+
   vetted.push({
     code, displayNames: row.display_names, identified,
     brandSystem, fits, category, keyway, keywayFamily,
@@ -250,6 +260,37 @@ for (const row of models) {
   } else if (!identified && seenBy > 0) {
     unidentified.push(code);
   }
+}
+
+// --- human-vetted overrides --------------------------------------------------
+// Corrections an adversarial QA pass surfaced where the automatic confidence was
+// too high (self-admitted guesses, brand conflations, cross-row contradictions).
+// This is the record of what a human settled; it runs last so it always wins.
+const applied = [];
+try {
+  const ov = JSON.parse(readFileSync('scripts/keyReference.overrides.json', 'utf8'));
+  const byCode = new Map(vetted.map((d) => [d.code, d]));
+  for (const o of ov.overrides || []) {
+    const d = byCode.get(normCode(o.code));
+    if (!d) continue;
+    if (o.removeEquivalents) {
+      const drop = new Set(o.removeEquivalents.map((s) => normText(s).replace(/\s+/g, '')));
+      d.equivalents = (d.equivalents || []).filter((e) => !drop.has(normText(`${e.brand} ${e.ref}`).replace(/\s+/g, '')));
+    }
+    if (o.capConfidence && CONF_RANK[o.capConfidence] < CONF_RANK[d.confidence]) d.confidence = o.capConfidence;
+    if (o.needsReview) d.needsReview = true;
+    if (o.appendCaution) d.cautions = d.cautions ? `${d.cautions} | ${o.appendCaution}` : o.appendCaution;
+    applied.push({ code: d.code, reason: o.reason || '' });
+  }
+} catch (e) { if (e.code !== 'ENOENT') console.warn(`overrides: ${e.message}`); }
+
+// Recompute the confidence/review/equivalent tallies after overrides (identified
+// count is unchanged by them).
+stats.high = stats.medium = stats.low = stats.needsReview = stats.withEquivalents = 0;
+for (const d of vetted) {
+  stats[d.confidence] = (stats[d.confidence] || 0) + 1;
+  if (d.needsReview) stats.needsReview += 1;
+  if ((d.equivalents || []).length) stats.withEquivalents += 1;
 }
 
 // --- write outputs -----------------------------------------------------------
@@ -284,6 +325,14 @@ L.push('No pass could safely identify these (obscure, brand-only, dictation garb
 L.push('');
 L.push(unidentified.sort((a, b) => a.localeCompare(b)).join(', ') || '(none)');
 L.push('');
+if (applied.length) {
+  L.push(`## 3. Human-vetted overrides applied (${applied.length})`);
+  L.push('');
+  L.push('An adversarial QA pass over the high-confidence rows found these had a confidence the automatic cross-check could not justify (self-admitted guesses, brand conflations, cross-row contradictions). They were downgraded / corrected in `scripts/keyReference.overrides.json` and that wins over the merge.');
+  L.push('');
+  for (const a of applied) L.push(`- **${a.code}** — ${a.reason}`);
+  L.push('');
+}
 writeFileSync(reportPath, L.join('\n'));
 
 console.log('');
