@@ -1,182 +1,58 @@
-# Deployment Guide - Ink, Toner, & Moore
+# Deployment
 
-This guide will help you deploy the Ink, Toner, & Moore business management system to production.
+The site deploys to **GitHub Pages** at **inktonermoore.ca**. Deployment is
+automatic: every push to `main` runs `.github/workflows/deploy.yml`, which builds
+with yarn on Node 22 and publishes `dist/` to Pages.
 
-## 🚀 Quick Deploy to Netlify (Recommended)
+## How the workflow builds
 
-### 1. GitHub Repository Setup
+1. `yarn install --frozen-lockfile`
+2. `yarn build` with the Firebase config injected from repository secrets
+3. Copies `dist/index.html` to `dist/404.html` so client-side routes resolve on
+   Pages (SPA fallback)
+4. Uploads and deploys the Pages artifact
 
-1. Create a new repository on GitHub
-2. Push this code to your repository:
+`public/CNAME` pins the custom domain. Vite serves at the site root
+(`base: "/"`), so routing works both locally and in production.
 
-```bash
-git init
-git add .
-git commit -m "Initial commit: Ink, Toner, & Moore business system"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/ink-toner-moore.git
-git push -u origin main
-```
+## Required GitHub Actions secrets
 
-### 2. Deploy to Netlify
+Set these in the repository under Settings → Secrets and variables → Actions.
+They are read at build time and baked into the client bundle.
 
-1. Go to [netlify.com](https://netlify.com) and sign up/login
-2. Click "New site from Git"
-3. Choose GitHub and select your repository
-4. Netlify will auto-detect the build settings from `netlify.toml`
-5. Click "Deploy site"
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_APP_ID`
 
-Your site will be live in minutes! 🎉
+Firebase web config is not secret in the security sense (it ships to the browser),
+but keeping it in Actions secrets keeps it out of the repo and lets prod and dev
+projects differ. The real access boundary is Firestore security rules plus
+Firebase Auth, both managed in the Firebase console, not in this repo.
 
-## 🔧 Environment Variables Setup
+## Firebase setup (one time)
 
-After deployment, you'll need to configure these environment variables in Netlify:
+1. Create a Firebase project.
+2. Enable Authentication with the Email/Password provider and create the staff
+   user(s).
+3. Create a Firestore database.
+4. Write security rules in the console: auth-gate every staff collection, and
+   allow public read only on the `orderStatus` collection (the public refill-status
+   mirror). The client is not the security boundary; the rules are.
+5. Copy the web app config values into the GitHub Actions secrets above.
 
-### Required for Production:
-- `GOOGLE_SHEETS_ID` - Your Google Sheets spreadsheet ID
-- `GOOGLE_SHEETS_API_KEY` - Your Google Sheets API key
-- `FIREBASE_PROJECT_ID` - Your Firebase project ID
-- `FIREBASE_API_KEY` - Your Firebase API key
-- `FIREBASE_AUTH_DOMAIN` - Your Firebase auth domain
+## Local vs production
 
-### Optional:
-- `CUSTOM_DOMAIN` - Your custom domain name
+- **Local:** `.env` supplies `VITE_FIREBASE_*`. Set `VITE_NODE_ENV=development`
+  and `VITE_DEV_BYPASS_AUTH=true` to work the staff portal without a live login
+  (see `.env.example`). Firebase falls back to `demo-*` placeholders if unset, so
+  the app boots but nothing persists.
+- **Production:** the workflow sets `VITE_NODE_ENV=production` and no bypass flag,
+  so real Firebase Auth is enforced.
 
-## 📊 Google Sheets Setup
+## Custom domain
 
-### 1. Create a Google Sheets Spreadsheet
-
-1. Go to [Google Sheets](https://sheets.google.com)
-2. Create a new spreadsheet
-3. Create these sheets (tabs):
-   - `inventory`
-   - `cartridges` 
-   - `receipts`
-   - `notes`
-   - `stickyNotes`
-   - `blogPosts`
-
-### 2. Set up Headers
-
-For each sheet, add headers in row 1:
-
-#### Inventory Sheet:
-```
-id | category | brand | model | type | stockQuantity | reorderLevel | costPrice | sellPrice | supplier | lastUpdated | notes
-```
-
-#### Cartridges Sheet:
-```
-id | customerName | customerPhone | customerEmail | cartridgeType | quantity | status | dateReceived | estimatedCompletion | notes
-```
-
-#### Blog Posts Sheet:
-```
-id | title | content | excerpt | status | publishDate | author | tags
-```
-
-### 3. Get API Credentials
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a new project or select existing
-3. Enable the Google Sheets API
-4. Create credentials (API Key)
-5. Copy the spreadsheet ID from your Google Sheets URL
-
-## 🔥 Firebase Setup
-
-### 1. Create Firebase Project
-
-1. Go to [Firebase Console](https://console.firebase.google.com)
-2. Create a new project
-3. Enable Authentication
-4. Add Email/Password sign-in method
-5. Create your first admin user
-
-### 2. Get Firebase Config
-
-1. Go to Project Settings
-2. Find your web app config
-3. Copy the configuration values
-
-## 🌐 Custom Domain Setup
-
-### 1. In Netlify:
-1. Go to Site Settings → Domain Management
-2. Add your custom domain
-3. Follow DNS configuration instructions
-
-### 2. Update Environment Variables:
-```
-CUSTOM_DOMAIN=yourdomain.com
-```
-
-## 📱 Mobile Optimization
-
-The system is fully responsive and optimized for:
-- Desktop (1024px+)
-- Tablet (768px - 1023px)
-- Mobile (320px - 767px)
-
-## 🔒 Security Features
-
-- HTTPS by default
-- CORS protection
-- Environment variable protection
-- Firebase Authentication
-- Content Security Policy headers
-
-## 🔄 Development vs Production
-
-### Development Mode:
-- Uses mock data
-- Authentication bypass available
-- Detailed error messages
-- Fast development cycles
-
-### Production Mode:
-- Real Google Sheets integration
-- Full Firebase authentication
-- Error logging
-- Optimized performance
-
-## 📈 Monitoring & Analytics
-
-You can add these services:
-- Google Analytics
-- Netlify Analytics
-- Error tracking (Sentry)
-- Performance monitoring
-
-## 🛠 Maintenance
-
-### Regular Tasks:
-1. Update dependencies monthly
-2. Backup Google Sheets data
-3. Monitor error logs
-4. Check performance metrics
-5. Update business information
-
-### Troubleshooting:
-- Check Netlify function logs
-- Verify environment variables
-- Test API connections
-- Check Firebase authentication
-
----
-
-## 🎯 Final Steps Checklist
-
-- [ ] Repository created and code pushed
-- [ ] Netlify site deployed
-- [ ] Google Sheets created with proper structure
-- [ ] Google Sheets API enabled and key obtained
-- [ ] Firebase project created and configured
-- [ ] Environment variables set in Netlify
-- [ ] Custom domain configured (optional)
-- [ ] First admin user created
-- [ ] Staff members can log in
-- [ ] Data is syncing properly
-- [ ] All features tested in production
-
-Need help? Check the issues section or contact support!
+`inktonermoore.ca` is set via `public/CNAME` and the domain's DNS pointing at
+GitHub Pages. HTTPS is provisioned by Pages.
