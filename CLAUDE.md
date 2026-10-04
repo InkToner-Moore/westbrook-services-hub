@@ -178,8 +178,8 @@ secrets at build time (see `deploy.yml`). `public/CNAME` pins `inktonermoore.ca`
 ## Version control
 
 Commits, pushes, branches, merges, and PRs are managed by the agent (Claude),
-authored as the user. Use **GitButler** (`but`), not raw `git`, for all
-version-control work — see the GitButler skill for recipes. Work on a dedicated
+authored as the user. Use plain `git` and `gh` for all
+version-control work. Work on a dedicated
 branch for the session, write terse commit messages (what changed and why), and
 hold to a high bar: coherent commits, no unrelated changes bundled together,
 tests-with-behavior if tests ever land. Push and open PRs on your own judgement.
