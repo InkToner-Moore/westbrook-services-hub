@@ -45,8 +45,8 @@ Read `DESIGN-SPEC.md` and `PLAN.md` first. This records where the rehaul stands.
   other change still need the manager claim. Released ruleset
   `f5152ff7-7008-493e-a3ba-dd811a18b59d`.
 - Deleted the 2 `timeEntries` docs. Reactivated employees Sue and Parsa, added Johnny.
-- Seeded 22 October 2026 shifts (Parsa, Sue, Johnny). Parsa's Oct 12 shift was given as
-  "12" with no end time and is NOT in; ask him.
+- Seeded 23 October 2026 shifts (Parsa, Sue, Johnny), including Parsa's Oct 12 shift,
+  12:00 to 17:00 (he confirmed the hours).
 - Backup of what was there before (employees, punches, shifts, old rules):
   `/home/user/Programming/InkTonerMoore/dev-db-backups/2026-10-07-before-shift-changes/`
   (outside the repo).
@@ -73,10 +73,9 @@ there. Before changing DEV data or rules, take a full backup to local disk first
 every root collection plus the released rules to a dated folder under
 `/home/user/Programming/InkTonerMoore/dev-db-backups/` (outside the repo; it holds the
 hashed manager PIN, so never commit or upload it). Latest full export:
-`2026-10-07T23-20-55`. This covers staging only; `main` / prod still needs his say.
+`2026-10-07T23-27-37`. This covers staging only; `main` / prod still needs his say.
 
 **Waiting on Parsa:**
-- Oct 12 hours for his own shift (asked, not yet answered; do not invent it).
 - `cd proxy && npx wrangler login && npx wrangler deploy`: the Cloudflare login on this
   machine expired, so the router prompt that teaches shift phrasing is committed but
   not deployed. Not blocking (the offline router handles shift phrases and
