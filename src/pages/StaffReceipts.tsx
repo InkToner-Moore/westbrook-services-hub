@@ -149,6 +149,9 @@ const nextCartLineId = () => `sr-${(receiptCartLineId += 1)}`;
 const StaffReceipts = () => {
   const { addCartLines } = useAiMode();
   const { themeClasses, isDarkMode } = useTheme();
+  const tabActive = isDarkMode
+    ? "text-slate-400 data-[state=active]:bg-[#171a21] data-[state=active]:text-slate-100"
+    : "text-slate-600 data-[state=active]:bg-white data-[state=active]:text-slate-900";
   // The app's dialogs/inputs render against the light shadcn palette, so in dark
   // mode the default checkbox (dark border, dark fill) nearly vanishes — invert it.
   const checkboxClass = isDarkMode
@@ -389,42 +392,43 @@ const StaffReceipts = () => {
     <StaffLayout
       title="Receipt Generator"
       subtitle="Shipping, key cutting, cartridge refills, toner sales, and packing"
+      tool="receipts"
       icon={Receipt}
     >
       <div className={`border rounded-xl p-4 sm:p-6 ${themeClasses.card.primary}`}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className={`grid w-full grid-cols-2 md:grid-cols-5 gap-2 mb-8 h-auto ${themeClasses.card.secondary}`}>
+            <TabsList className={`mb-8 inline-flex h-auto max-w-full justify-start gap-1 overflow-x-auto rounded-xl border p-1 ${themeClasses.card.secondary}`}>
               <TabsTrigger
                 value="shipping"
-                className="flex items-center space-x-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
+                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-sm ${tabActive}`}
               >
                 <Package className="h-4 w-4" />
                 <span>Shipping</span>
               </TabsTrigger>
               <TabsTrigger
                 value="key"
-                className="flex items-center space-x-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
+                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-sm ${tabActive}`}
               >
                 <Key className="h-4 w-4" />
-                <span>Key Cutting</span>
+                <span>Key cutting</span>
               </TabsTrigger>
               <TabsTrigger
                 value="cartridge"
-                className="flex items-center space-x-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
+                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-sm ${tabActive}`}
               >
                 <Printer className="h-4 w-4" />
-                <span>Cartridge Refill</span>
+                <span>Cartridge refill</span>
               </TabsTrigger>
               <TabsTrigger
                 value="toner"
-                className="flex items-center space-x-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
+                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-sm ${tabActive}`}
               >
                 <Droplets className="h-4 w-4" />
-                <span>Toner Sale</span>
+                <span>Toner sale</span>
               </TabsTrigger>
               <TabsTrigger
                 value="packing"
-                className="flex items-center space-x-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white"
+                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-sm ${tabActive}`}
               >
                 <Box className="h-4 w-4" />
                 <span>Packing</span>
@@ -486,7 +490,7 @@ const StaffReceipts = () => {
 
                 <div className="mt-8">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className={`font-bold text-lg transition-colors duration-300 ${themeClasses.text.primary}`}>Shipping Items</h3>
+                    <h3 className={`text-lg font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>Shipping items</h3>
                     <Button
                       type="button"
                       variant="ghost"
@@ -508,7 +512,7 @@ const StaffReceipts = () => {
                       className={`transition-all duration-300 ${themeClasses.button.ghost}`}
                     >
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Shipping Item
+                      Add shipping item
                     </Button>
                   </div>
                   
@@ -529,7 +533,7 @@ const StaffReceipts = () => {
                                 const newItems = currentItems.filter((_, i) => i !== itemIndex);
                                 shippingForm.setValue('shippingItems', newItems);
                               }}
-                              className={`transition-all duration-300 ${themeClasses.button.danger}`}
+                              className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -673,9 +677,9 @@ const StaffReceipts = () => {
                                       const newAddOns = currentAddOns.filter((_, i) => i !== addonIndex);
                                       shippingForm.setValue(`shippingItems.${itemIndex}.addOns`, newAddOns);
                                     }}
-                                    className={`h-8 px-2 mt-5 ${themeClasses.button.danger}`}
+                                    className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
                                   >
-                                    <Trash2 className="h-3 w-3" />
+                                    <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>
                                 
@@ -737,9 +741,9 @@ const StaffReceipts = () => {
                                             const newTaxes = currentTaxes.filter((_, i) => i !== taxIndex);
                                             shippingForm.setValue(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes`, newTaxes);
                                           }}
-                                          className={`h-7 px-2 ${themeClasses.button.danger}`}
+                                          className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
                                         >
-                                          <Trash2 className="h-3 w-3" />
+                                          <Trash2 className="h-4 w-4" />
                                         </Button>
                                       </div>
                                     ))}
@@ -776,7 +780,7 @@ const StaffReceipts = () => {
                                 className={`transition-all duration-300 ${themeClasses.button.ghost}`}
                               >
                                 <Plus className="h-3 w-3 mr-1" />
-                                Add Tax
+                                Add tax
                               </Button>
                             </div>
                           </div>
@@ -805,9 +809,9 @@ const StaffReceipts = () => {
                                     const newTaxes = currentTaxes.filter((_, i) => i !== taxIndex);
                                     shippingForm.setValue(`shippingItems.${itemIndex}.taxes`, newTaxes);
                                   }}
-                                  className={`h-8 px-2 ${themeClasses.button.danger}`}
+                                  className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
                                 >
-                                  <Trash2 className="h-3 w-3" />
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
                             ))}
@@ -882,7 +886,7 @@ const StaffReceipts = () => {
                 </div>
 
                 <div className="mt-8">
-                  <h3 className={`font-bold text-lg mb-4 transition-colors duration-300 ${themeClasses.text.primary}`}>Key Items</h3>
+                  <h3 className={`mb-4 text-lg font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>Key items</h3>
                   <div className="space-y-4">
                     {keyForm.watch('keyItems')?.map((_, index) => (
                       <div key={index} className="grid grid-cols-2 gap-3 items-end sm:grid-cols-4 sm:gap-4">
@@ -922,7 +926,7 @@ const StaffReceipts = () => {
                             const newItems = currentItems.filter((_, i) => i !== index);
                             keyForm.setValue('keyItems', newItems.length > 0 ? newItems : [{ model: '', quantity: 1, priceEach: 0, total: 0 }]);
                           }}
-                          className={`transition-all duration-300 ${themeClasses.button.danger}`}
+                          className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -938,14 +942,14 @@ const StaffReceipts = () => {
                       className={`transition-all duration-300 ${themeClasses.button.ghost}`}
                     >
                       <Plus className="h-4 w-4 mr-2" />
-                      Add Key Item
+                      Add key item
                     </Button>
                   </div>
                 </div>
 
                 <div className="mt-8">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className={`font-bold text-lg transition-colors duration-300 ${themeClasses.text.primary}`}>Taxes</h3>
+                    <h3 className={`text-lg font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>Taxes</h3>
                     <div className="flex gap-2">
                       <Select onValueChange={(province) => setProvincialTax(province, 'key')}>
                         <SelectTrigger className={`w-20 h-8 text-sm ${themeClasses.input}`}>
@@ -968,7 +972,7 @@ const StaffReceipts = () => {
                         className={`transition-all duration-300 ${themeClasses.button.ghost}`}
                       >
                         <Plus className="h-4 w-4 mr-2" />
-                        Add Tax
+                        Add tax
                       </Button>
                     </div>
                   </div>
@@ -1002,7 +1006,7 @@ const StaffReceipts = () => {
                             const newTaxes = currentTaxes.filter((_, i) => i !== index);
                             keyForm.setValue('taxes', newTaxes);
                           }}
-                          className={`transition-all duration-300 ${themeClasses.button.danger}`}
+                          className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -1149,7 +1153,7 @@ const StaffReceipts = () => {
                       className={`transition-all duration-300 ${themeClasses.button.ghost}`}
                     >
                       <Plus className="h-4 w-4 mr-1" />
-                      Add Toner
+                      Add toner
                     </Button>
                   </div>
 
@@ -1186,7 +1190,7 @@ const StaffReceipts = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => tonerLines.remove(index)}
-                          className={`transition-all duration-300 ${themeClasses.button.danger}`}
+                          className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
                           title="Remove this toner"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -1234,7 +1238,7 @@ const StaffReceipts = () => {
             <TabsContent value="packing">
               <div className="space-y-6">
                 <div>
-                  <h3 className={`mb-3 text-sm font-semibold ${themeClasses.text.primary}`}>Add a supply</h3>
+                  <h3 className={`mb-3 text-lg font-semibold ${themeClasses.text.primary}`}>Add a supply</h3>
                   <div className="flex flex-wrap gap-2">
                     {PACKING_PRESETS.filter((p) => !p.custom).map((p) => (
                       <Button
@@ -1324,11 +1328,11 @@ const StaffReceipts = () => {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7"
+                          className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
                           onClick={() => removePackingRow(r.id)}
                           aria-label="Remove"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}

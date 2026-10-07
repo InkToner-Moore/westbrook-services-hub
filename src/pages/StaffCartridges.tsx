@@ -69,6 +69,7 @@ import {
   OrderStatusDoc,
   lastNameOf,
 } from "@/lib/orderStatus";
+import { ToolPage } from "@/components/shell/ToolPage";
 import CartridgeLineFields from "@/components/CartridgeLineFields";
 import GstBreakdown from "@/components/GstBreakdown";
 import ThemeToggleButton from "@/components/ThemeToggleButton";
@@ -602,12 +603,12 @@ const StaffCartridges = () => {
     // form and list; 2xl only splits once there is room for it.
     <div className="grid grid-cols-1 gap-8 2xl:grid-cols-3">
           {/* Add New Order Form */}
-          <div className="lg:col-span-1">
+          <div className="2xl:col-span-1">
             <Card className={themeClasses.card.primary}>
               <CardHeader>
-                <CardTitle className={`flex items-center space-x-2 transition-colors duration-300 ${themeClasses.text.primary}`}>
+                <CardTitle className={`flex items-center space-x-2 text-lg font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>
                   <Plus className="h-5 w-5" />
-                  <span>New Cartridge Order</span>
+                  <span>New cartridge order</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -661,7 +662,7 @@ const StaffCartridges = () => {
                     className={`w-full font-semibold rounded-lg transition-colors ${themeClasses.button.primary}`}
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Order
+                    Add order
                   </Button>
                 </form>
               </CardContent>
@@ -669,7 +670,7 @@ const StaffCartridges = () => {
           </div>
 
           {/* Orders List */}
-          <div className="lg:col-span-2">
+          <div className="2xl:col-span-2">
             {/* Search and Filter */}
             <div className="mb-6 flex flex-col sm:flex-row gap-4">
               <div className="relative flex-1">
@@ -739,7 +740,8 @@ const StaffCartridges = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className={`transition-all duration-300 ${themeClasses.button.danger}`}
+                                aria-label="Delete order"
+                                className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -874,7 +876,7 @@ const StaffCartridges = () => {
                   <Card className={themeClasses.card.primary}>
                     <CardContent className="p-12 text-center">
                       <Printer className={`h-12 w-12 mx-auto mb-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
-                      <h3 className={`text-xl font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>No Orders Found</h3>
+                      <h3 className={`text-lg font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>No orders found</h3>
                       <p className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>
                         {searchTerm || statusFilter !== 'all'
                           ? 'Try adjusting your search or filter criteria'
@@ -892,18 +894,9 @@ const StaffCartridges = () => {
 
   if (inShell) {
     return (
-      <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
-        <div className="mb-6 flex items-center gap-3">
-          <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${themeClasses.card.secondary}`}>
-            <Printer className={`h-5 w-5 ${themeClasses.text.secondary}`} />
-          </span>
-          <div>
-            <h1 className={`text-xl font-semibold tracking-tight ${themeClasses.text.primary}`}>Cartridge Refills</h1>
-            <p className={`text-sm ${themeClasses.text.secondary}`}>Track customer refills from received to pickup</p>
-          </div>
-        </div>
+      <ToolPage tool="cartridges" subtitle="Track customer refills from received to pickup">
         {content}
-      </div>
+      </ToolPage>
     );
   }
 

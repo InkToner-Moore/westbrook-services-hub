@@ -202,6 +202,7 @@ const StaffNotes = () => {
     <StaffLayout
       title="Staff Notes"
       subtitle="Keep track of important information and reminders"
+      tool="notes"
       icon={StickyNote}
       iconColor="text-amber-600 dark:text-amber-400"
     >
@@ -218,12 +219,12 @@ const StaffNotes = () => {
       <div className={`rounded-xl border p-4 sm:p-6 ${themeClasses.card.primary}`}>
         <div className="grid grid-cols-1 gap-6 2xl:grid-cols-3">
           {/* Add/Edit Note Form */}
-          <div className="lg:col-span-1">
-            <Card className={`${themeClasses.card.secondary} rounded-xl`}>
+          <div className="2xl:col-span-1">
+            <Card className={`${themeClasses.card.secondary} rounded-xl shadow-none`}>
               <CardHeader>
                 <CardTitle className={`flex items-center gap-2 text-lg font-semibold ${themeClasses.text.primary}`}>
                   <Plus className="h-5 w-5" />
-                  <span>{editingNote ? 'Edit Note' : 'Add New Note'}</span>
+                  <span>{editingNote ? 'Edit note' : 'Add new note'}</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -250,7 +251,7 @@ const StaffNotes = () => {
                     <Label className={`font-medium ${themeClasses.text.primary}`}>Category</Label>
                     <select
                       {...noteForm.register('category')}
-                      className={`w-full min-h-[44px] rounded-lg p-3 ${themeClasses.input}`}
+                      className={`min-h-[44px] w-full rounded-lg border px-3 text-sm ${themeClasses.input}`}
                     >
                       <option value="general">General</option>
                       <option value="customer">Customer</option>
@@ -276,7 +277,7 @@ const StaffNotes = () => {
                       size="lg"
                       className={`flex-1 font-semibold ${themeClasses.button.primary}`}
                     >
-                      {editingNote ? 'Update Note' : 'Add Note'}
+                      {editingNote ? 'Update note' : 'Add note'}
                     </Button>
 
                     {editingNote && (
@@ -297,7 +298,7 @@ const StaffNotes = () => {
           </div>
 
               {/* Notes List */}
-          <div className="lg:col-span-2">
+          <div className="2xl:col-span-2">
             {/* Controls */}
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
               <div className="flex-1">
@@ -315,9 +316,9 @@ const StaffNotes = () => {
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className={`min-h-[44px] px-4 py-2 rounded-lg ${themeClasses.input}`}
+                className={`min-h-[44px] w-full rounded-lg border px-3 text-sm sm:w-auto ${themeClasses.input}`}
               >
-                <option value="all">All Categories</option>
+                <option value="all">All categories</option>
                 <option value="general">General</option>
                 <option value="customer">Customer</option>
                 <option value="inventory">Inventory</option>
@@ -355,7 +356,7 @@ const StaffNotes = () => {
                             </Badge>
                             <div className={`flex items-center text-sm ${themeClasses.text.muted}`}>
                               <Clock className="h-3 w-3 mr-1" />
-                              {new Date(note.createdAt).toLocaleDateString()}
+                              {new Date(note.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                             </div>
                           </div>
                         </div>
@@ -375,7 +376,7 @@ const StaffNotes = () => {
                             size="icon"
                             onClick={() => deleteNote(note.id)}
                             aria-label={`Delete ${note.title}`}
-                            className={`h-11 w-11 ${themeClasses.button.danger}`}
+                            className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -388,7 +389,7 @@ const StaffNotes = () => {
 
                       {note.updatedAt !== note.createdAt && (
                         <div className={`mt-4 pt-3 border-t text-xs ${themeClasses.text.muted}`}>
-                          <span>Updated: {new Date(note.updatedAt).toLocaleDateString()}</span>
+                          <span>Updated: {new Date(note.updatedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                         </div>
                       )}
                     </CardContent>

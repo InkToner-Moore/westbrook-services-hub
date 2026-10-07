@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { useTheme } from "@/hooks/useTheme";
 import { useShell } from "@/components/shell/ShellContext";
 import StaffHeader from "./StaffHeader";
+import { ToolPage, type ToolKey } from "@/components/shell/ToolPage";
 
 interface StaffLayoutProps {
   children: ReactNode;
@@ -11,6 +12,7 @@ interface StaffLayoutProps {
   iconColor?: string;
   backTo?: string;
   backLabel?: string;
+  tool?: ToolKey;
 }
 
 const StaffLayout = ({
@@ -21,6 +23,7 @@ const StaffLayout = ({
   iconColor,
   backTo,
   backLabel,
+  tool,
 }: StaffLayoutProps) => {
   const { themeClasses } = useTheme();
   const { inShell } = useShell();
@@ -28,6 +31,14 @@ const StaffLayout = ({
   // Inside the staff shell the rail already provides navigation and identity, so
   // the tool renders as content only: no page header, no full-height background,
   // no back button. A thin title bar keeps the tool legible in the center pane.
+  if (inShell && tool) {
+    return (
+      <ToolPage tool={tool} subtitle={subtitle}>
+        {children}
+      </ToolPage>
+    );
+  }
+
   if (inShell) {
     const Icon = icon;
     return (

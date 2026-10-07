@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ToolPage } from "@/components/shell/ToolPage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -410,7 +411,7 @@ const StaffDirectory = () => {
             className={`font-semibold ${themeClasses.button.primary}`}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add Tile
+            Add tile
           </Button>
         </div>
       </div>
@@ -460,7 +461,7 @@ const StaffDirectory = () => {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className={`h-11 w-11 ${themeClasses.button.ghost}`}
+                        className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
                         onClick={(e) => {
                           e.stopPropagation();
                           setPendingDelete(link);
@@ -512,22 +513,9 @@ const StaffDirectory = () => {
         // identity, so this renders as content only, mirroring StaffLayout's
         // own chromeless branch: no page header, no full-height background,
         // no back button or logout (the shell owns those).
-        <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
-          <div className="mb-6 flex items-center gap-3">
-            <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${themeClasses.card.secondary}`}>
-              <Globe className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-            </span>
-            <div>
-              <h1 className={`text-xl font-semibold tracking-tight ${themeClasses.text.primary}`}>
-                Website Directory
-              </h1>
-              <p className={`text-sm ${themeClasses.text.secondary}`}>
-                Quick access to shipping and courier sites
-              </p>
-            </div>
-          </div>
+        <ToolPage tool="directory" subtitle="Quick access to shipping and courier sites">
           {directoryContent}
-        </div>
+        </ToolPage>
       ) : (
         // Standalone (deep-linked) full page.
         <div className={`min-h-screen ${themeClasses.background}`}>
@@ -591,7 +579,7 @@ const StaffDirectory = () => {
       <LinkDialog
         open={adding}
         onOpenChange={(v) => setAdding(v)}
-        title="Add Directory Tile"
+        title="Add directory tile"
         description="Add a new website tile to the directory."
         initial={blankForm}
         onSubmit={saveNew}
@@ -601,7 +589,7 @@ const StaffDirectory = () => {
       <LinkDialog
         open={editing !== null}
         onOpenChange={(v) => !v && setEditing(null)}
-        title="Edit Directory Tile"
+        title="Edit directory tile"
         description="Update the title, link, icon, or color for this tile."
         initial={
           editing

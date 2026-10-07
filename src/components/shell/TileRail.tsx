@@ -34,14 +34,14 @@ const HeroTile: React.FC<{ tile: Tile; active: boolean }> = ({ tile, active }) =
   );
 };
 
-const ToolTile: React.FC<{ tile: Tile; active: boolean }> = ({ tile, active }) => {
+const ToolTile: React.FC<{ tile: Tile; active: boolean; wide?: boolean }> = ({ tile, active, wide }) => {
   const { themeClasses } = useTheme();
   const Icon = tile.icon;
 
   if (!tile.enabled) {
     return (
       <div
-        className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl border py-3 opacity-70 ${themeClasses.card.secondary}`}
+        className={`${wide ? 'col-span-2 ' : ''}flex flex-col items-center justify-center gap-1.5 rounded-2xl border py-3 opacity-70 ${themeClasses.card.secondary}`}
         title={tile.soon ? `${tile.label}, coming soon` : tile.label}
         aria-disabled="true"
       >
@@ -59,7 +59,9 @@ const ToolTile: React.FC<{ tile: Tile; active: boolean }> = ({ tile, active }) =
       to={tile.route}
       aria-label={tile.label}
       aria-current={active ? 'page' : undefined}
-      className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl border py-3 transition-colors ${themeClasses.interactive.focus} ${
+      className={`${
+        wide ? 'col-span-2 flex-row justify-start gap-3 px-3' : 'flex-col justify-center gap-1.5'
+      } flex items-center rounded-2xl border py-3 transition-colors ${themeClasses.interactive.focus} ${
         active
           ? `${tile.active} shadow-sm`
           : `${themeClasses.card.primary} ${themeClasses.interactive.hover}`
@@ -102,8 +104,13 @@ const TileRail: React.FC<{ onCollapse?: () => void }> = ({ onCollapse }) => {
 
       <nav aria-label="Staff tools" className="grid grid-cols-2 gap-2">
         <HeroTile tile={AI_TILE} active={aiActive} />
-        {TOOL_TILES.map((tile) => (
-          <ToolTile key={tile.key} tile={tile} active={tile.enabled && isActive(tile.route)} />
+        {TOOL_TILES.map((tile, i) => (
+          <ToolTile
+            key={tile.key}
+            tile={tile}
+            active={tile.enabled && isActive(tile.route)}
+            wide={TOOL_TILES.length % 2 === 1 && i === TOOL_TILES.length - 1}
+          />
         ))}
       </nav>
 
