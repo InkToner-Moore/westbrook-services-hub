@@ -82,9 +82,9 @@ hashed manager PIN, so never commit or upload it). Latest full export:
   not deployed. Not blocking (the offline router handles shift phrases and
   `llm.ts` now keeps its route when the model answers "unknown").
 
-**Unfinished:** a Codex bug-hunt review of the shift parser / executor / page was
-started and had not reported back when the session closed, so the shift code has had
-tests and a browser pass but no second read.
+**Second read:** a Codex bug-hunt over the shift parser / executor / page reported
+no serious defects. Its report was general (it named no probes of its own), so treat
+the 30 parser tests and the browser pass as the real evidence.
 
 **Open / follow-ups:**
 - The chat cannot yet undo an adjustment or delete a shift; use the page.
