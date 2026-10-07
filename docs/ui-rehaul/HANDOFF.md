@@ -48,7 +48,8 @@ Read `DESIGN-SPEC.md` and `PLAN.md` first. This records where the rehaul stands.
 - Seeded 22 October 2026 shifts (Parsa, Sue, Johnny). Parsa's Oct 12 shift was given as
   "12" with no end time and is NOT in; ask him.
 - Backup of what was there before (employees, punches, shifts, old rules):
-  `/home/user/Programming/InkTonerMoore/dev-db-backup-2026-10-07/` (outside the repo).
+  `/home/user/Programming/InkTonerMoore/dev-db-backups/2026-10-07-before-shift-changes/`
+  (outside the repo).
 
 **Gate:** `tsc -p tsconfig.app.json --noEmit` clean, `yarn build` green, eslint
 baseline-only (the 4 pre-existing `any` errors in `StaffCartridges.tsx`),
@@ -64,6 +65,26 @@ project id is the PROD project.
 
 **PROD when this ships to `main`:** mirror the `scheduleShifts` rule above (plus the
 earlier manager rules), and note prod has no shifts or team seeded.
+
+**Standing instruction from Parsa (2026-10-07):** promote finished changes to staging
+(`origin/dev`, which builds `ink-toner-moore.pages.dev`) without asking; he reviews
+there. Before changing DEV data or rules, take a full backup to local disk first:
+`node /home/user/Programming/InkTonerMoore/dev-db-backups/tools/fullbackup.mjs` writes
+every root collection plus the released rules to a dated folder under
+`/home/user/Programming/InkTonerMoore/dev-db-backups/` (outside the repo; it holds the
+hashed manager PIN, so never commit or upload it). Latest full export:
+`2026-10-07T23-20-55`. This covers staging only; `main` / prod still needs his say.
+
+**Waiting on Parsa:**
+- Oct 12 hours for his own shift (asked, not yet answered; do not invent it).
+- `cd proxy && npx wrangler login && npx wrangler deploy`: the Cloudflare login on this
+  machine expired, so the router prompt that teaches shift phrasing is committed but
+  not deployed. Not blocking (the offline router handles shift phrases and
+  `llm.ts` now keeps its route when the model answers "unknown").
+
+**Unfinished:** a Codex bug-hunt review of the shift parser / executor / page was
+started and had not reported back when the session closed, so the shift code has had
+tests and a browser pass but no second read.
 
 **Open / follow-ups:**
 - The chat cannot yet undo an adjustment or delete a shift; use the page.
