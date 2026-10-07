@@ -57,6 +57,7 @@ import {
 } from "@/lib/firestore";
 import ThemeToggleButton from "@/components/ThemeToggleButton";
 import { KeyBoardMap } from "@/components/KeyBoardMap";
+import { ToolPage } from "@/components/shell/ToolPage";
 import {
   getKeyBoard,
   buildLocationIndex,
@@ -452,45 +453,61 @@ const StaffInventory = () => {
     return parts;
   };
 
+  // The shared tab look (same as SegmentedTabs on the other tool pages): the
+  // active tab lifts onto the card surface instead of flooding with colour.
+  const tabTrigger = `min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-sm ${
+    isDarkMode
+      ? "data-[state=active]:bg-[#171a21] data-[state=active]:text-[#f3f4f6]"
+      : "data-[state=active]:bg-white data-[state=active]:text-[#1a1d23]"
+  }`;
+
   const content = (
     <div className={`border rounded-xl p-4 sm:p-6 ${themeClasses.card.primary}`}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className={`grid w-full grid-cols-3 mb-8 ${themeClasses.card.secondary}`}>
-              <TabsTrigger
-                value="keys"
-                className="flex items-center space-x-2 data-[state=active]:bg-orange-600 data-[state=active]:text-white"
-              >
+            <TabsList className={`mb-6 inline-flex h-auto max-w-full gap-1 overflow-x-auto rounded-xl border p-1 ${themeClasses.card.secondary}`}>
+              <TabsTrigger value="keys" className={tabTrigger}>
                 <Key className="h-4 w-4" />
-                <span>Key Inventory</span>
+                <span>Keys</span>
               </TabsTrigger>
-              <TabsTrigger
-                value="refills"
-                className="flex items-center space-x-2 data-[state=active]:bg-orange-600 data-[state=active]:text-white"
-              >
+              <TabsTrigger value="board" className={tabTrigger}>
+                <MapPin className="h-4 w-4" />
+                <span>Key board</span>
+              </TabsTrigger>
+              <TabsTrigger value="refills" className={tabTrigger}>
                 <Droplets className="h-4 w-4" />
                 <span>Refills</span>
               </TabsTrigger>
-              <TabsTrigger
-                value="review"
-                className="flex items-center space-x-2 data-[state=active]:bg-orange-600 data-[state=active]:text-white"
-              >
+              <TabsTrigger value="review" className={tabTrigger}>
                 <ClipboardCheck className="h-4 w-4" />
                 <span>Review</span>
                 {reviews.some((r) => r.severity === "warn") && (
-                  <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold text-white">
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold text-white">
                     {reviews.filter((r) => r.severity === "warn").length}
                   </span>
                 )}
               </TabsTrigger>
             </TabsList>
 
+            {/* The physical key board, on its own tab so the price list stays short. */}
+            <TabsContent value="board">
+              <KeyBoardMap
+                board={board}
+                loading={boardLoading}
+                onSelect={(model) => {
+                  setSearchTerm(model);
+                  setActiveTab("keys");
+                }}
+                onChange={applyBoardChange}
+              />
+            </TabsContent>
+
             <TabsContent value="keys">
               {/* Add new key form */}
-              <Card className={`mb-8 shadow-lg transition-all duration-300 ${themeClasses.card.secondary}`}>
-                <CardHeader>
-                  <CardTitle className={`flex items-center space-x-2 transition-colors duration-300 ${themeClasses.text.primary}`}>
+              <Card className={`mb-6 shadow-none transition-all duration-300 ${themeClasses.card.secondary}`}>
+                <CardHeader className="pb-3">
+                  <CardTitle className={`flex items-center space-x-2 text-lg font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>
                     <Plus className="h-5 w-5" />
-                    <span>Add Key Model</span>
+                    <span>Add a key</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -526,19 +543,7 @@ const StaffInventory = () => {
                 </CardContent>
               </Card>
 
-              {/* The physical key board: every slot, its blank, and the empty spots. */}
-              <Card className={`mb-6 shadow-lg transition-all duration-300 ${themeClasses.card.secondary}`}>
-                <CardContent className="p-4">
-                  <KeyBoardMap
-                    board={board}
-                    loading={boardLoading}
-                    onSelect={(model) => setSearchTerm(model)}
-                    onChange={applyBoardChange}
-                  />
-                </CardContent>
-              </Card>
-
-              {/* Search bar — hidden until there's something to search through. */}
+              {/* Search bar, hidden until there's something to search through. */}
               {!loading && keys.length > 0 && (
                 <div className="relative mb-4">
                   <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
@@ -612,7 +617,7 @@ const StaffInventory = () => {
                       boardLocationFor(item.model, locationIndex) ??
                       (item.cutCode && item.cutCode.trim() ? item.cutCode.trim() : null);
                     return (
-                    <Card key={item.id} className={`shadow-lg transition-all duration-300 ${themeClasses.card.secondary}`}>
+                    <Card key={item.id} className={`shadow-none transition-all duration-300 ${themeClasses.card.secondary}`}>
                       <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
                         <div className="flex items-center gap-4 min-w-0">
                           <div className={`bg-gradient-to-br ${gradient} p-2 rounded-lg shadow-md shrink-0`}>
@@ -696,11 +701,11 @@ const StaffInventory = () => {
 
             <TabsContent value="refills">
               {/* Add new refill form */}
-              <Card className={`mb-8 shadow-lg transition-all duration-300 ${themeClasses.card.secondary}`}>
-                <CardHeader>
-                  <CardTitle className={`flex items-center space-x-2 transition-colors duration-300 ${themeClasses.text.primary}`}>
+              <Card className={`mb-6 shadow-none transition-all duration-300 ${themeClasses.card.secondary}`}>
+                <CardHeader className="pb-3">
+                  <CardTitle className={`flex items-center space-x-2 text-lg font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>
                     <Plus className="h-5 w-5" />
-                    <span>Add Refill</span>
+                    <span>Add a refill</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -834,7 +839,7 @@ const StaffInventory = () => {
                     const { Icon, gradient } = getRefillIconStyle(`${item.brand} ${item.cartridge}`);
                     const parts = refillPriceParts(item);
                     return (
-                      <Card key={item.id} className={`shadow-lg transition-all duration-300 ${themeClasses.card.secondary}`}>
+                      <Card key={item.id} className={`shadow-none transition-all duration-300 ${themeClasses.card.secondary}`}>
                         <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
                           <div className="flex items-center gap-4 min-w-0">
                             <div className={`bg-gradient-to-br ${gradient} p-2 rounded-lg shadow-md shrink-0`}>
@@ -985,18 +990,9 @@ const StaffInventory = () => {
 
   if (inShell) {
     return (
-      <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
-        <div className="mb-6 flex items-center gap-3">
-          <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${themeClasses.card.secondary}`}>
-            <Boxes className={`h-5 w-5 ${themeClasses.text.secondary}`} />
-          </span>
-          <div>
-            <h1 className={`text-xl font-semibold tracking-tight ${themeClasses.text.primary}`}>Inventory</h1>
-            <p className={`text-sm ${themeClasses.text.secondary}`}>Keys and refill prices, in stock at a glance</p>
-          </div>
-        </div>
+      <ToolPage tool="inventory" subtitle="Key and refill prices, and where each key lives on the board">
         {content}
-      </div>
+      </ToolPage>
     );
   }
 

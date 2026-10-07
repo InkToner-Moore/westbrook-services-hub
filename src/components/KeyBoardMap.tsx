@@ -1,11 +1,12 @@
-// A visual map of the physical key board: every row (A to J), each slot with the
-// blank it holds and the spots that are empty or never filled. Data comes from
-// Firestore (the `keyBoard` collection) via the parent, so this renders whatever
-// the board currently is. Clicking a filled slot searches that key. Turning on
-// Edit lets staff set, move, or clear any slot, which writes straight to
-// Firestore. The AI Mode location action writes the same collection.
+// The physical key board, made calm: one row at a time (pick a row, or search
+// and the matching slots come to you from every row), each slot showing the
+// blank's short code and its position. Tapping a slot opens it: what lives
+// there, a jump to that key's price, and the fields to change or free it. There
+// is no separate edit mode. Data comes from Firestore (the `keyBoard`
+// collection) via the parent; the AI Mode location action writes the same
+// collection.
 import React, { useMemo, useState } from 'react';
-import { KeyRound, MapPin, HelpCircle, Pencil, Loader2 } from 'lucide-react';
+import { Loader2, MapPin, Search, X } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -22,6 +24,7 @@ import { toast } from '@/hooks/use-toast';
 import {
   BOARD_ROWS,
   clearPosition,
+  normCode,
   parseModelsInput,
   setPositionModels,
   type KeyBoardPosition,
@@ -30,6 +33,7 @@ import {
 interface Props {
   board: KeyBoardPosition[];
   loading?: boolean;
+  // "Find in keys": the parent shows that key in the price list.
   onSelect?: (model: string) => void;
   // Called after an edit persists, with the changed position, so the parent can
   // refresh its board state without a full reload.
@@ -38,147 +42,227 @@ interface Props {
 
 interface Cell {
   position: string;
+  row: string;
   number: number;
   doc?: KeyBoardPosition; // absent = never dictated ("not provided")
 }
 
+type Show = 'all' | 'keys' | 'free';
+
+const isFlagged = (cell: Cell) => !!cell.doc?.notes && /FLAGGED:/i.test(cell.doc.notes);
+const isKey = (cell: Cell) => cell.doc?.status === 'recorded';
+
 export const KeyBoardMap: React.FC<Props> = ({ board, loading, onSelect, onChange }) => {
   const { themeClasses, isDarkMode } = useTheme();
-  const [editing, setEditing] = useState(false);
   const [active, setActive] = useState<Cell | null>(null);
+  const [row, setRow] = useState<string>('A');
+  const [query, setQuery] = useState('');
+  const [show, setShow] = useState<Show>('all');
 
-  // Build each row as a dense sequence 1..max(number seen in that row), so gaps
-  // (never-dictated slots) show as faint cells the editor can fill.
+  // Each row as a dense sequence 1..max(number seen in that row), so a gap (a
+  // slot nobody has filled in yet) still shows and can be tapped to fill.
   const rows = useMemo(() => {
     const byPos = new Map(board.map((p) => [p.position, p]));
     const maxByRow = new Map<string, number>();
     for (const p of board) {
       maxByRow.set(p.row, Math.max(maxByRow.get(p.row) ?? 0, p.number ?? 0));
     }
-    return BOARD_ROWS.map((row) => {
-      const max = maxByRow.get(row) ?? 0;
+    return BOARD_ROWS.map((r) => {
+      const max = maxByRow.get(r) ?? 0;
       const cells: Cell[] = [];
       for (let n = 1; n <= max; n++) {
-        const position = `${row}${n}`;
-        cells.push({ position, number: n, doc: byPos.get(position) });
+        const position = `${r}${n}`;
+        cells.push({ position, row: r, number: n, doc: byPos.get(position) });
       }
-      return { row, cells };
+      return { row: r as string, cells };
     }).filter((r) => r.cells.length > 0);
   }, [board]);
 
-  const totalRecorded = board.filter((p) => p.status === 'recorded').length;
-  const totalEmpty = board.filter((p) => p.status === 'empty').length;
+  const totalKeys = board.filter((p) => p.status === 'recorded').length;
+  const totalFree = board.filter((p) => p.status === 'empty').length;
+
+  // A search looks across every row: by code ("sc1"), by full name ("ilco"), by
+  // position ("b12"), or in the slot's notes.
+  const q = query.trim().toLowerCase();
+  const matches = (cell: Cell): boolean => {
+    if (!q) return true;
+    if (cell.position.toLowerCase() === q) return true;
+    if (!cell.doc) return false;
+    return (
+      cell.doc.models.some((m) => m.toLowerCase().includes(q) || normCode(m).toLowerCase().includes(q)) ||
+      (cell.doc.notes ?? '').toLowerCase().includes(q)
+    );
+  };
+  const passes = (cell: Cell): boolean =>
+    (show === 'all' || (show === 'keys' ? isKey(cell) : !isKey(cell))) && matches(cell);
+
+  const currentRow = rows.find((r) => r.row === row) ?? rows[0];
+  const visible = (q ? rows : currentRow ? [currentRow] : [])
+    .map((r) => ({ row: r.row, cells: r.cells.filter(passes), keys: r.cells.filter(isKey).length, free: r.cells.length - r.cells.filter(isKey).length }))
+    .filter((r) => r.cells.length > 0);
+  const hitCount = visible.reduce((n, r) => n + r.cells.length, 0);
 
   const cellStyle = (cell: Cell): string => {
-    const s = cell.doc?.status;
-    if (!s) {
-      // Not provided: a faint placeholder, only interesting in edit mode.
+    if (isKey(cell)) {
       return isDarkMode
-        ? 'border-slate-800 bg-slate-900/20 text-slate-600'
-        : 'border-slate-100 bg-slate-50/60 text-slate-300';
+        ? 'border-[#2a2f3a] bg-[#1f232c] text-slate-100 hover:border-orange-500/60'
+        : 'border-[#e4e1d9] bg-white text-slate-800 hover:border-orange-400 hover:bg-orange-50';
     }
-    if (s === 'empty') {
-      return isDarkMode
-        ? 'border-dashed border-slate-700 bg-slate-900/30 text-slate-500'
-        : 'border-dashed border-slate-300 bg-white text-slate-400';
-    }
+    // Free or never filled in: a quiet dashed outline, clearly not a key.
     return isDarkMode
-      ? 'border-slate-700 bg-slate-800/60 text-slate-100 hover:border-orange-500/60 hover:bg-slate-800'
-      : 'border-slate-200 bg-white text-slate-800 hover:border-orange-300 hover:bg-orange-50';
+      ? 'border-dashed border-[#2a2f3a] text-slate-500 hover:border-slate-500'
+      : 'border-dashed border-[#d6d2c7] text-slate-400 hover:border-slate-400';
   };
 
-  const handleClick = (cell: Cell) => {
-    if (editing) {
-      setActive(cell);
-      return;
-    }
-    if (cell.doc?.status === 'recorded' && onSelect) {
-      onSelect(cell.doc.models[0] ?? cell.position);
-    }
-  };
+  const chip = (on: boolean) =>
+    `inline-flex min-h-[40px] items-center justify-center rounded-lg border px-3 text-sm font-medium transition-colors ${themeClasses.interactive.focus} ${
+      on
+        ? isDarkMode
+          ? 'border-orange-500 bg-orange-500/20 text-orange-200'
+          : 'border-orange-600 bg-orange-600 text-white'
+        : `${themeClasses.card.primary} ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`
+    }`;
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <MapPin className="h-4 w-4 text-orange-500" />
-        <span className={`text-sm font-semibold ${themeClasses.text.primary}`}>Key board</span>
-        <span className={`text-xs ${themeClasses.text.muted}`}>
-          {totalRecorded} keys, {totalEmpty} free spots
+      <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="flex items-center gap-2">
+          <MapPin className="h-4 w-4 text-orange-500" />
+          <span className={`text-lg font-semibold ${themeClasses.text.primary}`}>Key board</span>
         </span>
-        <div className="ml-auto flex items-center gap-3">
-          <Legend isDarkMode={isDarkMode} muted={themeClasses.text.muted} />
-          <Button
+        <span className={`text-[13px] ${themeClasses.text.muted}`}>
+          {totalKeys} keys, {totalFree} free spots
+        </span>
+      </div>
+
+      {/* Find a key or a slot, across every row. */}
+      <div className="relative mb-3">
+        <Search className={`absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${themeClasses.text.muted}`} />
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Find a key or a spot, e.g. SC1 or B12"
+          aria-label="Find a key or a spot on the board"
+          className={`min-h-[44px] pl-10 pr-10 ${themeClasses.input}`}
+        />
+        {query && (
+          <button
             type="button"
-            size="sm"
-            variant={editing ? 'default' : 'outline'}
-            onClick={() => setEditing((e) => !e)}
-            className={editing ? 'bg-orange-600 hover:bg-orange-700 text-white' : ''}
+            onClick={() => setQuery('')}
+            aria-label="Clear search"
+            className={`absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md ${themeClasses.text.muted} ${themeClasses.interactive.hover}`}
           >
-            <Pencil className="h-3.5 w-3.5 mr-1.5" />
-            {editing ? 'Done' : 'Edit board'}
-          </Button>
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Row picker and the keys / free filter. A search overrides the row. */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className={`flex flex-wrap items-center gap-1.5 ${q ? 'opacity-50' : ''}`} role="tablist" aria-label="Board row">
+          <span className={`mr-1 text-[13px] ${themeClasses.text.muted}`}>Row</span>
+          {rows.map((r) => (
+            <button
+              key={r.row}
+              type="button"
+              role="tab"
+              aria-selected={!q && currentRow?.row === r.row}
+              onClick={() => {
+                setRow(r.row);
+                setQuery('');
+              }}
+              className={`${chip(!q && currentRow?.row === r.row)} w-10 px-0 font-mono`}
+            >
+              {r.row}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5" role="group" aria-label="Show">
+          {([
+            ['all', 'All'],
+            ['keys', 'Keys'],
+            ['free', 'Free'],
+          ] as const).map(([value, label]) => (
+            <button key={value} type="button" aria-pressed={show === value} onClick={() => setShow(value)} className={chip(show === value)}>
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {editing && (
-        <p className={`mb-3 text-xs ${themeClasses.text.muted}`}>
-          Tap any slot to set its key, move a blank, or free it up. Changes save right away.
-        </p>
-      )}
-
       {loading ? (
-        <div className="flex items-center gap-2 py-8 justify-center">
+        <div className="flex items-center justify-center gap-2 py-8">
           <Loader2 className={`h-5 w-5 animate-spin ${themeClasses.text.muted}`} />
           <span className={`text-sm ${themeClasses.text.secondary}`}>Loading the board...</span>
         </div>
       ) : rows.length === 0 ? (
-        <p className={`text-sm ${themeClasses.text.muted}`}>
-          The board is empty. Turn on Edit to place your first key.
+        <p className={`py-6 text-center text-sm ${themeClasses.text.muted}`}>The board is empty.</p>
+      ) : visible.length === 0 ? (
+        <p className={`py-6 text-center text-sm ${themeClasses.text.muted}`}>
+          {q ? `Nothing on the board matches "${query.trim()}".` : 'Nothing to show in this row with that filter.'}
         </p>
       ) : (
-        <div className="space-y-2">
-          {rows.map(({ row, cells }) => (
-            <div key={row} className="flex items-center gap-2">
-              <span className={`w-4 shrink-0 text-center text-xs font-mono font-bold ${themeClasses.text.muted}`}>
-                {row}
-              </span>
-              <div className="flex gap-1 overflow-x-auto pb-1">
-                {cells.map((cell) => {
-                  const code = cell.doc?.status === 'recorded' ? cell.doc.models[0] : '';
-                  const clickable = editing || cell.doc?.status === 'recorded';
-                  const flagged = cell.doc?.notes && /FLAGGED:/i.test(cell.doc.notes);
+        <div className="space-y-5">
+          {q && (
+            <p className={`text-[13px] ${themeClasses.text.secondary}`}>
+              {hitCount} {hitCount === 1 ? 'spot' : 'spots'} across {visible.length} {visible.length === 1 ? 'row' : 'rows'}
+            </p>
+          )}
+          {visible.map((r) => (
+            <section key={r.row} aria-label={`Row ${r.row}`}>
+              <div className="mb-2 flex items-baseline gap-2">
+                <h3 className={`text-sm font-semibold ${themeClasses.text.primary}`}>Row {r.row}</h3>
+                <span className={`text-[13px] ${themeClasses.text.muted}`}>
+                  {r.keys} keys, {r.free} free
+                </span>
+              </div>
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(84px,1fr))] gap-1.5">
+                {r.cells.map((cell) => {
+                  const key = isKey(cell);
+                  const code = key ? normCode(cell.doc!.models[0] ?? '') || cell.doc!.models[0] : '';
+                  const more = key ? cell.doc!.models.length - 1 : 0;
                   return (
                     <button
                       key={cell.position}
                       type="button"
-                      disabled={!clickable}
-                      title={
-                        cell.doc?.status === 'recorded'
-                          ? `${cell.position}: ${cell.doc.models.join(' / ')}${cell.doc.notes ? ` (${cell.doc.notes})` : ''}`
-                          : `${cell.position}: ${cell.doc?.status ?? 'not filled in'}`
-                      }
-                      onClick={() => handleClick(cell)}
-                      className={`relative flex h-11 w-14 shrink-0 flex-col items-center justify-center rounded border px-1 text-center transition-colors ${cellStyle(cell)} ${clickable ? 'cursor-pointer' : 'cursor-default'}`}
+                      onClick={() => setActive(cell)}
+                      title={key ? `${cell.position}: ${cell.doc!.models.join(' / ')}` : `${cell.position}: free`}
+                      className={`relative flex h-14 flex-col justify-between rounded-lg border px-2 py-1.5 text-left transition-colors ${themeClasses.interactive.focus} ${cellStyle(cell)}`}
                     >
-                      <span className="text-[9px] font-mono opacity-60 leading-none">{cell.number}</span>
-                      <span className="mt-0.5 truncate text-[10px] font-semibold leading-tight w-full">
-                        {code || (cell.doc?.status === 'empty' ? 'MT' : '')}
+                      <span className="font-mono text-[11px] leading-none opacity-60">{cell.position}</span>
+                      <span className={`truncate font-mono leading-tight ${key ? 'text-[13px] font-semibold' : 'text-[12px]'}`}>
+                        {key ? code : 'Free'}
+                        {more > 0 && <span className="ml-1 font-normal opacity-60">+{more}</span>}
                       </span>
-                      {flagged && (
-                        <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-amber-500" />
+                      {isFlagged(cell) && (
+                        <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-amber-500" aria-label="Needs a look" />
                       )}
                     </button>
                   );
                 })}
               </div>
-            </div>
+            </section>
           ))}
+          <p className={`flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] ${themeClasses.text.muted}`}>
+            <span>Tap a spot to see it, change it or free it.</span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-amber-500" /> needs a look
+            </span>
+          </p>
         </div>
       )}
 
       <SlotEditor
         cell={active}
         onClose={() => setActive(null)}
+        onFind={
+          onSelect
+            ? (model) => {
+                setActive(null);
+                onSelect(model);
+              }
+            : undefined
+        }
         onSaved={(updated) => {
           onChange?.(updated);
           setActive(null);
@@ -188,27 +272,15 @@ export const KeyBoardMap: React.FC<Props> = ({ board, loading, onSelect, onChang
   );
 };
 
-const Legend: React.FC<{ isDarkMode: boolean; muted: string }> = ({ muted }) => (
-  <div className={`hidden sm:flex items-center gap-2 text-[11px] ${muted}`}>
-    <span className="flex items-center gap-1">
-      <KeyRound className="h-3 w-3 text-orange-500" /> key
-    </span>
-    <span className="flex items-center gap-1">
-      <span className="h-2.5 w-2.5 rounded-full border border-dashed border-current opacity-50" /> free
-    </span>
-    <span className="flex items-center gap-1">
-      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" /> needs review
-    </span>
-  </div>
-);
-
-// Edit one board position: set the blank(s) that live there, move an existing
-// blank onto it, or free it up. Writes to Firestore via the keyBoard helpers.
+// One board position: what lives there, a jump to that key in the price list,
+// and the fields to set the blank(s), move one onto it, or free it up. Writes to
+// Firestore via the keyBoard helpers.
 const SlotEditor: React.FC<{
   cell: Cell | null;
   onClose: () => void;
+  onFind?: (model: string) => void;
   onSaved: (updated: KeyBoardPosition) => void;
-}> = ({ cell, onClose, onSaved }) => {
+}> = ({ cell, onClose, onFind, onSaved }) => {
   const { themeClasses } = useTheme();
   const [models, setModels] = useState('');
   const [notes, setNotes] = useState('');
@@ -228,13 +300,13 @@ const SlotEditor: React.FC<{
     try {
       if (action === 'clear') {
         const updated = await clearPosition(cell.position);
-        toast({ title: 'Slot freed', description: `${cell.position} is now empty.` });
+        toast({ title: 'Spot freed', description: `${cell.position} is now empty.` });
         onSaved(updated);
         return;
       }
       const parsed = parseModelsInput(models);
       if (parsed.length === 0) {
-        toast({ title: 'Add a key name', description: 'Type the blank that goes here, or free the slot.' });
+        toast({ title: 'Add a key name', description: 'Type the blank that goes here, or free the spot.' });
         setSaving(false);
         return;
       }
@@ -253,13 +325,14 @@ const SlotEditor: React.FC<{
     <Dialog open={!!cell} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className={themeClasses.card.primary}>
         <DialogHeader>
-          <DialogTitle className={themeClasses.text.primary}>
-            Slot {cell?.position}
-          </DialogTitle>
+          <DialogTitle className={themeClasses.text.primary}>Spot {cell?.position}</DialogTitle>
+          <DialogDescription>
+            {cell?.doc?.status === 'recorded' ? cell.doc.models.join(' / ') : 'Nothing here yet.'}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
-            <Label className={themeClasses.text.secondary}>Key(s) in this slot</Label>
+            <Label className={themeClasses.text.secondary}>Key in this spot</Label>
             <Input
               value={models}
               onChange={(e) => setModels(e.target.value)}
@@ -267,7 +340,7 @@ const SlotEditor: React.FC<{
               className={`mt-1 ${themeClasses.input}`}
             />
             <p className={`mt-1 text-xs ${themeClasses.text.muted}`}>
-              Separate equivalent names with a slash. Leave blank and press Free to empty the slot.
+              Separate equivalent names with a slash.
             </p>
           </div>
           <div>
@@ -275,15 +348,21 @@ const SlotEditor: React.FC<{
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Anything worth remembering about this slot"
+              placeholder="Anything worth remembering about this spot"
               className={`mt-1 ${themeClasses.input}`}
               rows={2}
             />
           </div>
         </div>
         <DialogFooter className="gap-2 sm:gap-2">
-          <Button type="button" variant="outline" onClick={() => save('clear')} disabled={saving}>
-            Free slot
+          {onFind && cell?.doc?.status === 'recorded' && (
+            <Button type="button" variant="ghost" onClick={() => onFind(cell.doc!.models[0] ?? cell.position)} className="sm:mr-auto">
+              <Search className="mr-2 h-4 w-4" />
+              Find in keys
+            </Button>
+          )}
+          <Button type="button" variant="outline" onClick={() => save('clear')} disabled={saving || cell?.doc?.status !== 'recorded'}>
+            Free this spot
           </Button>
           <Button
             type="button"
