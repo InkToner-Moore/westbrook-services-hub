@@ -48,7 +48,8 @@ const EXAMPLES = [
   'Ship to Vancouver, UPS, $22',
   'Track UPS 1Z999AA10123456784',
   'Record a refill for John, Canon 137',
-  'Clock in Sarah',
+  'Sue left at 6 today',
+  'Who is working today?',
 ];
 
 const AiChatPane: React.FC = () => {

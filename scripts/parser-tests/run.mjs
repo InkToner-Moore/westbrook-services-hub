@@ -218,8 +218,14 @@ test('segment: two shipping labels stay one receipt (not two segments)', async (
 
 // --- Timesheet classification --------------------------------------------------
 test('timesheet: ops classify from the words', () => {
-  assert.equal(mod.classifyTimesheetOp('clock out Sarah'), 'punch_out');
-  assert.equal(mod.classifyTimesheetOp('clock in Dave'), 'punch_in');
+  // The punch clock is switched off: a punch phrase is answered, never written.
+  assert.equal(mod.classifyTimesheetOp('clock out Sarah'), 'punch_off');
+  assert.equal(mod.classifyTimesheetOp('clock in Dave'), 'punch_off');
+  assert.equal(mod.classifyTimesheetOp('add a shift for Sue oct 8 10 to 5:30'), 'add_shift');
+  assert.equal(mod.classifyTimesheetOp('Parsa 4pm to 7pm: 5th,6,7,13,14'), 'add_shift');
+  assert.equal(mod.classifyTimesheetOp('Parsa left at 8 instead of 7'), 'adjust_shift');
+  assert.equal(mod.classifyTimesheetOp('add 30 min break for Sue today'), 'adjust_shift');
+  assert.equal(mod.classifyTimesheetOp('who is working today'), 'view');
   assert.equal(mod.classifyTimesheetOp('add employee Priya'), 'add_employee');
   assert.equal(mod.classifyTimesheetOp('hours for Dave'), 'view');
 });
@@ -243,4 +249,112 @@ test('chargeAmount: GST off charges the bare price', async () => {
   assert.equal(intent.subtype, 'supplies');
   intent.fields.gst = { value: false, source: 'explicit' };
   assert.equal(chargeAmount(intent), 10);
+});
+
+// --- Shifts: the way staff type them -------------------------------------------
+const REF = new Date(2026, 9, 7); // Oct 7, 2026
+
+test('shifts: time ranges read as shop hours', () => {
+  const r = (t) => {
+    const x = mod.parseTimeRange(t);
+    return x ? `${x.start}-${x.end}` : null;
+  };
+  assert.equal(r('4pm to 7pm'), '16:00-19:00');
+  assert.equal(r('4-9'), '16:00-21:00');
+  assert.equal(r('11-5'), '11:00-17:00');
+  assert.equal(r('10-4:30'), '10:00-16:30');
+  assert.equal(r('10-4:45'), '10:00-16:45');
+  assert.equal(r('10-5:30'), '10:00-17:30');
+  assert.equal(r('10-6'), '10:00-18:00');
+  assert.equal(r('4-9pm'), '16:00-21:00');
+  assert.equal(r('9am-5pm'), '09:00-17:00');
+  assert.equal(r('16:00-21:00'), '16:00-21:00');
+  assert.equal(r('12 to 5'), '12:00-17:00');
+  assert.equal(r('oct 5-9'), null); // a span of days, not a time
+});
+
+test('shifts: day lists carry the month onto bare numbers', () => {
+  const d = (t) => mod.parseDays(t, REF).map((k) => k.slice(5)).join(' ');
+  assert.equal(d('5th,6,7,13,14'), '10-05 10-06 10-07 10-13 10-14');
+  assert.equal(d('8,9,15,16th'), '10-08 10-09 10-15 10-16');
+  assert.equal(d('oct 4th, 11th'), '10-04 10-11');
+  assert.equal(d('oct 8, oct9, 13, 15, 16'), '10-08 10-09 10-13 10-15 10-16');
+  assert.equal(d('Oct 10,17'), '10-10 10-17');
+  assert.equal(d('oct7,oct 14'), '10-07 10-14');
+  assert.equal(d('today'), '10-07');
+  assert.equal(d('yesterday'), '10-06');
+  assert.equal(d('friday'), '10-09');
+  assert.equal(d('nov 3'), '11-03');
+  assert.equal(d('nothing here'), '');
+});
+
+test('shifts: a planned shift fills the slip', async () => {
+  const p = new mod.DeterministicProvider();
+  const f = async (t) => {
+    const i = await p.parse(t, {});
+    const v = (k) => i.fields[k]?.value;
+    return `${i.action}/${v('op')}/${v('employeeName')}/${v('start')}/${v('end')}/${v('days')}`;
+  };
+  // Day labels depend on today's month, so only the stable parts are pinned here.
+  assert.match(await f('Parsa 4pm to 7pm: oct 5th,6,7,13,14'), /^timesheet\/add_shift\/Parsa\/4:00 PM\/7:00 PM\/Oct 5, 6, 7, 13, 14$/);
+  assert.match(await f('add shift for sue 10-5:30 oct 8, oct9, 13, 15, 16'), /^timesheet\/add_shift\/Sue\/10:00 AM\/5:30 PM\/Oct 8, 9, 13, 15, 16$/);
+  assert.match(await f('schedule Johnny 10-6 on Oct 10,17'), /^timesheet\/add_shift\/Johnny\/10:00 AM\/6:00 PM\/Oct 10, 17$/);
+  assert.match(await f('Sue 11-5 oct 4th, 11th'), /^timesheet\/add_shift\/Sue\/11:00 AM\/5:00 PM\/Oct 4, 11$/);
+});
+
+test('shifts: a day list stays with its shift through the splitter', async () => {
+  for (const line of [
+    'Parsa 4pm to 7pm: 5th,6,7,13,14',
+    'Parsa 4-9: 8,9,15,16th',
+    'Sue 11-5: oct 4th, 11th',
+    'Sue 10-5:30: oct 8, oct9, 13, 15, 16',
+    'Johnny 10-5:30 : oct7,oct 14',
+    'Johnny 10-6: Oct 10,17',
+    'Johnny 10-6 on oct 20, 21',
+    'add a shift for Sue on the 8th and the 9th 10 to 5:30',
+  ]) {
+    const segs = await segmentUtterance(line);
+    assert.equal(segs.length, 1, `"${line}" split into ${JSON.stringify(segs)}`);
+    const i = await provider.parse(segs[0], {});
+    assert.equal(`${i.action}/${i.fields.op?.value}`, 'timesheet/add_shift', line);
+    assert.ok(i.fields.employeeName.value, line);
+    assert.ok(i.fields.start.value && i.fields.end.value, line);
+  }
+});
+
+test('shifts: actual times and breaks', async () => {
+  assert.deepEqual(mod.extractShiftAdjustment('Parsa left at 8 instead of 7'), { start: null, end: '8', breakMinutes: null });
+  assert.deepEqual(mod.extractShiftAdjustment('sue started at 10:30 and took a 30 min break'), { start: '10:30', end: null, breakMinutes: 30 });
+  assert.deepEqual(mod.extractShiftAdjustment('add 45 minute break for Johnny'), { start: null, end: null, breakMinutes: 45 });
+  assert.equal(mod.parseBreakMinutes('1 hour lunch'), 60);
+  // A bare hour resolves to the reading nearest the planned time.
+  assert.equal(mod.parseClockTime('8', 19 * 60), '20:00');
+  assert.equal(mod.parseClockTime('6:30', 19 * 60), '18:30');
+  assert.equal(mod.parseClockTime('10:30', 10 * 60), '10:30');
+  assert.equal(mod.parseClockTime('8pm'), '20:00');
+  const p = new mod.DeterministicProvider();
+  const a = await p.parse('Parsa left at 8 instead of 7', {});
+  assert.equal(a.action, 'timesheet');
+  assert.equal(a.fields.op.value, 'adjust_shift');
+  assert.equal(a.fields.employeeName.value, 'Parsa');
+  assert.equal(a.fields.actualEnd.value, '8');
+  const b = await p.parse('Sue took a 30 min break yesterday', {});
+  assert.equal(b.fields.op.value, 'adjust_shift');
+  assert.equal(b.fields.employeeName.value, 'Sue');
+  assert.equal(b.fields.breakMinutes.value, 30);
+  // One person's break and leaving time are one slip, two people are two.
+  assert.equal((await segmentUtterance('Parsa took a 15 min break today and left at 7:30')).length, 1);
+  assert.equal((await segmentUtterance('Parsa left at 8 and Sue left at 6')).length, 2);
+  const c = await p.parse('Parsa took a 15 min break today and left at 7:30', {});
+  assert.equal(c.fields.breakMinutes.value, 15);
+  assert.equal(c.fields.actualEnd.value, '7:30');
+  // A note that happens to mention a time keeps its own route.
+  assert.equal((await p.parse('note: customer left at 5 without the receipt', {})).action, 'note');
+});
+
+test('shifts: hours count actual times minus the break', () => {
+  assert.equal(mod.workedMinutes({ start: '16:00', end: '19:00' }), 180);
+  assert.equal(mod.workedMinutes({ start: '16:00', end: '19:00', actualEnd: '20:00' }), 240);
+  assert.equal(mod.workedMinutes({ start: '16:00', end: '19:00', actualEnd: '20:00', breakMinutes: 30 }), 210);
+  assert.equal(mod.isAdjusted({ start: '16:00', end: '19:00', actualEnd: '', breakMinutes: 0 }), false);
 });

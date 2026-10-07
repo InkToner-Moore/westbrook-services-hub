@@ -5,6 +5,7 @@
 import { CARTRIDGE_BRANDS, CARTRIDGE_TYPES } from '@/lib/cartridges';
 import type { PackingItem } from '@/lib/packing';
 import type { IntentAttachments } from './types';
+import { parseBreakMinutes, parseTimeRange } from '@/lib/shiftParse';
 
 export function todayIso(): string {
   const d = new Date();
@@ -531,32 +532,71 @@ export function extractAttachments(text: string): IntentAttachments | undefined 
   return attach;
 }
 
-// The four timesheet operations the single `timesheet` action fans into. Decided
-// here from the words so the executor and the confirm/immediate split (add_employee
-// confirms, the rest run immediately) both key off one classifier. Order matters:
-// add_employee is checked before the punch verbs, and clock-OUT before clock-IN so
-// "clock out" is never mistaken for "clock in".
-export type TimesheetOp = 'punch_in' | 'punch_out' | 'add_employee' | 'view';
+// The timesheet operations the single `timesheet` action fans into. Decided here
+// from the words so the executor and the confirm/immediate split both key off one
+// classifier. The punch clock is switched off: hours come from the schedule, so a
+// punch phrase is answered with a pointer (punch_off) instead of writing anything.
+//   add_shift     plan a shift, or several days at once   (manager, confirmable)
+//   adjust_shift  log what really happened on a shift:
+//                 a different start / end, or a break       (any staff, confirmable)
+//   add_employee  add someone to the team                  (confirmable)
+//   view          today's shifts or one person's week      (immediate)
+export type TimesheetOp = 'add_shift' | 'adjust_shift' | 'add_employee' | 'view' | 'punch_off';
+
+// Cues that someone is reporting what really happened on a shift.
+const ADJUST_CUES =
+  /\b(?:left|leave|leaving|stayed|staying|finished|worked\s+(?:until|till|til|to)|came\s+in|got\s+in|arrived|started|showed\s+up|instead\s+of|break|lunch|actually)\b/;
 
 export function classifyTimesheetOp(text: string): TimesheetOp {
   const lower = text.toLowerCase();
   if (/\bemployee\b/.test(lower) && /\b(?:add|new|register|create|hire|onboard)\b/.test(lower)) {
     return 'add_employee';
   }
-  if (/\b(?:clock|punch|sign|check)\s*out\b|\b(?:clock|punch)\s*off\b|\bclocking out\b/.test(lower)) {
-    return 'punch_out';
+  if (/\b(?:clock|punch|sign|check)(?:ed|ing)?\s*-?\s*(?:in|out|on|off)\b|\bpunch(?:\s+the)?\s+clock\b/.test(lower)) {
+    return 'punch_off';
   }
-  if (/\b(?:clock|punch|sign|check)\s*in\b|\b(?:clock|punch)\s*on\b|\bstart(?:ing)?\s+(?:shift|work)\b|\bclocking in\b/.test(lower)) {
-    return 'punch_in';
+  const hasRange = parseTimeRange(text) != null;
+  if (ADJUST_CUES.test(lower) && !(hasRange && /\b(?:add|new|schedule|book|put)\b/.test(lower) && !/\b(?:break|lunch)\b/.test(lower))) {
+    return 'adjust_shift';
+  }
+  if (hasRange || /\b(?:add|new|book|put|give|create)\b[^.]*\bshifts?\b|\bschedule\s+[a-z]+\s+(?:for|on|from)\b/.test(lower)) {
+    return 'add_shift';
   }
   return 'view';
+}
+
+// The clock time that follows one of `cues` ("left at 8", "started 10:30am").
+function timeAfter(text: string, cues: string): string | null {
+  const m = new RegExp(`\\b(?:${cues})\\s+(?:work\\s+)?(?:at|until|till|til|to|around|by)?\\s*(\\d{1,2}(?:[:.]\\d{2})?\\s*(?:am|pm|a\\.m\\.|p\\.m\\.)?)(?![\\d:]|\\s*(?:min|mins|minutes?|hours?|hrs?)\\b)`, 'i').exec(text);
+  return m ? m[1].trim() : null;
+}
+
+// What an "actual times" utterance names: a different start, a different end
+// and/or break minutes. "instead of 7" is dropped first so the planned time is
+// never read as the actual one. Times stay as typed ("8", "8pm"); the executor
+// resolves a bare hour against the planned shift.
+export function extractShiftAdjustment(text: string): { start: string | null; end: string | null; breakMinutes: number | null } {
+  const t = text.replace(/\b(?:instead|rather)\s+(?:of|than)\s+(?:at\s+)?\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm)?/gi, ' ');
+  return {
+    start: timeAfter(t, 'started|start|came\\s+in|got\\s+in|arrived|showed\\s+up|in'),
+    end: timeAfter(t, 'left|leave|leaving|stayed|finished|worked|done|out|off'),
+    breakMinutes: parseBreakMinutes(t),
+  };
 }
 
 // Words that follow a timesheet cue but are never a name (shift nouns, adverbs).
 const TIMESHEET_NAME_STOPWORDS = new Set([
   'in', 'out', 'off', 'on', 'now', 'today', 'for', 'of', 'lunch', 'break',
   'shift', 'work', 'the', 'a', 'an', 'me', 'myself', 'please', 'employee',
-  'again', 'early', 'late', 'is', 'and',
+  'again', 'early', 'late', 'is', 'and', 'at', 'from', 'to', 'until', 'till',
+  'today', 'tomorrow', 'yesterday', 'tonight', 'this', 'next', 'last', 'week',
+  'shifts', 'schedule', 'hours', 'left', 'started', 'stayed', 'took', 'had',
+  'add', 'new', 'put', 'book', 'give', 'i', 'my', 'who', 'working', 'works',
+  'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'sept', 'oct', 'nov', 'dec',
+  'january', 'february', 'march', 'april', 'june', 'july', 'august', 'september', 'october', 'november', 'december',
+  'mon', 'tue', 'tues', 'wed', 'thu', 'thur', 'thurs', 'fri', 'sat', 'sun',
+  'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+  'min', 'mins', 'minute', 'minutes', 'hour', 'hours', 'am', 'pm', 'th', 'st', 'nd', 'rd',
 ]);
 
 // An employee name spoken in a timesheet utterance: after a punch verb ("clock in
@@ -570,7 +610,18 @@ export function extractEmployeeName(text: string): string | null {
   const m2 = text.match(new RegExp(`\\b(?:add|new|register|create|hire|onboard)\\s+(?:an?\\s+)?employee\\s+(?:named\\s+|called\\s+)?${nameToken}`, 'i'));
   const m3 = text.match(new RegExp(`\\b(?:hours?|timesheet|time|shifts?|punches?)\\s+(?:for|of)\\s+${nameToken}`, 'i'));
   const m4 = text.match(/\bfor\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);
-  const raw = (m1?.[1] || m2?.[1] || m3?.[1] || m4?.[1] || '').trim();
+  // Shift phrasing: "add a shift for sue", "schedule Parsa 4-9", "Sue left at 8",
+  // "Parsa took a 30 min break", or a line that simply leads with the name
+  // ("Parsa 4pm to 7pm: 5th, 6, 7").
+  const m5 = text.match(new RegExp(`\\bshifts?\\s+(?:for\\s+)?${nameToken}`, 'i'));
+  const m6 = text.match(new RegExp(`\\b(?:schedule|book|put|give)\\s+${nameToken}`, 'i'));
+  const m7 = text.match(new RegExp(`${nameToken}\\s+(?:left|stayed|started|came|got|arrived|finished|took|had|worked|is\\s+working|works)\\b`, 'i'));
+  const m8 = text.match(new RegExp(`\\b(?:for|by)\\s+${nameToken}`, 'i'));
+  const m9 = text.match(new RegExp(`^\\s*${nameToken}`));
+  const candidates = [m1, m2, m3, m4, m5, m6, m7, m8, m9].map((m) => (m?.[1] || '').trim()).filter(Boolean);
+  const raw = candidates.find((c) =>
+    c.split(/\s+/).some((t) => !TIMESHEET_NAME_STOPWORDS.has(t.toLowerCase()) && !/\d/.test(t)),
+  );
   if (!raw) return null;
   const tokens = raw
     .split(/\s+/)

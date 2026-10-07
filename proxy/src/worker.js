@@ -121,7 +121,7 @@ Actions:
 - inventory_lookup: a READ-ONLY question about stock, price, or a key's location, e.g. "is the HP 65 in stock?", "do we have Kwikset KW1?", "what's the price of a Canon 137?", "where is that key?". Choose this over inventory when the words ask a question rather than tell you to add or change stock.
 - directory: save a website link / bookmark to the internal directory.
 - purchase: send a payment to the card machine and record the transaction. Only when the words are about taking a payment on its own (e.g. "charge $40 to a card"). A priced receipt that also says "charge her card" is still a receipt; the payment rides along as an attachment, not this action.
-- timesheet: employee punch-in / punch-out clock, adding an employee, or viewing today's punches or a person's hours, e.g. "clock in Sarah", "clock out Dave", "add employee Priya", "who is on the clock?", "hours for Sarah".
+- timesheet: staff shifts and hours. Planning a shift ("add a shift for Sue oct 8 10 to 5:30", "Parsa 4-9 on the 8th, 9th"), saying what really happened on a shift ("Parsa left at 8 instead of 7", "Sue took a 30 min break"), adding an employee, or asking who is working or for a person's hours ("who is working today?", "hours for Sarah"). Old punch-clock phrases ("clock in Sarah") also belong here.
 - track: look up a parcel by courier and/or tracking number.
 - clarify: the request is a real task but too ambiguous to route; put your one short question in "clarify" AND list the 2 or 3 routes you are torn between in "clarifyOptions".
 - unknown: not a task this tool handles.
@@ -149,10 +149,12 @@ Examples (utterance -> action[/subtype]):
 - "KW1?" -> inventory_lookup
 - "SC4" -> inventory_lookup
 - "Hannah Lemmington UPS express saver 2818387529719764 ontario 53$ 4167382277" -> receipt/shipping
-- "clock in Sarah" -> timesheet
-- "clock out Dave" -> timesheet
+- "add a shift for Sue oct 8 10 to 5:30" -> timesheet
+- "Parsa left at 8 instead of 7" -> timesheet
+- "Sue took a 30 min break today" -> timesheet
 - "add employee Priya" -> timesheet
-- "who is on the clock?" -> timesheet
+- "who is working today?" -> timesheet
+- "clock in Sarah" -> timesheet
 
 confidence is high, medium, or low.
 

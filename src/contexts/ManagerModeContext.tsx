@@ -22,6 +22,7 @@ import React, {
 import { auth } from "@/lib/firebase";
 import ManagerPinDialog from "@/components/ManagerPinDialog";
 import {
+  noteManagerUnlocked,
   currentUserIsManager,
   fetchPinStatus,
   lockManagerSession,
@@ -79,6 +80,11 @@ export const ManagerModeProvider: React.FC<{ children: ReactNode }> = ({ childre
     })();
     return unsub;
   }, [refreshPinStatus]);
+
+  // Mirror the state for non-React code (the AI executors ask managerUnlocked()).
+  useEffect(() => {
+    noteManagerUnlocked(isManager);
+  }, [isManager]);
 
   const promptUnlock = useCallback(() => {
     setDialogMode(pinIsSet ? "unlock" : "set");

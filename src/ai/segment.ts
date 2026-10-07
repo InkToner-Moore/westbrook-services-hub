@@ -9,6 +9,8 @@
 // route alone (they are attachments, handled inside one intent), so they glue back
 // to their neighbour. "clock in Dave" does route alone, so it splits off. This uses
 // the deterministic router as a free, offline probe - no network, no model.
+import { extractEmployeeName } from './extract';
+import { isDayList } from '@/lib/shiftParse';
 import { DeterministicProvider } from './providers/deterministic';
 
 const probe = new DeterministicProvider();
@@ -57,7 +59,13 @@ async function splitSoft(chunk: string): Promise<string[]> {
     // Two shipments in a row stay one receipt: the shipping receipt holds several
     // items ("two labels"), so they are glued, not split into separate receipts.
     const bothShipping = isShipping(currentRoute) && isShipping(partRoute);
-    if (bothRoute && !bothShipping) {
+    // A second timesheet clause with no name of its own is more about the same
+    // person's shift ("Parsa took a 15 min break and left at 7:30"), not a new action.
+    const sameShift =
+      currentRoute.action === 'timesheet' && partRoute.action === 'timesheet' && !extractEmployeeName(parts[i]);
+    // "Sue 10-5:30 oct 8, 9, 13": the days after each comma belong to the shift.
+    const moreDays = currentRoute.action === 'timesheet' && isDayList(parts[i]);
+    if (bothRoute && !bothShipping && !sameShift && !moreDays) {
       segments.push(current);
       current = parts[i];
     } else {

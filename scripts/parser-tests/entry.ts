@@ -18,8 +18,11 @@ export {
   stripPacking,
   classifyTimesheetOp,
   extractEmployeeName,
+  extractShiftAdjustment,
   extractKeyLocationOp,
 } from '@/ai/extract';
 export { chargeAmount } from '@/ai/actions/purchaseRecorder';
 export { receiptIntentToCartLines } from '@/ai/actions/cartLines';
 export { cartTotal } from '@/ai/cart';
+export { parseTimeRange, parseClockTime, parseBreakMinutes, parseDays, describeDays } from '@/lib/shiftParse';
+export { workedMinutes, isAdjusted } from '@/lib/schedule';

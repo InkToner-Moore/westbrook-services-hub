@@ -1,29 +1,33 @@
 // The Timesheet artifact card (kind 'timesheet'). One bespoke card per outcome of
 // executeTimesheet (see src/ai/actions/timesheet.ts), all emitted as a `timesheet`
 // artifact whose data carries a discriminated `state`:
-//   punched_in     an employee clocked in, as a punch slip (or "already in")
-//   punched_out    an employee clocked out, with the duration for that shift
+//   shifts_added   shifts planned from chat, one row per day
+//   shift_adjusted actual times / break logged on a shift (planned time struck through)
 //   employee_added a new employee added to the team (or "already on the team")
-//   summary        today's punches, or one employee's hours, with a total
+//   summary        a day's shifts or one person's week, with the hours that count
+//   locked         adding shifts needs a manager: offers the sign in
+//   notice         a plain explanation (no shift that day, punch clock is off)
 //   not_found      no employee matched the spoken name
 //
 // The tool hue is slate (DESIGN-SPEC tool signature colours). Times, durations and
 // ids are mono/tabular like a real slip. The summary state offers a CSV export of
-// the shown entries in its foot. Registered via `export function register(reg)`.
+// the shown shifts in its foot. Registered via `export function register(reg)`.
 import React from 'react';
-import { Check, Clock, Download, LogIn, LogOut, SearchX, UserPlus, Users } from 'lucide-react';
+import { CalendarCheck, CalendarDays, Check, Download, Info, Lock, PencilLine, SearchX, UserPlus } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useManagerMode } from '@/contexts/ManagerModeContext';
 import {
-  entriesToCsv,
-  entryMs,
-  formatClock,
-  formatDay,
-  formatDuration,
+  formatDayHeading,
   formatHoursDecimal,
-  isOpen,
-  totalMs,
-  type TimeEntry,
-} from '@/lib/timesheet';
+  formatShiftDuration,
+  isAdjusted,
+  shiftMinutes,
+  shiftsToCsv,
+  totalWorkedMinutes,
+  workedMinutes,
+  type ScheduleShift,
+} from '@/lib/schedule';
+import { ShiftTimes } from '@/components/ShiftTimes';
 import type { ArtifactRegistry } from '@/components/shell/artifactRegistry';
 import type { TimesheetArtifactData } from '@/ai/actions/timesheet';
 
@@ -48,17 +52,6 @@ function downloadCsv(fileName: string, csv: string): void {
   a.remove();
   URL.revokeObjectURL(url);
 }
-
-// On-the-clock / done chip. Never colour-only: it always carries text too.
-const OnClockPill: React.FC<{ open: boolean }> = ({ open }) => {
-  const { themeClasses } = useTheme();
-  const tone = open ? themeClasses.status.info : themeClasses.status.success;
-  return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[13px] font-medium ${tone}`}>
-      {open ? 'On the clock' : 'Done'}
-    </span>
-  );
-};
 
 // One ledger row: label left, value right. `mono` sets the value in tabular figures.
 const Row: React.FC<{ label: string; children: React.ReactNode; mono?: boolean }> = ({ label, children, mono }) => {
@@ -96,75 +89,139 @@ const CardShell: React.FC<{
   );
 };
 
-// The punch slip shared by the in/out states: who, in, out (or open), duration.
-const PunchSlip: React.FC<{ entry: TimeEntry; banner?: React.ReactNode }> = ({ entry, banner }) => {
+// --- per-state bodies -------------------------------------------------------
+
+// One shift as a ledger line: the day (or the person) on top, the times below,
+// and the hours that count on the right.
+const ShiftLine: React.FC<{ shift: ScheduleShift; lead: 'day' | 'name'; muted?: boolean }> = ({ shift, lead, muted }) => {
   const { themeClasses } = useTheme();
-  const { divide, edge } = useEdges();
-  const open = isOpen(entry);
   return (
-    <>
-      {banner}
-      <div className={`divide-y ${divide}`}>
-        <Row label="Employee">{entry.employeeName || '--'}</Row>
-        <Row label="Clocked in" mono>
-          {formatClock(entry.clockIn)}
-        </Row>
-        <Row label="Clocked out" mono>
-          {entry.clockOut ? formatClock(entry.clockOut) : 'Open'}
-        </Row>
-        <Row label="Date">{formatDay(entry.clockIn)}</Row>
-        <Row label="Status">
-          <OnClockPill open={open} />
-        </Row>
-        {entry.note && <Row label="Note">{entry.note}</Row>}
+    <div className={`flex items-center justify-between gap-3 py-2.5 ${muted ? 'opacity-60' : ''}`}>
+      <div className="min-w-0">
+        <div className={`truncate text-sm ${themeClasses.text.primary}`}>
+          {lead === 'day' ? formatDayHeading(shift.date) : shift.employeeName || 'Unknown'}
+        </div>
+        <div className={`truncate text-[13px] ${themeClasses.text.secondary}`}>
+          <ShiftTimes shift={shift} />
+        </div>
       </div>
-      <div className={`mt-1 flex items-center justify-between border-t pt-2 ${edge}`}>
-        <span className={`text-sm font-semibold ${themeClasses.text.primary}`}>
-          {open ? 'Elapsed' : 'Hours'}
-        </span>
-        <span className={`text-base font-mono font-semibold tabular-nums ${themeClasses.text.primary}`}>
-          {formatDuration(entryMs(entry))}
-        </span>
-      </div>
-      <p className={`mt-3 text-[13px] ${themeClasses.text.muted}`}>
-        <span className="font-mono tabular-nums">{entry.id}</span>
-      </p>
-    </>
+      <span className={`shrink-0 text-sm font-mono tabular-nums ${themeClasses.text.primary}`}>
+        {formatShiftDuration(workedMinutes(shift))}
+      </span>
+    </div>
   );
 };
 
-// --- per-state bodies -------------------------------------------------------
-
-const PunchedInBody: React.FC<{ d: Extract<TimesheetArtifactData, { state: 'punched_in' }> }> = ({ d }) => {
+const Total: React.FC<{ minutes: number }> = ({ minutes }) => {
   const { themeClasses } = useTheme();
-  const banner = (
-    <div className={`mb-3 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${themeClasses.status.info}`}>
-      <LogIn className="h-4 w-4" />
-      {d.already ? `${d.employeeName} was already on the clock.` : `${d.employeeName} is on the clock.`}
+  const { edge } = useEdges();
+  return (
+    <div className={`mt-1 flex items-center justify-between border-t pt-2 ${edge}`}>
+      <span className={`text-sm font-semibold ${themeClasses.text.primary}`}>Total</span>
+      <span className={`text-base font-mono font-semibold tabular-nums ${themeClasses.text.primary}`}>
+        {formatShiftDuration(minutes)}
+        <span className={`ml-2 text-[13px] font-normal ${themeClasses.text.muted}`}>{formatHoursDecimal(minutes)} h</span>
+      </span>
     </div>
   );
+};
+
+const ShiftsAddedBody: React.FC<{ d: Extract<TimesheetArtifactData, { state: 'shifts_added' }> }> = ({ d }) => {
+  const { themeClasses } = useTheme();
+  const { divide } = useEdges();
+  const n = d.shifts.length;
   return (
     <CardShell
-      icon={<LogIn className="h-5 w-5" />}
-      title={d.already ? 'Already clocked in' : 'Clocked in'}
+      icon={<CalendarCheck className="h-5 w-5" />}
+      title={n ? `${n} ${n === 1 ? 'shift' : 'shifts'} added` : 'Nothing to add'}
       subtitle={d.employeeName}
     >
-      <PunchSlip entry={d.entry} banner={banner} />
+      {n > 0 && (
+        <div className={`mb-2 inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[13px] ${themeClasses.status.success}`}>
+          <Check className="h-3.5 w-3.5 shrink-0" />
+          On the schedule
+        </div>
+      )}
+      <div className={`divide-y ${divide}`}>
+        {d.shifts.map((s) => (
+          <ShiftLine key={s.id} shift={s} lead="day" />
+        ))}
+        {d.skipped.map((s) => (
+          <ShiftLine key={s.id} shift={s} lead="day" muted />
+        ))}
+      </div>
+      {d.skipped.length > 0 && (
+        <p className={`mt-2 text-[13px] ${themeClasses.text.muted}`}>
+          Greyed days already had this shift, so they were left alone.
+        </p>
+      )}
+      {n > 0 && <Total minutes={totalWorkedMinutes(d.shifts)} />}
     </CardShell>
   );
 };
 
-const PunchedOutBody: React.FC<{ d: Extract<TimesheetArtifactData, { state: 'punched_out' }> }> = ({ d }) => {
+const ShiftAdjustedBody: React.FC<{ d: Extract<TimesheetArtifactData, { state: 'shift_adjusted' }> }> = ({ d }) => {
   const { themeClasses } = useTheme();
-  const banner = (
-    <div className={`mb-3 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${themeClasses.status.success}`}>
-      <LogOut className="h-4 w-4" />
-      {`${d.employeeName} clocked out, ${formatDuration(entryMs(d.entry))} on the clock.`}
-    </div>
-  );
+  const { divide, edge } = useEdges();
+  const s = d.shift;
+  const planned = shiftMinutes(s);
+  const worked = workedMinutes(s);
   return (
-    <CardShell icon={<LogOut className="h-5 w-5" />} title="Clocked out" subtitle={d.employeeName}>
-      <PunchSlip entry={d.entry} banner={banner} />
+    <CardShell icon={<PencilLine className="h-5 w-5" />} title="Shift updated" subtitle={s.employeeName}>
+      <div className={`divide-y ${divide}`}>
+        <Row label="Day">{formatDayHeading(s.date)}</Row>
+        <Row label="Times">
+          <ShiftTimes shift={s} showBreak={false} />
+        </Row>
+        <Row label="Break" mono>
+          {s.breakMinutes ? `${s.breakMinutes} min` : 'None'}
+        </Row>
+        <Row label="Planned" mono>
+          {formatShiftDuration(planned)}
+        </Row>
+      </div>
+      <div className={`mt-1 flex items-center justify-between border-t pt-2 ${edge}`}>
+        <span className={`text-sm font-semibold ${themeClasses.text.primary}`}>Counts as</span>
+        <span className={`text-base font-mono font-semibold tabular-nums ${themeClasses.text.primary}`}>
+          {formatShiftDuration(worked)}
+        </span>
+      </div>
+      {!isAdjusted(s) && (
+        <p className={`mt-3 text-[13px] ${themeClasses.text.muted}`}>Back to the planned times.</p>
+      )}
+    </CardShell>
+  );
+};
+
+const LockedBody: React.FC = () => {
+  const { themeClasses } = useTheme();
+  const { isManager, promptUnlock } = useManagerMode();
+  return (
+    <CardShell icon={<Lock className="h-5 w-5" />} title={isManager ? 'Schedule unlocked' : 'Schedule locked'}>
+      <p className={`text-sm ${themeClasses.text.secondary}`}>
+        {isManager
+          ? 'You are signed in as manager. Send the shift again and I will add it.'
+          : 'Adding shifts needs a manager. Anyone can still log the actual start, end or a break on a shift that is already planned.'}
+      </p>
+      {!isManager && (
+        <button
+          type="button"
+          onClick={promptUnlock}
+          className={`mt-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border px-3.5 py-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${themeClasses.button.primary}`}
+        >
+          <Lock className="h-4 w-4" />
+          Manager sign in
+        </button>
+      )}
+    </CardShell>
+  );
+};
+
+const NoticeBody: React.FC<{ d: Extract<TimesheetArtifactData, { state: 'notice' }> }> = ({ d }) => {
+  const { themeClasses } = useTheme();
+  return (
+    <CardShell icon={<Info className="h-5 w-5" />} title={d.title}>
+      <p className={`text-sm ${themeClasses.text.secondary}`}>{d.body}</p>
     </CardShell>
   );
 };
@@ -180,7 +237,7 @@ const EmployeeAddedBody: React.FC<{ d: Extract<TimesheetArtifactData, { state: '
     >
       <div className={`mb-3 inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[13px] ${themeClasses.status.success}`}>
         <Check className="h-3.5 w-3.5 shrink-0" />
-        {d.existed ? 'Ready to punch the clock' : 'Added to the team'}
+        {d.existed ? 'Ready to schedule' : 'Added to the team'}
       </div>
       <div className={`divide-y ${divide}`}>
         <Row label="Name">{d.employee.name}</Row>
@@ -195,60 +252,44 @@ const EmployeeAddedBody: React.FC<{ d: Extract<TimesheetArtifactData, { state: '
 
 const SummaryBody: React.FC<{ d: Extract<TimesheetArtifactData, { state: 'summary' }> }> = ({ d }) => {
   const { themeClasses } = useTheme();
-  const { divide, edge } = useEdges();
-  if (d.entries.length === 0) {
+  const { divide } = useEdges();
+  if (d.shifts.length === 0) {
     return (
-      <CardShell icon={<Clock className="h-5 w-5" />} title={d.title}>
+      <CardShell icon={<CalendarDays className="h-5 w-5" />} title={d.title} subtitle={d.subtitle}>
         <div className="flex flex-col items-center py-8 text-center">
           <span className={`mb-3 flex h-12 w-12 items-center justify-center rounded-2xl ${themeClasses.card.secondary}`}>
-            <Users className={`h-6 w-6 ${themeClasses.text.muted}`} />
+            <CalendarDays className={`h-6 w-6 ${themeClasses.text.muted}`} />
           </span>
-          <p className={`text-sm font-medium ${themeClasses.text.secondary}`}>
-            {d.scope === 'today' ? 'No punches yet today' : 'No entries yet'}
-          </p>
-          <p className={`mt-1 text-[13px] ${themeClasses.text.muted}`}>
-            Clock someone in from AI Mode or the Timesheet page.
-          </p>
+          <p className={`text-sm font-medium ${themeClasses.text.secondary}`}>No shifts here</p>
+          <p className={`mt-1 text-[13px] ${themeClasses.text.muted}`}>A manager can add shifts from here or the Timesheet page.</p>
         </div>
       </CardShell>
     );
   }
-  const total = totalMs(d.entries);
   return (
     <CardShell
-      icon={<Clock className="h-5 w-5" />}
+      icon={<CalendarDays className="h-5 w-5" />}
       title={d.title}
-      subtitle={`${d.entries.length} ${d.entries.length === 1 ? 'entry' : 'entries'}, ${d.openCount} on the clock`}
+      subtitle={d.subtitle ?? `${d.shifts.length} ${d.shifts.length === 1 ? 'shift' : 'shifts'}`}
     >
       <div className={`divide-y ${divide}`}>
-        {d.entries.map((e) => (
-          <div key={e.id} className="flex items-center justify-between gap-3 py-2.5">
+        {d.shifts.map((s) => (
+          <div key={s.id} className="flex items-center justify-between gap-3 py-2.5">
             <div className="min-w-0">
               <div className={`truncate text-sm ${themeClasses.text.primary}`}>
-                {d.scope === 'employee' ? formatDay(e.clockIn) : e.employeeName || 'Unknown'}
+                {d.showDay ? `${formatDayHeading(s.date)}, ${s.employeeName}` : s.employeeName}
               </div>
-              <div className={`truncate text-[13px] font-mono tabular-nums ${themeClasses.text.secondary}`}>
-                {formatClock(e.clockIn)} to {e.clockOut ? formatClock(e.clockOut) : 'open'}
+              <div className={`truncate text-[13px] ${themeClasses.text.secondary}`}>
+                <ShiftTimes shift={s} />
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className={`text-sm font-mono tabular-nums ${themeClasses.text.primary}`}>
-                {formatDuration(entryMs(e))}
-              </span>
-              {isOpen(e) && <OnClockPill open />}
-            </div>
+            <span className={`shrink-0 text-sm font-mono tabular-nums ${themeClasses.text.primary}`}>
+              {formatShiftDuration(workedMinutes(s))}
+            </span>
           </div>
         ))}
       </div>
-      <div className={`mt-1 flex items-center justify-between border-t pt-2 ${edge}`}>
-        <span className={`text-sm font-semibold ${themeClasses.text.primary}`}>Total</span>
-        <span className={`text-base font-mono font-semibold tabular-nums ${themeClasses.text.primary}`}>
-          {formatDuration(total)}
-          <span className={`ml-2 text-[13px] font-normal ${themeClasses.text.muted}`}>
-            {formatHoursDecimal(total)} h
-          </span>
-        </span>
-      </div>
+      <Total minutes={totalWorkedMinutes(d.shifts)} />
     </CardShell>
   );
 };
@@ -276,10 +317,14 @@ const NotFoundBody: React.FC<{ d: Extract<TimesheetArtifactData, { state: 'not_f
 const TimesheetBody: React.FC<{ data: unknown }> = ({ data }) => {
   const d = data as TimesheetArtifactData;
   switch (d?.state) {
-    case 'punched_in':
-      return <PunchedInBody d={d} />;
-    case 'punched_out':
-      return <PunchedOutBody d={d} />;
+    case 'shifts_added':
+      return <ShiftsAddedBody d={d} />;
+    case 'shift_adjusted':
+      return <ShiftAdjustedBody d={d} />;
+    case 'locked':
+      return <LockedBody />;
+    case 'notice':
+      return <NoticeBody d={d} />;
     case 'employee_added':
       return <EmployeeAddedBody d={d} />;
     case 'summary':
@@ -291,17 +336,17 @@ const TimesheetBody: React.FC<{ data: unknown }> = ({ data }) => {
   }
 };
 
-// The summary state offers a CSV export of the entries it shows.
+// The summary state offers a CSV export of the shifts it shows.
 const TimesheetFoot: React.FC<{ data: unknown }> = ({ data }) => {
   const { themeClasses } = useTheme();
   const d = data as TimesheetArtifactData;
-  if (d?.state !== 'summary' || d.entries.length === 0) return null;
-  const base = d.scope === 'employee' && d.employeeName ? d.employeeName.replace(/\s+/g, '-').toLowerCase() : 'today';
+  if (d?.state !== 'summary' || d.shifts.length === 0) return null;
+  const base = d.title.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'shifts';
   return (
     <div className={`flex flex-wrap items-center gap-2 border-t px-4 py-3 ${themeClasses.header}`}>
       <button
         type="button"
-        onClick={() => downloadCsv(`timesheet-${base}.csv`, entriesToCsv(d.entries))}
+        onClick={() => downloadCsv(`hours-${base}.csv`, shiftsToCsv(d.shifts))}
         className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${themeClasses.button.secondary}`}
       >
         <Download className="h-4 w-4" />

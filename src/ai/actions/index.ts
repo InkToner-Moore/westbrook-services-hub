@@ -19,6 +19,7 @@ import {
   executeNote,
 } from './collections';
 import { executeTimesheet } from './timesheet';
+import { managerUnlocked } from '@/lib/managerAuth';
 
 const REGISTRY: Partial<Record<AiAction, ActionExecutor>> = {
   receipt: executeReceipt,
@@ -48,13 +49,19 @@ const IMMEDIATE: Set<AiAction> = new Set([
   'key_location',
 ]);
 
+const TIMESHEET_CONFIRMABLE = new Set(['add_employee', 'add_shift', 'adjust_shift']);
+
 // Whether an intent runs immediately (no confirmation slip). Timesheet is
-// op-aware: punch in/out and the read views run at once (like track/list), but
-// adding an employee goes through the confirmation slip. See PHASE-2.md item 6.
+// op-aware: the read views run at once (like track/list), while adding an
+// employee, planning a shift and logging actual times go through the slip.
+// Planning a shift is manager-only, so while the schedule is locked it runs
+// immediately too: the executor answers with the "manager sign in" card instead
+// of making the counter fill a slip that cannot be saved.
 export function isImmediate(intent: Intent): boolean {
   if (intent.action === 'timesheet') {
-    const op = intent.fields?.op?.value;
-    return op !== 'add_employee';
+    const op = String(intent.fields?.op?.value ?? '');
+    if (op === 'add_shift' && !managerUnlocked()) return true;
+    return !TIMESHEET_CONFIRMABLE.has(op);
   }
   return IMMEDIATE.has(intent.action);
 }

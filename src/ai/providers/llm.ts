@@ -59,8 +59,10 @@ export class LlmProvider implements AiProvider {
 
     const routing = await this.route(utterance, context);
 
-    // No usable routing: keep the deterministic result (already computed).
-    if (!routing) return local;
+    // No usable routing, or the model has no opinion while the keyword router does
+    // (e.g. a phrasing the deployed prompt has not been taught yet): keep the
+    // deterministic result (already computed).
+    if (!routing || (routing.action === 'unknown' && local.action !== 'unknown')) return local;
 
     // Local routed confidently; we only called out for extraction help. Trust the
     // local routing and borrow the model's field candidates for the empty gaps.

@@ -1,17 +1,18 @@
-// The Timesheet tool page: add and deactivate employees, a punch clock (clock in /
-// clock out with a live elapsed time on an open shift), a list of time entries, and
-// a CSV export. Renders chromeless inside the three-pane staff shell via useShell()
-// (matching the other tool pages), and as a standalone full page on a deep link.
-// Signature hue is slate (DESIGN-SPEC tool colours). Reuses lib/firestore CRUD and
-// the lib/timesheet data model so anything punched here matches what AI Mode writes.
+// The Timesheet tool page. Three tabs:
+//   Schedule  the week's planned shifts, as a calendar or a list. Managers plan
+//             them; anyone can open a shift and log what really happened (a
+//             different start or end, a break), which strikes the planned time.
+//   Hours     the hours that count for a week or a month, per person and per
+//             shift, with a CSV export. Counted from the schedule.
+//   Team      who can be scheduled.
+// The punch clock is switched off, so there is no clock in / clock out here.
+// Renders chromeless inside the staff shell and as a full page on a deep link
+// (StaffLayout handles both). Signature hue is slate.
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { useShell } from "@/components/shell/ShellContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,7 +25,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  ArrowLeft,
+  BarChart3,
   CalendarDays,
   CalendarPlus,
   ChevronLeft,
@@ -35,10 +36,10 @@ import {
   List,
   Loader2,
   Lock,
-  LogIn,
-  LogOut,
-  Pencil,
+  LockOpen,
+  PencilLine,
   Plus,
+  RotateCcw,
   ShieldCheck,
   Trash2,
   User,
@@ -46,7 +47,6 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { toast } from "@/hooks/use-toast";
 import { useManagerMode } from "@/contexts/ManagerModeContext";
@@ -65,39 +65,35 @@ import {
   updateDocument,
   generateEmployeeId,
   generateShiftId,
-  generateTimeEntryId,
 } from "@/lib/firestore";
-import {
-  EMPLOYEES_COLLECTION,
-  TIME_ENTRIES_COLLECTION,
-  entriesToCsv,
-  entryMs,
-  formatClock,
-  formatDay,
-  formatDuration,
-  formatHoursDecimal,
-  isOpen,
-  isTodayEntry,
-  totalMs,
-  type Employee,
-  type TimeEntry,
-} from "@/lib/timesheet";
+import { EMPLOYEES_COLLECTION, type Employee } from "@/lib/timesheet";
 import {
   SCHEDULE_COLLECTION,
   addDays,
+  breakMinutesOf,
   formatDayHeading,
+  formatHoursDecimal,
   formatShiftDuration,
   formatTime12,
   formatWeekRange,
+  isAdjusted,
   parseDateKey,
   shiftMinutes,
+  shiftsInRange,
   shiftsOnDay,
+  shiftsToCsv,
   startOfWeek,
   toDateKey,
+  totalWorkedMinutes,
   weekDayKeys,
+  workedEnd,
+  workedMinutes,
+  workedStart,
   type ScheduleShift,
 } from "@/lib/schedule";
-import ThemeToggleButton from "@/components/ThemeToggleButton";
+import StaffLayout from "@/components/StaffLayout";
+import { SegmentedTabs } from "@/components/shell/ToolPage";
+import { ShiftTimes } from "@/components/ShiftTimes";
 
 // Trigger a client-side CSV download without a new dependency.
 function downloadCsv(fileName: string, csv: string): void {
@@ -164,8 +160,9 @@ interface PackedShift {
 function packDay(dayShifts: ScheduleShift[]): PackedShift[] {
   const items = dayShifts
     .map((s) => {
-      const start = hhmmToMin(s.start) ?? 0;
-      const end = Math.max(hhmmToMin(s.end) ?? 0, start + 15);
+      // Drawn where the shift really ran: the actual times when they were logged.
+      const start = hhmmToMin(workedStart(s)) ?? 0;
+      const end = Math.max(hhmmToMin(workedEnd(s)) ?? 0, start + 15);
       return { s, start, end };
     })
     .sort((a, b) => a.start - b.start || a.end - b.end);
@@ -199,52 +196,22 @@ function packDay(dayShifts: ScheduleShift[]): PackedShift[] {
   return out;
 }
 
-const HOUR_PX = 56;
+const HOUR_PX = 52;
 
-// A segmented List / Visual switch, persisted by the caller.
-function ViewToggle({
-  value,
-  onChange,
-  themeClasses,
-  isDarkMode,
-}: {
-  value: "list" | "visual";
-  onChange: (v: "list" | "visual") => void;
-  themeClasses: ThemeClasses;
-  isDarkMode: boolean;
-}) {
-  const opt = (v: "list" | "visual", label: string, Icon: typeof List) => (
-    <button
-      type="button"
-      onClick={() => onChange(v)}
-      aria-pressed={value === v}
-      className={`flex min-h-[40px] items-center gap-1.5 rounded-md px-3 text-xs font-medium transition-colors ${
-        value === v
-          ? `${isDarkMode ? "bg-[#171a21]" : "bg-white"} ${themeClasses.text.primary} shadow-sm`
-          : themeClasses.text.secondary
-      }`}
-    >
-      <Icon className="h-3.5 w-3.5" />
-      {label}
-    </button>
-  );
-  return (
-    <div className={`inline-flex gap-1 rounded-lg border p-1 ${themeClasses.card.secondary}`}>
-      {opt("list", "List", List)}
-      {opt("visual", "Visual", LayoutGrid)}
-    </div>
-  );
-}
+type Tab = "schedule" | "hours" | "team";
+type ScheduleView = "calendar" | "list";
+type HoursRange = "week" | "month";
 
 // The weekly calendar grid: an hour rail on the left and seven day columns with
-// shift blocks positioned by their start and end, colour-coded per employee.
+// shift blocks positioned by when the shift ran, colour-coded per employee. Every
+// block opens the shift: a manager edits the plan, anyone logs the actual times.
 function VisualSchedule({
   weekKeys,
   shifts,
   todayKey,
   nowMin,
   isManager,
-  onEditShift,
+  onOpenShift,
   onAddShift,
   themeClasses,
   isDarkMode,
@@ -254,26 +221,29 @@ function VisualSchedule({
   todayKey: string;
   nowMin: number;
   isManager: boolean;
-  onEditShift: (s: ScheduleShift) => void;
+  onOpenShift: (s: ScheduleShift) => void;
   onAddShift: (dayKey: string) => void;
   themeClasses: ThemeClasses;
   isDarkMode: boolean;
 }) {
   const weekShifts = weekKeys.flatMap((k) => shiftsOnDay(shifts, k));
 
-  // Time window: default 8:00 to 20:00, widened to fit the actual shifts and
-  // aligned to whole hours so the rail reads cleanly.
-  let winStart = 8 * 60;
-  let winEnd = 20 * 60;
+  // Time window: default 10:00 to 19:00 (the counter's usual day), widened to fit
+  // the actual shifts and aligned to whole hours so the rail reads cleanly.
+  let winStart = 10 * 60;
+  let winEnd = 19 * 60;
   weekShifts.forEach((s) => {
-    const a = hhmmToMin(s.start);
-    const b = hhmmToMin(s.end);
-    if (a != null) winStart = Math.min(winStart, a);
-    if (b != null) winEnd = Math.max(winEnd, b);
+    [s.start, workedStart(s)].forEach((t) => {
+      const a = hhmmToMin(t);
+      if (a != null) winStart = Math.min(winStart, a);
+    });
+    [s.end, workedEnd(s)].forEach((t) => {
+      const b = hhmmToMin(t);
+      if (b != null) winEnd = Math.max(winEnd, b);
+    });
   });
   winStart = Math.floor(winStart / 60) * 60;
   winEnd = Math.ceil(winEnd / 60) * 60;
-  if (winEnd - winStart < 240) winEnd = winStart + 240;
 
   const pxPerMin = HOUR_PX / 60;
   const gridHeight = (winEnd - winStart) * pxPerMin;
@@ -283,40 +253,40 @@ function VisualSchedule({
   const edge = isDarkMode ? "border-[#2a2f3a]" : "border-[#e4e1d9]";
   const todayCol = isDarkMode ? "bg-blue-500/[0.06]" : "bg-blue-50/70";
   const todayBadge = isDarkMode ? "bg-blue-500 text-white" : "bg-blue-600 text-white";
-  const hasAny = weekShifts.length > 0;
 
-  const hourText = (min: number) =>
-    formatTime12(`${String(Math.floor(min / 60)).padStart(2, "0")}:00`);
+  const hourText = (min: number) => {
+    const h24 = Math.floor(min / 60);
+    return `${h24 % 12 === 0 ? 12 : h24 % 12} ${h24 >= 12 ? "PM" : "AM"}`;
+  };
 
   return (
     <div className="overflow-x-auto">
-      <div className="min-w-[760px]">
+      <div className="min-w-[720px]">
         {/* Day headers */}
         <div className="flex">
-          <div className="w-14 shrink-0" />
+          <div className="w-12 shrink-0" />
           {weekKeys.map((dayKey) => {
             const d = parseDateKey(dayKey);
             const isToday = dayKey === todayKey;
             return (
-              <div key={dayKey} className={`flex-1 min-w-[96px] border-l px-1 py-2 text-center ${edge}`}>
-                <div className={`text-[11px] font-semibold uppercase tracking-wide ${isToday ? themeClasses.text.accent : themeClasses.text.secondary}`}>
+              <div key={dayKey} className={`flex min-w-[92px] flex-1 items-center justify-center gap-1.5 border-l px-1 py-2 ${edge}`}>
+                <span className={`text-[11px] font-semibold uppercase tracking-wide ${isToday ? themeClasses.text.accent : themeClasses.text.secondary}`}>
                   {d.toLocaleDateString(undefined, { weekday: "short" })}
-                </div>
-                <div className="mt-1 flex items-center justify-center gap-1">
-                  <span className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-sm font-semibold ${isToday ? todayBadge : themeClasses.text.primary}`}>
-                    {d.getDate()}
-                  </span>
-                  {isManager && (
-                    <button
-                      type="button"
-                      onClick={() => onAddShift(dayKey)}
-                      aria-label={`Add a shift on ${formatDayHeading(dayKey)}`}
-                      className={`inline-flex h-7 w-7 items-center justify-center rounded-full ${themeClasses.button.ghost}`}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
+                </span>
+                <span className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-sm font-semibold ${isToday ? todayBadge : themeClasses.text.primary}`}>
+                  {d.getDate()}
+                </span>
+                {isManager && (
+                  <button
+                    type="button"
+                    onClick={() => onAddShift(dayKey)}
+                    aria-label={`Add a shift on ${formatDayHeading(dayKey)}`}
+                    title="Add a shift"
+                    className={`inline-flex h-7 w-7 items-center justify-center rounded-full ${themeClasses.button.ghost}`}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             );
           })}
@@ -325,13 +295,9 @@ function VisualSchedule({
         {/* Grid body */}
         <div className="relative flex">
           {/* Hour rail */}
-          <div className="relative w-14 shrink-0" style={{ height: gridHeight }}>
+          <div className="relative w-12 shrink-0" style={{ height: gridHeight }}>
             {hours.map((min) => (
-              <div
-                key={min}
-                className="absolute right-1 flex justify-end"
-                style={{ top: (min - winStart) * pxPerMin - 6 }}
-              >
+              <div key={min} className="absolute right-1.5 flex justify-end" style={{ top: (min - winStart) * pxPerMin - 7 }}>
                 <span className={`text-[10px] font-mono tabular-nums ${themeClasses.text.muted}`}>{hourText(min)}</span>
               </div>
             ))}
@@ -344,74 +310,63 @@ function VisualSchedule({
             return (
               <div
                 key={dayKey}
-                className={`relative flex-1 min-w-[96px] border-l ${edge} ${isToday ? todayCol : ""}`}
+                className={`relative min-w-[92px] flex-1 border-l ${edge} ${isToday ? todayCol : ""}`}
                 style={{ height: gridHeight }}
               >
-                {/* Hour gridlines */}
                 {hours.map((min) => (
-                  <div
-                    key={min}
-                    className={`absolute inset-x-0 border-t ${edge}`}
-                    style={{ top: (min - winStart) * pxPerMin }}
-                  />
+                  <div key={min} className={`absolute inset-x-0 border-t ${edge}`} style={{ top: (min - winStart) * pxPerMin }} />
                 ))}
 
                 {/* Current-time line on today */}
                 {isToday && nowMin >= winStart && nowMin <= winEnd && (
-                  <div className="absolute inset-x-0 z-20" style={{ top: (nowMin - winStart) * pxPerMin }}>
+                  <div className="pointer-events-none absolute inset-x-0 z-20" style={{ top: (nowMin - winStart) * pxPerMin }}>
                     <div className="relative h-px bg-red-500">
                       <span className="absolute -left-1 -top-[3px] h-1.5 w-1.5 rounded-full bg-red-500" />
                     </div>
                   </div>
                 )}
 
-                {/* Shift blocks */}
                 {packed.map((p) => {
                   const hue = hueFor(p.shift.employeeId);
                   const block = isDarkMode ? hue.block.dark : hue.block.light;
-                  const top = (p.start - winStart) * pxPerMin;
-                  const height = Math.max(22, (p.end - p.start) * pxPerMin - 2);
+                  const height = Math.max(24, (p.end - p.start) * pxPerMin - 2);
                   const widthPct = 100 / p.lanes;
-                  const leftPct = p.lane * widthPct;
-                  const tall = height >= 40;
-                  const title = `${p.shift.employeeName}, ${formatTime12(p.shift.start)} to ${formatTime12(
-                    p.shift.end,
-                  )}${p.shift.note ? `, ${p.shift.note}` : ""}`;
-                  const cls = `absolute z-10 overflow-hidden rounded-md border px-1.5 py-1 text-left ${block} ${
-                    isManager ? "cursor-pointer transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-blue-500/40" : ""
-                  }`;
-                  const style = {
-                    top,
-                    height,
-                    left: `calc(${leftPct}% + 2px)`,
-                    width: `calc(${widthPct}% - 4px)`,
-                  };
-                  const inner = (
-                    <>
-                      <div className="truncate text-[11px] font-semibold leading-tight">{p.shift.employeeName}</div>
-                      {tall && (
-                        <div className="truncate text-[10px] font-mono tabular-nums leading-tight opacity-80">
-                          {formatTime12(p.shift.start)} to {formatTime12(p.shift.end)}
+                  const adjusted = isAdjusted(p.shift);
+                  const brk = breakMinutesOf(p.shift);
+                  const title = `${p.shift.employeeName}, ${formatTime12(workedStart(p.shift))} to ${formatTime12(workedEnd(p.shift))}${
+                    adjusted ? ` (planned ${formatTime12(p.shift.start)} to ${formatTime12(p.shift.end)})` : ""
+                  }${brk ? `, ${brk} min break` : ""}${p.shift.note ? `, ${p.shift.note}` : ""}`;
+                  return (
+                    <button
+                      key={p.shift.id}
+                      type="button"
+                      title={title}
+                      onClick={() => onOpenShift(p.shift)}
+                      className={`absolute z-10 flex flex-col items-stretch justify-start overflow-hidden rounded-md border px-1.5 py-1 text-left transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${block}`}
+                      style={{
+                        top: (p.start - winStart) * pxPerMin,
+                        height,
+                        left: `calc(${p.lane * widthPct}% + 2px)`,
+                        width: `calc(${widthPct}% - 4px)`,
+                      }}
+                    >
+                      <div className="flex items-center gap-1 text-[11px] font-semibold leading-tight">
+                        <span className="truncate">{p.shift.employeeName}</span>
+                        {adjusted && <PencilLine className="h-3 w-3 shrink-0 opacity-70" aria-label="Actual times logged" />}
+                      </div>
+                      {height >= 40 && (
+                        <div className="text-[10px] leading-snug opacity-90">
+                          <ShiftTimes shift={p.shift} compact showBreak={height >= 64} />
                         </div>
                       )}
-                    </>
-                  );
-                  return isManager ? (
-                    <button key={p.shift.id} type="button" title={title} onClick={() => onEditShift(p.shift)} className={cls} style={style}>
-                      {inner}
                     </button>
-                  ) : (
-                    <div key={p.shift.id} title={title} className={cls} style={style}>
-                      {inner}
-                    </div>
                   );
                 })}
               </div>
             );
           })}
 
-          {/* Empty-week overlay */}
-          {!hasAny && (
+          {weekShifts.length === 0 && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <div className={`rounded-lg border px-4 py-3 text-center text-sm ${themeClasses.card.secondary} ${themeClasses.text.secondary}`}>
                 No shifts this week.
@@ -425,132 +380,120 @@ function VisualSchedule({
   );
 }
 
-// The hours view: one horizontal bar per employee for the shown entries, longest
-// first, sharing the employee colours used on the schedule grid.
-function VisualTimesheet({
-  entries,
-  now,
+// Hours per person for the shown shifts: one bar each, longest first, in the
+// same colours as the calendar. The bar is the hours that count; a faint outline
+// behind it marks what was planned when the two differ.
+function HoursBars({
+  shifts,
   themeClasses,
   isDarkMode,
 }: {
-  entries: TimeEntry[];
-  now: number;
+  shifts: ScheduleShift[];
   themeClasses: ThemeClasses;
   isDarkMode: boolean;
 }) {
-  const byEmp = new Map<string, { name: string; ms: number; open: boolean }>();
-  entries.forEach((e) => {
-    const cur = byEmp.get(e.employeeId) ?? { name: e.employeeName, ms: 0, open: false };
-    cur.ms += entryMs(e, now);
-    if (isOpen(e)) cur.open = true;
-    cur.name = e.employeeName;
-    byEmp.set(e.employeeId, cur);
+  const byEmp = new Map<string, { name: string; worked: number; planned: number; count: number }>();
+  shifts.forEach((s) => {
+    const cur = byEmp.get(s.employeeId) ?? { name: s.employeeName, worked: 0, planned: 0, count: 0 };
+    cur.worked += workedMinutes(s);
+    cur.planned += shiftMinutes(s);
+    cur.count += 1;
+    cur.name = s.employeeName;
+    byEmp.set(s.employeeId, cur);
   });
   const rows = Array.from(byEmp.entries())
     .map(([id, v]) => ({ id, ...v }))
-    .sort((a, b) => b.ms - a.ms);
-  const maxMs = Math.max(1, ...rows.map((r) => r.ms));
-  const grand = rows.reduce((s, r) => s + r.ms, 0);
+    .sort((a, b) => b.worked - a.worked);
+  const max = Math.max(1, ...rows.map((r) => Math.max(r.worked, r.planned)));
   const track = isDarkMode ? "bg-[#1f232c]" : "bg-[#f1efe9]";
-  const onPill = isDarkMode ? "bg-blue-500/20 text-blue-200 border-blue-400/50" : "bg-blue-100 text-blue-800 border-blue-300";
+  const plannedMark = isDarkMode ? "border-slate-500" : "border-slate-400";
 
   return (
     <div className="space-y-3">
       {rows.map((r) => {
         const hue = hueFor(r.id);
         const bar = isDarkMode ? hue.bar.dark : hue.bar.light;
-        const pct = Math.max(3, Math.round((r.ms / maxMs) * 100));
         return (
           <div key={r.id} className="flex items-center gap-3">
-            <div className={`flex w-32 shrink-0 items-center gap-1.5 ${themeClasses.text.primary}`}>
-              <span className="truncate text-sm font-medium">{r.name}</span>
-              {r.open && <span className={`shrink-0 rounded-full border px-1.5 text-[10px] ${onPill}`}>now</span>}
+            <div className="w-28 shrink-0">
+              <div className={`truncate text-sm font-medium ${themeClasses.text.primary}`}>{r.name}</div>
+              <div className={`text-[11px] ${themeClasses.text.muted}`}>
+                {r.count} {r.count === 1 ? "shift" : "shifts"}
+              </div>
             </div>
             <div className={`relative h-7 flex-1 overflow-hidden rounded-md ${track}`}>
-              <div className={`h-full rounded-md ${bar}`} style={{ width: `${pct}%` }} />
+              <div className={`h-full rounded-md ${bar}`} style={{ width: `${Math.max(2, (r.worked / max) * 100)}%` }} />
+              {r.planned !== r.worked && (
+                <div
+                  className={`absolute inset-y-0 left-0 rounded-md border border-dashed ${plannedMark}`}
+                  style={{ width: `${(r.planned / max) * 100}%` }}
+                  title={`Planned ${formatShiftDuration(r.planned)}`}
+                />
+              )}
             </div>
-            <div className={`w-24 shrink-0 text-right font-mono text-sm tabular-nums ${themeClasses.text.primary}`}>
-              {formatDuration(r.ms)}
-              <span className={`ml-1 text-[11px] ${themeClasses.text.muted}`}>{formatHoursDecimal(r.ms)}h</span>
+            <div className={`w-28 shrink-0 text-right font-mono text-sm tabular-nums ${themeClasses.text.primary}`}>
+              {formatShiftDuration(r.worked)}
+              <div className={`text-[11px] ${themeClasses.text.muted}`}>{formatHoursDecimal(r.worked)} h</div>
             </div>
           </div>
         );
       })}
-      <div className={`flex items-center justify-between border-t pt-3 ${isDarkMode ? "border-[#2a2f3a]" : "border-[#e4e1d9]"}`}>
-        <span className={`text-sm font-semibold ${themeClasses.text.primary}`}>Total</span>
-        <span className={`font-mono text-sm font-semibold tabular-nums ${themeClasses.text.primary}`}>
-          {formatDuration(grand)}
-          <span className={`ml-2 text-[13px] font-normal ${themeClasses.text.muted}`}>{formatHoursDecimal(grand)} h</span>
-        </span>
-      </div>
     </div>
   );
 }
 
+// A blank shift form. The actual-times fields stay empty until something differs.
+const blankForm = { employeeId: "", date: "", start: "10:00", end: "17:00", note: "", actualStart: "", actualEnd: "", breakMinutes: "" };
+
 const StaffTimesheet = () => {
-  const { user, logout } = useAuth();
   const { themeClasses, isDarkMode } = useTheme();
-  const { inShell } = useShell();
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [entries, setEntries] = useState<TimeEntry[]>([]);
+  const [shifts, setShifts] = useState<ScheduleShift[]>([]);
   const [loading, setLoading] = useState(true);
-  const [todayOnly, setTodayOnly] = useState(false);
-  // Ticks once a second so an open shift shows a live elapsed time.
+  // Ticks once a minute so "today" and the current-time line stay right.
   const [now, setNow] = useState(Date.now());
 
   const newEmployeeForm = useForm<{ name: string }>({ defaultValues: { name: "" } });
 
-  // Which tab is showing: the punch clock (actual hours) or the schedule (planned).
-  const [tab, setTab] = useState<"timesheet" | "schedule">("timesheet");
+  const [tab, setTab] = useState<Tab>("schedule");
 
-  // Manager mode gates every schedule edit. Staff can always view the schedule.
+  // Manager mode gates planning (add, move, delete a shift). Logging the actual
+  // times on a shift is open to everyone.
   const { isManager, pinIsSet, promptUnlock, promptChangePin, lock } = useManagerMode();
 
-  // Planned shifts and the week being viewed (Sunday-start).
-  const [shifts, setShifts] = useState<ScheduleShift[]>([]);
+  // The week being viewed (Sunday-start), shared by Schedule and Hours.
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
+  const [hoursRange, setHoursRange] = useState<HoursRange>("week");
 
-  // List vs Visual for each tab, remembered per browser. Visual is the default
-  // so the calendar grid and hours bars are what a clerk sees first.
-  const [scheduleView, setScheduleView] = useState<"list" | "visual">(
-    () => (localStorage.getItem("schedule-view") as "list" | "visual") || "visual",
-  );
-  const [entriesView, setEntriesView] = useState<"list" | "visual">(
-    () => (localStorage.getItem("timesheet-entries-view") as "list" | "visual") || "visual",
-  );
+  // Calendar vs list for the schedule, remembered per browser. A phone starts on
+  // the list, since seven day columns do not fit a narrow screen.
+  const [scheduleView, setScheduleView] = useState<ScheduleView>(() => {
+    const saved = localStorage.getItem("schedule-view");
+    if (saved === "list" || saved === "calendar") return saved;
+    return window.innerWidth < 640 ? "list" : "calendar";
+  });
   useEffect(() => {
     localStorage.setItem("schedule-view", scheduleView);
   }, [scheduleView]);
-  useEffect(() => {
-    localStorage.setItem("timesheet-entries-view", entriesView);
-  }, [entriesView]);
 
-  // The add/edit shift dialog and its form.
+  // The shift dialog. `editingShift` null means a new shift (manager only).
   const [shiftDialogOpen, setShiftDialogOpen] = useState(false);
   const [editingShift, setEditingShift] = useState<ScheduleShift | null>(null);
-  const [shiftForm, setShiftForm] = useState({
-    employeeId: "",
-    date: "",
-    start: "09:00",
-    end: "17:00",
-    note: "",
-  });
+  const [shiftForm, setShiftForm] = useState(blankForm);
   const [savingShift, setSavingShift] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [emps, ents, shfts] = await Promise.all([
+        const [emps, shfts] = await Promise.all([
           getCollection<Employee>(EMPLOYEES_COLLECTION, "createdAt"),
-          getCollection<TimeEntry>(TIME_ENTRIES_COLLECTION, "createdAt"),
           getCollection<ScheduleShift>(SCHEDULE_COLLECTION, "createdAt"),
         ]);
         setEmployees(emps);
-        setEntries(ents);
         setShifts(shfts);
       } catch (error) {
         console.error("Failed to load timesheet:", error);
-        toast({ title: "Error", description: "Failed to load timesheet from database" });
+        toast({ title: "Error", description: "Failed to load the schedule from the database" });
       } finally {
         setLoading(false);
       }
@@ -559,7 +502,7 @@ const StaffTimesheet = () => {
   }, []);
 
   useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    const id = window.setInterval(() => setNow(Date.now()), 60000);
     return () => window.clearInterval(id);
   }, []);
 
@@ -567,41 +510,31 @@ const StaffTimesheet = () => {
     () => employees.filter((e) => e.active).sort((a, b) => a.name.localeCompare(b.name)),
     [employees],
   );
-
-  const openEntryFor = (employeeId: string): TimeEntry | undefined =>
-    entries.find((e) => e.employeeId === employeeId && isOpen(e));
-
-  const shownEntries = useMemo(
-    () => (todayOnly ? entries.filter((e) => isTodayEntry(e, new Date(now))) : entries),
-    [entries, todayOnly, now],
+  const inactiveEmployees = useMemo(
+    () => employees.filter((e) => !e.active).sort((a, b) => a.name.localeCompare(b.name)),
+    [employees],
   );
-
-  const handleLogout = async () => {
-    await logout();
-  };
 
   const addEmployee = async ({ name }: { name: string }) => {
     const trimmed = name.trim();
     if (!trimmed) return;
     const existing = employees.find((e) => e.name.trim().toLowerCase() === trimmed.toLowerCase());
-    if (existing) {
-      if (!existing.active) {
-        await updateDocument(EMPLOYEES_COLLECTION, existing.id, { active: true });
-        setEmployees((prev) => prev.map((e) => (e.id === existing.id ? { ...e, active: true } : e)));
-        toast({ title: "Reactivated", description: `${existing.name} is active again` });
-      } else {
-        toast({ title: "Already added", description: `${existing.name} is already on the team` });
-      }
-      newEmployeeForm.reset();
-      return;
-    }
-    const employee: Employee = {
-      id: generateEmployeeId(),
-      name: trimmed,
-      active: true,
-      createdAt: new Date().toISOString(),
-    };
     try {
+      if (existing) {
+        if (!existing.active) {
+          await setEmployeeActive(existing, true);
+        } else {
+          toast({ title: "Already added", description: `${existing.name} is already on the team` });
+        }
+        newEmployeeForm.reset();
+        return;
+      }
+      const employee: Employee = {
+        id: generateEmployeeId(),
+        name: trimmed,
+        active: true,
+        createdAt: new Date().toISOString(),
+      };
       await setDocument(EMPLOYEES_COLLECTION, employee.id, employee);
       setEmployees((prev) => [employee, ...prev]);
       newEmployeeForm.reset();
@@ -612,86 +545,35 @@ const StaffTimesheet = () => {
     }
   };
 
-  const deactivateEmployee = async (employee: Employee) => {
+  const setEmployeeActive = async (employee: Employee, active: boolean) => {
     try {
-      await updateDocument(EMPLOYEES_COLLECTION, employee.id, { active: false });
-      setEmployees((prev) => prev.map((e) => (e.id === employee.id ? { ...e, active: false } : e)));
-      toast({ title: "Employee removed", description: `${employee.name} is no longer on the clock list` });
+      await updateDocument(EMPLOYEES_COLLECTION, employee.id, { active });
+      setEmployees((prev) => prev.map((e) => (e.id === employee.id ? { ...e, active } : e)));
+      toast(
+        active
+          ? { title: "Back on the team", description: `${employee.name} can be scheduled again` }
+          : { title: "Removed from the team", description: `${employee.name}'s past shifts are kept` },
+      );
     } catch (error) {
-      console.error("Failed to deactivate employee:", error);
+      console.error("Failed to update employee:", error);
       toast({ title: "Error", description: "Failed to update employee" });
     }
   };
 
-  const clockIn = async (employee: Employee) => {
-    if (openEntryFor(employee.id)) {
-      toast({ title: "Already clocked in", description: `${employee.name} is on the clock` });
-      return;
-    }
-    const nowIso = new Date().toISOString();
-    const entry: TimeEntry = {
-      id: generateTimeEntryId(),
-      employeeId: employee.id,
-      employeeName: employee.name,
-      clockIn: nowIso,
-      clockOut: null,
-      createdAt: nowIso,
-    };
-    try {
-      await setDocument(TIME_ENTRIES_COLLECTION, entry.id, entry);
-      setEntries((prev) => [entry, ...prev]);
-      toast({ title: "Clocked in", description: `${employee.name} at ${formatClock(nowIso)}` });
-    } catch (error) {
-      console.error("Failed to clock in:", error);
-      toast({ title: "Error", description: "Failed to record clock in" });
-    }
-  };
-
-  const clockOut = async (entry: TimeEntry) => {
-    const clockOutIso = new Date().toISOString();
-    try {
-      await updateDocument(TIME_ENTRIES_COLLECTION, entry.id, { clockOut: clockOutIso });
-      setEntries((prev) => prev.map((e) => (e.id === entry.id ? { ...e, clockOut: clockOutIso } : e)));
-      const dur = formatDuration(new Date(clockOutIso).getTime() - new Date(entry.clockIn).getTime());
-      toast({ title: "Clocked out", description: `${entry.employeeName}, ${dur} on the clock` });
-    } catch (error) {
-      console.error("Failed to clock out:", error);
-      toast({ title: "Error", description: "Failed to record clock out" });
-    }
-  };
-
-  const exportCsv = () => {
-    if (shownEntries.length === 0) {
-      toast({ title: "Nothing to export", description: "There are no entries to export yet" });
-      return;
-    }
-    const base = todayOnly ? "today" : "all";
-    downloadCsv(`timesheet-${base}.csv`, entriesToCsv(shownEntries));
-  };
-
-  // Open the shift dialog to add a new shift, optionally pre-set to a day.
+  // Open the dialog for a new shift, optionally pre-set to a day. Manager only.
   const openAddShift = (dayKey?: string) => {
     if (!isManager) {
       promptUnlock();
       return;
     }
     setEditingShift(null);
-    setShiftForm({
-      employeeId: activeEmployees[0]?.id ?? "",
-      date: dayKey ?? toDateKey(new Date()),
-      start: "09:00",
-      end: "17:00",
-      note: "",
-    });
+    setShiftForm({ ...blankForm, employeeId: activeEmployees[0]?.id ?? "", date: dayKey ?? toDateKey(new Date()) });
     setShiftDialogOpen(true);
   };
 
-  // Open the shift dialog to edit an existing shift.
-  const openEditShift = (shift: ScheduleShift) => {
-    if (!isManager) {
-      promptUnlock();
-      return;
-    }
+  // Open an existing shift. Everyone can: a manager sees the plan and the actual
+  // times, everyone else only the actual times.
+  const openShift = (shift: ScheduleShift) => {
     setEditingShift(shift);
     setShiftForm({
       employeeId: shift.employeeId,
@@ -699,71 +581,84 @@ const StaffTimesheet = () => {
       start: shift.start,
       end: shift.end,
       note: shift.note ?? "",
+      actualStart: shift.actualStart ?? "",
+      actualEnd: shift.actualEnd ?? "",
+      breakMinutes: breakMinutesOf(shift) ? String(breakMinutesOf(shift)) : "",
     });
     setShiftDialogOpen(true);
   };
 
   const saveShift = async () => {
-    if (!isManager) {
-      promptUnlock();
-      return;
-    }
-    const employee = employees.find((e) => e.id === shiftForm.employeeId);
-    if (!employee) {
-      toast({ title: "Pick an employee", description: "Choose who works this shift." });
-      return;
-    }
-    if (!shiftForm.date || !shiftForm.start || !shiftForm.end) {
-      toast({ title: "Missing details", description: "Set the day, start, and end." });
-      return;
-    }
-    if (shiftForm.end <= shiftForm.start) {
+    const breakMinutes = Math.max(0, Math.round(Number(shiftForm.breakMinutes) || 0));
+    // The actual times, stored empty when they match the plan.
+    const planStart = isManager || !editingShift ? shiftForm.start : editingShift.start;
+    const planEnd = isManager || !editingShift ? shiftForm.end : editingShift.end;
+    const actualStart = shiftForm.actualStart && shiftForm.actualStart !== planStart ? shiftForm.actualStart : "";
+    const actualEnd = shiftForm.actualEnd && shiftForm.actualEnd !== planEnd ? shiftForm.actualEnd : "";
+    if ((actualEnd || planEnd) <= (actualStart || planStart)) {
       toast({ title: "Check the times", description: "The end time must be after the start." });
       return;
     }
+    if (breakMinutes > 600) {
+      toast({ title: "Check the break", description: "The break is in minutes, like 30." });
+      return;
+    }
+    const adjust = { actualStart, actualEnd, breakMinutes, adjustedAt: new Date().toISOString() };
+
     setSavingShift(true);
-    const note = shiftForm.note.trim();
     try {
+      // Locked: only the actual times and break are written.
+      if (editingShift && !isManager) {
+        await updateDocument(SCHEDULE_COLLECTION, editingShift.id, adjust);
+        const updated: ScheduleShift = { ...editingShift, ...adjust };
+        setShifts((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+        toast({ title: "Shift updated", description: `${updated.employeeName}, counts ${formatShiftDuration(workedMinutes(updated))}` });
+        setShiftDialogOpen(false);
+        return;
+      }
+      if (!isManager) {
+        promptUnlock();
+        return;
+      }
+      const employee = employees.find((e) => e.id === shiftForm.employeeId);
+      if (!employee) {
+        toast({ title: "Pick an employee", description: "Choose who works this shift." });
+        return;
+      }
+      if (!shiftForm.date || !shiftForm.start || !shiftForm.end) {
+        toast({ title: "Missing details", description: "Set the day, start, and end." });
+        return;
+      }
+      if (shiftForm.end <= shiftForm.start) {
+        toast({ title: "Check the times", description: "The end time must be after the start." });
+        return;
+      }
+      const note = shiftForm.note.trim();
+      const plan = {
+        employeeId: employee.id,
+        employeeName: employee.name,
+        date: shiftForm.date,
+        start: shiftForm.start,
+        end: shiftForm.end,
+        note,
+      };
       if (editingShift) {
-        const updated: ScheduleShift = {
-          ...editingShift,
-          employeeId: employee.id,
-          employeeName: employee.name,
-          date: shiftForm.date,
-          start: shiftForm.start,
-          end: shiftForm.end,
-          note: note || undefined,
-        };
-        await updateDocument(SCHEDULE_COLLECTION, editingShift.id, {
-          employeeId: updated.employeeId,
-          employeeName: updated.employeeName,
-          date: updated.date,
-          start: updated.start,
-          end: updated.end,
-          note: note || "",
-        });
-        setShifts((prev) => prev.map((s) => (s.id === editingShift.id ? updated : s)));
+        const updated: ScheduleShift = { ...editingShift, ...plan, ...adjust, note: note || undefined };
+        await updateDocument(SCHEDULE_COLLECTION, editingShift.id, { ...plan, ...adjust });
+        setShifts((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
         toast({ title: "Shift updated", description: `${employee.name}, ${formatDayHeading(updated.date)}` });
       } else {
         const shift: ScheduleShift = {
           id: generateShiftId(),
-          employeeId: employee.id,
-          employeeName: employee.name,
-          date: shiftForm.date,
-          start: shiftForm.start,
-          end: shiftForm.end,
+          ...plan,
           note: note || undefined,
           createdAt: new Date().toISOString(),
         };
-        await setDocument(SCHEDULE_COLLECTION, shift.id, {
-          ...shift,
-          note: note || "",
-        });
+        await setDocument(SCHEDULE_COLLECTION, shift.id, { ...shift, note });
         setShifts((prev) => [shift, ...prev]);
         toast({ title: "Shift added", description: `${employee.name}, ${formatDayHeading(shift.date)}` });
       }
       setShiftDialogOpen(false);
-      setEditingShift(null);
     } catch (error) {
       console.error("Failed to save shift:", error);
       toast({ title: "Error", description: "Failed to save the shift to the database" });
@@ -791,566 +686,528 @@ const StaffTimesheet = () => {
   const nowDate = new Date(now);
   const todayKey = toDateKey(nowDate);
   const nowMin = nowDate.getHours() * 60 + nowDate.getMinutes();
+  const onThisWeek = toDateKey(weekStart) === toDateKey(startOfWeek(nowDate));
 
-  // Slate signature accents, per theme. State is never colour-only (buttons and
-  // pills carry text/icons too).
-  const slateBadge = isDarkMode ? "bg-slate-500/20 text-slate-200" : "bg-slate-200 text-slate-700";
-  const onClockPill = isDarkMode
-    ? "bg-blue-500/20 text-blue-200 border-blue-400/50"
-    : "bg-blue-100 text-blue-800 border-blue-300";
+  // The Hours range: the viewed week, or the month that week starts in.
+  const monthStart = new Date(weekStart.getFullYear(), weekStart.getMonth(), 1);
+  const monthEnd = new Date(weekStart.getFullYear(), weekStart.getMonth() + 1, 0);
+  const rangeFrom = hoursRange === "week" ? weekKeys[0] : toDateKey(monthStart);
+  const rangeTo = hoursRange === "week" ? weekKeys[6] : toDateKey(monthEnd);
+  const rangeLabel =
+    hoursRange === "week"
+      ? formatWeekRange(weekStart)
+      : monthStart.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const rangeShifts = useMemo(() => shiftsInRange(shifts, rangeFrom, rangeTo), [shifts, rangeFrom, rangeTo]);
+  const rangeTotal = totalWorkedMinutes(rangeShifts);
 
-  const shownTotal = totalMs(shownEntries, now);
+  const step = (dir: 1 | -1) => {
+    if (tab === "hours" && hoursRange === "month") {
+      setWeekStart(startOfWeek(new Date(weekStart.getFullYear(), weekStart.getMonth() + dir, 7)));
+    } else {
+      setWeekStart((w) => addDays(w, dir * 7));
+    }
+  };
 
-  const content = (
-    <div className="space-y-6">
-      {/* Punch clock */}
-      <div className={`rounded-xl border ${themeClasses.card.primary}`}>
-        <div className={`flex items-center gap-2 border-b px-4 py-3 ${isDarkMode ? "border-[#2a2f3a]" : "border-[#e4e1d9]"}`}>
-          <Users className={`h-5 w-5 ${themeClasses.text.secondary}`} />
-          <h2 className={`text-lg font-semibold ${themeClasses.text.primary}`}>Punch clock</h2>
-        </div>
-
-        <div className="p-4">
-          {/* Add employee */}
-          <form
-            onSubmit={newEmployeeForm.handleSubmit(addEmployee)}
-            className="mb-5 flex flex-col gap-3 sm:flex-row"
-          >
-            <div className="flex-1">
-              <Label className="sr-only">Employee name</Label>
-              <Input
-                {...newEmployeeForm.register("name", { required: true })}
-                placeholder="Add an employee, e.g. Sarah Chen"
-                className={`min-h-[44px] ${themeClasses.input}`}
-              />
-            </div>
-            <Button
-              type="submit"
-              className={`min-h-[44px] font-semibold rounded-lg ${themeClasses.button.primary}`}
-            >
-              <UserPlus className="mr-2 h-4 w-4" />
-              Add employee
-            </Button>
-          </form>
-
-          {loading ? (
-            <div className="flex flex-col items-center py-10 text-center">
-              <Loader2 className={`mb-3 h-10 w-10 animate-spin ${themeClasses.text.muted}`} />
-              <p className={themeClasses.text.secondary}>Loading timesheet...</p>
-            </div>
-          ) : activeEmployees.length === 0 ? (
-            <div className="flex flex-col items-center py-10 text-center">
-              <Users className={`mb-3 h-10 w-10 ${themeClasses.text.muted}`} />
-              <h3 className={`mb-1 text-lg font-semibold ${themeClasses.text.primary}`}>No employees yet</h3>
-              <p className={themeClasses.text.secondary}>Add someone above to start the punch clock.</p>
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              {activeEmployees.map((employee) => {
-                const open = openEntryFor(employee.id);
-                return (
-                  <div
-                    key={employee.id}
-                    className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 ${themeClasses.card.secondary}`}
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${slateBadge}`}>
-                        <User className="h-5 w-5" />
-                      </span>
-                      <div className="min-w-0">
-                        <p className={`truncate font-semibold ${themeClasses.text.primary}`}>{employee.name}</p>
-                        {open ? (
-                          <p className={`text-[13px] font-mono tabular-nums ${themeClasses.text.secondary}`}>
-                            Since {formatClock(open.clockIn)}, {formatDuration(entryMs(open, now))}
-                          </p>
-                        ) : (
-                          <p className={`text-[13px] ${themeClasses.text.muted}`}>Not on the clock</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {open && (
-                        <Badge variant="outline" className={`${onClockPill} border text-xs`}>
-                          On the clock
-                        </Badge>
-                      )}
-                      {open ? (
-                        <Button
-                          onClick={() => clockOut(open)}
-                          className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.success}`}
-                        >
-                          <LogOut className="mr-2 h-4 w-4" />
-                          Clock out
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={() => clockIn(employee)}
-                          className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.primary}`}
-                        >
-                          <LogIn className="mr-2 h-4 w-4" />
-                          Clock in
-                        </Button>
-                      )}
-
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label={`Remove ${employee.name}`}
-                            className={`min-h-[44px] ${themeClasses.button.ghost}`}
-                          >
-                            <UserMinus className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Remove this employee?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This takes "{employee.name}" off the punch clock. Their past time entries are
-                              kept for the record and export.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => deactivateEmployee(employee)}
-                              className="bg-red-600 text-white hover:bg-red-700"
-                            >
-                              Remove
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Time entries */}
-      <div className={`rounded-xl border ${themeClasses.card.primary}`}>
-        <div className={`flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 ${isDarkMode ? "border-[#2a2f3a]" : "border-[#e4e1d9]"}`}>
-          <div className="flex items-center gap-2">
-            <Clock className={`h-5 w-5 ${themeClasses.text.secondary}`} />
-            <h2 className={`text-lg font-semibold ${themeClasses.text.primary}`}>Time entries</h2>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <ViewToggle value={entriesView} onChange={setEntriesView} themeClasses={themeClasses} isDarkMode={isDarkMode} />
-            <Button
-              variant="ghost"
-              onClick={() => setTodayOnly((v) => !v)}
-              className={`min-h-[44px] rounded-lg ${todayOnly ? themeClasses.button.secondary : themeClasses.button.ghost}`}
-            >
-              {todayOnly ? "Today only" : "All entries"}
-            </Button>
-            <Button
-              onClick={exportCsv}
-              className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.secondary}`}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV
-            </Button>
-          </div>
-        </div>
-
-        <div className="p-4">
-          {loading ? (
-            <div className="flex flex-col items-center py-10 text-center">
-              <Loader2 className={`mb-3 h-10 w-10 animate-spin ${themeClasses.text.muted}`} />
-              <p className={themeClasses.text.secondary}>Loading entries...</p>
-            </div>
-          ) : shownEntries.length === 0 ? (
-            <div className="flex flex-col items-center py-10 text-center">
-              <Clock className={`mb-3 h-10 w-10 ${themeClasses.text.muted}`} />
-              <h3 className={`mb-1 text-lg font-semibold ${themeClasses.text.primary}`}>
-                {todayOnly ? "No punches today" : "No time entries yet"}
-              </h3>
-              <p className={themeClasses.text.secondary}>Clock someone in to start the record.</p>
-            </div>
-          ) : entriesView === "visual" ? (
-            <VisualTimesheet entries={shownEntries} now={now} themeClasses={themeClasses} isDarkMode={isDarkMode} />
-          ) : (
-            <>
-              <div className={`divide-y ${isDarkMode ? "divide-[#2a2f3a]" : "divide-[#e4e1d9]"}`}>
-                {shownEntries.map((entry) => (
-                  <div key={entry.id} className="flex items-center justify-between gap-3 py-2.5">
-                    <div className="min-w-0">
-                      <p className={`truncate text-sm font-medium ${themeClasses.text.primary}`}>
-                        {entry.employeeName}
-                      </p>
-                      <p className={`truncate text-[13px] ${themeClasses.text.secondary}`}>
-                        {formatDay(entry.clockIn)},{" "}
-                        <span className="font-mono tabular-nums">
-                          {formatClock(entry.clockIn)} to {entry.clockOut ? formatClock(entry.clockOut) : "open"}
-                        </span>
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {isOpen(entry) && (
-                        <Badge variant="outline" className={`${onClockPill} border text-xs`}>
-                          On the clock
-                        </Badge>
-                      )}
-                      <span className={`text-sm font-mono font-semibold tabular-nums ${themeClasses.text.primary}`}>
-                        {formatDuration(entryMs(entry, now))}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className={`mt-2 flex items-center justify-between border-t pt-3 ${isDarkMode ? "border-[#2a2f3a]" : "border-[#e4e1d9]"}`}>
-                <span className={`text-sm font-semibold ${themeClasses.text.primary}`}>Total</span>
-                <span className={`font-mono font-semibold tabular-nums ${themeClasses.text.primary}`}>
-                  {formatDuration(shownTotal)}
-                  <span className={`ml-2 text-[13px] font-normal ${themeClasses.text.muted}`}>
-                    {formatHoursDecimal(shownTotal)} h
-                  </span>
-                </span>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  const exportCsv = () => {
+    if (rangeShifts.length === 0) {
+      toast({ title: "Nothing to export", description: "There are no shifts in this range" });
+      return;
+    }
+    downloadCsv(`hours-${rangeFrom}-to-${rangeTo}.csv`, shiftsToCsv(rangeShifts));
+  };
 
   const edgeBorder = isDarkMode ? "border-[#2a2f3a]" : "border-[#e4e1d9]";
   const edgeDivide = isDarkMode ? "divide-[#2a2f3a]" : "divide-[#e4e1d9]";
+  const slateBadge = isDarkMode ? "bg-slate-500/20 text-slate-200" : "bg-slate-200 text-slate-700";
+  const todayPill = `rounded-full border px-2 py-0.5 text-[11px] font-medium ${themeClasses.status.info}`;
 
-  const scheduleContent = (
-    <div className="space-y-4">
-      <div className={`rounded-xl border ${themeClasses.card.primary}`}>
-        {/* Header: title + manager controls */}
-        <div className={`flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 ${edgeBorder}`}>
-          <div className="flex items-center gap-2">
-            <CalendarDays className={`h-5 w-5 ${themeClasses.text.secondary}`} />
-            <h2 className={`text-lg font-semibold ${themeClasses.text.primary}`}>Schedule</h2>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <ViewToggle value={scheduleView} onChange={setScheduleView} themeClasses={themeClasses} isDarkMode={isDarkMode} />
-            {isManager ? (
-              <>
-                <Button
-                  onClick={() => openAddShift()}
-                  className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.primary}`}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add shift
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={promptChangePin}
-                  className={`min-h-[44px] rounded-lg ${themeClasses.button.ghost}`}
-                >
-                  <ShieldCheck className="mr-2 h-4 w-4" />
-                  {pinIsSet ? "Change PIN" : "Set PIN"}
-                </Button>
-                <Button
-                  onClick={lock}
-                  className={`min-h-[44px] rounded-lg ${themeClasses.button.secondary}`}
-                >
-                  <Lock className="mr-2 h-4 w-4" />
-                  Lock
-                </Button>
-              </>
-            ) : (
-              <Button
-                onClick={promptUnlock}
-                className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.secondary}`}
-              >
-                <Lock className="mr-2 h-4 w-4" />
-                Manager sign in
-              </Button>
-            )}
-          </div>
-        </div>
+  const loadingBlock = (
+    <div className="flex flex-col items-center py-10 text-center">
+      <Loader2 className={`mb-3 h-8 w-8 animate-spin ${themeClasses.text.muted}`} />
+      <p className={`text-sm ${themeClasses.text.secondary}`}>Loading...</p>
+    </div>
+  );
 
-        {/* Week navigator */}
-        <div className={`flex items-center justify-between gap-3 border-b px-4 py-3 ${edgeBorder}`}>
-          <Button
-            variant="ghost"
-            onClick={() => setWeekStart(startOfWeek(new Date()))}
-            className={`min-h-[44px] rounded-lg ${themeClasses.button.ghost}`}
-          >
-            This week
-          </Button>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label="Previous week"
-              onClick={() => setWeekStart((w) => addDays(w, -7))}
-              className={`min-h-[44px] ${themeClasses.button.ghost}`}
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-            <span className={`font-mono text-sm tabular-nums ${themeClasses.text.primary}`}>
-              {formatWeekRange(weekStart)}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label="Next week"
-              onClick={() => setWeekStart((w) => addDays(w, 7))}
-              className={`min-h-[44px] ${themeClasses.button.ghost}`}
-            >
-              <ChevronRight className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Days of the week */}
-        <div className="p-4">
-          {loading ? (
-            <div className="flex flex-col items-center py-10 text-center">
-              <Loader2 className={`mb-3 h-10 w-10 animate-spin ${themeClasses.text.muted}`} />
-              <p className={themeClasses.text.secondary}>Loading schedule...</p>
-            </div>
-          ) : scheduleView === "visual" ? (
-            <VisualSchedule
-              weekKeys={weekKeys}
-              shifts={shifts}
-              todayKey={todayKey}
-              nowMin={nowMin}
-              isManager={isManager}
-              onEditShift={openEditShift}
-              onAddShift={openAddShift}
-              themeClasses={themeClasses}
-              isDarkMode={isDarkMode}
-            />
-          ) : (
-            <div className="space-y-3">
-              {weekKeys.map((dayKey) => {
-                const dayShifts = shiftsOnDay(shifts, dayKey);
-                const isToday = dayKey === todayKey;
-                return (
-                  <div key={dayKey} className={`rounded-lg border ${themeClasses.card.secondary}`}>
-                    <div className={`flex items-center justify-between gap-2 border-b px-3 py-2 ${edgeBorder}`}>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-sm font-semibold ${themeClasses.text.primary}`}>
-                          {formatDayHeading(dayKey)}
-                        </span>
-                        {isToday && (
-                          <Badge variant="outline" className={`${onClockPill} border text-xs`}>
-                            Today
-                          </Badge>
-                        )}
-                      </div>
-                      {isManager && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openAddShift(dayKey)}
-                          className={`min-h-[44px] rounded-lg ${themeClasses.button.ghost}`}
-                        >
-                          <Plus className="mr-1 h-4 w-4" />
-                          Add
-                        </Button>
-                      )}
-                    </div>
-                    <div className="px-3 py-1.5">
-                      {dayShifts.length === 0 ? (
-                        <p className={`py-1.5 text-[13px] ${themeClasses.text.muted}`}>No one scheduled</p>
-                      ) : (
-                        <div className={`divide-y ${edgeDivide}`}>
-                          {dayShifts.map((shift) => (
-                            <div key={shift.id} className="flex items-center justify-between gap-3 py-2">
-                              <div className="min-w-0">
-                                <p className={`truncate text-sm font-medium ${themeClasses.text.primary}`}>
-                                  {shift.employeeName}
-                                </p>
-                                <p className={`truncate text-[13px] ${themeClasses.text.secondary}`}>
-                                  <span className="font-mono tabular-nums">
-                                    {formatTime12(shift.start)} to {formatTime12(shift.end)}
-                                  </span>
-                                  <span className={themeClasses.text.muted}>
-                                    , {formatShiftDuration(shiftMinutes(shift))}
-                                  </span>
-                                </p>
-                                {shift.note && (
-                                  <p className={`truncate text-[13px] ${themeClasses.text.muted}`}>{shift.note}</p>
-                                )}
-                              </div>
-                              {isManager && (
-                                <div className="flex items-center gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    aria-label={`Edit ${shift.employeeName}'s shift`}
-                                    onClick={() => openEditShift(shift)}
-                                    className={`min-h-[44px] ${themeClasses.button.ghost}`}
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        aria-label={`Remove ${shift.employeeName}'s shift`}
-                                        className={`min-h-[44px] ${themeClasses.button.ghost}`}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>Remove this shift?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                          This removes {shift.employeeName}'s shift on{" "}
-                                          {formatDayHeading(shift.date)}, {formatTime12(shift.start)} to{" "}
-                                          {formatTime12(shift.end)}.
-                                        </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction
-                                          onClick={() => deleteShift(shift)}
-                                          className="bg-red-600 text-white hover:bg-red-700"
-                                        >
-                                          Remove
-                                        </AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {!isManager && (
-        <p className={`text-center text-[13px] ${themeClasses.text.muted}`}>
-          Viewing only. Sign in as manager to add or change shifts.
-        </p>
+  // Previous / range label / next, with a jump back to now. Shared by both tabs.
+  const rangeNav = (label: string) => (
+    <div className="flex items-center gap-1">
+      <Button variant="ghost" size="sm" aria-label="Previous" onClick={() => step(-1)} className={`min-h-[44px] ${themeClasses.button.ghost}`}>
+        <ChevronLeft className="h-5 w-5" />
+      </Button>
+      <span className={`min-w-[9.5rem] text-center text-sm font-semibold tabular-nums ${themeClasses.text.primary}`}>{label}</span>
+      <Button variant="ghost" size="sm" aria-label="Next" onClick={() => step(1)} className={`min-h-[44px] ${themeClasses.button.ghost}`}>
+        <ChevronRight className="h-5 w-5" />
+      </Button>
+      {!onThisWeek && (
+        <Button variant="ghost" onClick={() => setWeekStart(startOfWeek(new Date()))} className={`min-h-[44px] rounded-lg text-sm ${themeClasses.button.ghost}`}>
+          Today
+        </Button>
       )}
     </div>
   );
 
-  // Segmented tab control: actual hours (Timesheet) vs planned shifts (Schedule).
-  const tabButton = (key: "timesheet" | "schedule", label: string, Icon: typeof Clock) => (
-    <button
-      type="button"
-      onClick={() => setTab(key)}
-      className={`flex min-h-[44px] items-center gap-2 rounded-md px-4 text-sm font-medium transition-colors ${
-        tab === key
-          ? `${themeClasses.card.primary} ${themeClasses.text.primary} shadow-sm`
-          : themeClasses.text.secondary
-      }`}
-    >
-      <Icon className="h-4 w-4" />
-      {label}
-    </button>
+  const scheduleContent = (
+    <div className={`rounded-xl border ${themeClasses.card.primary}`}>
+      <div className={`flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2 ${edgeBorder}`}>
+        {rangeNav(formatWeekRange(weekStart))}
+        <div className="flex flex-wrap items-center gap-2">
+          <SegmentedTabs<ScheduleView>
+            size="sm"
+            label="Schedule view"
+            value={scheduleView}
+            onChange={setScheduleView}
+            options={[
+              { value: "calendar", label: "Calendar", icon: LayoutGrid },
+              { value: "list", label: "List", icon: List },
+            ]}
+          />
+          {isManager && (
+            <Button onClick={() => openAddShift()} className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.primary}`}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add shift
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="p-4">
+        {loading ? (
+          loadingBlock
+        ) : scheduleView === "calendar" ? (
+          <VisualSchedule
+            weekKeys={weekKeys}
+            shifts={shifts}
+            todayKey={todayKey}
+            nowMin={nowMin}
+            isManager={isManager}
+            onOpenShift={openShift}
+            onAddShift={openAddShift}
+            themeClasses={themeClasses}
+            isDarkMode={isDarkMode}
+          />
+        ) : (
+          <div className={`divide-y ${edgeDivide}`}>
+            {weekKeys.map((dayKey) => {
+              const dayShifts = shiftsOnDay(shifts, dayKey);
+              return (
+                <div key={dayKey} className="flex flex-col gap-1 py-2.5 sm:flex-row sm:gap-4">
+                  <div className="flex w-36 shrink-0 items-center gap-2 sm:items-start sm:pt-2">
+                    <span className={`text-sm font-semibold ${themeClasses.text.primary}`}>{formatDayHeading(dayKey)}</span>
+                    {dayKey === todayKey && <span className={todayPill}>Today</span>}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    {dayShifts.length === 0 && <p className={`py-2 text-[13px] ${themeClasses.text.muted}`}>No one scheduled</p>}
+                    {dayShifts.map((shift) => (
+                      <button
+                        key={shift.id}
+                        type="button"
+                        onClick={() => openShift(shift)}
+                        className={`flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2 text-left ${themeClasses.interactive.hover} ${themeClasses.interactive.focus}`}
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${hueFor(shift.employeeId).dot}`} />
+                          <span className="min-w-0">
+                            <span className={`block truncate text-sm font-medium ${themeClasses.text.primary}`}>{shift.employeeName}</span>
+                            <span className={`block truncate text-[13px] ${themeClasses.text.secondary}`}>
+                              <ShiftTimes shift={shift} />
+                              {shift.note ? <span className={themeClasses.text.muted}>, {shift.note}</span> : null}
+                            </span>
+                          </span>
+                        </span>
+                        <span className={`shrink-0 font-mono text-sm tabular-nums ${themeClasses.text.primary}`}>
+                          {formatShiftDuration(workedMinutes(shift))}
+                        </span>
+                      </button>
+                    ))}
+                    {isManager && (
+                      <button
+                        type="button"
+                        onClick={() => openAddShift(dayKey)}
+                        className={`mt-0.5 inline-flex min-h-[36px] items-center gap-1 rounded-lg px-2 text-[13px] ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add shift
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <p className={`border-t px-4 py-2.5 text-[13px] ${edgeBorder} ${themeClasses.text.muted}`}>
+        {isManager
+          ? "Tap a shift to change it. Staff can log their actual times and breaks even when this is locked."
+          : "Tap a shift to log the actual start, end or a break. Adding or moving shifts needs a manager."}
+      </p>
+    </div>
   );
+
+  const hoursContent = (
+    <div className={`rounded-xl border ${themeClasses.card.primary}`}>
+      <div className={`flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2 ${edgeBorder}`}>
+        {rangeNav(rangeLabel)}
+        <div className="flex flex-wrap items-center gap-2">
+          <SegmentedTabs<HoursRange>
+            size="sm"
+            label="Range"
+            value={hoursRange}
+            onChange={setHoursRange}
+            options={[
+              { value: "week", label: "Week" },
+              { value: "month", label: "Month" },
+            ]}
+          />
+          <Button onClick={exportCsv} className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.secondary}`}>
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
+        </div>
+      </div>
+
+      <div className="p-4">
+        {loading ? (
+          loadingBlock
+        ) : rangeShifts.length === 0 ? (
+          <div className="flex flex-col items-center py-10 text-center">
+            <Clock className={`mb-3 h-8 w-8 ${themeClasses.text.muted}`} />
+            <h3 className={`mb-1 text-base font-semibold ${themeClasses.text.primary}`}>No shifts in this range</h3>
+            <p className={`text-sm ${themeClasses.text.secondary}`}>Hours are counted from the schedule.</p>
+          </div>
+        ) : (
+          <>
+            <HoursBars shifts={rangeShifts} themeClasses={themeClasses} isDarkMode={isDarkMode} />
+            <div className={`mt-3 flex items-center justify-between border-t pt-3 ${edgeBorder}`}>
+              <span className={`text-sm font-semibold ${themeClasses.text.primary}`}>Total</span>
+              <span className={`font-mono text-sm font-semibold tabular-nums ${themeClasses.text.primary}`}>
+                {formatShiftDuration(rangeTotal)}
+                <span className={`ml-2 text-[13px] font-normal ${themeClasses.text.muted}`}>{formatHoursDecimal(rangeTotal)} h</span>
+              </span>
+            </div>
+
+            <h3 className={`mb-1 mt-6 text-sm font-semibold ${themeClasses.text.primary}`}>Shifts</h3>
+            <div className={`divide-y ${edgeDivide}`}>
+              {rangeShifts.map((shift) => (
+                <button
+                  key={shift.id}
+                  type="button"
+                  onClick={() => openShift(shift)}
+                  className={`flex w-full items-center justify-between gap-3 px-1 py-2.5 text-left ${themeClasses.interactive.hover} ${themeClasses.interactive.focus}`}
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${hueFor(shift.employeeId).dot}`} />
+                    <span className="min-w-0">
+                      <span className={`block truncate text-sm font-medium ${themeClasses.text.primary}`}>
+                        {shift.employeeName}
+                        <span className={`font-normal ${themeClasses.text.secondary}`}>, {formatDayHeading(shift.date)}</span>
+                      </span>
+                      <span className={`block truncate text-[13px] ${themeClasses.text.secondary}`}>
+                        <ShiftTimes shift={shift} />
+                      </span>
+                    </span>
+                  </span>
+                  <span className={`shrink-0 font-mono text-sm font-semibold tabular-nums ${themeClasses.text.primary}`}>
+                    {formatShiftDuration(workedMinutes(shift))}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+  const teamContent = (
+    <div className={`rounded-xl border ${themeClasses.card.primary}`}>
+      <div className="p-4">
+        <form onSubmit={newEmployeeForm.handleSubmit(addEmployee)} className="mb-4 flex flex-col gap-3 sm:flex-row">
+          <div className="flex-1">
+            <Label className="sr-only">Employee name</Label>
+            <Input
+              {...newEmployeeForm.register("name", { required: true })}
+              placeholder="Add someone, e.g. Sarah Chen"
+              className={`min-h-[44px] ${themeClasses.input}`}
+            />
+          </div>
+          <Button type="submit" className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.primary}`}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Add employee
+          </Button>
+        </form>
+
+        {loading ? (
+          loadingBlock
+        ) : activeEmployees.length === 0 ? (
+          <div className="flex flex-col items-center py-8 text-center">
+            <Users className={`mb-3 h-8 w-8 ${themeClasses.text.muted}`} />
+            <h3 className={`mb-1 text-base font-semibold ${themeClasses.text.primary}`}>No one on the team yet</h3>
+            <p className={`text-sm ${themeClasses.text.secondary}`}>Add someone above so they can be scheduled.</p>
+          </div>
+        ) : (
+          <div className={`divide-y ${edgeDivide}`}>
+            {activeEmployees.map((employee) => (
+              <div key={employee.id} className="flex items-center justify-between gap-3 py-2">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${slateBadge}`}>
+                    <User className="h-5 w-5" />
+                  </span>
+                  <span className={`truncate font-medium ${themeClasses.text.primary}`}>{employee.name}</span>
+                  <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${hueFor(employee.id).dot}`} title="Colour on the schedule" />
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="sm" aria-label={`Remove ${employee.name}`} className={`min-h-[44px] hover:text-red-600 ${themeClasses.button.ghost}`}>
+                      <UserMinus className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Remove {employee.name}?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        They come off the list for new shifts. Their past shifts and hours are kept, and you can bring them back any time.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => setEmployeeActive(employee, false)} className="bg-red-600 text-white hover:bg-red-700">
+                        Remove
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {inactiveEmployees.length > 0 && (
+          <div className={`mt-4 border-t pt-3 ${edgeBorder}`}>
+            <h3 className={`mb-1 text-[13px] font-semibold ${themeClasses.text.secondary}`}>No longer on the team</h3>
+            {inactiveEmployees.map((employee) => (
+              <div key={employee.id} className="flex items-center justify-between gap-3 py-1">
+                <span className={`truncate text-sm ${themeClasses.text.muted}`}>{employee.name}</span>
+                <Button variant="ghost" onClick={() => setEmployeeActive(employee, true)} className={`min-h-[44px] rounded-lg text-sm ${themeClasses.button.ghost}`}>
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Bring back
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // The manager lock, shown once beside the tabs so its state is always visible.
+  const managerControl = isManager ? (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] font-medium ${themeClasses.status.success}`}>
+        <LockOpen className="h-3.5 w-3.5" />
+        Manager
+      </span>
+      <Button variant="ghost" onClick={promptChangePin} className={`min-h-[44px] rounded-lg ${themeClasses.button.ghost}`}>
+        <ShieldCheck className="mr-2 h-4 w-4" />
+        {pinIsSet ? "Change PIN" : "Set PIN"}
+      </Button>
+      <Button onClick={lock} className={`min-h-[44px] rounded-lg ${themeClasses.button.secondary}`}>
+        <Lock className="mr-2 h-4 w-4" />
+        Lock
+      </Button>
+    </div>
+  ) : (
+    <Button onClick={promptUnlock} className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.secondary}`}>
+      <Lock className="mr-2 h-4 w-4" />
+      Manager sign in
+    </Button>
+  );
+
+  // What the dialog is doing: planning (manager) or only logging actual times.
+  const planning = isManager || !editingShift;
+  const preview = {
+    start: planning ? shiftForm.start : editingShift?.start ?? "",
+    end: planning ? shiftForm.end : editingShift?.end ?? "",
+    actualStart: shiftForm.actualStart,
+    actualEnd: shiftForm.actualEnd,
+    breakMinutes: Number(shiftForm.breakMinutes) || 0,
+  };
+  const formAdjusted = isAdjusted(preview);
 
   const shiftDialog = (
     <Dialog open={shiftDialogOpen} onOpenChange={setShiftDialogOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CalendarPlus className="h-5 w-5" />
-            {editingShift ? "Edit shift" : "Add a shift"}
+            {editingShift ? <PencilLine className="h-5 w-5" /> : <CalendarPlus className="h-5 w-5" />}
+            {!editingShift ? "Add a shift" : isManager ? "Edit shift" : "Log actual times"}
           </DialogTitle>
-          <DialogDescription>Plan who works and when. Staff see this on the schedule.</DialogDescription>
+          <DialogDescription>
+            {!editingShift
+              ? "Plan who works and when. Staff see this on the schedule."
+              : isManager
+                ? "Change the plan, or log what really happened."
+                : `${editingShift.employeeName}, ${formatDayHeading(editingShift.date)}. Planned ${formatTime12(editingShift.start)} to ${formatTime12(editingShift.end)}.`}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="shift-employee" className={themeClasses.text.secondary}>
-              Employee
-            </Label>
-            <select
-              id="shift-employee"
-              value={shiftForm.employeeId}
-              onChange={(e) => setShiftForm((f) => ({ ...f, employeeId: e.target.value }))}
-              className={`min-h-[44px] w-full rounded-lg border px-3 ${themeClasses.input}`}
-            >
-              {activeEmployees.length === 0 && <option value="">No employees yet</option>}
-              {activeEmployees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {planning && (
+            <>
+              <div className="space-y-1.5">
+                <Label htmlFor="shift-employee" className={themeClasses.text.secondary}>
+                  Employee
+                </Label>
+                <select
+                  id="shift-employee"
+                  value={shiftForm.employeeId}
+                  onChange={(e) => setShiftForm((f) => ({ ...f, employeeId: e.target.value }))}
+                  className={`min-h-[44px] w-full rounded-lg border px-3 text-sm ${themeClasses.input}`}
+                >
+                  {activeEmployees.length === 0 && <option value="">No employees yet</option>}
+                  {editingShift && !activeEmployees.some((e) => e.id === editingShift.employeeId) && (
+                    <option value={editingShift.employeeId}>{editingShift.employeeName}</option>
+                  )}
+                  {activeEmployees.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="shift-date" className={themeClasses.text.secondary}>
-              Day
-            </Label>
-            <Input
-              id="shift-date"
-              type="date"
-              value={shiftForm.date}
-              onChange={(e) => setShiftForm((f) => ({ ...f, date: e.target.value }))}
-              className={`min-h-[44px] ${themeClasses.input}`}
-            />
-          </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="shift-date" className={themeClasses.text.secondary}>
+                  Day
+                </Label>
+                <Input
+                  id="shift-date"
+                  type="date"
+                  value={shiftForm.date}
+                  onChange={(e) => setShiftForm((f) => ({ ...f, date: e.target.value }))}
+                  className={`min-h-[44px] ${themeClasses.input}`}
+                />
+              </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="shift-start" className={themeClasses.text.secondary}>
-                Start
-              </Label>
-              <Input
-                id="shift-start"
-                type="time"
-                value={shiftForm.start}
-                onChange={(e) => setShiftForm((f) => ({ ...f, start: e.target.value }))}
-                className={`min-h-[44px] font-mono tabular-nums ${themeClasses.input}`}
-              />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="shift-start" className={themeClasses.text.secondary}>
+                    Start
+                  </Label>
+                  <Input
+                    id="shift-start"
+                    type="time"
+                    value={shiftForm.start}
+                    onChange={(e) => setShiftForm((f) => ({ ...f, start: e.target.value }))}
+                    className={`min-h-[44px] font-mono tabular-nums ${themeClasses.input}`}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="shift-end" className={themeClasses.text.secondary}>
+                    End
+                  </Label>
+                  <Input
+                    id="shift-end"
+                    type="time"
+                    value={shiftForm.end}
+                    onChange={(e) => setShiftForm((f) => ({ ...f, end: e.target.value }))}
+                    className={`min-h-[44px] font-mono tabular-nums ${themeClasses.input}`}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="shift-note" className={themeClasses.text.secondary}>
+                  Note (optional)
+                </Label>
+                <Input
+                  id="shift-note"
+                  value={shiftForm.note}
+                  onChange={(e) => setShiftForm((f) => ({ ...f, note: e.target.value }))}
+                  placeholder="e.g. opening, covering Sam"
+                  className={`min-h-[44px] ${themeClasses.input}`}
+                />
+              </div>
+            </>
+          )}
+
+          {editingShift && (
+            <div className={`space-y-3 rounded-lg border p-3 ${themeClasses.card.secondary}`}>
+              <div>
+                <p className={`text-sm font-semibold ${themeClasses.text.primary}`}>What actually happened</p>
+                <p className={`text-[13px] ${themeClasses.text.muted}`}>Optional. Fill in only what was different from the plan.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="shift-actual-start" className={themeClasses.text.secondary}>
+                    Started at
+                  </Label>
+                  <Input
+                    id="shift-actual-start"
+                    type="time"
+                    value={shiftForm.actualStart}
+                    onChange={(e) => setShiftForm((f) => ({ ...f, actualStart: e.target.value }))}
+                    className={`min-h-[44px] font-mono tabular-nums ${themeClasses.input}`}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="shift-actual-end" className={themeClasses.text.secondary}>
+                    Left at
+                  </Label>
+                  <Input
+                    id="shift-actual-end"
+                    type="time"
+                    value={shiftForm.actualEnd}
+                    onChange={(e) => setShiftForm((f) => ({ ...f, actualEnd: e.target.value }))}
+                    className={`min-h-[44px] font-mono tabular-nums ${themeClasses.input}`}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="shift-break" className={themeClasses.text.secondary}>
+                  Break (minutes)
+                </Label>
+                <Input
+                  id="shift-break"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={600}
+                  step={5}
+                  value={shiftForm.breakMinutes}
+                  onChange={(e) => setShiftForm((f) => ({ ...f, breakMinutes: e.target.value }))}
+                  placeholder="0"
+                  className={`min-h-[44px] font-mono tabular-nums ${themeClasses.input}`}
+                />
+              </div>
+              <div className={`flex items-center justify-between gap-3 border-t pt-2 text-sm ${edgeBorder}`}>
+                <span className={themeClasses.text.secondary}>
+                  <ShiftTimes shift={preview} />
+                </span>
+                <span className={`shrink-0 font-mono font-semibold tabular-nums ${themeClasses.text.primary}`}>
+                  {formatShiftDuration(workedMinutes(preview))}
+                </span>
+              </div>
+              {formAdjusted && (
+                <button
+                  type="button"
+                  onClick={() => setShiftForm((f) => ({ ...f, actualStart: "", actualEnd: "", breakMinutes: "" }))}
+                  className={`inline-flex min-h-[36px] items-center gap-1.5 text-[13px] underline-offset-2 hover:underline ${themeClasses.text.secondary}`}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Back to the planned times
+                </button>
+              )}
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="shift-end" className={themeClasses.text.secondary}>
-                End
-              </Label>
-              <Input
-                id="shift-end"
-                type="time"
-                value={shiftForm.end}
-                onChange={(e) => setShiftForm((f) => ({ ...f, end: e.target.value }))}
-                className={`min-h-[44px] font-mono tabular-nums ${themeClasses.input}`}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="shift-note" className={themeClasses.text.secondary}>
-              Note (optional)
-            </Label>
-            <Input
-              id="shift-note"
-              value={shiftForm.note}
-              onChange={(e) => setShiftForm((f) => ({ ...f, note: e.target.value }))}
-              placeholder="e.g. opening, covering Sam"
-              className={`min-h-[44px] ${themeClasses.input}`}
-            />
-          </div>
+          )}
         </div>
 
         <DialogFooter className="gap-2 sm:gap-2">
-          {editingShift && (
+          {editingShift && isManager && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className={`min-h-[44px] rounded-lg text-red-600 hover:text-red-700 sm:mr-auto ${themeClasses.button.ghost}`}
-                >
+                <Button type="button" variant="ghost" className={`min-h-[44px] rounded-lg text-red-600 hover:text-red-700 sm:mr-auto ${themeClasses.button.ghost}`}>
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </Button>
@@ -1367,10 +1224,8 @@ const StaffTimesheet = () => {
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={async () => {
-                      const target = editingShift;
-                      if (target) await deleteShift(target);
+                      await deleteShift(editingShift);
                       setShiftDialogOpen(false);
-                      setEditingShift(null);
                     }}
                     className="bg-red-600 text-white hover:bg-red-700"
                   >
@@ -1380,109 +1235,44 @@ const StaffTimesheet = () => {
               </AlertDialogContent>
             </AlertDialog>
           )}
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setShiftDialogOpen(false)}
-            className={`min-h-[44px] rounded-lg ${themeClasses.button.ghost}`}
-          >
+          <Button type="button" variant="ghost" onClick={() => setShiftDialogOpen(false)} className={`min-h-[44px] rounded-lg ${themeClasses.button.ghost}`}>
             Cancel
           </Button>
-          <Button
-            type="button"
-            onClick={saveShift}
-            disabled={savingShift}
-            className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.primary}`}
-          >
+          <Button type="button" onClick={saveShift} disabled={savingShift} className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.primary}`}>
             {savingShift && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {editingShift ? "Save changes" : "Add shift"}
+            {editingShift ? "Save" : "Add shift"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 
-  const body = (
-    <>
-      <div className={`mb-5 inline-flex gap-1 rounded-lg border p-1 ${themeClasses.card.secondary}`}>
-        {tabButton("timesheet", "Timesheet", Clock)}
-        {tabButton("schedule", "Schedule", CalendarDays)}
-      </div>
-      {tab === "timesheet" ? content : scheduleContent}
-      {shiftDialog}
-    </>
-  );
-
-  if (inShell) {
-    return (
-      <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
-        <div className="mb-6 flex items-center gap-3">
-          <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${slateBadge}`}>
-            <Clock className="h-5 w-5" />
-          </span>
-          <div>
-            <h1 className={`text-xl font-semibold tracking-tight ${themeClasses.text.primary}`}>Timesheet</h1>
-            <p className={`text-sm ${themeClasses.text.secondary}`}>The punch clock, hours, and the schedule</p>
-          </div>
-        </div>
-        {body}
-      </div>
-    );
-  }
-
   return (
-    <div className={`min-h-screen ${themeClasses.background}`}>
-      <header className={`sticky top-0 z-50 border-b transition-colors duration-300 ${themeClasses.header}`}>
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-6">
-            <div className="flex items-center space-x-3">
-              <Link to="/staff/dashboard" className={`mr-4 group transition-colors ${themeClasses.link}`}>
-                <ArrowLeft className="mr-2 inline h-6 w-6 transition-transform group-hover:-translate-x-1" />
-                Back to Dashboard
-              </Link>
-              <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${slateBadge}`}>
-                <Clock className="h-6 w-6" />
-              </span>
-              <div>
-                <h1 className={`text-xl font-semibold tracking-tight lg:text-2xl ${themeClasses.text.primary}`}>
-                  Timesheet
-                </h1>
-                <p className={`text-xs font-medium ${themeClasses.text.secondary}`}>Staff Portal</p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <div className={`flex items-center space-x-2 ${themeClasses.text.secondary}`}>
-                <User className="h-4 w-4" />
-                <span className="text-sm font-medium">{user?.email}</span>
-              </div>
-              <ThemeToggleButton />
-              <Button
-                onClick={handleLogout}
-                variant="ghost"
-                size="sm"
-                className={`rounded-full px-4 py-2 ${themeClasses.button.ghost}`}
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mb-10 text-center">
-          <h2 className={`text-2xl font-semibold tracking-tight sm:text-3xl ${themeClasses.text.primary}`}>
-            Timesheet
-          </h2>
-          <p className={`mx-auto mt-2 max-w-2xl ${themeClasses.text.secondary}`}>
-            Punch the clock, export hours, and plan the week's schedule.
-          </p>
-        </div>
-        {body}
-      </main>
-    </div>
+    <StaffLayout
+      tool="timesheet"
+      title="Timesheet"
+      subtitle="The schedule, the hours, and the team"
+      icon={Clock}
+      iconColor="text-slate-600"
+      backTo="/staff/ai"
+      backLabel="Back"
+    >
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <SegmentedTabs<Tab>
+          label="Timesheet sections"
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: "schedule", label: "Schedule", icon: CalendarDays },
+            { value: "hours", label: "Hours", icon: BarChart3 },
+            { value: "team", label: "Team", icon: Users },
+          ]}
+        />
+        {managerControl}
+      </div>
+      {tab === "schedule" ? scheduleContent : tab === "hours" ? hoursContent : teamContent}
+      {shiftDialog}
+    </StaffLayout>
   );
 };
 

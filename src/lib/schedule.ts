@@ -1,5 +1,6 @@
-// Pure model + helpers for the staff schedule (planned shifts), the forward-looking
-// counterpart to the timesheet (punched hours). No React, no Firestore access here.
+// Pure model + helpers for the staff schedule. Hours are counted from it: a planned
+// shift, corrected with the actual times and break when they differ (there is no
+// punch clock). No React, no Firestore access here.
 // A shift is one person planned to work a date from `start` to `end` (local wall
 // clock). The Timesheet page's Schedule tab reads and writes these. See
 // docs/ui-rehaul/PHASE-2.md and lib/timesheet.ts for the sibling model.
@@ -15,8 +16,20 @@ export interface ScheduleShift {
   start: string; // 'HH:MM'
   end: string; // 'HH:MM'
   note?: string;
+  // What actually happened, when it differs from the plan. Any staff member can
+  // set these on a shift (the plan itself stays manager-only): a different start
+  // or end ("left at 8 instead of 7") and unpaid break minutes. All optional; an
+  // empty string / 0 means "as planned".
+  actualStart?: string; // 'HH:MM'
+  actualEnd?: string; // 'HH:MM'
+  breakMinutes?: number;
+  adjustedAt?: string; // ISO, when the actual times were last changed
   createdAt: string; // ISO
 }
+
+// The only fields a non-manager may write on a shift. The Firestore rule for
+// scheduleShifts allows a staff update that touches nothing else.
+export const SHIFT_ADJUST_KEYS = ['actualStart', 'actualEnd', 'breakMinutes', 'adjustedAt'] as const;
 
 export const SCHEDULE_COLLECTION = 'scheduleShifts';
 
@@ -64,7 +77,7 @@ export function shiftMinutes(shift: Pick<ScheduleShift, 'start' | 'end'>): numbe
 }
 
 // 'HH:MM' to minutes past midnight, or null if malformed.
-function parseHhmm(hhmm: string): number | null {
+export function parseHhmm(hhmm: string): number | null {
   const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm || '');
   if (!m) return null;
   const h = Number(m[1]);
@@ -111,4 +124,89 @@ export function shiftsOnDay(shifts: ScheduleShift[], dayKey: string): ScheduleSh
   return shifts
     .filter((s) => s.date === dayKey)
     .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : a.employeeName.localeCompare(b.employeeName)));
+}
+
+// Minutes past midnight to 'HH:MM'.
+export function minutesToHhmm(mins: number): string {
+  const m = Math.max(0, Math.min(23 * 60 + 59, Math.round(mins)));
+  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+}
+
+type ShiftTimes = Pick<ScheduleShift, 'start' | 'end' | 'actualStart' | 'actualEnd' | 'breakMinutes'>;
+
+// The start and end that count: the actual time when one was logged and is a
+// valid time, else the planned one.
+export function workedStart(shift: ShiftTimes): string {
+  return shift.actualStart && parseHhmm(shift.actualStart) != null ? shift.actualStart : shift.start;
+}
+export function workedEnd(shift: ShiftTimes): string {
+  return shift.actualEnd && parseHhmm(shift.actualEnd) != null ? shift.actualEnd : shift.end;
+}
+
+// Whether the start / end was changed from the plan (drives the strike-through).
+export function startChanged(shift: ShiftTimes): boolean {
+  return workedStart(shift) !== shift.start;
+}
+export function endChanged(shift: ShiftTimes): boolean {
+  return workedEnd(shift) !== shift.end;
+}
+
+// Break minutes, never negative or NaN.
+export function breakMinutesOf(shift: ShiftTimes): number {
+  const b = Number(shift.breakMinutes);
+  return Number.isFinite(b) && b > 0 ? Math.round(b) : 0;
+}
+
+// Whether anything about the shift differs from the plan.
+export function isAdjusted(shift: ShiftTimes): boolean {
+  return startChanged(shift) || endChanged(shift) || breakMinutesOf(shift) > 0;
+}
+
+// Minutes that count toward hours: the worked span minus the break, never negative.
+export function workedMinutes(shift: ShiftTimes): number {
+  const span = shiftMinutes({ start: workedStart(shift), end: workedEnd(shift) });
+  return Math.max(0, span - breakMinutesOf(shift));
+}
+
+// Total worked minutes across a set of shifts.
+export function totalWorkedMinutes(shifts: ShiftTimes[]): number {
+  return shifts.reduce((sum, s) => sum + workedMinutes(s), 0);
+}
+
+// Decimal hours for a slip / CSV, like "6.50".
+export function formatHoursDecimal(minutes: number): string {
+  return (minutes / 60).toFixed(2);
+}
+
+// Shifts whose day falls in [fromKey, toKey] inclusive, oldest first.
+export function shiftsInRange(shifts: ScheduleShift[], fromKey: string, toKey: string): ScheduleShift[] {
+  return shifts
+    .filter((s) => s.date >= fromKey && s.date <= toKey)
+    .sort((a, b) =>
+      a.date !== b.date ? (a.date < b.date ? -1 : 1) : a.start !== b.start ? (a.start < b.start ? -1 : 1) : a.employeeName.localeCompare(b.employeeName),
+    );
+}
+
+// Escape one CSV cell: quote when it contains a comma, quote, or newline.
+function csvCell(value: unknown): string {
+  const v = value == null ? '' : String(value);
+  return /[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+}
+
+// The hours CSV: one row per shift with the planned times, the actual times, the
+// break and the hours that count. CRLF line endings so Excel opens it cleanly.
+export function shiftsToCsv(shifts: ScheduleShift[]): string {
+  const header = ['Employee', 'Date', 'Planned start', 'Planned end', 'Actual start', 'Actual end', 'Break (min)', 'Hours', 'Note'];
+  const rows = shifts.map((s) => [
+    s.employeeName,
+    s.date,
+    formatTime12(s.start),
+    formatTime12(s.end),
+    formatTime12(workedStart(s)),
+    formatTime12(workedEnd(s)),
+    breakMinutesOf(s),
+    formatHoursDecimal(workedMinutes(s)),
+    s.note ?? '',
+  ]);
+  return [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n');
 }

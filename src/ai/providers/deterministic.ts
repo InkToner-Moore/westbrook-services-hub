@@ -7,6 +7,7 @@ import type { AiAction, AiParseContext, AiProvider, FieldValue, Intent, ReceiptS
 import { getFieldSpecs } from '../fieldSpecs';
 import {
   classifyTimesheetOp,
+  extractShiftAdjustment,
   cleanRemainder,
   domainName,
   extractAttachments,
@@ -34,6 +35,8 @@ import {
   todayIso,
 } from '../extract';
 import { emptyShipmentItem } from '../shipping';
+import { describeDays, parseDays, parseTimeRange } from '@/lib/shiftParse';
+import { formatTime12 } from '@/lib/schedule';
 
 // Keyword groups per action. First match wins. Explicit noun-intents (orders,
 // notes, inventory, directory) are checked before the receipt subtypes so a
@@ -47,18 +50,19 @@ const ROUTES: Array<{ action: AiAction; subtype?: ReceiptSubtype; words: string[
   // order (the id and Firestore stay cartridge_*). Kept specific ("record a
   // refill", not bare "record") so "record a note" still routes to note.
   { action: 'cartridge_create', words: ['new order', 'cartridge order', 'refill order', 'create order', 'log an order', 'record a refill', 'record refill'] },
-  // Timesheet cues are distinctive (punch/clock verbs, "timesheet", "add
-  // employee"), so this sits with the other explicit noun-intents. The single
-  // action fans into punch_in / punch_out / view / add_employee in
-  // populateIntentFields (classifyTimesheetOp). See PHASE-2.md item 6.
+  // Timesheet cues are distinctive ("shift", "schedule", "timesheet", "add
+  // employee", the old punch verbs), so this sits with the other explicit
+  // noun-intents. The single action fans into add_shift / adjust_shift / view /
+  // add_employee / punch_off in populateIntentFields (classifyTimesheetOp).
   {
     action: 'timesheet',
     words: [
       'clock in', 'clock out', 'clock-in', 'clock-out', 'clocked in', 'clocked out',
-      'punch in', 'punch out', 'punch the clock', 'punch clock', 'punch',
+      'punch in', 'punch out', 'punch the clock', 'punch clock',
       'timesheet', 'time sheet', 'timecard', 'time card',
-      'add employee', 'new employee', 'on the clock', 'hours for',
+      'add employee', 'new employee', 'hours for',
     ],
+    patterns: [/\bshifts?\b/i, /\bschedule\b/i, /\bwho(?:'s|\s+is)\s+(?:working|on)\b/i],
   },
   { action: 'directory', words: ['directory', 'website', 'bookmark', 'add link', 'save link'] },
   // A READ lookup ("is the HP 65 in stock?", "do we have", "price of", "where is
@@ -115,6 +119,18 @@ const ROUTES: Array<{ action: AiAction; subtype?: ReceiptSubtype; words: string[
     ],
   },
   { action: 'receipt', subtype: 'supplies', words: ['purchase', 'buy', 'bought', 'sold', 'sale', 'supply', 'supplies'] },
+  // Last, so a note or receipt that happens to say "left at 5" keeps its own
+  // route: someone reporting what really happened on a shift with no "shift"
+  // word in it ("Parsa left at 8 instead of 7", "Sue took a 30 min break").
+  {
+    action: 'timesheet',
+    words: [],
+    patterns: [
+      /\b(?:left|stayed|finished|started|came\s+in|got\s+in|arrived)\s+(?:work\s+)?(?:at|until|till|til)\s+\d{1,2}\b/i,
+      /\b\d{1,3}\s*-?\s*(?:m|min|mins|minutes?|hours?|hrs?)\s+(?:break|lunch)\b/i,
+      /\b(?:break|lunch)\s+(?:of|for)\s+\d{1,3}\b/i,
+    ],
+  },
 ];
 
 // Separators between shipment pieces: "and"/"plus"/"+", a semicolon, a newline, or
@@ -416,6 +432,16 @@ export class DeterministicProvider implements AiProvider {
       }
     }
 
+    // A name, a time range and a day with no money in it is a shift being planned
+    // ("Sue 10-5:30 oct 8, 9"), even with no "shift" word.
+    if (action === 'unknown' && !/\$/.test(text)) {
+      const range = parseTimeRange(text);
+      if (range && parseDays(range.rest).length > 0 && extractEmployeeName(text)) {
+        action = 'timesheet';
+        confidence = 0.75;
+      }
+    }
+
     if (action === 'unknown' && RECEIPT_HINT.some((w) => lower.includes(w))) {
       // "receipt"/"invoice" is an explicit intent word, most often the Receipt
       // quick action prepending "receipt" (giving "receipt kw1"). Trust it above
@@ -475,10 +501,35 @@ export function populateIntentFields(intent: Intent, text: string): void {
   if (action === 'timesheet') {
     const op = classifyTimesheetOp(text);
     const name = extractEmployeeName(text);
-    intent.fields = {
+    const fields: Intent['fields'] = {
       op: explicit(op),
       employeeName: name ? explicit(name) : absent(),
     };
+    if (op === 'add_shift') {
+      // Cut the time range out first so "4-9" is never read as the 4th to the 9th.
+      const range = parseTimeRange(text);
+      const days = parseDays(range ? range.rest : text);
+      fields.days = days.length ? explicit(describeDays(days)) : guessed('Today', 'no day given');
+      fields.start = range ? explicit(formatTime12(range.start)) : absent();
+      fields.end = range ? explicit(formatTime12(range.end)) : absent();
+      fields.note = absent();
+    } else if (op === 'adjust_shift') {
+      const adj = extractShiftAdjustment(text);
+      // Drop the times and the break so their numbers are not read as days.
+      const dayText = text
+        .replace(/\b(?:at|until|till|til|of|than)\s+\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm)?/gi, ' ')
+        .replace(/\d{1,3}\s*-?\s*(?:m|min|mins|minutes?|hours?|hrs?)\b/gi, ' ');
+      const days = parseDays(dayText);
+      fields.days = days.length ? explicit(describeDays(days.slice(0, 1))) : guessed('Today', 'no day given');
+      fields.actualStart = adj.start ? explicit(adj.start) : absent();
+      fields.actualEnd = adj.end ? explicit(adj.end) : absent();
+      fields.breakMinutes = adj.breakMinutes != null ? explicit(adj.breakMinutes) : absent();
+    } else if (op === 'view') {
+      const days = parseDays(text);
+      fields.days = days.length ? explicit(describeDays(days.slice(0, 1))) : absent();
+      fields.week = /\bweek\b/i.test(text) ? explicit(true) : absent();
+    }
+    intent.fields = fields;
     return;
   }
 

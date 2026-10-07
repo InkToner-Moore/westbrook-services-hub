@@ -80,9 +80,9 @@ function describeIntent(intent: Intent): string {
     case 'timesheet': {
       const op = intent.fields?.op?.value;
       if (op === 'add_employee') return "Let's add an employee.";
-      if (op === 'punch_in') return 'Clocking in.';
-      if (op === 'punch_out') return 'Clocking out.';
-      return 'Here is the timesheet.';
+      if (op === 'add_shift') return "Let's put that on the schedule.";
+      if (op === 'adjust_shift') return "I'll log the actual times on that shift.";
+      return 'Here is the schedule.';
     }
     case 'track':
       return "Let's track that package.";
@@ -311,7 +311,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [presentConfirmable, setQueue]);
 
   // Run one intent that has no confirmation step: immediate executors (track, list,
-  // punch) run now; anything else with no spec becomes a "did you mean" card.
+  // a schedule view) run now; anything else with no spec becomes a "did you mean" card.
   const runNonConfirmable = useCallback(
     async (intent: Intent, sourceText: string) => {
       const executor = getExecutor(intent.action);

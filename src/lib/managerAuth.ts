@@ -84,3 +84,15 @@ export async function currentUserIsManager(): Promise<boolean> {
     return false;
   }
 }
+
+// The manager state as the app currently shows it, mirrored here by
+// ManagerModeContext so non-React code (the AI executors) can ask without a hook.
+// It only decides what the UI offers; Firestore rules are what actually stop a
+// locked session from writing the schedule.
+let unlockedNow = false;
+export function noteManagerUnlocked(value: boolean): void {
+  unlockedNow = value;
+}
+export function managerUnlocked(): boolean {
+  return unlockedNow;
+}

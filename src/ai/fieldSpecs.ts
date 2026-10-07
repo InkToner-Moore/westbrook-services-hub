@@ -123,16 +123,32 @@ export const FIELD_SPECS: Record<string, FieldSpec[]> = {
     { key: 'linkCategory', label: 'Category', marker: 'optional', alwaysShown: true, kind: 'text' },
     { key: 'linkDescription', label: 'Description', marker: 'optional', alwaysShown: false, kind: 'text' },
   ],
-  // The only confirmable timesheet variant: adding an employee. Punch in/out and
-  // the read views run immediately, with no slip. See PHASE-2.md item 6.
+  // Timesheet's confirmable variants. The read views run immediately, with no slip.
   'timesheet_add_employee': [
     { key: 'employeeName', label: 'Employee name', marker: 'required', alwaysShown: true, kind: 'text', blocking: true, hint: 'e.g. Sarah Chen' },
+  ],
+  // Plan a shift, or the same shift on several days at once (manager only).
+  'timesheet_add_shift': [
+    { key: 'employeeName', label: 'Who', marker: 'required', alwaysShown: true, kind: 'text', blocking: true, hint: 'e.g. Sue' },
+    { key: 'days', label: 'Day(s)', marker: 'required', alwaysShown: true, kind: 'text', blocking: true, hint: 'e.g. Oct 8, 9, 15' },
+    { key: 'start', label: 'Start', marker: 'required', alwaysShown: true, kind: 'text', blocking: true, hint: 'e.g. 10 AM' },
+    { key: 'end', label: 'End', marker: 'required', alwaysShown: true, kind: 'text', blocking: true, hint: 'e.g. 5:30 PM' },
+    { key: 'note', label: 'Note', marker: 'optional', alwaysShown: false, kind: 'text' },
+  ],
+  // Log what really happened on a planned shift. Every field but the person is
+  // optional: fill only what changed.
+  'timesheet_adjust_shift': [
+    { key: 'employeeName', label: 'Who', marker: 'required', alwaysShown: true, kind: 'text', blocking: true, hint: 'e.g. Sue' },
+    { key: 'days', label: 'Day', marker: 'required', alwaysShown: true, kind: 'text', blocking: true, hint: 'e.g. Today, Oct 8' },
+    { key: 'actualStart', label: 'Actually started', marker: 'optional', alwaysShown: true, kind: 'text', hint: 'leave blank if as planned' },
+    { key: 'actualEnd', label: 'Actually left', marker: 'optional', alwaysShown: true, kind: 'text', hint: 'leave blank if as planned' },
+    { key: 'breakMinutes', label: 'Break (minutes)', marker: 'optional', alwaysShown: true, kind: 'quantity' },
   ],
 };
 
 // Derive the spec id from an intent. `op` is the timesheet operation carried on
-// intent.fields.op; only add_employee is confirmable, so the other timesheet ops
-// return null (they run immediately with no slip).
+// intent.fields.op; adding an employee, planning a shift and logging actual
+// times are confirmable, the rest return null (they run immediately, no slip).
 export function specIdFor(action: AiAction, subtype?: ReceiptSubtype, op?: string): string | null {
   if (action === 'receipt') return subtype ? `receipt:${subtype}` : null;
   if (action === 'cartridge_create') return 'cartridge_create';
@@ -140,7 +156,12 @@ export function specIdFor(action: AiAction, subtype?: ReceiptSubtype, op?: strin
   if (action === 'note') return 'note';
   if (action === 'inventory') return 'inventory';
   if (action === 'directory') return 'directory';
-  if (action === 'timesheet') return op === 'add_employee' ? 'timesheet_add_employee' : null;
+  if (action === 'timesheet') {
+    if (op === 'add_employee') return 'timesheet_add_employee';
+    if (op === 'add_shift') return 'timesheet_add_shift';
+    if (op === 'adjust_shift') return 'timesheet_adjust_shift';
+    return null;
+  }
   return null;
 }
 
