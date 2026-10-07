@@ -107,7 +107,9 @@ src/
     firebase.ts        app/auth/db init from VITE_FIREBASE_* env
     firestore.ts       generic CRUD helpers + ID generators (ORD-/NOTE-/REQ-/INV-)
     orderStatus.ts     public order-status mirror (schema + name normalizing)
-    timesheet.ts       employees + timeEntries collections and punch-clock helpers
+    timesheet.ts       the employees (team) model
+    schedule.ts        scheduleShifts model: planned shifts, actual times, break, hours math
+    shiftParse.ts      free-text shift parser ("4-9", "oct 8, 9", "30 min break")
     cartridges.ts simpleReceipt.ts utils.ts
   utils/               dataExport, validation
   styles/print.css     src/index.css  src/App.css
@@ -118,7 +120,8 @@ src/
 Firestore is the only persistence. Pages/features that read/write it: `PublicHome`,
 `StaffCartridges`, `StaffNotes`, `StaffDirectory`, `StaffInventory`,
 `StaffTimesheet`, and the AI actions (`src/ai/actions/`). Newer collections:
-`employees` and `timeEntries` (timesheet), `transactions` (Purchase recording).
+`employees` and `scheduleShifts` (timesheet: hours are counted from the schedule,
+the `timeEntries` punch clock is retired), `transactions` (Purchase recording).
 Use the generic helpers in `lib/firestore.ts` (`getCollection`,
 `queryCollection`, `getDocument`, `setDocument`, `updateDocument`,
 `deleteDocument`) rather than calling the SDK inline, and the `generate*Id`

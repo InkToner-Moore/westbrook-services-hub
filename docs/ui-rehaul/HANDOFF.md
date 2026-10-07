@@ -2,6 +2,78 @@
 
 Read `DESIGN-SPEC.md` and `PLAN.md` first. This records where the rehaul stands.
 
+## START HERE (shifts replace the punch clock, key board + consistency pass, 2026-10-07)
+
+**What shipped (branch `timesheet-shifts-ux`, on staging; prod `main` untouched):**
+
+1. **The punch clock is off. Hours come from the schedule.** The Timesheet page is now
+   three tabs: **Schedule** (week calendar or list), **Hours** (per person and per
+   shift, week or month, CSV export) and **Team**. No clock in / clock out anywhere;
+   `timeEntries` is retired (the punch helpers in `lib/timesheet.ts` and the punch ops
+   in `ai/actions/timesheet.ts` are gone, see git history to bring them back).
+2. **Actual times on a shift, open to everyone, locked or not.** A shift
+   (`scheduleShifts`) gained optional `actualStart`, `actualEnd`, `breakMinutes`,
+   `adjustedAt`. Tap any shift to log them; the planned time is struck through and the
+   actual one shown beside it (`components/ShiftTimes.tsx`, used on the calendar, the
+   lists and the chat cards). Hours = actual span (else planned) minus the break
+   (`workedMinutes` in `lib/schedule.ts`). Planning (add / move / delete) is still
+   manager only.
+3. **Shifts over chat.** `timesheet` now fans into `add_shift` (manager; slip),
+   `adjust_shift` (any staff; slip), `add_employee`, `view`, and `punch_off` (a punch
+   phrase is answered with a pointer, nothing is written). It reads the way staff type:
+   "Parsa 4pm to 7pm: 5th,6,7,13,14", "Sue 10-5:30 oct 8, oct9, 13", "Parsa left at 8
+   instead of 7", "Sue took a 30 min break yesterday", "who is working today". One slip
+   can add the same shift on several days. While the schedule is locked, an add-shift
+   ask gets a "Manager sign in" card instead of a slip. Parser: `lib/shiftParse.ts`
+   (bare hours are read as shop hours, 8 to 11 morning, 12 to 7 afternoon; a bare
+   "left at 8" resolves to the reading nearest the planned end).
+4. **Key board, made calm.** It has its own Inventory tab (Keys / Key board / Refills /
+   Review). One row at a time with a row picker, a search that pulls matching spots
+   from every row (code, full name, position, notes), an All / Keys / Free filter,
+   bigger cells showing the short code. Tapping a spot opens it (see, change, free,
+   "Find in keys"); the separate Edit mode is gone.
+5. **Consistency pass across the tools.** `components/shell/ToolPage.tsx` holds the
+   shared in-shell frame, a title bar that takes its name/icon/hue from the tile
+   (`ToolPageHeader`), and the one tab look (`SegmentedTabs`). Every tool page uses
+   them: titles match the tile names, one content width, one tab style, `text-lg`
+   sentence-case section titles, quiet ghost delete buttons, styled native selects,
+   flat nested cards, short dates, and the lone Timesheet tile now spans the rail.
+
+**DEV data + rules changed this session (not code):**
+- Rules: `scheduleShifts` now allows a non-manager `update` only when the changed keys
+  are within `actualStart, actualEnd, breakMinutes, adjustedAt`; create/delete and any
+  other change still need the manager claim. Released ruleset
+  `f5152ff7-7008-493e-a3ba-dd811a18b59d`.
+- Deleted the 2 `timeEntries` docs. Reactivated employees Sue and Parsa, added Johnny.
+- Seeded 22 October 2026 shifts (Parsa, Sue, Johnny). Parsa's Oct 12 shift was given as
+  "12" with no end time and is NOT in; ask him.
+- Backup of what was there before (employees, punches, shifts, old rules):
+  `/home/user/Programming/InkTonerMoore/dev-db-backup-2026-10-07/` (outside the repo).
+
+**Gate:** `tsc -p tsconfig.app.json --noEmit` clean, `yarn build` green, eslint
+baseline-only (the 4 pre-existing `any` errors in `StaffCartridges.tsx`),
+`node scripts/parser-tests/run.mjs` green (30, incl. the shift lines above).
+
+**Verified in a real browser against DEV Firestore** (local dev server with the dev
+web config, signed in by custom token as the dev staff user, with and without the
+manager claim): locked staff logging actual end + break from the page and from chat
+(rule accepts it), manager adding shifts from chat, the locked card, schedule /
+hours / team tabs, the key board. To repeat: the dev web config comes from the
+Firebase Management API with the dev SA; never use the repo `.env` for writes, its
+project id is the PROD project.
+
+**PROD when this ships to `main`:** mirror the `scheduleShifts` rule above (plus the
+earlier manager rules), and note prod has no shifts or team seeded.
+
+**Open / follow-ups:**
+- The chat cannot yet undo an adjustment or delete a shift; use the page.
+- "I left at 8" needs a name: there is one shared login, so the chat cannot know who
+  "I" is. It asks for one.
+- Hours "Month" is the calendar month the viewed week starts in.
+- The standalone (deep-link) headers of Receipts / Cartridges / Directory / Inventory
+  still carry their old long titles; only the in-shell path was unified.
+- Notes delete still has no confirm dialog (pre-existing).
+
 ## START HERE (key reference research + integration, 2026-09-09)
 
 **What shipped:** the key-blank research is now in the app as a new `keyReference`
