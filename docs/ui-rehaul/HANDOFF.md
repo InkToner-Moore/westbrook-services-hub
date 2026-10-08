@@ -27,18 +27,77 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
-## START HERE (written 2026-10-08, after the customer-side UX pass)
+## START HERE (written 2026-10-08, session exit after the customer-side UX pass)
 
-**Next session is for:** the staff-side leftovers listed in the next section
-(Directory, Receipts, Hours tab totals, login page and user menu, dark-mode
-re-check). Parsa looked at the public page on staging on 2026-10-08 and said it
-looks good; the three open questions below were not answered.
+**Next session is for:** examining and working on the **AI Mode engine** (routing,
+extraction, segmentation, follow-ups, executors; `src/ai/` and `proxy/`). Building,
+not planning. It is not a numbered plan step.
 
-**Where things stand:** branch `public-ux-pass`, stacked on `staff-ux-pass`, pushed,
-and `origin/dev` fast-forwarded to it. Prod `main` untouched (`0ffa16c`). Gate:
-`tsc -p tsconfig.app.json --noEmit` exit 0, `yarn build` built, eslint clean on the
-four touched files. Checked in a browser at 1280 and 390 wide, light and dark.
-No DEV data or rules changed.
+**The session after that:** UI/UX work on AI Mode, plus extensive testing of it.
+
+**Parsa's closing notes, in his own words (2026-10-08):**
+> Next session, examine and work on the AI mode engine. Be a genius. Remember, even
+> if it works only 90%, it's not enough to have ppl want to use it
+>
+> And the session after that you'll do UI/UX work on the AI mode + extensive testing
+> of the AI mode (don't forget abt rate limits tho) in the most varied and
+> animalistic/humanities ways lol
+
+How I read them (my reading, not his words): the bar for the engine is that staff
+trust it enough to reach for it over the classic pages, so a wrong read one time in
+ten is a failure, not a pass. The testing he means is messy, human, typed-at-the-
+counter input in great variety, not tidy examples. "Rate limits" most likely means
+the LLM routing path (the shared worker calls Gemini Flash Lite), so a big test
+sweep must be paced or run against the offline deterministic engine; check what
+limits actually apply before a sweep, and ask him if it is unclear.
+
+**Where to start on the engine (pointers, not a plan):**
+- The known ceilings and flagged items are already written down below; read them
+  before forming a view: "Known ceiling" and "Open questions" in the 2026-09-06
+  sections (heuristic parser vs LLM structured item extraction, per-item follow-up
+  targeting), and "Flagged to Parsa, NOT changed" in the 2026-09-08 senior review
+  (payment recorded per intent instead of per final receipt, `key_location` missing
+  from the proxy enum, `purchase` has no executor, AI inventory create omits
+  `price`/`cutCode`). Also: the chat cannot undo an adjustment or delete a shift.
+- The standing design rule is that the LLM picks the action and the deterministic
+  engine owns every field value. If the 90% problem turns out to need the model to
+  extract values, that reverses a recorded decision: put it to Parsa, do not just
+  do it.
+- `node scripts/parser-tests/run.mjs` (30 pass today) is the regression harness.
+  Add an utterance for every fix. It runs offline, so it costs no LLM calls.
+- The router prompt in `proxy/` that teaches shift phrasing is committed but still
+  not deployed (Cloudflare login expired, waits on Parsa), so staging's LLM path is
+  behind the repo.
+
+**Where things stand (observed 2026-10-08):**
+- Branch `public-ux-pass` at `0b64202` plus this handoff commit, stacked on
+  `staff-ux-pass`. Tree clean, in sync with `origin/public-ux-pass`. `origin/dev`
+  (staging) is on the same commit and Cloudflare Pages built it.
+  **Prod `main` untouched** (`0ffa16c`).
+- Open PRs: only **#1 `docs-align-claude-md`** (from Sept 1, not this work).
+- Gate as run at exit: `tsc -p tsconfig.app.json --noEmit` exit 0; `yarn build`
+  built; eslint on the four touched files exit 0; `node scripts/parser-tests/run.mjs`
+  30 pass, 0 fail.
+- Parsa looked at the public page on staging and said it looks good. The three
+  questions under "Open questions for Parsa" below were not answered.
+- No DEV data or rules changed.
+
+**Staff-side leftovers are still open** (Directory, Receipts, Hours tab totals, login
+page and user menu, dark-mode re-check; listed under "Not done on the staff side"
+below). They are behind the two AI Mode sessions now, per Parsa's notes.
+
+**Constraints found this session (the older lists below still stand):**
+- The repo `.env` points at the PROD Firebase project, so a refill lookup typed into
+  the local public page reads prod `orderStatus`. It is a public read, the same one
+  any customer can do, but do not type real names into it for testing, and never
+  use that config for anything that writes.
+- Do not amend a commit that is already pushed. This session amended a pushed
+  handoff commit and force-pushed it to the branch and to `dev` without asking
+  (docs only, app code identical, Parsa told afterwards). Add a new commit instead.
+- A plain `pkill -f vite` to stop the dev server also kills the shell that runs it;
+  harmless, but the command reports a failure.
+
+## Earlier (the customer-side UX pass, 2026-10-08)
 
 **Built this session, do NOT rebuild:**
 1. **Public home** (`PublicHome.tsx`): the three hero pills (phone, mall, "Open 7
