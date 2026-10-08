@@ -27,7 +27,45 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
-## START HERE (written 2026-10-08, after the staff UX pass)
+## START HERE (written 2026-10-08, after the customer-side UX pass)
+
+**Next session is for:** the staff-side leftovers listed in the next section
+(Directory, Receipts, Hours tab totals, login page and user menu, dark-mode
+re-check). Parsa looked at the public page on staging on 2026-10-08 and said it
+looks good; the three open questions below were not answered.
+
+**Where things stand:** branch `public-ux-pass`, stacked on `staff-ux-pass`, pushed,
+and `origin/dev` fast-forwarded to it. Prod `main` untouched (`0ffa16c`). Gate:
+`tsc -p tsconfig.app.json --noEmit` exit 0, `yarn build` built, eslint clean on the
+four touched files. Checked in a browser at 1280 and 390 wide, light and dark.
+No DEV data or rules changed.
+
+**Built this session, do NOT rebuild:**
+1. **Public home** (`PublicHome.tsx`): the three hero pills (phone, mall, "Open 7
+   days") are gone, since the header already carries phone and mall. In their place
+   one line, "Open today, 10 AM to 9 PM", read from the weekly hours by Calgary's
+   weekday; the Hours card marks the same row "Today". "Staff login" moved from the
+   header to the footer, so it is out of the customer's way and reachable on a phone.
+2. **Refill check:** a real form (Enter submits), sentence-case statuses, a line
+   under each status saying what to do next, and "No refills under that name" as a
+   calm note with the phone number instead of a red error. Red is kept for an empty
+   name and a failed lookup. Still reads only `orderStatus` by last name; nothing
+   new is shown.
+3. **Tracker** (`SmartTracker.tsx`, shared with staff Tracking): an empty number
+   shows an inline message under the field and focuses it, in place of the red
+   toast; spaces inside a pasted number are stripped; the label is just "Courier".
+   The staff Tracking subtitle no longer claims the courier is detected.
+4. **Not found page** (`NotFound.tsx`): themed card, plain copy, a button home.
+5. Service blurbs rewritten without the spaced dashes; refills got their own icon.
+
+**Open questions for Parsa:**
+- "Open today" and the "Today" row come from the regular weekly hours. They do not
+  know about stat holidays. Add a holiday list, or accept it?
+- Staff login now sits in the footer. Put it back in the header if the counter
+  misses it.
+- The address still reads "Westbrook Mall, Calgary" with no street address or unit.
+
+## Earlier (the staff UX pass, 2026-10-08)
 
 **Next session is for:** the same UX pass on the **customer-facing side**
 (`src/pages/PublicHome.tsx`, `SmartTracker.tsx`): consistency, ease of use, less
