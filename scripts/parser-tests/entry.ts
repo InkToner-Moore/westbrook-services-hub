@@ -6,6 +6,7 @@
 // (resolveKeyPrices, the LlmProvider) does NOT belong here.
 export { DeterministicProvider } from '@/ai/providers/deterministic';
 export { segmentUtterance, probeRoute } from '@/ai/segment';
+export { applyFollowUp, isFollowUp } from '@/ai/followup';
 export {
   extractMoney,
   extractPhone,

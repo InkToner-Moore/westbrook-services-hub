@@ -11,48 +11,11 @@
 // When a parser fix lands, add the utterance that broke it here so it never
 // regresses. When the LLM-structured-extraction work happens, the routing/
 // segmentation assertions here are the contract the new path must still pass.
-import { build } from 'esbuild';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import path from 'node:path';
-import os from 'node:os';
-import fs from 'node:fs';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { loadEngine } from './bundle.mjs';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const root = path.resolve(here, '../..');
-const src = path.join(root, 'src');
-
-// Bundle the parser surface to a temp ESM file, then import it. `@` resolves to
-// src; jspdf and firestore are stubbed so the bundle loads under plain Node.
-const outfile = path.join(os.tmpdir(), `westbrook-parser-${process.pid}.mjs`);
-await build({
-  entryPoints: [path.join(here, 'entry.ts')],
-  bundle: true,
-  format: 'esm',
-  platform: 'node',
-  outfile,
-  alias: { '@': src },
-  plugins: [
-    {
-      name: 'westbrook-test-stubs',
-      setup(b) {
-        b.onResolve({ filter: /^jspdf$/ }, () => ({ path: path.join(here, 'stubs/jspdf.mjs') }));
-        b.onResolve({ filter: /^@\/lib\/firestore$/ }, () => ({ path: path.join(here, 'stubs/firestore.mjs') }));
-      },
-    },
-  ],
-  logLevel: 'warning',
-});
-
-const mod = await import(pathToFileURL(outfile).href);
-process.on('exit', () => {
-  try {
-    fs.unlinkSync(outfile);
-  } catch {
-    /* best effort */
-  }
-});
+const mod = await loadEngine();
 
 const {
   DeterministicProvider,
@@ -96,13 +59,10 @@ test('routing: several keys, a quantity, or the word "key" is a key-cutting rece
   }
 });
 
-test('routing (known ceiling): a single bare code with a cut verb is NOT routed deterministically', async () => {
-  // "cut a kw1" has no literal "key" word, a qty of 1, and is not a lone token, so
-  // the deterministic engine leaves it `unknown` and defers to the LLM route (or a
-  // "did you mean" prompt offline). Documented here so the ceiling is explicit and
-  // a future routing change is a deliberate decision, not an accident.
+test('routing: a cut verb with a single code is a key receipt', async () => {
   const r = await route('cut a kw1');
-  assert.equal(r.action, 'unknown');
+  assert.equal(r.action, 'receipt');
+  assert.equal(r.subtype, 'key');
 });
 
 test('routing: a bare courier or tracking number is a track lookup', async () => {

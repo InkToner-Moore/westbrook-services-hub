@@ -9,13 +9,34 @@ runtime dependency**.
 ## Run
 
 ```sh
-node scripts/parser-tests/run.mjs
+node scripts/parser-tests/run.mjs      # the unit assertions
+node scripts/parser-tests/sweep.mjs    # the counter corpus, scored
 ```
 
 Node 18+ (the repo targets Node 22/24). No network, no Firebase, no LLM proxy, no
-`yarn` script. `run.mjs` esbuild-bundles the deterministic engine (`@` -> `src`,
-with `jspdf` and `@/lib/firestore` stubbed so it loads under plain Node) and
+`yarn` script. `bundle.mjs` esbuild-bundles the deterministic engine (`@` -> `src`,
+with `jspdf` and `@/lib/firestore` stubbed so it loads under plain Node); `run.mjs`
 asserts against it with Node's built-in `node:test` runner.
+
+## The counter corpus
+
+`corpus.mjs` is a list of lines the way staff type them (lowercase, no "$", fields
+in any order, several things at once) with what the engine must read from each:
+the action, the receipt type, the fields, the shipment items, the keys. It also
+holds follow-ups: a slip is open, the counter types a few more words, and the
+slip must change the right way (or a new action must start).
+
+`sweep.mjs` runs every line and prints a score and each miss. It exits 1 on any
+miss. A line marked `known` is a documented gap: it is listed, not failed.
+
+```sh
+node scripts/parser-tests/sweep.mjs "ups 22 toronto"   # how one line is read
+node scripts/parser-tests/sweep.mjs --all              # passes too
+```
+
+This is the number to watch. Staff only reach for AI Mode if it reads them right
+nearly every time, so when it misreads something at the counter, add that line
+here first, then fix the engine until the sweep is clean again.
 
 ## What it covers
 
@@ -31,11 +52,8 @@ asserts against it with Node's built-in `node:test` runner.
 - **Charge math** (`chargeAmount` in `purchaseRecorder.ts`): a shipping receipt
   charges the item total, never `$0`.
 
-There is also one test that pins a **known ceiling** (`cut a kw1` is not routed
-deterministically), so a future routing change there is a deliberate decision.
-
 ## When you change the parser
 
-Add the utterance that broke (and its expected route/fields) here so it never
-regresses. If the LLM-structured-extraction work lands, the routing and
+Add the utterance that broke (and its expected route/fields) to `corpus.mjs` so it
+never regresses. If the LLM-structured-extraction work lands, the routing and
 segmentation assertions here are the contract the new path must still pass.

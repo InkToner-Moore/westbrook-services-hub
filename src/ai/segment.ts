@@ -9,7 +9,7 @@
 // route alone (they are attachments, handled inside one intent), so they glue back
 // to their neighbour. "clock in Dave" does route alone, so it splits off. This uses
 // the deterministic router as a free, offline probe - no network, no model.
-import { extractEmployeeName } from './extract';
+import { NOTE_LEAD, extractEmployeeName } from './extract';
 import { isDayList } from '@/lib/shiftParse';
 import { DeterministicProvider } from './providers/deterministic';
 
@@ -26,18 +26,29 @@ const STRONG_SEPARATOR = /\s*(?:\r?\n+|;+|\bthen\b|\balso\b|\bplus\b)\s*/i;
 // alone); "clock in Dave, clock in Sarah" becomes two.
 const SOFT_SEPARATOR = /(\s*,\s*|\s+and\s+)/i;
 
-async function routeOf(text: string): Promise<{ action: string; subtype?: string }> {
-  const t = text.trim();
-  if (!t) return { action: 'unknown' };
-  const intent = await probe.parse(t);
-  return { action: intent.action, subtype: intent.subtype };
+interface Probe {
+  action: string;
+  subtype?: string;
+  // False for 'unknown' and for a guess made from shape alone (an item and a
+  // price, a brand name). Only a sure route counts as an action of its own.
+  sure: boolean;
 }
 
-const isShipping = (r: { action: string; subtype?: string }) => r.action === 'receipt' && r.subtype === 'shipping';
+async function routeOf(text: string): Promise<Probe> {
+  const t = text.trim();
+  if (!t) return { action: 'unknown', sure: false };
+  const intent = await probe.parse(t);
+  return { action: intent.action, subtype: intent.subtype, sure: intent.action !== 'unknown' && intent.confidence >= 0.7 };
+}
+
+const isShipping = (r: Probe) => r.action === 'receipt' && r.subtype === 'shipping';
+// A courier, a tracking number or a shipment: pieces of one parcel when typed
+// with commas between them ("ups, 1Z999AA10123456784, to toronto, $22").
+const isParcel = (r: Probe) => isShipping(r) || r.action === 'track';
 
 // The deterministic route for a message, exposed so the chat can tell a follow-up
 // edit ("make it $40") from a new action ("clock in Dave").
-export async function probeRoute(text: string): Promise<{ action: string; subtype?: string }> {
+export async function probeRoute(text: string): Promise<Probe> {
   return routeOf(text);
 }
 
@@ -50,22 +61,29 @@ async function splitSoft(chunk: string): Promise<string[]> {
   const seps: string[] = [];
   raw.forEach((piece, i) => (i % 2 === 0 ? parts.push(piece) : seps.push(piece)));
   if (parts.length <= 1) return [chunk.trim()].filter(Boolean);
+  // A note is everything typed after "note": its commas and "and"s are part of
+  // what it says, not new requests.
+  if (NOTE_LEAD.test(chunk)) return [chunk.trim()];
 
   const segments: string[] = [];
   let current = parts[0];
   for (let i = 1; i < parts.length; i += 1) {
     const [currentRoute, partRoute] = await Promise.all([routeOf(current), routeOf(parts[i])]);
-    const bothRoute = currentRoute.action !== 'unknown' && partRoute.action !== 'unknown';
+    const bothRoute = currentRoute.sure && partRoute.sure;
     // Two shipments in a row stay one receipt: the shipping receipt holds several
     // items ("two labels"), so they are glued, not split into separate receipts.
-    const bothShipping = isShipping(currentRoute) && isShipping(partRoute);
+    // The same goes for a courier and its tracking number typed as two pieces.
+    const bothShipping = isParcel(currentRoute) && isParcel(partRoute) && !/\b(?:track|trace)\b/i.test(parts[i]);
     // A second timesheet clause with no name of its own is more about the same
     // person's shift ("Parsa took a 15 min break and left at 7:30"), not a new action.
     const sameShift =
       currentRoute.action === 'timesheet' && partRoute.action === 'timesheet' && !extractEmployeeName(parts[i]);
     // "Sue 10-5:30 oct 8, 9, 13": the days after each comma belong to the shift.
     const moreDays = currentRoute.action === 'timesheet' && isDayList(parts[i]);
-    if (bothRoute && !bothShipping && !sameShift && !moreDays) {
+    // Keys listed with "and" between them are one key receipt.
+    const isKeys = (r: Probe) => r.action === 'receipt' && r.subtype === 'key';
+    const bothKeys = isKeys(currentRoute) && isKeys(partRoute);
+    if (bothRoute && !bothShipping && !bothKeys && !sameShift && !moreDays) {
       segments.push(current);
       current = parts[i];
     } else {
@@ -83,7 +101,13 @@ export async function segmentUtterance(text: string): Promise<string[]> {
   const trimmed = text.trim();
   if (!trimmed) return [];
 
-  const strong = trimmed.split(STRONG_SEPARATOR).map((s) => s.trim()).filter(Boolean);
+  // A chunk after "then" / "plus" / a new line that is not an action on its own
+  // ("plus box $5", "then charge her card") carries on the one before it.
+  const strong: string[] = [];
+  for (const chunk of trimmed.split(STRONG_SEPARATOR).map((s) => s.trim()).filter(Boolean)) {
+    if (strong.length > 0 && !(await routeOf(chunk)).sure) strong[strong.length - 1] = `${strong[strong.length - 1]} and ${chunk}`;
+    else strong.push(chunk);
+  }
   const out: string[] = [];
   for (const chunk of strong) {
     const pieces = await splitSoft(chunk);

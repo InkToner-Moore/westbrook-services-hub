@@ -6,9 +6,14 @@
 import type { AiAction, AiParseContext, AiProvider, FieldValue, Intent, ReceiptSubtype } from '../types';
 import { getFieldSpecs } from '../fieldSpecs';
 import {
+  NOTE_LEAD,
+  bareAmounts,
   classifyTimesheetOp,
-  extractShiftAdjustment,
-  cleanRemainder,
+  courierLabel,
+  describeKey,
+  describeNote,
+  describeSale,
+  describeStockItem,
   domainName,
   extractAttachments,
   extractBrand,
@@ -16,6 +21,7 @@ import {
   extractCity,
   extractEmail,
   extractEmployeeName,
+  extractInStock,
   extractKeyItems,
   extractKeyLocationOp,
   extractModel,
@@ -24,114 +30,23 @@ import {
   extractOrderId,
   extractPacking,
   extractPhone,
+  extractPrice,
   extractProvince,
-  extractQuantity,
+  extractSaleQuantity,
+  extractShiftAdjustment,
   extractShippingCost,
-  stripPacking,
+  extractTaxToggle,
   extractTracking,
-  courierLabel,
   extractType,
   extractUrl,
+  hasCue,
+  provinceOfCity,
+  stripPacking,
   todayIso,
 } from '../extract';
 import { emptyShipmentItem } from '../shipping';
 import { describeDays, parseDays, parseTimeRange } from '@/lib/shiftParse';
 import { formatTime12 } from '@/lib/schedule';
-
-// Keyword groups per action. First match wins. Explicit noun-intents (orders,
-// notes, inventory, directory) are checked before the receipt subtypes so a
-// category word like "shipping" inside "add directory link ... shipping" does not
-// get mistaken for a shipping receipt.
-const ROUTES: Array<{ action: AiAction; subtype?: ReceiptSubtype; words: string[]; patterns?: RegExp[] }> = [
-  { action: 'cartridge_status', words: ['mark ready', 'set status', 'picked up', 'is ready', 'change status', 'mark as'] },
-  { action: 'cartridge_list', words: ['list orders', 'show orders', 'pending orders', 'all orders', 'open orders'] },
-  { action: 'cartridge_modify', words: ['modify order', 'edit order', 'update order', 'change order'] },
-  // "record a refill" is the Phase-2 presentation name for logging a cartridge
-  // order (the id and Firestore stay cartridge_*). Kept specific ("record a
-  // refill", not bare "record") so "record a note" still routes to note.
-  { action: 'cartridge_create', words: ['new order', 'cartridge order', 'refill order', 'create order', 'log an order', 'record a refill', 'record refill'] },
-  // Timesheet cues are distinctive ("shift", "schedule", "timesheet", "add
-  // employee", the old punch verbs), so this sits with the other explicit
-  // noun-intents. The single action fans into add_shift / adjust_shift / view /
-  // add_employee / punch_off in populateIntentFields (classifyTimesheetOp).
-  {
-    action: 'timesheet',
-    words: [
-      'clock in', 'clock out', 'clock-in', 'clock-out', 'clocked in', 'clocked out',
-      'punch in', 'punch out', 'punch the clock', 'punch clock',
-      'timesheet', 'time sheet', 'timecard', 'time card',
-      'add employee', 'new employee', 'hours for',
-    ],
-    patterns: [/\bshifts?\b/i, /\bschedule\b/i, /\bwho(?:'s|\s+is)\s+(?:working|on)\b/i],
-  },
-  { action: 'directory', words: ['directory', 'website', 'bookmark', 'add link', 'save link'] },
-  // A READ lookup ("is the HP 65 in stock?", "do we have", "price of", "where is
-  // that key") must be checked BEFORE the inventory WRITE and before track, so a
-  // stock/price/key question is answered instead of opening an edit or a parcel
-  // trace. Its cues are question-shaped so a write like "mark X in stock" still
-  // routes to inventory.
-  {
-    action: 'inventory_lookup',
-    words: [
-      'in stock?',
-      'do we have',
-      'do we carry',
-      'have any',
-      'price of',
-      'how much is',
-      'how much for',
-      "what's the price",
-      'whats the price',
-      'where is the key',
-      "where's the key",
-      'where is that key',
-      'location of',
-    ],
-  },
-  {
-    action: 'inventory',
-    words: ['inventory', 'in stock', 'out of stock', 'restock', 'key model'],
-    // A write verb aimed at a stock count, so "set KW1 to 10 units" or "adjust the
-    // HP 65 quantity" route to the inventory editor.
-    patterns: [/\b(set|add|adjust|update|change|restock|remove|reduce)\b[^.?!]*\b(stock|units?|qty|quantity|count|shelf|on hand)\b/i],
-  },
-  { action: 'note', words: ['note', 'remember', 'jot'] },
-  // Only explicit tracking verbs route here. A bare courier name (from a Track
-  // pill) or a lone tracking number falls back to track after the receipt routes,
-  // so a shipping receipt that names its courier is not mistaken for a lookup.
-  { action: 'track', words: ['track', 'where is', 'trace'] },
-  { action: 'receipt', subtype: 'refill', words: ['refill', 'refilled', 'toner refill'] },
-  // Explicit shipment words only. A bare courier name is deliberately NOT here: on
-  // its own it is a tracking lookup ("UPS 2818387529719764"), and a courier named
-  // with a real sale signal (price/province/destination) is caught as a shipping
-  // receipt by the courier+sale-signal fallback further down. Putting the courier
-  // here would misroute every parcel trace into a receipt.
-  { action: 'receipt', subtype: 'shipping', words: ['ship', 'shipment', 'courier', 'parcel', 'drop off', 'dropoff'] },
-  {
-    action: 'receipt',
-    subtype: 'key',
-    words: ['key cut', 'key cutting', 'cut a key', 'key copy', 'copy a key'],
-    // Phrase-tolerant: any cut/copy/duplicate verb near "key(s)", so "cut 2 keys"
-    // and "make me 3 key copies" both land here.
-    patterns: [
-      /\bkeys?\b[^.?!]*\b(?:cut|copy|copies|duplicat\w*|made|make)\b/i,
-      /\b(?:cut|copy|copies|duplicat\w*)\b[^.?!]*\bkeys?\b/i,
-    ],
-  },
-  { action: 'receipt', subtype: 'supplies', words: ['purchase', 'buy', 'bought', 'sold', 'sale', 'supply', 'supplies'] },
-  // Last, so a note or receipt that happens to say "left at 5" keeps its own
-  // route: someone reporting what really happened on a shift with no "shift"
-  // word in it ("Parsa left at 8 instead of 7", "Sue took a 30 min break").
-  {
-    action: 'timesheet',
-    words: [],
-    patterns: [
-      /\b(?:left|stayed|finished|started|came\s+in|got\s+in|arrived)\s+(?:work\s+)?(?:at|until|till|til)\s+\d{1,2}\b/i,
-      /\b\d{1,3}\s*-?\s*(?:m|min|mins|minutes?|hours?|hrs?)\s+(?:break|lunch)\b/i,
-      /\b(?:break|lunch)\s+(?:of|for)\s+\d{1,3}\b/i,
-    ],
-  },
-];
 
 // Separators between shipment pieces: "and"/"plus"/"+", a semicolon, a newline, or
 // a comma that is NOT inside a number (so "$1,299.99" stays whole). A comma also
@@ -148,7 +63,7 @@ const pieceHasCourier = (piece: string): boolean => {
 // punctuation between them ("... UPS ... $53 fedex ... $33"). Letter-boundaries
 // (not \b word-boundaries) so a courier glued to digits still matches
 // ("...4167382277fedex..."), while "groups"/"backups" do not.
-const COURIER_TOKENS = /(?<![a-z])(ups|fedex|fed\s?ex|purolator|canada\s?post|dhl)(?![a-z])/gi;
+const COURIER_TOKENS = /(?<![a-z])(ups|fed\s?ex|puro(?:lator)?|canada\s?post|dhl)(?![a-z])/gi;
 
 // Split one chunk at each courier name after the first, so several parcels typed
 // with no separator still become separate items. Text before the first courier
@@ -165,21 +80,24 @@ function splitByCourier(chunk: string): string[] {
 }
 
 // Parse one or more shipment items from a shipping utterance. Pieces are grouped
-// into items: a new item starts only when a piece names a NEW courier/tracking
-// while the current item already has one, so "UPS to Toronto ON $22 and FedEx to
-// Vancouver BC $30" is two items but "to Vancouver, UPS, $22" is one. Always
-// returns at least one item so the editor has a row.
+// into items: a new item starts only when a piece names a courier while the
+// current item already has one (or a second tracking number), so "UPS to Toronto
+// ON $22 and FedEx to Vancouver BC $30" is two items but "to Vancouver, UPS, $22"
+// and "ups, 1Z999AA10123456784, to toronto" are one. Always returns at least one
+// item so the editor has a row.
 function extractShipmentItems(text: string) {
   const base = emptyShipmentItem();
   const build = (piece: string) => {
     const match = extractTracking(piece);
     const { trackingNumber } = match;
+    const city = extractCity(piece) ?? '';
     return {
       ...emptyShipmentItem(),
       courier: courierLabel(match),
       trackingNumber: trackingNumber ?? '',
-      city: extractCity(piece) ?? '',
-      province: extractProvince(piece) ?? base.province,
+      city,
+      // The province as typed, else the one the city is in, else the shop's own.
+      province: extractProvince(piece) ?? provinceOfCity(city) ?? base.province,
       // Strip packing ("box $5") before pricing so a packing amount interleaved
       // among the shipment fields is never taken as the shipping cost.
       cost: extractShippingCost(stripPacking(piece), trackingNumber, extractPhone(piece)) ?? null,
@@ -190,8 +108,15 @@ function extractShipmentItems(text: string) {
   const groups: string[] = [];
   let current: string | null = null;
   for (const piece of pieces) {
+    // A courier counts when it is named in words: a "1Z..." number implies UPS,
+    // but it belongs to the UPS already named, it does not start a second parcel.
+    const names = (t: string) => new RegExp(COURIER_TOKENS.source, 'i').test(t);
+    const second =
+      current !== null &&
+      ((names(piece) && names(current)) ||
+        Boolean(extractTracking(piece).trackingNumber && extractTracking(current).trackingNumber));
     if (current === null) current = piece;
-    else if (pieceHasCourier(piece) && pieceHasCourier(current)) {
+    else if (second) {
       groups.push(current);
       current = piece;
     } else current = `${current} ${piece}`;
@@ -208,18 +133,17 @@ function extractShipmentItems(text: string) {
 }
 
 // Signals that a courier/tracking utterance is a shipment SALE (a receipt), not a
-// bare parcel trace: a stated price, a Canadian province, a decimal amount, or a
+// bare parcel trace: a price (with or without the "$"), a province, a city, or a
 // "to <Place>" destination. A lone courier or tracking number has none of these.
 function looksLikeShipmentSale(text: string): boolean {
+  const { trackingNumber } = extractTracking(text);
   return (
     extractMoney(text) !== null ||
     extractProvince(text) !== null ||
-    /\b\d{1,4}\.\d{2}\b/.test(text) ||
-    /\bto\s+[A-Z][a-z]+/.test(text)
+    extractCity(text) !== null ||
+    bareAmounts(text, [trackingNumber]).length > 0
   );
 }
-
-const RECEIPT_HINT = ['receipt', 'invoice'];
 
 // Words that make an inventory utterance a WRITE (add or change stock). Their
 // absence, on a lone code, is what marks a read lookup.
@@ -239,16 +163,226 @@ function looksLikeInventoryLookup(text: string): boolean {
 }
 
 // Several keys, or a key with a quantity, or the word "key" alongside a code:
-// "2 kw1s 1 y1 and 2 sc4s", "2 kw1s", "cut a kw1". This is a key-cutting SALE, so
-// it routes to a key receipt. A single bare code with no quantity is handled by
-// looksLikeInventoryLookup first (a price/stock lookup), so it never reaches here.
+// "2 kw1s 1 y1 and 2 sc4s", "2 kw1s", "kw1 x2". This is a key-cutting SALE, so it
+// routes to a key receipt. A single bare code with no quantity is a lookup. A
+// three-digit code ("TN660") is a cartridge far more often than a key blank, so on
+// its own it is not enough to call the line a key order.
 function looksLikeKeyOrder(text: string): boolean {
-  const items = extractKeyItems(text);
+  const items = extractKeyItems(text).filter((it) => !/\d{3}$/.test(it.model));
   if (items.length === 0) return false;
-  const hasKeyWord = /\bkeys?\b/i.test(text);
-  const anyQty = items.some((it) => it.qty > 1) || /\b\d{1,3}\s+[A-Za-z]{1,3}\d/.test(text);
-  return items.length >= 2 || hasKeyWord || anyQty;
+  return items.length >= 2 || /\bkeys?\b/i.test(text) || items.some((it) => it.qty > 1) || /(?<![\d$.])\d{1,2}\s*x?\s+[A-Za-z]{1,3}\d/.test(text);
 }
+
+// --- Routing ----------------------------------------------------------------------
+// One utterance, one route. The rules below are tried in order and the first that
+// fits wins, so the order IS the priority: an explicit request word ("note",
+// "refill", "sold") beats anything inferred from what the line happens to mention.
+// Cue words match as whole words only. `weak` marks a guess made from shape alone
+// (an item and a price, a brand name); those score under the trust threshold, so
+// the LLM gets a say when it is on, the splitter does not treat them as a second
+// action, and a slip that is already open takes them as an edit.
+interface Route {
+  action: AiAction;
+  subtype?: ReceiptSubtype;
+  confidence: number;
+  weak?: boolean;
+}
+type Rule = (text: string) => Route | null;
+
+const strong = (action: AiAction, confidence: number, subtype?: ReceiptSubtype): Route => ({ action, subtype, confidence });
+const weak = (action: AiAction, subtype?: ReceiptSubtype): Route => ({ action, subtype, confidence: 0.6, weak: true });
+
+const QUESTION_START = /^\s*(?:is|are|do|does|did|have|has|got|any|how|where|wheres|where's|which|what|whats|what's|check|can|could)\b/i;
+const isQuestion = (text: string) => /\?\s*$/.test(text) || QUESTION_START.test(text);
+const hasThing = (text: string) => extractKeyItems(text).length > 0 || extractBrand(text) !== null || extractModel(text) !== null;
+
+const SERVICE_WORDS = [
+  'print', 'printing', 'printed', 'printout', 'printouts', 'photocopy', 'photocopies', 'copies', 'fax', 'faxed',
+  'faxing', 'scan', 'scanning', 'scanned', 'laminate', 'laminating', 'laminated', 'lamination', 'binding',
+];
+
+const RULES: Rule[] = [
+  // A line that opens with "note" (or "remind me", "todo") is a note, whatever it
+  // goes on to mention.
+  (t) => (NOTE_LEAD.test(t) ? strong('note', 0.9) : null),
+
+  // A cartridge status change: a status word plus an order id or a change verb.
+  // A bare mention of "pickup" is not enough ("dropped off a Canon for pickup" is
+  // a new order).
+  (t) => {
+    const status = extractCartridgeStatus(t);
+    if (status && (extractOrderId(t) || /\b(mark|marked|set|change|update|status)\b/i.test(t))) return strong('cartridge_status', 0.8);
+    return hasCue(t, 'mark ready', 'set status', 'picked up', 'is ready', 'change status', 'mark as') ? strong('cartridge_status', 0.75) : null;
+  },
+
+  // A board move/clear ("put SC1 in B3", "B3 is empty"). Before the lookup, so a
+  // placing cue wins while a bare code ("B2") stays a lookup.
+  (t) => (extractKeyLocationOp(t) ? strong('key_location', 0.9) : null),
+
+  // Shifts and hours: the distinctive words, and the ways people ask who is in.
+  (t) =>
+    hasCue(
+      t,
+      'clock in', 'clock out', 'clock-in', 'clock-out', 'clocked in', 'clocked out', 'punch in', 'punch out',
+      'punch the clock', 'punch clock', 'timesheet', 'time sheet', 'timecard', 'time card', 'add employee',
+      'new employee', 'hours for', 'shift', 'shifts', 'schedule',
+    ) ||
+    /\bwho(?:'?s|\s+is)?\s+(?:working|on|in|works|scheduled|here)\b/i.test(t) ||
+    /\bwhen\s+(?:does|is|do|did)\s+\w+\s+work(?:ing)?\b/i.test(t) ||
+    /\b(?:is|was)\s+\w+\s+(?:working|scheduled)\b/i.test(t)
+      ? strong('timesheet', 0.8)
+      : null,
+
+  // A lone code is a lookup of its price / stock / spot. A lone number could be a
+  // cartridge ("65") but is as likely an answer to a slip, so it is only a guess.
+  (t) => {
+    if (!looksLikeInventoryLookup(t)) return null;
+    return /[A-Za-z]/.test(t) ? strong('inventory_lookup', 0.8) : weak('inventory_lookup');
+  },
+
+  // "where is ...": a parcel when it names a courier or a number, else a key.
+  (t) => {
+    if (!/\bwhere(?:'?s|\s+is|\s+are)\b/i.test(t)) return null;
+    if (pieceHasCourier(t) || hasCue(t, 'package', 'parcel', 'shipment', 'order')) return strong('track', 0.8);
+    return strong('inventory_lookup', 0.75);
+  },
+
+  // A question about stock or price is a lookup, never an edit.
+  (t) => {
+    const cue =
+      hasCue(
+        t,
+        'do we have', 'do we carry', 'have any', 'got any', 'price of', 'price on', 'price for', 'how much',
+        'how many', 'the price', 'check stock', 'stock check', 'which slot', 'which hook', 'what slot', 'location of',
+      ) || /\bany\b.*\bleft\b/i.test(t);
+    if (cue) return strong('inventory_lookup', 0.8);
+    if (hasCue(t, 'in stock') && isQuestion(t)) return strong('inventory_lookup', 0.8);
+    if (hasCue(t, 'price') && extractMoney(t) === null && !INVENTORY_WRITE_VERB.test(t) && hasThing(t)) return strong('inventory_lookup', 0.75);
+    if (QUESTION_START.test(t) && /^\s*(?:is|are|do|does|have|has|got|any)\b/i.test(t) && hasThing(t) && !pieceHasCourier(t)) return strong('inventory_lookup', 0.75);
+    return null;
+  },
+
+  // Telling us something ran out, or is back.
+  (t) =>
+    /\bout\s+of\s+stock\b|\bsold\s+out\b|\bran\s+out\s+of\b|\b(?:we'?re|were|we\s+are|i'?m|im)\s+out\s+of\b|\bback\s+in\s+stock\b/i.test(t)
+      ? strong('inventory', 0.8)
+      : null,
+
+  // The refill records: list them, change one, log a new one.
+  (t) =>
+    hasCue(t, 'list orders', 'show orders', 'pending orders', 'all orders', 'open orders') ||
+    (/\b(?:list|show|see|pending|open|all|outstanding|what|which)\b[^.?!]*\b(?:orders|refills|records)\b/i.test(t) && extractMoney(t) === null)
+      ? strong('cartridge_list', 0.8)
+      : null,
+  (t) => (hasCue(t, 'modify order', 'edit order', 'update order', 'change order') ? strong('cartridge_modify', 0.75) : null),
+  (t) => {
+    if (hasCue(t, 'new order', 'cartridge order', 'refill order', 'create order', 'log an order', 'log order', 'record a refill', 'record refill')) {
+      return strong('cartridge_create', 0.8);
+    }
+    // A cartridge left with us to work on: "sarah dropped off an hp 65".
+    const left = /\b(?:dropped|dropping|drops?|left|leaving|brought|bringing)\b/i.test(t);
+    const cartridge = extractBrand(t) !== null || hasCue(t, 'cartridge', 'cartridges', 'toner', 'ink', 'refill');
+    return left && cartridge && !pieceHasCourier(t) ? strong('cartridge_create', 0.8) : null;
+  },
+
+  (t) =>
+    hasCue(t, 'directory', 'website', 'bookmark', 'add link', 'save link', 'add site', 'save site') ||
+    (extractUrl(t) !== null && /\b(?:add|save|bookmark)\b/i.test(t))
+      ? strong('directory', 0.8)
+      : null,
+
+  // An inventory write: the word itself, or a write verb aimed at a stock count
+  // ("set KW1 to 10 units", "adjust the HP 65 quantity").
+  (t) =>
+    hasCue(t, 'inventory', 'restock', 'restocked', 'in stock', 'key model') ||
+    /\b(set|add|adjust|update|change|restock|remove|reduce|mark)\b[^.?!]*\b(stock|units?|qty|quantity|count|shelf|on hand)\b/i.test(t)
+      ? strong('inventory', 0.75)
+      : null,
+
+  (t) => (hasCue(t, 'note', 'notes', 'remember', 'jot', 'reminder', 'remind me') ? strong('note', 0.75) : null),
+
+  // Only explicit tracking verbs route here. A bare courier name or a lone
+  // tracking number is decided further down, after the receipt routes.
+  (t) => (hasCue(t, 'track', 'trace') ? strong('track', 0.8) : null),
+
+  (t) => (hasCue(t, 'refill', 'refills', 'refilled', 'refilling', 'refil', 're-fill') ? strong('receipt', 0.75, 'refill') : null),
+
+  // Explicit shipment words. A bare courier name is deliberately not here: on its
+  // own it is a tracking lookup, and with a sale signal it is caught further down.
+  (t) =>
+    hasCue(t, 'ship', 'shipping', 'shipped', 'shipment', 'courier', 'parcel', 'parcels', 'drop off', 'dropoff')
+      ? strong('receipt', 0.75, 'shipping')
+      : null,
+
+  // Key cutting: the phrase, a cut/copy verb with a code, an order of several
+  // codes, or a key with a price on it ("mailbox key 5 bucks").
+  (t) => {
+    const cutVerb = /\b(?:cut|cutting|copy|copies|duplicat\w*)\b/i.test(t);
+    if (
+      hasCue(t, 'key cut', 'key cutting', 'cut a key', 'key copy', 'copy a key') ||
+      /\bkeys?\b[^.?!]*\b(?:cut|copy|copies|duplicat\w*|made|make)\b/i.test(t) ||
+      /\b(?:cut|copy|copies|duplicat\w*)\b[^.?!]*\bkeys?\b/i.test(t) ||
+      (cutVerb && extractKeyItems(t).length > 0) ||
+      looksLikeKeyOrder(t)
+    ) {
+      return strong('receipt', 0.8, 'key');
+    }
+    return /\bkeys?\b/i.test(t) && extractPrice(t, 'sale') !== null ? strong('receipt', 0.7, 'key') : null;
+  },
+
+  // A sale: the word, or a counter service with a number on it ("20 copies $5").
+  // "print a label" has no number, so it stays a side action of another receipt.
+  (t) => {
+    if (hasCue(t, 'purchase', 'purchased', 'buy', 'bought', 'sold', 'sell', 'selling', 'sale', 'supply', 'supplies')) return strong('receipt', 0.75, 'supplies');
+    return hasCue(t, ...SERVICE_WORDS) && /\d/.test(t) ? strong('receipt', 0.75, 'supplies') : null;
+  },
+
+  // Someone reporting what really happened on a shift with no "shift" word in it
+  // ("Parsa left at 8 instead of 7", "Sue took a 30 min break"). Down here so a
+  // note or a receipt that happens to say "left at 5" keeps its own route.
+  (t) =>
+    /\b(?:left|stayed|finished|started|came\s+in|got\s+in|arrived)\s+(?:work\s+)?(?:at|until|till|til)\s+\d{1,2}\b/i.test(t) ||
+    /\b(?:left|stayed|finished|started|came\s+in|got\s+in|arrived)\s+(?:\d{1,2}:\d{2}|\d{1,2}\s*(?:am|pm)\b|\d{1,2}\s+(?:today|yesterday|tonight)\b)/i.test(t) ||
+    /\b\d{1,3}\s*-?\s*(?:m|min|mins|minutes?|hours?|hrs?)\s+(?:break|lunch)\b/i.test(t) ||
+    /\b(?:break|lunch)\s+(?:of|for)\s+\d{1,3}\b/i.test(t)
+      ? strong('timesheet', 0.75)
+      : null,
+
+  // A name, a time range and a day with no money in it is a shift being planned
+  // ("Sue 10-5:30 oct 8, 9"), even with no "shift" word.
+  (t) => {
+    if (/\$/.test(t)) return null;
+    const range = parseTimeRange(t);
+    const dated = range && (parseDays(range.rest).length > 0 || /\bworked\b/i.test(t));
+    return dated && extractEmployeeName(t) ? strong('timesheet', 0.75) : null;
+  },
+
+  // "receipt"/"invoice" is an explicit intent word, most often the Receipt quick
+  // action prepending it ("receipt kw1"). The subtype is picked from what the
+  // text names, below.
+  (t) => (hasCue(t, 'receipt', 'invoice') ? strong('receipt', 0.8) : null),
+
+  // A courier or a tracking number with nothing else said. With a price or a
+  // destination it is a shipment being rung up; bare, it is a parcel to trace
+  // (which is what a Track pill sends).
+  (t) => {
+    if (!pieceHasCourier(t)) return null;
+    return looksLikeShipmentSale(t) ? strong('receipt', 0.75, 'shipping') : strong('track', 0.75);
+  },
+
+  // From here down it is shape, not words. A brand with a price is most likely a
+  // refill being rung up; a brand alone is most likely a question about it.
+  (t) => {
+    if (extractBrand(t) === null) return null;
+    return extractPrice(t, 'loose', [extractModel(t)]) !== null ? weak('receipt', 'refill') : weak('inventory_lookup');
+  },
+
+  // Some words and a price: a sale of whatever the words are ("tape 4.99").
+  (t) => {
+    if (/^\s*(?:make|change|actually|its|it's|it\s+is|no|yes|ok|okay|sorry|add|and|also|plus|to|with|for)\b/i.test(t)) return null;
+    return /[A-Za-z]{2,}/.test(t) && extractPrice(t, 'sale') !== null ? weak('receipt', 'supplies') : null;
+  },
+];
 
 // Provenance helpers.
 const explicit = <T>(value: T): FieldValue<T> => ({ value, source: 'explicit' });
@@ -262,19 +396,38 @@ function fieldFrom<T>(found: T | null, fallback?: { value: T; reason: string }):
   return absent();
 }
 
+// The price on a flat receipt. A "$" always wins; otherwise a bare number is read
+// the way that route means it. A refill has no count, so any spare number is the
+// price ("hp 61xl refill 30"). On a sale a number can be a count ("3 pens 4.50").
+// A key order is priced from inventory, and a refill record often has no price,
+// so those two only take a price that is clearly marked as one.
+function priceFor(intent: Intent, text: string): number | null {
+  if (intent.action !== 'receipt') return extractMoney(text);
+  if (intent.subtype === 'refill') return extractPrice(text, 'loose', [extractModel(text)]);
+  if (intent.subtype === 'key' && extractKeyItems(text).length > 0) return extractMoney(text);
+  return extractPrice(text, 'sale');
+}
+
 // Fill the fields declared by a spec, using the right extractor per key.
-function fillFields(specKeys: string[], text: string): Record<string, FieldValue<unknown>> {
+function fillFields(specKeys: string[], text: string, intent: Intent): Record<string, FieldValue<unknown>> {
   const fields: Record<string, FieldValue<unknown>> = {};
+  const price = specKeys.includes('price') ? priceFor(intent, text) : null;
+  const quantity = specKeys.includes('quantity') ? extractSaleQuantity(text) : null;
+  // The line may lead with the customer on a shipment, a refill or a drop-off
+  // ("Hannah Lemmington UPS ..."); on a sale the leading words are the item.
+  const leading = intent.subtype === 'shipping' || intent.subtype === 'refill' || intent.action === 'cartridge_create';
   for (const key of specKeys) {
     switch (key) {
       case 'date':
         fields[key] = guessed(todayIso(), "today's date");
         break;
-      case 'gst':
-        fields[key] = guessed(true, 'GST applied by default');
+      case 'gst': {
+        const said = extractTaxToggle(text);
+        fields[key] = said === null ? guessed(true, 'GST applied by default') : explicit(said);
         break;
+      }
       case 'quantity':
-        fields[key] = fieldFrom(extractQuantity(text), { value: 1, reason: 'defaulted to 1' });
+        fields[key] = fieldFrom(quantity, { value: 1, reason: 'defaulted to 1' });
         break;
       case 'brand':
         fields[key] = fieldFrom(extractBrand(text));
@@ -286,10 +439,10 @@ function fillFields(specKeys: string[], text: string): Record<string, FieldValue
         fields[key] = fieldFrom(extractModel(text));
         break;
       case 'price':
-        fields[key] = fieldFrom(extractMoney(text));
+        fields[key] = fieldFrom(price);
         break;
       case 'customerName':
-        fields[key] = fieldFrom(extractName(text));
+        fields[key] = fieldFrom(extractName(text, { leading }));
         break;
       case 'customerPhone':
         fields[key] = fieldFrom(extractPhone(text));
@@ -315,18 +468,27 @@ function fillFields(specKeys: string[], text: string): Record<string, FieldValue
       case 'linkCategory':
         fields[key] = guessed('other', 'default category');
         break;
-      case 'inStock':
-        fields[key] = guessed(true, 'in stock by default');
+      case 'inStock': {
+        const said = extractInStock(text);
+        fields[key] = said === null ? guessed(true, 'in stock by default') : explicit(said);
         break;
-      // Free-text bodies: seed from the leftover words, else leave for the user.
+      }
+      // The free-text fields: what is left once everything else is taken out.
       case 'content':
-      case 'item':
+        fields[key] = fieldFrom(describeNote(text));
+        break;
       case 'keyName':
-        fields[key] = fieldFrom(cleanRemainder(text));
+        fields[key] = fieldFrom(describeStockItem(text));
+        break;
+      case 'supply':
+        fields[key] = fieldFrom(describeSale(text, price, quantity));
+        break;
+      // A key order's summary is written once its blanks are priced
+      // (resolveKeyPrices); a key with no code is described from the words.
+      case 'keyModel':
+        fields[key] = extractKeyItems(text).length > 0 ? absent() : fieldFrom(describeKey(text, price));
         break;
       // Free-text fields we cannot reliably auto-fill: leave for the user.
-      case 'supply':
-      case 'keyModel':
       case 'notes':
       case 'linkDescription':
       default:
@@ -342,7 +504,6 @@ export class DeterministicProvider implements AiProvider {
 
   async parse(utterance: string, context?: AiParseContext): Promise<Intent> {
     const text = utterance;
-    const lower = utterance.toLowerCase();
 
     // The user corrected a misroute: take the forced action as given and only
     // run extraction. Confidence 1 because the human chose it.
@@ -357,126 +518,26 @@ export class DeterministicProvider implements AiProvider {
       return forced;
     }
 
-    let action: AiAction = 'unknown';
-    let subtype: ReceiptSubtype | undefined;
-    let confidence = 0;
-    let runnerUp: Intent['runnerUp'];
+    // The first rule that fits wins. The next one that fits with a different
+    // route (and is not just a shape guess) is kept as the runner-up, so the
+    // slip can offer a one-tap "or did you mean ...?".
+    const fits = RULES.map((rule) => rule(text)).filter((r): r is Route => r !== null);
+    const winner = fits[0];
+    const action: AiAction = winner?.action ?? 'unknown';
+    let subtype = winner?.subtype;
+    const confidence = winner?.confidence ?? 0;
+    const alt = winner && !NOTE_LEAD.test(text)
+      ? fits.find((r) => !r.weak && (r.action !== winner.action || r.subtype !== winner.subtype))
+      : undefined;
+    const runnerUp: Intent['runnerUp'] = alt ? { action: alt.action, subtype: alt.subtype } : undefined;
 
-    // Content-based routing for a cartridge status change: a status word, plus an
-    // order id or a clear "mark/set/order/status" cue. This catches phrasings the
-    // fixed keyword list misses (e.g. "mark ORD-AB12CD as ready"). Strong signal.
-    // A status CHANGE needs an order id or an explicit change verb. A bare mention
-    // of "pickup" is not enough (e.g. "dropped off a Canon for pickup" is a new
-    // order, not a status change), so the guard no longer fires on "order"/"pickup"
-    // alone.
-    const statusHint = extractCartridgeStatus(text);
-    if (statusHint && (extractOrderId(text) || /\b(mark|marked|set|change|update|status)\b/i.test(lower))) {
-      action = 'cartridge_status';
-      confidence = 0.8;
-    }
-
-    // A board move/clear ("put SC1 in B3", "B3 is empty", "move HR1 to H1").
-    // Checked before the lookup so a placing cue wins, while a bare code ("B2")
-    // still falls through to inventory_lookup below.
-    if (action === 'unknown' && extractKeyLocationOp(text)) {
-      action = 'key_location';
-      confidence = 0.9;
-    }
-
-    // A lone SKU / key code, with or without a trailing "?", is a READ lookup of
-    // its price / stock / location, not a stock edit. Inventory WRITES always carry
-    // a verb (add, mark, restock, set, out of stock); a bare code does not. This
-    // decides it deterministically so "KW1" and "KW1?" never depend on the model,
-    // which tends to guess the write. See the inventory_lookup route below.
-    if (action === 'unknown' && looksLikeInventoryLookup(text)) {
-      action = 'inventory_lookup';
-      confidence = 0.8;
-    }
-
-    // Several keys, a quantity, or "key" plus a code is a key-cutting sale. A lone
-    // code was already taken as a lookup above, so this only catches real orders.
-    if (action === 'unknown' && looksLikeKeyOrder(text)) {
-      action = 'receipt';
-      subtype = 'key';
-      confidence = 0.8;
-    }
-
-    if (action === 'unknown') {
-      // Score every route by how many of its keywords hit. The DECISION is
-      // unchanged from the original first-match-wins: the winner is the earliest
-      // matching route in priority order. Scores only grade confidence and pick a
-      // runner-up (the next matching route of a different action), so the
-      // confirmation card can offer a one-tap correction on a close call.
-      const matches = ROUTES.map((route) => ({
-        route,
-        hits:
-          route.words.filter((w) => lower.includes(w)).length +
-          (route.patterns?.filter((re) => re.test(text)).length ?? 0),
-      })).filter((m) => m.hits > 0);
-
-      if (matches.length > 0) {
-        const winner = matches[0];
-        action = winner.route.action;
-        subtype = winner.route.subtype;
-
-        const alt = matches.find((m) => m.route.action !== action);
-        const closeCall = !!alt && alt.hits >= winner.hits;
-        // Base trust for a keyword hit, plus a little for extra corroborating
-        // words; a genuine cross-action ambiguity pulls it down so the LLM gate
-        // and the top-2 prompt both engage.
-        confidence = Math.min(0.92, 0.7 + 0.08 * (winner.hits - 1));
-        if (closeCall) {
-          confidence = Math.min(confidence, 0.5);
-          runnerUp = { action: alt.route.action, subtype: alt.route.subtype };
-        }
-      }
-    }
-
-    // A name, a time range and a day with no money in it is a shift being planned
-    // ("Sue 10-5:30 oct 8, 9"), even with no "shift" word.
-    if (action === 'unknown' && !/\$/.test(text)) {
-      const range = parseTimeRange(text);
-      if (range && parseDays(range.rest).length > 0 && extractEmployeeName(text)) {
-        action = 'timesheet';
-        confidence = 0.75;
-      }
-    }
-
-    if (action === 'unknown' && RECEIPT_HINT.some((w) => lower.includes(w))) {
-      // "receipt"/"invoice" is an explicit intent word, most often the Receipt
-      // quick action prepending "receipt" (giving "receipt kw1"). Trust it above
-      // the local-routing threshold so a concrete subtype is resolved below and
-      // the LLM clarify never fires on an already-decided receipt.
-      action = 'receipt';
-      confidence = 0.8;
-    }
-
-    // Bare courier name or lone tracking number, with no other intent: a lookup.
-    // This is what a Track pill (which prepends just the courier) relies on. A
-    // courier or a full tracking number is unambiguous, so trust it. But a price in
-    // the same breath means this is a shipping SALE being rung up (a receipt), not a
-    // parcel trace, so route it to a shipping receipt instead.
-    if (action === 'unknown') {
-      const { courier, trackingNumber } = extractTracking(text);
-      if (courier || trackingNumber) {
-        if (looksLikeShipmentSale(text)) {
-          action = 'receipt';
-          subtype = 'shipping';
-          confidence = 0.75;
-        } else {
-          action = 'track';
-          confidence = 0.75;
-        }
-      }
-    }
-
-    // A receipt with no subtype yet (e.g. the "Receipt" quick action prepends the
-    // word "receipt", giving "receipt kw1"): pick one from what the text names, so
-    // it does not fall through to an empty, un-fillable slip. Keys win, then a
-    // courier/tracking shipment, else a plain supplies sale.
+    // A receipt with no subtype yet ("receipt kw1"): pick one from what the text
+    // names, so it does not fall through to an empty, un-fillable slip. Keys win,
+    // then a courier/tracking shipment, else a plain supplies sale.
     if (action === 'receipt' && !subtype) {
       if (extractKeyItems(text).length > 0) subtype = 'key';
       else if (pieceHasCourier(text)) subtype = 'shipping';
+      else if (extractBrand(text)) subtype = 'refill';
       else subtype = 'supplies';
     }
 
@@ -516,13 +577,16 @@ export function populateIntentFields(intent: Intent, text: string): void {
     } else if (op === 'adjust_shift') {
       const adj = extractShiftAdjustment(text);
       // Drop the times and the break so their numbers are not read as days.
-      const dayText = text
+      const range = parseTimeRange(text);
+      const dayText = (range ? range.rest : text)
         .replace(/\b(?:at|until|till|til|of|than)\s+\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm)?/gi, ' ')
         .replace(/\d{1,3}\s*-?\s*(?:m|min|mins|minutes?|hours?|hrs?)\b/gi, ' ');
       const days = parseDays(dayText);
       fields.days = days.length ? explicit(describeDays(days.slice(0, 1))) : guessed('Today', 'no day given');
-      fields.actualStart = adj.start ? explicit(adj.start) : absent();
-      fields.actualEnd = adj.end ? explicit(adj.end) : absent();
+      // "sue worked 10-6 today": the range is the actual start and end.
+      const worked = range && (/\bworked\b/i.test(text) || (!adj.start && !adj.end)) ? range : null;
+      fields.actualStart = worked ? explicit(formatTime12(worked.start)) : adj.start ? explicit(adj.start) : absent();
+      fields.actualEnd = worked ? explicit(formatTime12(worked.end)) : adj.end ? explicit(adj.end) : absent();
       fields.breakMinutes = adj.breakMinutes != null ? explicit(adj.breakMinutes) : absent();
     } else if (op === 'view') {
       const days = parseDays(text);
@@ -548,7 +612,7 @@ export function populateIntentFields(intent: Intent, text: string): void {
   // Fill fields for actions that have a confirmation spec.
   const specs = getFieldSpecs(intent);
   if (specs) {
-    intent.fields = fillFields(specs.map((s) => s.key), text);
+    intent.fields = fillFields(specs.map((s) => s.key), text, intent);
   }
 
   // Shipping carries a repeated item block. Seed one item from whatever the
@@ -561,7 +625,8 @@ export function populateIntentFields(intent: Intent, text: string): void {
   // Packing supplies ("box $4", "large box $10") can ride on any receipt, most
   // often a shipment. Captured so they are not silently dropped; they show on the
   // slip and are added to the receipt total on confirm.
-  if (action === 'receipt') {
+  // On a plain sale the box IS the item sold, so it is not added a second time.
+  if (action === 'receipt' && subtype !== 'supplies') {
     const packing = extractPacking(text);
     if (packing.length > 0) intent.fields.packing = { value: packing, source: 'explicit' };
   }
@@ -574,7 +639,9 @@ export function populateIntentFields(intent: Intent, text: string): void {
   if (action === 'receipt') {
     const attachKeys = subtype === 'key' || subtype === 'shipping' || /\bkeys?\b/i.test(text);
     if (attachKeys) {
-      const keyItems = extractKeyItems(text);
+      // On a shipment only a short blank code rides along ("... and 2 kw1"); a
+      // longer one is more likely a cartridge or part of the address.
+      const keyItems = extractKeyItems(text).filter((it) => subtype === 'key' || !/\d{3}$/.test(it.model));
       if (keyItems.length > 0) intent.fields.keyItems = { value: keyItems, source: 'explicit' };
     }
   }
@@ -603,13 +670,14 @@ export function populateIntentFields(intent: Intent, text: string): void {
     const cleaned = text
       .toLowerCase()
       .replace(
-        /\b(?:is|are|do|does|did|we|the|a|an|any|have|carry|got|in|out|of|stock|price|priced|cost|costs|how|much|for|where|located|location|whats|what)\b/gi,
+        /\b(?:is|are|do|does|did|we|the|a|an|any|have|carry|got|in|out|of|on|stock|price|priced|cost|costs|how|much|many|for|where|wheres|located|location|whats|what|which|slot|hook|spot|there|left|check|that|this|it)\b/gi,
         ' ',
       )
       .replace(/['?.,]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-    const query = bm || cleaned;
+    const codes = extractKeyItems(text);
+    const query = bm || (codes.length === 1 ? codes[0].model : cleaned);
     intent.fields = {
       query: query ? explicit(query) : absent(),
       brand: brand ? explicit(brand) : absent(),

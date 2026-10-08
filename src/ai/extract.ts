@@ -20,12 +20,39 @@ export function extractEmail(text: string): string | null {
   return m ? m[0] : null;
 }
 
+// A cue word or phrase as a whole word (no letter on either side), so "ups" is
+// not found inside "cups", "note" inside "notebook" or "ship" inside "membership".
+const cueCache = new Map<string, RegExp>();
+export function hasCue(text: string, ...phrases: string[]): boolean {
+  return phrases.some((phrase) => {
+    let re = cueCache.get(phrase);
+    if (!re) {
+      const body = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+      re = new RegExp(`(?<![a-z])${body}(?![a-z])`, 'i');
+      cueCache.set(phrase, re);
+    }
+    return re.test(text);
+  });
+}
+
+// A number the counter labelled as a tracking number ("tracking 1234567890"), or
+// the ten digits right after "DHL" (a DHL waybill). Without the label a ten-digit
+// run reads as a phone, so the label is what tells them apart.
+const TRACKING_CUE = /\b(?:tracking|trk)(?:\s*(?:number|num|no\.?|#|is|:))*\s*([A-Z0-9]{8,30})\b|(?<![a-z])dhl\s+(\d{10})(?!\d)/i;
+function cuedTracking(text: string): string | null {
+  const m = TRACKING_CUE.exec(text);
+  const hit = m?.[1] ?? m?.[2];
+  return hit && /\d/.test(hit) ? hit.toUpperCase() : null;
+}
+
 // North American 10-digit phone, tolerant of separators and a leading 1. The
-// digit-boundary guards (no digit immediately before or after) stop it from
-// slicing a 10-digit run out of a longer number, like a 16-digit tracking
-// number, so a real trailing phone is picked instead.
+// boundary guards (no letter or digit right before, no digit right after) stop it
+// from slicing a 10-digit run out of a longer id, like a 16-digit tracking number
+// or the tail of "1Z999AA10123456784", so a real trailing phone is picked instead.
 export function extractPhone(text: string): string | null {
-  const m = text.match(/(?<!\d)(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?!\d)/);
+  const cued = cuedTracking(text);
+  const t = cued ? text.replace(new RegExp(cued, 'i'), ' ') : text;
+  const m = t.match(/(?<![A-Za-z0-9])(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?!\d)/);
   if (!m) return null;
   const digits = m[0].replace(/\D/g, '');
   return digits.length >= 10 ? m[0].trim() : null;
@@ -35,6 +62,9 @@ export function extractPhone(text: string): string | null {
 // "34.5", "1,299.99". Used as the money capture group.
 const AMOUNT = '(\\d{1,3}(?:,\\d{3})+(?:\\.\\d{1,2})?|\\d+(?:\\.\\d{1,2})?)';
 const toAmount = (raw: string): number => Number(raw.replace(/,/g, ''));
+// A number followed by one of these is counting something, not pricing it.
+const NOT_A_COUNT =
+  '(?!\\s*(?:x\\b|%|pages?\\b|copies\\b|keys?\\b|sheets?\\b|pcs\\b|pieces\\b|units?\\b|packs?\\b|boxes\\b|parcels?\\b|packages?\\b|items?\\b|labels?\\b|envelopes?\\b|kgs?\\b|lbs?\\b|pounds?\\b|days?\\b|mins?\\b|minutes?\\b|hours?\\b|hrs?\\b|of\\b))';
 
 // A money amount, however staff type it. Explicit money signals win over a bare
 // number after a price cue, and the "$" is accepted on either side, so "$20",
@@ -53,11 +83,70 @@ export function extractMoney(text: string): number | null {
   // Spoken: "20 dollars", "20 bucks".
   const spoken = text.match(new RegExp(`${AMOUNT}\\s*(?:dollars?|bucks)\\b`, 'i'));
   if (spoken) return toAmount(spoken[1]);
-  // A price cue word then a number: "price 20", "for 20", "costs 20", "is 20",
-  // "at 20", "each 20", "@ 20".
-  const priced = text.match(new RegExp(`(?:price|priced|cost|costs|for|is|at|each|@)\\s+\\$?${AMOUNT}`, 'i'));
-  if (priced) return toAmount(priced[1]);
+  // A price cue word then a number: "price 20", "price is 20", "for 20", "costs
+  // 20", "each 20", "@ 20". A bare "is" or "at" is not a price cue ("her number is
+  // 4035551212", "left at 8"), and a count ("for 20 pages") is not a price.
+  const priced = text.match(
+    new RegExp(
+      `(?:\\b(?:price|priced|cost|costs|total|for|each)|@)(?:\\s+(?:is|of|was))?\\s+\\$?${AMOUNT}(?![\\d.,]*\\d|[A-Za-z])${NOT_A_COUNT}`,
+      'i',
+    ),
+  );
+  if (priced && toAmount(priced[1]) < 100000) return toAmount(priced[1]);
   return null;
+}
+
+// Numbers typed with no "$" that could be an amount: a standalone number of up to
+// four digits, once the phone, email, order id, tracking number and anything in
+// `exclude` (a cartridge model, say) are out of the way. A number glued to letters
+// ("65xl", "4x6", "T2P") or counting something ("2 parcels", "15 pages") is left out.
+export interface BareAmount {
+  value: number;
+  decimal: boolean;
+  // True when item words follow the number ("3 pens"), which reads as a count.
+  beforeWord: boolean;
+}
+const AFTER_AMOUNT_WORDS = new Set([
+  'no', 'gst', 'tax', 'taxes', 'cash', 'each', 'dollars', 'dollar', 'bucks', 'for', 'and', 'with', 'plus', 'then',
+  'paid', 'charge', 'card', 'debit', 'credit', 'total', 'please', 'tax-free', 'instead', 'now', 'today',
+]);
+export function bareAmounts(text: string, exclude: Array<string | null | undefined> = []): BareAmount[] {
+  let t = ` ${text} `;
+  const drop = [extractPhone(text), extractEmail(text), extractOrderId(text), extractTracking(text).trackingNumber, ...exclude];
+  for (const x of drop) {
+    if (x) t = t.replace(new RegExp(String(x).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), ' ');
+  }
+  t = t
+    .replace(/\d[\d\s.-]{9,}\d/g, ' ')
+    .replace(/(?<!\d)\d{6,}(?!\d)/g, ' ')
+    .replace(/\b\d{1,2}:\d{2}\b/g, ' ')
+    .replace(/\b\d{1,2}\s*(?:am|pm)\b/gi, ' ');
+  const out: BareAmount[] = [];
+  const re = new RegExp(`(?<![A-Za-z0-9.#$-])(\\d{1,4}(?:\\.\\d{1,2})?)(?![A-Za-z0-9$]|\\.\\d)${NOT_A_COUNT}(\\s+[A-Za-z'-]+)?`, 'g');
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(t)) !== null) {
+    const next = (m[2] ?? '').trim().toLowerCase();
+    out.push({ value: Number(m[1]), decimal: m[1].includes('.'), beforeWord: next !== '' && !AFTER_AMOUNT_WORDS.has(next) });
+  }
+  return out;
+}
+
+// The price on a receipt, tolerant of a missing "$". A "$" or a price cue always
+// wins. Otherwise a bare number is taken: in a 'sale' (where a number can also be
+// a count, "3 pens 4.50") only one that no item word follows, and elsewhere any
+// that is not a count. A decimal is preferred, then the last one typed.
+export function extractPrice(
+  text: string,
+  mode: 'sale' | 'loose' = 'loose',
+  exclude: Array<string | null | undefined> = [],
+): number | null {
+  const strict = extractMoney(text);
+  if (strict !== null) return strict;
+  const all = bareAmounts(text, exclude);
+  const nums = mode === 'sale' ? all.filter((n) => !n.beforeWord) : all;
+  if (nums.length === 0) return null;
+  const decimal = nums.find((n) => n.decimal);
+  return (decimal ?? nums[nums.length - 1]).value;
 }
 
 // The shipping cost from an utterance, tolerant of a missing "$". A shipping line
@@ -72,54 +161,75 @@ export function extractShippingCost(
 ): number | null {
   const strict = extractMoney(text);
   if (strict !== null) return strict;
+  const nums = bareAmounts(text, [trackingNumber, phone]);
+  if (nums.length === 0) return null;
+  return (nums.find((n) => n.decimal) ?? nums[0]).value;
+}
 
-  let t = ` ${text} `;
-  if (trackingNumber) t = t.split(trackingNumber).join(' ');
-  if (phone) t = t.split(phone).join(' ');
-  // Strip any remaining long digit run (an unknown tracking id) and any bare
-  // 10-digit run (a phone we did not capture), so only real amounts remain.
-  t = t.replace(/\d[\d\s.-]{9,}\d/g, ' ').replace(/(?<!\d)\d{7,}(?!\d)/g, ' ');
+// Number words staff type for a count ("two kw1s", "a couple of pens").
+const NUMBER_WORDS: Record<string, number> = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, couple: 2, pair: 2,
+};
+const NUMBER_WORD_RE = new RegExp(`\\b(${Object.keys(NUMBER_WORDS).join('|')})\\b`, 'gi');
+const digitsForWords = (text: string): string => text.replace(NUMBER_WORD_RE, (w) => String(NUMBER_WORDS[w.toLowerCase()]));
 
-  const decimal = t.match(/(?<!\d)\d{1,4}\.\d{1,2}(?!\d)/);
-  if (decimal) return Number(decimal[0]);
-  const integer = t.match(/(?<!\d)(\d{1,4})(?!\d)/);
-  if (integer) return Number(integer[1]);
+// How many of an item on a sale: "qty 3", "x3", "3 pcs", "2 of them", or a number
+// with the item named after it ("3 pens", "20 copies"). Null when none is stated.
+export function extractSaleQuantity(text: string): number | null {
+  const t = digitsForWords(text);
+  const stated =
+    t.match(/\b(?:qty|quantity)\s*[:=]?\s*(\d{1,3})\b/i) ||
+    t.match(/(?<![A-Za-z0-9])x\s?(\d{1,3})\b/i) ||
+    t.match(/(?<![A-Za-z0-9$.])(\d{1,3})\s*x(?![A-Za-z0-9])/i) ||
+    t.match(/(?<![A-Za-z0-9$.])(\d{1,3})\s+of\s+(?:them|those|these)\b/i);
+  if (stated) return Number(stated[1]);
+  const counted = /(?<![A-Za-z0-9.#$-])(\d{1,3})(?![A-Za-z0-9$]|\.\d)\s+([A-Za-z'-]+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = counted.exec(t)) !== null) {
+    if (!AFTER_AMOUNT_WORDS.has(m[2].toLowerCase())) return Number(m[1]);
+  }
   return null;
 }
 
-export function extractQuantity(text: string): number | null {
-  const qty = text.match(/(?:qty|quantity|x)\s*[:=]?\s*(\d{1,3})\b/i);
-  if (qty) return Number(qty[1]);
-  const num = text.match(/\b(\d{1,3})\s*(?:pcs|pieces|units|pack|packs)\b/i);
-  if (num) return Number(num[1]);
-  return null;
-}
+// Printer brands beyond the ones the refill form lists, so "samsung 111" still
+// reads as a brand and a model.
+const OTHER_BRANDS = ['Samsung', 'Dell', 'Xerox', 'Kyocera', 'Ricoh', 'Pantum', 'OKI'];
+const ALL_BRANDS = [...CARTRIDGE_BRANDS, ...OTHER_BRANDS];
 
 export function extractBrand(text: string): string | null {
-  const lower = text.toLowerCase();
-  const hit = CARTRIDGE_BRANDS.find((b) => lower.includes(b.toLowerCase()));
-  return hit ?? null;
+  return ALL_BRANDS.find((b) => hasCue(text, b)) ?? null;
 }
 
 export function extractType(text: string): string | null {
-  const lower = text.toLowerCase();
-  const hit = CARTRIDGE_TYPES.find((t) => lower.includes(t.label.toLowerCase()));
-  return hit ? hit.label : null;
+  const find = (value: string) => CARTRIDGE_TYPES.find((t) => t.value === value)?.label ?? null;
+  if (/\bphoto\s+black\b/i.test(text)) return find('Photo Black');
+  if (/\b(?:tri[\s-]?colou?r|colou?r)\b/i.test(text)) return find('Color');
+  for (const value of ['Black', 'Cyan', 'Magenta', 'Yellow']) {
+    if (hasCue(text, value)) return find(value);
+  }
+  return null;
 }
+
+// Tokens with a digit and a letter that are never a cartridge model: a label
+// size, a time, an ordinal, a unit.
+const NOT_A_MODEL = /^\d+(?:x\d+|am|pm|st|nd|rd|th|day|min|mins|hr|hrs|pcs|pk|kg|kgs|lb|lbs)$/i;
 
 // A cartridge model looks like an alphanumeric token that contains a digit, e.g.
 // "65", "564XL", "CE278A", "TN660". Prefer a token following a known brand.
 export function extractModel(text: string): string | null {
   const brand = extractBrand(text);
   if (brand) {
-    const re = new RegExp(`${brand}\\s+([A-Za-z]*\\d[A-Za-z0-9-]*)`, 'i');
-    const m = text.match(re);
+    const m = text.match(new RegExp(`(?<![a-z])${brand}\\s*([A-Za-z]*\\d[A-Za-z0-9-]*)`, 'i'));
     if (m) return m[1].toUpperCase();
   }
-  const generic = text.match(/\b([A-Za-z]{0,3}\d[A-Za-z0-9]{1,7})\b/);
-  // Avoid catching a bare price/phone: require at least one letter, or 3+ digits
-  // with a trailing letter (XL etc).
-  if (generic && /[A-Za-z]/.test(generic[1])) return generic[1].toUpperCase();
+  // No brand: a token with both a letter and a digit, once ids are out of the way.
+  let t = text;
+  for (const x of [extractOrderId(text), extractPhone(text), extractTracking(text).trackingNumber]) {
+    if (x) t = t.replace(new RegExp(x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), ' ');
+  }
+  for (const m of t.matchAll(/\b([A-Za-z]{0,3}\d[A-Za-z0-9]{1,7})\b/g)) {
+    if (/[A-Za-z]/.test(m[1]) && !NOT_A_MODEL.test(m[1])) return m[1].toUpperCase();
+  }
   return null;
 }
 
@@ -167,35 +277,64 @@ const NAME_STOPWORDS = new Set(
 function titleCase(name: string): string {
   return name
     .split(/\s+/)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .map((w) => w.replace(/(^|[-'’])([a-z])/gi, (_, lead, ch) => lead + ch.toUpperCase()).replace(/(?<=[A-Za-z])[A-Z]+/g, (rest) => rest.toLowerCase()))
     .join(' ');
 }
 
-// A customer name after "for" / "customer" / "name". First tries the strict
-// capitalized form (the verified path), then a lowercase fallback so a fast,
-// lowercase "refill for sarah chen" still fills the name. The fallback rejects
-// stopwords and any token with a digit so a model or price is never read as a
-// name. Everything here is confirmable in the check.
-export function extractName(text: string): string | null {
-  const strict = text.match(/\b(?:for|customer|name(?:d)?(?:\s+is)?)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);
-  if (strict) return strict[1].trim();
+// More words that are never part of a customer's name: joiners, field labels,
+// payment and tax words, verbs that lead a request.
+const NOT_A_NAME = new Set([
+  ...NAME_STOPWORDS,
+  ...OTHER_BRANDS.map((b) => b.toLowerCase()),
+  'and', 'to', 'at', 'in', 'on', 'with', 'no', 'tax', 'gst', 'by', 'from', 'then', 'please', 'cash', 'card', 'paid',
+  'phone', 'number', 'email', 'him', 'her', 'his', 'them', 'me', 'us', 'it', 'this', 'that', 'free', 'now', 'later',
+  'sale', 'printing', 'copies', 'delivery', 'keys', 'customer', 'colour', 'color', 'tri', 'photo', 'new', 'is', 'was',
+  'wants', 'needs', 'who', 'he', 'she', 'they', 'someone', 'lady', 'guy', 'client', 'we', 'i', 'supplied', 'name',
+  'named', 'charge', 'print', 'label', 'drop', 'off', 'dropped', 'record', 'log', 'refilled', 'got', 'have', 'any',
+  'check', 'restock', 'sold', 'bought', 'add', 'cut', 'track', 'trace', 'where', 'mark', 'set', 'note', 'yesterday',
+  'each', 'all', 'both', 'pages', 'units', 'instead', 'tracking', 'box', 'boxes', 'label', 'labels',
+]);
+const isNameWord = (w: string): boolean => /^[a-z][a-z'’-]+$/i.test(w) && !NOT_A_NAME.has(w.toLowerCase());
 
-  // A capitalized "First Last" (up to three words) at the very start, when the
-  // first word is not a stopword. Staff often type the customer name first, with
-  // no cue word, e.g. "Hannah Lemmington UPS ...". Requires at least two words so
-  // a lone leading verb like "Refill" is never taken as a name.
-  const leading = text.match(/^\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b/);
-  if (leading) {
-    const words = leading[1].trim().split(/\s+/);
-    if (!words.some((w) => NAME_STOPWORDS.has(w.toLowerCase()))) return words.join(' ');
+// The name at the front of `words`: up to three name-like words, stopping at the
+// first word that is not one ("sarah hp 65" gives Sarah). Null when the first word
+// is not a name.
+export function nameFrom(words: string, max = 3): string | null {
+  const picked: string[] = [];
+  // A comma or colon ends the name ("for Sarah, HP 65").
+  for (const w of words.trim().split(/[,;:\n]/)[0].split(/\s+/)) {
+    if (!isNameWord(w) || picked.length >= max) break;
+    picked.push(w);
+  }
+  return picked.length > 0 ? titleCase(picked.join(' ')) : null;
+}
+
+// A customer name. Reads it after a cue ("for sarah chen", "name is priya"), from
+// someone doing something at the counter ("sarah dropped off ..."), or, when
+// `leading` is set, from the front of the line ("Hannah Lemmington UPS ...",
+// "sarah chen hp 65 refill"). However it is typed, upper or lower case. Brands,
+// couriers and field words are never taken as a name, and everything here is
+// confirmable in the check.
+const NAME_CUE = /\b(?:for|name(?:d)?(?:\s+is)?|customer(?:\s+name)?\s+is|customer\s+name)\s+(?=[A-Za-z])/gi;
+export function extractName(text: string, opts: { leading?: boolean } = {}): string | null {
+  NAME_CUE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = NAME_CUE.exec(text)) !== null) {
+    const name = nameFrom(text.slice(m.index + m[0].length));
+    if (name) return name;
   }
 
-  const loose = text.match(/\b(?:for|customer|name(?:d)?(?:\s+is)?)\s+([a-z]{2,}(?:\s+[a-z]{2,})?)/i);
-  if (!loose) return null;
-  const candidate = loose[1].trim();
-  const first = candidate.split(/\s+/)[0].toLowerCase();
-  if (NAME_STOPWORDS.has(first) || /\d/.test(candidate)) return null;
-  return titleCase(candidate);
+  const actor = text.match(/^\s*((?:[A-Za-z][A-Za-z'’-]+\s+){1,3})(?:dropped|dropping|drops|left|brought|wants|needs|came)\b/);
+  if (actor && actor[1].trim().split(/\s+/).every(isNameWord)) return titleCase(actor[1].trim());
+
+  if (!opts.leading) return null;
+  // A capitalized "First Last" at the very start, or lowercase words right before
+  // a brand or a courier.
+  const capital = text.match(/^\s*([A-Z][a-z'’-]+(?:\s+[A-Z][a-z'’-]+){1,2})\b/);
+  if (capital && capital[1].split(/\s+/).every(isNameWord)) return capital[1].trim();
+  const lead = text.match(/^\s*((?:[A-Za-z][A-Za-z'’-]+\s+){1,3})(?=(?:hp|canon|epson|brother|lexmark|ups|fedex|fed\s?ex|purolator|canada\s?post|dhl)\b)/i);
+  if (lead && lead[1].trim().split(/\s+/).every(isNameWord)) return titleCase(lead[1].trim());
+  return null;
 }
 
 export interface CourierMatch {
@@ -217,12 +356,9 @@ const SERVICE_WORDS = new Set([
   'small', 'parcel', 'select', 'plus', 'air', 'sameday', 'same', 'freight',
 ]);
 
-// The service phrase stated right after `keyword` in `text` (up to four words),
+// The service phrase stated right after the courier name (up to four words),
 // title cased. Stops at the first word that is not a service word.
-function serviceAfter(text: string, keyword: string): string {
-  const idx = text.toLowerCase().indexOf(keyword);
-  if (idx < 0) return '';
-  const after = text.slice(idx + keyword.length);
+function serviceAfter(after: string): string {
   const tokens = after.split(/[^A-Za-z0-9]+/).filter(Boolean);
   const picked: string[] = [];
   for (const tok of tokens) {
@@ -232,6 +368,16 @@ function serviceAfter(text: string, keyword: string): string {
   }
   return picked.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 }
+
+// Courier names as whole words, so "cups" and "backups" never name UPS. A digit
+// may touch the name ("...4167382277fedex"), a letter may not.
+export const COURIER_NAMES: Array<{ name: NonNullable<CourierMatch['courier']>; re: RegExp }> = [
+  { name: 'FedEx', re: /(?<![a-z])fed\s?ex(?![a-z])/i },
+  { name: 'Purolator', re: /(?<![a-z])puro(?:lator)?(?![a-z])/i },
+  { name: 'UPS', re: /(?<![a-z])ups(?![a-z])/i },
+  { name: 'Canada Post', re: /(?<![a-z])canada\s?post(?![a-z])/i },
+  { name: 'DHL', re: /(?<![a-z])dhl(?![a-z])/i },
+];
 
 // The courier plus its service level as one label ("UPS Express Saver"), or the
 // bare company, or "" when no courier is named.
@@ -244,21 +390,22 @@ export function courierLabel(m: CourierMatch): string {
 // (docs/ai-mode/00-research.md). Purolator has no reliable public pattern, so it
 // is only matched when named explicitly.
 export function extractTracking(text: string): CourierMatch {
-  const lower = text.toLowerCase();
+  // The courier named first in the text.
   let courier: CourierMatch['courier'] = null;
-  let keyword = '';
-  if (lower.includes('fedex')) { courier = 'FedEx'; keyword = 'fedex'; }
-  else if (lower.includes('purolator')) { courier = 'Purolator'; keyword = 'purolator'; }
-  else if (lower.includes('ups')) { courier = 'UPS'; keyword = 'ups'; }
-  else if (lower.includes('canada post') || lower.includes('canadapost')) {
-    courier = 'Canada Post';
-    keyword = lower.includes('canada post') ? 'canada post' : 'canadapost';
-  } else if (lower.includes('dhl')) { courier = 'DHL'; keyword = 'dhl'; }
-
-  const service = keyword ? serviceAfter(text, keyword) : '';
+  let service = '';
+  let at = Infinity;
+  for (const c of COURIER_NAMES) {
+    const m = c.re.exec(text);
+    if (m && m.index < at) {
+      at = m.index;
+      courier = c.name;
+      service = serviceAfter(text.slice(m.index + m[0].length));
+    }
+  }
 
   // Candidate tracking tokens, whitespace-stripped.
   const compact = text.replace(/\s+/g, ' ');
+  const cued = cuedTracking(compact);
   const ups = compact.match(/\b1Z[0-9A-Z]{16}\b/i);
   const canadaPost = compact.match(/\b([A-Z]{2}\d{9}CA|\d{16})\b/i);
   const fedex = compact.match(/\b(\d{15}|\d{12})\b/);
@@ -267,6 +414,8 @@ export function extractTracking(text: string): CourierMatch {
   if (ups) {
     trackingNumber = ups[0].toUpperCase();
     if (!courier) courier = 'UPS';
+  } else if (cued) {
+    trackingNumber = cued;
   } else if (canadaPost) {
     trackingNumber = canadaPost[0].toUpperCase();
     if (!courier) courier = 'Canada Post';
@@ -291,15 +440,29 @@ export interface KeyOrderItem {
 // (KW1, SC4, Y1, WR5, CO10, IN33), as a standalone token. The lookarounds keep it
 // from matching a fragment inside a tracking number ("1Z999AA10..." never yields
 // "Z999") or a phone/price run. Plural "s" is tolerated and dropped.
-const KEY_ORDER_RE = /(?:(\d{1,3})\s*(?:x|×)?\s+)?(?<![A-Za-z0-9])([A-Za-z]{1,3}\d{1,3})s?(?![A-Za-z0-9])/gi;
+const KEY_ORDER_RE = /(?:(?<![\d$.])(\d{1,2})\s*(?:x|×)?\s+)?(?<![A-Za-z0-9$.])([A-Za-z]{1,3}\d{1,3})s?(?![A-Za-z0-9])/gi;
 
+// The count may also come after the code ("kw1 x2"), as a word ("two kw1s"), or
+// on the word "keys" ("3 keys kw1", "made 3 copies of a kw1"). A price is never a
+// count ("kw1 $5 sc1"), "x2" is a count and not a blank, and a code named as a
+// place ("from B3") is a spot on the board, not something to cut.
 export function extractKeyItems(text: string): KeyOrderItem[] {
+  const t = digitsForWords(text);
   const items: KeyOrderItem[] = [];
   KEY_ORDER_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
-  while ((m = KEY_ORDER_RE.exec(text)) !== null) {
-    const qty = m[1] ? Math.max(1, parseInt(m[1], 10)) : 1;
-    items.push({ model: m[2].toUpperCase(), qty });
+  while ((m = KEY_ORDER_RE.exec(t)) !== null) {
+    const model = m[2].toUpperCase();
+    if (/^X\d+$/.test(model)) continue;
+    const codeStart = m.index + m[0].toUpperCase().lastIndexOf(model);
+    if (/\b(?:from|slot|position|spot|hook|row)\s+$/i.test(t.slice(0, codeStart))) continue;
+    const after = /^\s*(?:x|×|\*)\s*(\d{1,2})\b/i.exec(t.slice(m.index + m[0].length));
+    const qty = after ? parseInt(after[1], 10) : m[1] ? parseInt(m[1], 10) : 1;
+    items.push({ model, qty: Math.max(1, qty) });
+  }
+  if (items.length === 1 && items[0].qty === 1) {
+    const counted = /(?<![\d$.])(\d{1,2})\s+(?:keys?|copies|copy|cuts?|duplicates?)\b/i.exec(t);
+    if (counted) items[0].qty = Math.max(1, parseInt(counted[1], 10));
   }
   return items;
 }
@@ -405,11 +568,45 @@ const PROVINCES: Array<{ code: string; names: string[] }> = [
   { code: 'YT', names: ['yukon'] },
 ];
 
+// The province a known city is in, so "ups to toronto 22" is taxed as Ontario
+// without the counter typing "ON".
+const CITY_PROVINCE: Record<string, string> = {};
+const inProvince = (code: string, cities: string) => cities.split(',').forEach((c) => (CITY_PROVINCE[c.trim()] = code));
+inProvince('AB', 'calgary, edmonton, red deer, lethbridge, medicine hat, grande prairie, airdrie, okotoks, cochrane, canmore, banff, chestermere, strathmore, fort mcmurray, lloydminster, camrose, st albert, sherwood park, leduc, spruce grove, high river, brooks, drumheller, olds, lacombe, jasper, cold lake');
+inProvince('BC', 'vancouver, victoria, kelowna, burnaby, richmond, surrey, kamloops, nanaimo, abbotsford, prince george, langley, coquitlam, chilliwack, penticton, vernon, whistler');
+inProvince('ON', 'toronto, ottawa, hamilton, kitchener, waterloo, london, windsor, barrie, guelph, kingston, sudbury, mississauga, brampton, markham, vaughan, oshawa, whitby, ajax, thunder bay, niagara falls, st catharines, sault ste marie, peterborough, belleville, scarborough, etobicoke, north york, oakville, burlington, cambridge');
+inProvince('QC', 'montreal, quebec city, laval, gatineau, longueuil, sherbrooke, trois rivieres');
+inProvince('MB', 'winnipeg, brandon');
+inProvince('SK', 'saskatoon, regina, moose jaw, prince albert');
+inProvince('NS', 'halifax, dartmouth, sydney');
+inProvince('NB', 'moncton, fredericton, saint john');
+inProvince('NL', "st johns, st john's");
+inProvince('PE', 'charlottetown');
+inProvince('YT', 'whitehorse');
+inProvince('NT', 'yellowknife');
+inProvince('NU', 'iqaluit');
+
+export function provinceOfCity(city: string | null | undefined): string | null {
+  return city ? CITY_PROVINCE[city.trim().toLowerCase()] ?? null : null;
+}
+
+// A province from its name or its two-letter code, upper or lower case ("calgary
+// ab"). A lowercase "on" is the word unless it sits right after a city ("toronto
+// on 22").
 export function extractProvince(text: string): string | null {
   const lower = text.toLowerCase();
   for (const p of PROVINCES) {
     if (p.names.some((n) => lower.includes(n))) return p.code;
     if (new RegExp(`\\b${p.code}\\b`).test(text)) return p.code;
+  }
+  for (const p of PROVINCES) {
+    if (p.code === 'ON') continue;
+    if (new RegExp(`(?<![a-z0-9'])${p.code.toLowerCase()}(?![a-z0-9'])`).test(lower)) return p.code;
+  }
+  const afterCity = /([a-z.' ]+?)\s+on(?![a-z0-9'])/g;
+  let m: RegExpExecArray | null;
+  while ((m = afterCity.exec(lower)) !== null) {
+    if (CANADIAN_CITIES.some((c) => m![1].trim().endsWith(c))) return 'ON';
   }
   return null;
 }
@@ -423,33 +620,30 @@ const COURIER_WORDS = new Set(['ups', 'fedex', 'purolator', 'dhl', 'canada', 'po
 // "quebec city" wins over the "quebec" province word. Not exhaustive, but covers
 // the destinations a Westbrook counter actually ships to; the "to <City>" fallback
 // still catches anything not listed.
-const CANADIAN_CITIES = [
-  'quebec city', 'thunder bay', 'red deer', 'grande prairie', 'prince george',
-  'niagara falls', 'st johns', "st john's", 'st catharines', 'sault ste marie',
-  'toronto', 'vancouver', 'calgary', 'edmonton', 'ottawa', 'montreal', 'winnipeg',
-  'halifax', 'victoria', 'hamilton', 'kitchener', 'waterloo', 'london', 'windsor',
-  'saskatoon', 'regina', 'kelowna', 'barrie', 'guelph', 'kingston', 'moncton',
-  'sudbury', 'burnaby', 'richmond', 'surrey', 'mississauga', 'brampton', 'markham',
-  'vaughan', 'laval', 'gatineau', 'longueuil', 'oshawa', 'whitby', 'ajax',
-  'lethbridge', 'kamloops', 'nanaimo', 'abbotsford', 'fredericton', 'charlottetown',
-  'yellowknife', 'whitehorse', 'iqaluit', 'brandon', 'medicine hat', 'airdrie',
-  'okotoks', 'cochrane', 'sherbrooke', 'trois rivieres', 'peterborough', 'belleville',
-];
+const CANADIAN_CITIES = Object.keys(CITY_PROVINCE).sort((a, b) => b.length - a.length);
 
 // A destination city. First matches a known Canadian city however it is typed, then
 // falls back to a "to <Capitalized>" phrase. Rejects a province name ("to Ontario")
 // and a courier name ("to FedEx").
 export function extractCity(text: string): string | null {
+  // Every known city in the text; the one after "to" is the destination, one
+  // after "from" is where it came from.
+  const hits: Array<{ city: string; index: number }> = [];
   for (const city of CANADIAN_CITIES) {
     const re = new RegExp(`\\b${city.replace(/\s+/g, '\\s+').replace(/'/g, "'?")}\\b`, 'i');
-    if (re.test(text)) return titleCase(city);
+    const m = re.exec(text);
+    if (m && !hits.some((h) => m.index >= h.index && m.index < h.index + h.city.length)) hits.push({ city, index: m.index });
   }
+  hits.sort((a, b) => a.index - b.index);
+  const before = (h: { index: number }) => text.slice(0, h.index);
+  const dest = hits.find((h) => /\bto\s+$/i.test(before(h))) ?? hits.find((h) => !/\bfrom\s+$/i.test(before(h)));
+  if (dest) return titleCase(dest.city);
 
-  const m = text.match(/\bto\s+([A-Z][A-Za-z]*(?:\s+[A-Z][a-z]+)?)/);
+  const m = text.match(/\bto\s+([A-Z][A-Za-z]*(?:\s+[A-Z][A-Za-z]+)?)/);
   if (!m) return null;
   const city = m[1].trim();
   const lower = city.toLowerCase();
-  if (PROVINCES.some((p) => p.names.includes(lower))) return null;
+  if (PROVINCES.some((p) => p.names.includes(lower) || p.code.toLowerCase() === lower)) return null;
   if (city.split(/\s+/).some((w) => COURIER_WORDS.has(w.toLowerCase()))) return null;
   return city;
 }
@@ -488,11 +682,17 @@ export function stripPacking(text: string): string {
   return t.replace(/\s{2,}/g, ' ').trim();
 }
 
+// The price typed right after a packing word ("box $4", "large box 10$"). Only an
+// amount with a "$" that directly follows counts, so the shipping price further
+// along the line is never borrowed.
 function priceNear(text: string, fromIndex: number): number | null {
-  const window = text.slice(fromIndex, fromIndex + 16);
-  const m = window.match(/\$?\s?(\d{1,4}(?:\.\d{1,2})?)\s?\$/) || window.match(/\$\s?(\d{1,4}(?:\.\d{1,2})?)/);
-  return m ? Number(m[1]) : null;
+  const m = /^\s*(?:for\s+|@\s*)?(?:\$\s?(\d{1,4}(?:\.\d{1,2})?)|(\d{1,4}(?:\.\d{1,2})?)\s?\$)/.exec(text.slice(fromIndex));
+  return m ? Number(m[1] ?? m[2]) : null;
 }
+
+// "no box", "customer supplied box", "their own envelope": packing the shop is
+// not selling.
+const NOT_OUR_PACKING = /\b(?:no|without|own|their|his|her|customer'?s?|supplied|provided|brought)\s+(?:(?:own|supplied|provided)\s+)?$/i;
 
 export function extractPacking(text: string): PackingItem[] {
   const items: PackingItem[] = [];
@@ -506,10 +706,19 @@ export function extractPacking(text: string): PackingItem[] {
     if (!m) continue;
     if (/box/i.test(matcher.name)) anyBox = true;
     if (/envelope/i.test(matcher.name)) anyEnvelope = true;
+    if (NOT_OUR_PACKING.test(text.slice(0, m.index))) continue;
     const price = priceNear(text, m.index + m[0].length);
     items.push({ name: matcher.name, cost: price ?? matcher.preset, quantity: 1, taxable: true });
   }
   return items;
+}
+
+// "no gst", "tax free", "with gst": whether the counter said to charge tax. Null
+// when they did not say.
+export function extractTaxToggle(text: string): boolean | null {
+  if (/\b(?:no|without|remove|drop|skip|minus)\s+(?:the\s+)?(?:gst|tax|taxes)\b|\b(?:gst|tax)[\s-]?(?:free|exempt)\b/i.test(text)) return false;
+  if (/\b(?:add|with|include|apply|charge|keep|plus)\s+(?:the\s+)?(?:gst|tax)\b/i.test(text)) return true;
+  return null;
 }
 
 // Side-action cues for the compound "chain around one transaction". A pay cue
@@ -519,8 +728,11 @@ export function extractPacking(text: string): PackingItem[] {
 // intent stays clean unless the counter actually asked for a side action. These are
 // only defaults: the confirmation slip renders them as toggles the counter can flip
 // before Confirm. See PHASE-2-ARCH section 1.2.
-const PAY_CUES = /\b(?:charge|pay|paid|card|tap|debit|credit|moneris)\b/i;
-const LABEL_CUES = /\b(?:label|4\s?x\s?6|sticker)\b/i;
+// A bare "card" is not a pay cue ("membership card", "business cards"); it needs
+// its own little phrase ("by card", "her card").
+const PAY_CUES =
+  /\b(?:charge|charged|pay|paid|paying|tap|tapped|debit|credit|moneris|visa|mastercard|interac)\b|\b(?:by|on|with|her|his|their|the)\s+card\b/i;
+const LABEL_CUES = /\b(?:label|sticker)\b|\b4\s?x\s?6\b(?!\s+labels)/i;
 
 export function extractAttachments(text: string): IntentAttachments | undefined {
   const pay = PAY_CUES.test(text);
@@ -545,7 +757,7 @@ export type TimesheetOp = 'add_shift' | 'adjust_shift' | 'add_employee' | 'view'
 
 // Cues that someone is reporting what really happened on a shift.
 const ADJUST_CUES =
-  /\b(?:left|leave|leaving|stayed|staying|finished|worked\s+(?:until|till|til|to)|came\s+in|got\s+in|arrived|started|showed\s+up|instead\s+of|break|lunch|actually)\b/;
+  /\b(?:left|leave|leaving|stayed|staying|finished|worked|came\s+in|got\s+in|arrived|started|showed\s+up|instead\s+of|break|lunch|actually)\b/;
 
 export function classifyTimesheetOp(text: string): TimesheetOp {
   const lower = text.toLowerCase();
@@ -556,7 +768,8 @@ export function classifyTimesheetOp(text: string): TimesheetOp {
     return 'punch_off';
   }
   const hasRange = parseTimeRange(text) != null;
-  if (ADJUST_CUES.test(lower) && !(hasRange && /\b(?:add|new|schedule|book|put)\b/.test(lower) && !/\b(?:break|lunch)\b/.test(lower))) {
+  // A planning verb with a time range is a new shift, even one that names a break.
+  if (ADJUST_CUES.test(lower) && !(hasRange && /\b(?:add|new|schedule|book|put)\b/.test(lower))) {
     return 'adjust_shift';
   }
   if (hasRange || /\b(?:add|new|book|put|give|create)\b[^.]*\bshifts?\b|\bschedule\s+[a-z]+\s+(?:for|on|from)\b/.test(lower)) {
@@ -592,6 +805,7 @@ const TIMESHEET_NAME_STOPWORDS = new Set([
   'today', 'tomorrow', 'yesterday', 'tonight', 'this', 'next', 'last', 'week',
   'shifts', 'schedule', 'hours', 'left', 'started', 'stayed', 'took', 'had',
   'add', 'new', 'put', 'book', 'give', 'i', 'my', 'who', 'working', 'works',
+  'when', 'does', 'do', 'did', 'what', 'whos', 'are', 'was', 'be', 'off', 'scheduled', 'here', 'with', 'instead',
   'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'sept', 'oct', 'nov', 'dec',
   'january', 'february', 'march', 'april', 'june', 'july', 'august', 'september', 'october', 'november', 'december',
   'mon', 'tue', 'tues', 'wed', 'thu', 'thur', 'thurs', 'fri', 'sat', 'sun',
@@ -617,8 +831,10 @@ export function extractEmployeeName(text: string): string | null {
   const m6 = text.match(new RegExp(`\\b(?:schedule|book|put|give)\\s+${nameToken}`, 'i'));
   const m7 = text.match(new RegExp(`${nameToken}\\s+(?:left|stayed|started|came|got|arrived|finished|took|had|worked|is\\s+working|works)\\b`, 'i'));
   const m8 = text.match(new RegExp(`\\b(?:for|by)\\s+${nameToken}`, 'i'));
+  // "when does sue work", "is sue working friday".
+  const m10 = text.match(new RegExp(`\\b(?:does|is|did|was)\\s+${nameToken}\\s+(?:work|working|on|in|scheduled)\\b`, 'i'));
   const m9 = text.match(new RegExp(`^\\s*${nameToken}`));
-  const candidates = [m1, m2, m3, m4, m5, m6, m7, m8, m9].map((m) => (m?.[1] || '').trim()).filter(Boolean);
+  const candidates = [m1, m2, m3, m4, m5, m6, m7, m10, m8, m9].map((m) => (m?.[1] || '').trim()).filter(Boolean);
   const raw = candidates.find((c) =>
     c.split(/\s+/).some((t) => !TIMESHEET_NAME_STOPWORDS.has(t.toLowerCase()) && !/\d/.test(t)),
   );
@@ -628,4 +844,104 @@ export function extractEmployeeName(text: string): string | null {
     .filter((t) => !TIMESHEET_NAME_STOPWORDS.has(t.toLowerCase()) && !/\d/.test(t));
   if (tokens.length === 0) return null;
   return tokens.map((t) => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()).join(' ');
+}
+
+// --- Describing the thing itself ------------------------------------------------
+// The free-text fields (what was sold, which key, what the note says) are read by
+// taking away everything that is something else: the request words, the price,
+// the count, the customer, how they paid. What is left is the item.
+
+const escapeRe = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const MONEY_PHRASE =
+  /(?:\b(?:for|at|price|cost|costs|total)\s+|@\s*)?(?:\$\s?\d[\d,]*(?:\.\d{1,2})?|\d[\d,]*(?:\.\d{1,2})?\s?\$|\d+(?:\.\d{1,2})?\s*(?:dollars?|bucks)\b)/gi;
+const SIDE_PHRASES = [
+  /\b(?:and\s+)?(?:charge|charged)\s+(?:it\s+)?(?:(?:to|on)\s+)?(?:her|his|their|the|a)?\s*(?:card|debit|credit|visa|mastercard)?\b/gi,
+  /\bpaid\s+(?:by|with|in)\s+\w+\b/gi,
+  /\b(?:by|on|with)\s+(?:card|cash|debit|credit|visa|mastercard|interac)\b/gi,
+  /\b(?:cash|debit|credit|tap|tapped|moneris|visa|mastercard|interac|paid|pay)\b/gi,
+  /\b(?:and\s+)?print\s+(?:a\s+)?(?:4\s?x\s?6\s+)?label\b/gi,
+  /\b(?:no|without|remove|drop|skip|minus|add|with|include|apply|plus)\s+(?:the\s+)?(?:gst|tax|taxes)\b/gi,
+  /\b(?:gst|tax)[\s-]?(?:free|exempt|included|incl)\b/gi,
+];
+
+// Take the customer, contact details, payment, tax and price words out of a line.
+function withoutSideDetails(text: string, price: number | null, quantity: number | null): string {
+  let t = ` ${text} `;
+  const name = extractName(text);
+  if (name) t = t.replace(new RegExp(`\\b(?:for|name(?:d)?(?:\\s+is)?|customer(?:\\s+name)?(?:\\s+is)?)\\s+${escapeRe(name)}`, 'i'), ' ');
+  for (const x of [extractPhone(text), extractEmail(text)]) if (x) t = t.replace(x, ' ');
+  for (const re of SIDE_PHRASES) t = t.replace(re, ' ');
+  t = t.replace(MONEY_PHRASE, ' ');
+  // The bare price (last time it appears) and the count (first time).
+  if (price != null) {
+    const re = new RegExp(`(?<![A-Za-z0-9.])${escapeRe(String(price))}0?(?![A-Za-z0-9]|\\.\\d)`, 'g');
+    const hits = [...t.matchAll(re)];
+    const last = hits[hits.length - 1];
+    if (last) t = `${t.slice(0, last.index)} ${t.slice(last.index! + last[0].length)}`;
+  }
+  t = t.replace(/\b(?:qty|quantity)\s*[:=]?\s*\d{1,3}\b|(?<![A-Za-z0-9])x\s?\d{1,3}\b/gi, ' ');
+  if (quantity != null) t = t.replace(new RegExp(`(?<![A-Za-z0-9.$])${quantity}(?:\\s*x)?(?![A-Za-z0-9])`), ' ');
+  return t.replace(/\s+/g, ' ').trim();
+}
+
+const tidy = (t: string): string | null => {
+  const out = t
+    .replace(/^(?:(?:a|an|the|some|of|and|with|for|one)\b\s*)+/i, '')
+    .replace(/(?:\s*\b(?:and|with|for|plus|at|each)\b)+\s*$/i, '')
+    .replace(/^[\s,:;-]+|[\s,:;-]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return out.length > 0 ? out : null;
+};
+
+// What was sold on a supplies receipt: "sold a phone case for $10" gives "phone
+// case", "sale 3 pens 4.50" gives "pens".
+export function describeSale(text: string, price: number | null, quantity: number | null): string | null {
+  const t = withoutSideDetails(digitsForWords(text), price, quantity)
+    .replace(/^(?:please\s+)?(?:(?:customer|they|he|she|i|we)\s+)?(?:(?:sold|sell|selling|sale|bought|buy|buying|purchase|purchased|receipt|invoice|rang\s+up|ring\s+up)\b[\s:,-]*)+/i, '');
+  return tidy(t);
+}
+
+// A key with no blank code on it: "house key copy $4" gives "house key".
+export function describeKey(text: string, price: number | null): string | null {
+  const t = withoutSideDetails(text, price, null).replace(
+    /\b(?:receipt|invoice|cut|cutting|copy|copies|copied|duplicate[ds]?|made|make|please|a|an|of)\b/gi,
+    ' ',
+  );
+  return tidy(t);
+}
+
+// The item an inventory change is about: a key code ("KW1"), a cartridge ("HP
+// 65"), else the words left once the stock phrasing is taken out.
+export function describeStockItem(text: string): string | null {
+  const brand = extractBrand(text);
+  if (brand) {
+    const model = extractModel(text);
+    return model ? `${brand} ${model}` : brand;
+  }
+  const codes = extractKeyItems(text);
+  if (codes.length > 0) return codes[0].model;
+  const t = text.replace(
+    /\b(?:please|mark|marked|set|add|added|restock|restocked|update|we'?re|were|we|are|is|im|i'm|out\s+of\s+stock|back\s+in\s+stock|in\s+stock|out\s+of|sold\s+out|ran|run|running|low\s+on|to\s+(?:the\s+)?inventory|inventory|as|now|again|back|all|blanks?)\b/gi,
+    ' ',
+  );
+  return tidy(t);
+}
+
+// Whether an inventory change says the item is in or out. Null when it says neither.
+export function extractInStock(text: string): boolean | null {
+  if (/\bout\s+of\b|\bsold\s+out\b|\bran\s+out\b|\bno\s+more\b|\bnone\s+left\b/i.test(text)) return false;
+  if (/\bin\s+stock\b|\brestock/i.test(text)) return true;
+  return null;
+}
+
+// The words that open a note. Everything after them is the note, whatever it
+// goes on to mention.
+export const NOTE_LEAD =
+  /^\s*(?:please\s+)?(?:(?:leave|add|make|take|save|write|jot)\s+(?:down\s+)?(?:a\s+)?)?(?:notes?|memo|reminder|remember|remind\s+me|todo|to\s+do|jot\s+down|jot|write\s+down)\b\s*[:,-]?\s*/i;
+
+export function describeNote(text: string): string | null {
+  if (!NOTE_LEAD.test(text)) return cleanRemainder(text);
+  const body = text.replace(NOTE_LEAD, '').replace(/^(?:that|to)\s+/i, '');
+  return body.trim().length > 0 ? body.trim() : null;
 }

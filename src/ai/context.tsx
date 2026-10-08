@@ -12,8 +12,8 @@ import type { ActionResult } from './actions/types';
 import type { CartCustomer, CartLine } from './cart';
 import { buildCartReceiptOpts } from './cart';
 import { getProvider } from './providers';
-import { segmentUtterance, probeRoute } from './segment';
-import { applyFollowUp } from './followup';
+import { segmentUtterance } from './segment';
+import { applyFollowUp, isFollowUp } from './followup';
 import { resolveKeyPrices } from './keys';
 import { getFieldSpecs } from './fieldSpecs';
 import { getExecutor, isImmediate } from './actions';
@@ -342,14 +342,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         if (artifact?.kind === 'confirmation') {
           const data = artifact.data as ConfirmationArtifactData;
           const active = data.intent;
-          const route = await probeRoute(trimmed);
-          const shippingAppend =
-            active.action === 'receipt' &&
-            active.subtype === 'shipping' &&
-            route.action === 'receipt' &&
-            route.subtype === 'shipping' &&
-            /\b(add|another|second|third|also|plus)\b/i.test(trimmed);
-          if (route.action === 'unknown' || shippingAppend) {
+          if (await isFollowUp(active, trimmed)) {
             const nextIntent = applyFollowUp(active, trimmed);
             const sourceText = `${data.sourceText ?? ''} ${trimmed}`.trim();
             patchTurn(data.turnId, { intent: nextIntent, sourceText });
