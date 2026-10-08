@@ -16,6 +16,8 @@ import { handleManager } from './manager.js';
 //   ANTHROPIC_API_KEY (secret, required) the Anthropic API key
 //   ALLOWED_ORIGIN   (var, required)     exact staging origin allowed via CORS
 //   ANTHROPIC_MODEL  (var, optional)     defaults to claude-haiku-5-5
+//   GEMINI_API_KEY   (secret, optional)  Google AI Studio key for the fallback router
+//   GEMINI_MODEL     (var, optional)     defaults to gemini-flash-lite-latest
 
 const ACTIONS = [
   'receipt',
@@ -210,6 +212,93 @@ function json(body, status, origin) {
   });
 }
 
+// Ask Claude Haiku to route. Returns { text } on a usable answer, otherwise
+// { failure } describing why, so the caller can try the fallback model.
+async function askClaude(env, userText) {
+  const body = {
+    model: env.ANTHROPIC_MODEL || 'claude-haiku-5-5',
+    // Routing is tiny, but the object always carries every field (null when
+    // unstated), so leave room for it without letting a runaway answer cost much.
+    max_tokens: 512,
+    // One short classification per call: no thinking, so the answer is fast.
+    thinking: { type: 'disabled' },
+    // The prompt never changes between calls, so let it be cached.
+    system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
+    messages: [{ role: 'user', content: userText }],
+    output_config: { format: { type: 'json_schema', schema: OUTPUT_SCHEMA } },
+  };
+
+  // The SPA gives the whole round trip four seconds. Stop waiting on a stalled
+  // Haiku call early enough that the fallback still has a chance to answer.
+  let upstream;
+  try {
+    upstream = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      signal: AbortSignal.timeout(2800),
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    return { failure: { error: 'upstream_unreachable' } };
+  }
+  // 429 is a rate limit, 529 is overloaded; any non-2xx goes to the fallback.
+  if (!upstream.ok) return { failure: { error: 'upstream_error', status: upstream.status } };
+
+  let data;
+  try {
+    data = await upstream.json();
+  } catch {
+    return { failure: { error: 'upstream_bad_json' } };
+  }
+  // A refusal or a cut-off answer is not a routing decision.
+  if (data?.stop_reason !== 'end_turn') {
+    return { failure: { error: 'upstream_incomplete', reason: data?.stop_reason ?? null } };
+  }
+  const text = data?.content?.find((block) => block.type === 'text')?.text;
+  return text ? { text } : { failure: { error: 'upstream_empty' } };
+}
+
+// The fallback router: Gemini Flash-Lite, same prompt, same schema (Gemini takes
+// RESPONSE_SCHEMA in its compact form as written).
+async function askGemini(env, userText) {
+  const model = env.GEMINI_MODEL || 'gemini-flash-lite-latest';
+  const body = {
+    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+    contents: [{ role: 'user', parts: [{ text: userText }] }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: RESPONSE_SCHEMA,
+      temperature: 0,
+      maxOutputTokens: 512,
+    },
+  };
+
+  let upstream;
+  try {
+    upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    return { failure: { error: 'upstream_unreachable' } };
+  }
+  if (!upstream.ok) return { failure: { error: 'upstream_error', status: upstream.status } };
+
+  let data;
+  try {
+    data = await upstream.json();
+  } catch {
+    return { failure: { error: 'upstream_bad_json' } };
+  }
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  return text ? { text } : { failure: { error: 'upstream_empty' } };
+}
+
 export default {
   async fetch(request, env) {
     const allowed = env.ALLOWED_ORIGIN || '';
@@ -246,9 +335,6 @@ export default {
       }
     }
 
-    if (!env.ANTHROPIC_API_KEY) {
-      return json({ error: 'not_configured' }, 500, corsOrigin);
-    }
     const utterance = typeof payload?.utterance === 'string' ? payload.utterance.slice(0, 2000) : '';
     if (!utterance.trim()) {
       return json({ error: 'empty_utterance' }, 400, corsOrigin);
@@ -256,62 +342,32 @@ export default {
     const repair = payload?.repair === true;
     const activeTab = typeof payload?.activeTab === 'string' ? payload.activeTab : null;
 
-    const model = env.ANTHROPIC_MODEL || 'claude-haiku-5-5';
-
     const userText =
       (activeTab ? `Active tab: ${activeTab}\n` : '') +
       (repair ? 'Your previous answer did not match the required schema. Return only the valid object.\n' : '') +
       `Utterance: ${utterance}`;
 
-    const body = {
-      model,
-      // Routing is tiny, but the object always carries every field (null when
-      // unstated), so leave room for it without letting a runaway answer cost much.
-      max_tokens: 512,
-      // One short classification per call: no thinking, so the answer is fast.
-      thinking: { type: 'disabled' },
-      // The prompt never changes between calls, so let it be cached.
-      system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
-      messages: [{ role: 'user', content: userText }],
-      output_config: { format: { type: 'json_schema', schema: OUTPUT_SCHEMA } },
-    };
-
-    let upstream;
-    try {
-      upstream = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': env.ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify(body),
-      });
-    } catch {
-      return json({ error: 'upstream_unreachable' }, 502, corsOrigin);
+    // Haiku first. If it is rate limited, overloaded, down, or returns something
+    // that is not a routing answer, ask Gemini Flash-Lite the same question
+    // before giving up. Only when both fail does the client get a 502 and fall
+    // back to its own offline engine.
+    let text = null;
+    let failure = { error: 'not_configured' };
+    if (env.ANTHROPIC_API_KEY) {
+      const first = await askClaude(env, userText);
+      if (first.text) text = first.text;
+      else failure = first.failure;
     }
-    if (!upstream.ok) {
-      return json({ error: 'upstream_error', status: upstream.status }, 502, corsOrigin);
+    if (!text && env.GEMINI_API_KEY) {
+      const second = await askGemini(env, userText);
+      if (second.text) text = second.text;
+      else if (!env.ANTHROPIC_API_KEY) failure = second.failure;
     }
-
-    let data;
-    try {
-      data = await upstream.json();
-    } catch {
-      return json({ error: 'upstream_bad_json' }, 502, corsOrigin);
-    }
-
-    // A refusal or a cut-off answer is not a routing decision; the client falls
-    // back to the deterministic engine on any non-200.
-    if (data?.stop_reason !== 'end_turn') {
-      return json({ error: 'upstream_incomplete', reason: data?.stop_reason ?? null }, 502, corsOrigin);
-    }
-    const text = data?.content?.find((block) => block.type === 'text')?.text;
     if (!text) {
-      return json({ error: 'upstream_empty' }, 502, corsOrigin);
+      return json(failure, failure.error === 'not_configured' ? 500 : 502, corsOrigin);
     }
 
-    // The model returns JSON text matching OUTPUT_SCHEMA. Parse and pass it straight
+    // The model returns JSON text matching the routing schema. Parse and pass it straight
     // through; the client validates it against routingSchema.
     let routing;
     try {
