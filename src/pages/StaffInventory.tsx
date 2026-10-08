@@ -115,6 +115,14 @@ const REVIEW_META: Record<
   not_placed: { Icon: MapPin, tint: "bg-blue-100 text-blue-700" },
 };
 
+const REVIEW_NAMES: Record<string, string> = {
+  duplicate: "In two spots",
+  no_price: "No price",
+  flagged: "Flagged on the sheet",
+  unidentified: "Not identified",
+  not_placed: "Priced, not on the board",
+};
+
 // Format a before-tax price. Returns null when there is no numeric price so the
 // caller can fall back to a note or an em-free placeholder.
 const money = (n: number | null | undefined): string | null =>
@@ -128,24 +136,8 @@ const parsePrice = (raw: string): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
-// Per-key icon variety: derive a stable (Icon, gradient) pair from the model
-// name with a small FNV-style hash. Same model => same look across reloads.
-// All gradient class names appear as literals here so Tailwind keeps them.
+// Keep a stable icon choice for each model.
 const KEY_ICONS = [Key, KeyRound, KeySquare];
-const KEY_GRADIENTS = [
-  "from-amber-400 to-orange-600",
-  "from-yellow-400 to-amber-600",
-  "from-orange-400 to-red-600",
-  "from-rose-400 to-pink-600",
-  "from-fuchsia-400 to-purple-600",
-  "from-violet-400 to-indigo-600",
-  "from-blue-400 to-cyan-600",
-  "from-sky-400 to-blue-600",
-  "from-teal-400 to-emerald-600",
-  "from-emerald-400 to-green-600",
-  "from-lime-400 to-green-600",
-  "from-stone-400 to-zinc-600",
-];
 
 const hashString = (s: string) => {
   let h = 2166136261;
@@ -160,29 +152,16 @@ const getKeyIconStyle = (model: string) => {
   const h = hashString(model.trim().toLowerCase());
   return {
     Icon: KEY_ICONS[h % KEY_ICONS.length],
-    gradient: KEY_GRADIENTS[Math.floor(h / KEY_ICONS.length) % KEY_GRADIENTS.length],
   };
 };
 
-// Refills get their own icon set, tinted toward inks so a glance tells the two
-// tabs apart. Same brand+cartridge => same look across reloads.
+// Keep a stable icon choice for each brand and cartridge.
 const REFILL_ICONS = [Droplets, Printer, Stamp];
-const REFILL_GRADIENTS = [
-  "from-cyan-400 to-blue-600",
-  "from-sky-400 to-indigo-600",
-  "from-blue-400 to-violet-600",
-  "from-indigo-400 to-purple-600",
-  "from-teal-400 to-cyan-600",
-  "from-emerald-400 to-teal-600",
-  "from-fuchsia-400 to-pink-600",
-  "from-violet-400 to-fuchsia-600",
-];
 
 const getRefillIconStyle = (label: string) => {
   const h = hashString(label.trim().toLowerCase());
   return {
     Icon: REFILL_ICONS[h % REFILL_ICONS.length],
-    gradient: REFILL_GRADIENTS[Math.floor(h / REFILL_ICONS.length) % REFILL_GRADIENTS.length],
   };
 };
 
@@ -198,6 +177,10 @@ const StaffInventory = () => {
   const [refillsLoading, setRefillsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [refillSearch, setRefillSearch] = useState("");
+  const [addingKey, setAddingKey] = useState(false);
+  const [addingRefill, setAddingRefill] = useState(false);
+  const [reviewKind, setReviewKind] = useState("");
+  const [shownReviews, setShownReviews] = useState(25);
   const [activeTab, setActiveTab] = useState("keys");
   const newKeyForm = useForm<{ model: string; price: string }>({
     defaultValues: { model: "", price: "" },
@@ -219,7 +202,7 @@ const StaffInventory = () => {
         setKeys(data);
       } catch (error) {
         console.error("Failed to load key inventory:", error);
-        toast({ title: "Error", description: "Failed to load key inventory from database" });
+        toast({ title: "Couldn't load inventory", description: "Check the connection and try again." });
       } finally {
         setLoading(false);
       }
@@ -230,7 +213,7 @@ const StaffInventory = () => {
         setRefills(data);
       } catch (error) {
         console.error("Failed to load refill inventory:", error);
-        toast({ title: "Error", description: "Failed to load refills from database" });
+        toast({ title: "Couldn't load inventory", description: "Check the connection and try again." });
       } finally {
         setRefillsLoading(false);
       }
@@ -264,6 +247,18 @@ const StaffInventory = () => {
     [board, keys],
   );
 
+  const reviewGroups = useMemo(() => Object.keys(REVIEW_META)
+    .map((kind) => ({ kind, alerts: reviews.filter((alert) => alert.kind === kind) }))
+    .filter((group) => group.alerts.length > 0), [reviews]);
+  const selectedReviewKind = reviewGroups.some((group) => group.kind === reviewKind)
+    ? reviewKind : reviewGroups[0]?.kind;
+  const selectedReviews = reviewGroups.find((group) => group.kind === selectedReviewKind)?.alerts ?? [];
+  const reviewWarningCount = reviews.filter((alert) => alert.severity === "warn").length;
+
+  useEffect(() => {
+    setShownReviews(25);
+  }, [selectedReviewKind]);
+
   // Case-insensitive substring match on model name or its alternate names.
   // Memoized so we don't re-filter on every unrelated re-render once large.
   const filteredKeys = useMemo(() => {
@@ -290,16 +285,6 @@ const StaffInventory = () => {
     await logout();
   };
 
-  const stockBadgeClass = (inStock: boolean) => {
-    if (isDarkMode) {
-      return inStock
-        ? "bg-green-500/20 text-green-300 border-green-400/50"
-        : "bg-red-500/20 text-red-300 border-red-400/50";
-    }
-    return inStock
-      ? "bg-green-100 text-green-800 border-green-400"
-      : "bg-red-100 text-red-800 border-red-400";
-  };
 
   const priceBadgeClass = isDarkMode
     ? "bg-blue-500/20 text-blue-200 border-blue-400/50"
@@ -324,10 +309,11 @@ const StaffInventory = () => {
       await setDocument(KEY_INVENTORY_COLLECTION, id, newItem);
       setKeys((prev) => [newItem, ...prev]);
       newKeyForm.reset();
-      toast({ title: "Key Added", description: `${trimmed} added to inventory` });
+      setAddingKey(false);
+      toast({ title: "Key added", description: `${trimmed} added to inventory` });
     } catch (error) {
       console.error("Failed to add key:", error);
-      toast({ title: "Error", description: "Failed to save key to database" });
+      toast({ title: "That didn't save", description: "Check the connection and try again." });
     }
   };
 
@@ -365,10 +351,11 @@ const StaffInventory = () => {
       await setDocument(REFILL_INVENTORY_COLLECTION, id, newItem);
       setRefills((prev) => [newItem, ...prev]);
       newRefillForm.reset();
-      toast({ title: "Refill Added", description: `${newItem.brand} ${cart} added` });
+      setAddingRefill(false);
+      toast({ title: "Refill added", description: `${newItem.brand} ${cart} added` });
     } catch (error) {
       console.error("Failed to add refill:", error);
-      toast({ title: "Error", description: "Failed to save refill to database" });
+      toast({ title: "That didn't save", description: "Check the connection and try again." });
     }
   };
 
@@ -384,7 +371,7 @@ const StaffInventory = () => {
       console.error("Failed to update stock:", error);
       // Roll back on failure.
       setKeys((prev) => prev.map((k) => (k.id === item.id ? item : k)));
-      toast({ title: "Error", description: "Failed to update stock status" });
+      toast({ title: "That didn't save", description: "Check the connection and try again." });
     }
   };
 
@@ -398,7 +385,7 @@ const StaffInventory = () => {
     } catch (error) {
       console.error("Failed to update refill stock:", error);
       setRefills((prev) => prev.map((r) => (r.id === item.id ? item : r)));
-      toast({ title: "Error", description: "Failed to update stock status" });
+      toast({ title: "That didn't save", description: "Check the connection and try again." });
     }
   };
 
@@ -413,12 +400,12 @@ const StaffInventory = () => {
       await deleteDocument(KEY_INVENTORY_COLLECTION, item.id);
       setKeys((prev) => prev.filter((k) => k.id !== item.id));
       toast({
-        title: "Key Removed",
+        title: "Key deleted",
         description: `${item.model} has been moved to deleted inventory`,
       });
     } catch (error) {
       console.error("Failed to delete key:", error);
-      toast({ title: "Error", description: "Failed to delete key" });
+      toast({ title: "That didn't save", description: "Check the connection and try again." });
     }
   };
 
@@ -431,12 +418,12 @@ const StaffInventory = () => {
       await deleteDocument(REFILL_INVENTORY_COLLECTION, item.id);
       setRefills((prev) => prev.filter((r) => r.id !== item.id));
       toast({
-        title: "Refill Removed",
+        title: "Refill deleted",
         description: `${item.brand} ${item.cartridge} has been moved to deleted inventory`,
       });
     } catch (error) {
       console.error("Failed to delete refill:", error);
-      toast({ title: "Error", description: "Failed to delete refill" });
+      toast({ title: "That didn't save", description: "Check the connection and try again." });
     }
   };
 
@@ -455,7 +442,7 @@ const StaffInventory = () => {
 
   // The shared tab look (same as SegmentedTabs on the other tool pages): the
   // active tab lifts onto the card surface instead of flooding with colour.
-  const tabTrigger = `min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-sm ${
+  const tabTrigger = `min-h-[44px] shrink-0 gap-2 rounded-lg px-2 sm:px-4 text-sm font-medium data-[state=active]:shadow-sm ${
     isDarkMode
       ? "data-[state=active]:bg-[#171a21] data-[state=active]:text-[#f3f4f6]"
       : "data-[state=active]:bg-white data-[state=active]:text-[#1a1d23]"
@@ -464,25 +451,25 @@ const StaffInventory = () => {
   const content = (
     <div className={`border rounded-xl p-4 sm:p-6 ${themeClasses.card.primary}`}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className={`mb-6 inline-flex h-auto max-w-full gap-1 overflow-x-auto rounded-xl border p-1 ${themeClasses.card.secondary}`}>
+            <TabsList className={`mb-6 inline-flex h-auto max-w-full justify-start gap-1 overflow-x-auto rounded-xl border p-1 ${themeClasses.card.secondary}`}>
               <TabsTrigger value="keys" className={tabTrigger}>
-                <Key className="h-4 w-4" />
+                <Key className="hidden h-4 w-4 sm:inline" />
                 <span>Keys</span>
               </TabsTrigger>
               <TabsTrigger value="board" className={tabTrigger}>
-                <MapPin className="h-4 w-4" />
+                <MapPin className="hidden h-4 w-4 sm:inline" />
                 <span>Key board</span>
               </TabsTrigger>
               <TabsTrigger value="refills" className={tabTrigger}>
-                <Droplets className="h-4 w-4" />
+                <Droplets className="hidden h-4 w-4 sm:inline" />
                 <span>Refills</span>
               </TabsTrigger>
               <TabsTrigger value="review" className={tabTrigger}>
-                <ClipboardCheck className="h-4 w-4" />
+                <ClipboardCheck className="hidden h-4 w-4 sm:inline" />
                 <span>Review</span>
                 {reviews.some((r) => r.severity === "warn") && (
                   <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold text-white">
-                    {reviews.filter((r) => r.severity === "warn").length}
+                    {reviewWarningCount > 99 ? "99+" : reviewWarningCount}
                   </span>
                 )}
               </TabsTrigger>
@@ -502,56 +489,41 @@ const StaffInventory = () => {
             </TabsContent>
 
             <TabsContent value="keys">
-              {/* Add new key form */}
-              <Card className={`mb-6 shadow-none transition-all duration-300 ${themeClasses.card.secondary}`}>
-                <CardHeader className="pb-3">
-                  <CardTitle className={`flex items-center space-x-2 text-lg font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>
-                    <Plus className="h-5 w-5" />
-                    <span>Add a key</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form
-                    onSubmit={newKeyForm.handleSubmit(addKey)}
-                    className="flex flex-col sm:flex-row gap-3"
-                  >
-                    <div className="flex-1">
-                      <Label className={`sr-only`}>Key model</Label>
-                      <Input
-                        {...newKeyForm.register("model", { required: true })}
-                        placeholder="e.g. Kwikset KW1, Schlage SC1, Mailbox 1646"
-                        className={`transition-all duration-300 ${themeClasses.input}`}
-                      />
-                    </div>
-                    <div className="sm:w-40">
-                      <Label className={`sr-only`}>Price</Label>
-                      <Input
-                        {...newKeyForm.register("price")}
-                        inputMode="decimal"
-                        placeholder="Price (before tax)"
-                        className={`transition-all duration-300 ${themeClasses.input}`}
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      className={`font-semibold rounded-lg transition-colors ${themeClasses.button.primary}`}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
+              {addingKey && (
+                <Card className={`mb-6 shadow-none ${themeClasses.card.secondary}`}>
+                  <CardHeader className="pb-3">
+                    <CardTitle className={`text-lg font-semibold ${themeClasses.text.primary}`}>Add a key</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={newKeyForm.handleSubmit(addKey)} className="space-y-4">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <Label htmlFor="new-key-model" className={`font-medium ${themeClasses.text.primary}`}>Key</Label>
+                          <Input id="new-key-model" {...newKeyForm.register("model", { required: true })} placeholder="e.g. KW1, SC1, Mailbox 1646" className={`min-h-[44px] ${themeClasses.input}`} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="new-key-price" className={`font-medium ${themeClasses.text.primary}`}>Price before tax</Label>
+                          <Input id="new-key-price" {...newKeyForm.register("price")} inputMode="decimal" placeholder="0.00" className={`min-h-[44px] ${themeClasses.input}`} />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <Button type="button" variant="ghost" onClick={() => { newKeyForm.reset(); setAddingKey(false); }} className={`min-h-[44px] ${themeClasses.button.ghost}`}>Cancel</Button>
+                        <Button type="submit" className={`min-h-[44px] rounded-lg px-4 font-semibold ${themeClasses.button.primary}`}>Add key</Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
+              )}
 
-              {/* Search bar, hidden until there's something to search through. */}
-              {!loading && keys.length > 0 && (
-                <div className="relative mb-4">
+              {/* Search and add controls */}
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+                <div className="relative flex-1">
                   <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
                   <Input
                     placeholder="Search keys by model..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className={`pl-10 pr-10 transition-all duration-300 ${themeClasses.input}`}
+                    className={`min-h-[44px] pl-10 pr-10 transition-all duration-300 ${themeClasses.input}`}
                   />
                   {searchTerm && (
                     <button
@@ -564,7 +536,12 @@ const StaffInventory = () => {
                     </button>
                   )}
                 </div>
-              )}
+                {!addingKey && (
+                  <Button type="button" onClick={() => setAddingKey(true)} className={`min-h-[44px] w-full rounded-lg px-4 font-semibold sm:w-auto ${themeClasses.button.primary}`}>
+                    <Plus className="mr-2 h-4 w-4" />Add key
+                  </Button>
+                )}
+              </div>
 
               {/* Result count when searching, so staff know if there's more to scroll. */}
               {!loading && keys.length > 0 && searchTerm && (
@@ -611,20 +588,20 @@ const StaffInventory = () => {
               ) : (
                 <div className="space-y-3">
                   {filteredKeys.map((item) => {
-                    const { Icon, gradient } = getKeyIconStyle(item.model);
+                    const { Icon } = getKeyIconStyle(item.model);
                     const priceText = money(item.price);
                     const location =
                       boardLocationFor(item.model, locationIndex) ??
                       (item.cutCode && item.cutCode.trim() ? item.cutCode.trim() : null);
                     return (
                     <Card key={item.id} className={`shadow-none transition-all duration-300 ${themeClasses.card.secondary}`}>
-                      <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
-                        <div className="flex items-center gap-4 min-w-0">
-                          <div className={`bg-gradient-to-br ${gradient} p-2 rounded-lg shadow-md shrink-0`}>
-                            <Icon className="h-5 w-5 text-white" />
+                      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3 min-w-0 sm:flex-1">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-500/10">
+                            <Icon className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                           </div>
                           <div className="min-w-0">
-                            <p className={`font-semibold truncate transition-colors duration-300 ${themeClasses.text.primary}`}>
+                            <p className={`font-semibold truncate transition-colors duration-300 ${themeClasses.text.primary} ${item.inStock ? "" : "opacity-60"}`}>
                               {item.model}
                             </p>
                             {item.notes ? (
@@ -641,7 +618,7 @@ const StaffInventory = () => {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
+                        <div className="flex w-full items-center gap-2 sm:w-auto sm:gap-4">
                           {priceText ? (
                             <Badge variant="outline" className={`${priceBadgeClass} border text-xs font-mono font-semibold tabular-nums`}>
                               {priceText}
@@ -649,24 +626,23 @@ const StaffInventory = () => {
                           ) : (
                             <span className={`text-xs transition-colors duration-300 ${themeClasses.text.muted}`}>No price</span>
                           )}
-                          <Badge variant="outline" className={`${stockBadgeClass(item.inStock)} border text-xs`}>
-                            {item.inStock ? "In Stock" : "Out of Stock"}
-                          </Badge>
 
-                          <label className={`flex items-center gap-2 text-sm font-medium cursor-pointer select-none transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                          <label className={`ml-auto flex shrink-0 items-center gap-2 text-sm cursor-pointer select-none ${item.inStock ? themeClasses.text.secondary : "text-red-600 dark:text-red-400 font-medium"}`}>
                             <Switch
+                              aria-label={`In stock: ${item.model}`}
                               checked={item.inStock}
                               onCheckedChange={(checked) => toggleStock(item, checked)}
                             />
-                            <span className="hidden sm:inline">In stock</span>
+                            <span>{item.inStock ? "In stock" : "Out of stock"}</span>
                           </label>
 
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
                                 variant="ghost"
-                                size="sm"
-                                className={`transition-all duration-300 ${themeClasses.button.danger}`}
+                                size="icon"
+                                aria-label="Delete key"
+                                className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -700,84 +676,53 @@ const StaffInventory = () => {
             </TabsContent>
 
             <TabsContent value="refills">
-              {/* Add new refill form */}
-              <Card className={`mb-6 shadow-none transition-all duration-300 ${themeClasses.card.secondary}`}>
-                <CardHeader className="pb-3">
-                  <CardTitle className={`flex items-center space-x-2 text-lg font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>
-                    <Plus className="h-5 w-5" />
-                    <span>Add a refill</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form
-                    onSubmit={newRefillForm.handleSubmit(addRefill)}
-                    className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-12"
-                  >
-                    <div className="sm:col-span-3">
-                      <Label className={`sr-only`}>Brand</Label>
-                      <Input
-                        {...newRefillForm.register("brand")}
-                        placeholder="Brand (HP)"
-                        className={`transition-all duration-300 ${themeClasses.input}`}
-                      />
-                    </div>
-                    <div className="sm:col-span-4">
-                      <Label className={`sr-only`}>Cartridge</Label>
-                      <Input
-                        {...newRefillForm.register("cartridge", { required: true })}
-                        placeholder="Cartridge (65XL)"
-                        className={`transition-all duration-300 ${themeClasses.input}`}
-                      />
-                    </div>
-                    <div className="sm:col-span-1">
-                      <Label className={`sr-only`}>Black price</Label>
-                      <Input
-                        {...newRefillForm.register("priceBlack")}
-                        inputMode="decimal"
-                        placeholder="Black"
-                        className={`transition-all duration-300 ${themeClasses.input}`}
-                      />
-                    </div>
-                    <div className="sm:col-span-1">
-                      <Label className={`sr-only`}>Colour price</Label>
-                      <Input
-                        {...newRefillForm.register("priceColour")}
-                        inputMode="decimal"
-                        placeholder="Colour"
-                        className={`transition-all duration-300 ${themeClasses.input}`}
-                      />
-                    </div>
-                    <div className="sm:col-span-1">
-                      <Label className={`sr-only`}>XL price</Label>
-                      <Input
-                        {...newRefillForm.register("priceXl")}
-                        inputMode="decimal"
-                        placeholder="XL"
-                        className={`transition-all duration-300 ${themeClasses.input}`}
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <Button
-                        type="submit"
-                        className={`w-full font-semibold rounded-lg transition-colors ${themeClasses.button.primary}`}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add
-                      </Button>
-                    </div>
-                  </form>
-                </CardContent>
-              </Card>
+              {addingRefill && (
+                <Card className={`mb-6 shadow-none ${themeClasses.card.secondary}`}>
+                  <CardHeader className="pb-3">
+                    <CardTitle className={`text-lg font-semibold ${themeClasses.text.primary}`}>Add a refill</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={newRefillForm.handleSubmit(addRefill)} className="space-y-4">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-6">
+                        <div className="space-y-1 sm:col-span-3">
+                          <Label htmlFor="new-refill-brand" className={`font-medium ${themeClasses.text.primary}`}>Brand</Label>
+                          <Input id="new-refill-brand" {...newRefillForm.register("brand")} placeholder="e.g. HP" className={`min-h-[44px] ${themeClasses.input}`} />
+                        </div>
+                        <div className="space-y-1 sm:col-span-3">
+                          <Label htmlFor="new-refill-cartridge" className={`font-medium ${themeClasses.text.primary}`}>Cartridge</Label>
+                          <Input id="new-refill-cartridge" {...newRefillForm.register("cartridge", { required: true })} placeholder="e.g. 65XL" className={`min-h-[44px] ${themeClasses.input}`} />
+                        </div>
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label htmlFor="new-refill-priceBlack" className={`font-medium ${themeClasses.text.primary}`}>Black price</Label>
+                          <Input id="new-refill-priceBlack" {...newRefillForm.register("priceBlack")} inputMode="decimal" placeholder="0.00" className={`min-h-[44px] ${themeClasses.input}`} />
+                        </div>
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label htmlFor="new-refill-priceColour" className={`font-medium ${themeClasses.text.primary}`}>Colour price</Label>
+                          <Input id="new-refill-priceColour" {...newRefillForm.register("priceColour")} inputMode="decimal" placeholder="0.00" className={`min-h-[44px] ${themeClasses.input}`} />
+                        </div>
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label htmlFor="new-refill-priceXl" className={`font-medium ${themeClasses.text.primary}`}>XL price</Label>
+                          <Input id="new-refill-priceXl" {...newRefillForm.register("priceXl")} inputMode="decimal" placeholder="0.00" className={`min-h-[44px] ${themeClasses.input}`} />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <Button type="button" variant="ghost" onClick={() => { newRefillForm.reset(); setAddingRefill(false); }} className={`min-h-[44px] ${themeClasses.button.ghost}`}>Cancel</Button>
+                        <Button type="submit" className={`min-h-[44px] rounded-lg px-4 font-semibold ${themeClasses.button.primary}`}>Add refill</Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Search bar */}
-              {!refillsLoading && refills.length > 0 && (
-                <div className="relative mb-4">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+                <div className="relative flex-1">
                   <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
                   <Input
                     placeholder="Search refills by brand or cartridge..."
                     value={refillSearch}
                     onChange={(e) => setRefillSearch(e.target.value)}
-                    className={`pl-10 pr-10 transition-all duration-300 ${themeClasses.input}`}
+                    className={`min-h-[44px] pl-10 pr-10 transition-all duration-300 ${themeClasses.input}`}
                   />
                   {refillSearch && (
                     <button
@@ -790,7 +735,12 @@ const StaffInventory = () => {
                     </button>
                   )}
                 </div>
-              )}
+                {!addingRefill && (
+                  <Button type="button" onClick={() => setAddingRefill(true)} className={`min-h-[44px] w-full rounded-lg px-4 font-semibold sm:w-auto ${themeClasses.button.primary}`}>
+                    <Plus className="mr-2 h-4 w-4" />Add refill
+                  </Button>
+                )}
+              </div>
 
               {!refillsLoading && refills.length > 0 && refillSearch && (
                 <p className={`text-sm mb-3 transition-colors duration-300 ${themeClasses.text.secondary}`}>
@@ -836,52 +786,52 @@ const StaffInventory = () => {
               ) : (
                 <div className="space-y-3">
                   {filteredRefills.map((item) => {
-                    const { Icon, gradient } = getRefillIconStyle(`${item.brand} ${item.cartridge}`);
+                    const { Icon } = getRefillIconStyle(`${item.brand} ${item.cartridge}`);
                     const parts = refillPriceParts(item);
                     return (
                       <Card key={item.id} className={`shadow-none transition-all duration-300 ${themeClasses.card.secondary}`}>
-                        <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
-                          <div className="flex items-center gap-4 min-w-0">
-                            <div className={`bg-gradient-to-br ${gradient} p-2 rounded-lg shadow-md shrink-0`}>
-                              <Icon className="h-5 w-5 text-white" />
+                        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex items-center gap-3 min-w-0 sm:flex-1">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-500/10">
+                              <Icon className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                             </div>
                             <div className="min-w-0">
-                              <p className={`font-semibold truncate transition-colors duration-300 ${themeClasses.text.primary}`}>
+                              <p className={`font-semibold truncate transition-colors duration-300 ${themeClasses.text.primary} ${item.inStock ? "" : "opacity-60"}`}>
                                 {item.brand ? `${item.brand} ` : ""}{item.cartridge}
                               </p>
-                              {parts.length > 0 ? (
-                                <p className={`text-xs truncate font-mono tabular-nums transition-colors duration-300 ${themeClasses.text.secondary}`}>
-                                  {parts.join("   ")}
-                                </p>
-                              ) : item.priceNote ? (
-                                <p className={`text-xs truncate transition-colors duration-300 ${themeClasses.text.muted}`}>
-                                  {item.priceNote}
-                                </p>
-                              ) : (
-                                <p className={`text-xs transition-colors duration-300 ${themeClasses.text.muted}`}>No price</p>
-                              )}
+
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-4">
-                            <Badge variant="outline" className={`${stockBadgeClass(item.inStock)} border text-xs`}>
-                              {item.inStock ? "In Stock" : "Out of Stock"}
-                            </Badge>
+                          <div className="flex w-full items-center gap-2 sm:w-auto sm:gap-4">
+                              {parts.length > 0 ? (
+                                <p className={`min-w-0 flex-1 truncate text-xs font-mono tabular-nums transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                                  {parts.join("   ")}
+                                </p>
+                              ) : item.priceNote ? (
+                                <p className={`min-w-0 flex-1 truncate text-xs transition-colors duration-300 ${themeClasses.text.muted}`}>
+                                  {item.priceNote}
+                                </p>
+                              ) : (
+                                <p className={`min-w-0 flex-1 truncate text-xs transition-colors duration-300 ${themeClasses.text.muted}`}>No price</p>
+                              )}
 
-                            <label className={`flex items-center gap-2 text-sm font-medium cursor-pointer select-none transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                            <label className={`ml-auto flex shrink-0 items-center gap-2 text-sm cursor-pointer select-none ${item.inStock ? themeClasses.text.secondary : "text-red-600 dark:text-red-400 font-medium"}`}>
                               <Switch
-                                checked={item.inStock}
+                                aria-label={`In stock: ${item.brand} ${item.cartridge}`}
+                              checked={item.inStock}
                                 onCheckedChange={(checked) => toggleRefillStock(item, checked)}
                               />
-                              <span className="hidden sm:inline">In stock</span>
+                              <span>{item.inStock ? "In stock" : "Out of stock"}</span>
                             </label>
 
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
                                   variant="ghost"
-                                  size="sm"
-                                  className={`transition-all duration-300 ${themeClasses.button.danger}`}
+                                  size="icon"
+                                  aria-label="Delete refill"
+                                  className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -918,7 +868,7 @@ const StaffInventory = () => {
               <div className="mb-4">
                 <h3 className={`text-lg font-semibold ${themeClasses.text.primary}`}>Things to look at</h3>
                 <p className={`text-sm ${themeClasses.text.secondary}`}>
-                  Automatic checks across the key board and price list. Clear these as you go; the board is the source of truth.
+                  Checks that run by themselves across the key board and the price list. Fix one and it drops off this list.
                 </p>
               </div>
               {boardLoading || loading ? (
@@ -938,7 +888,16 @@ const StaffInventory = () => {
                 </Card>
               ) : (
                 <div className="space-y-2">
-                  {reviews.map((alert, i) => {
+                  <div className="mb-4 flex flex-wrap gap-2" aria-label="Review filters">
+                    {reviewGroups.map((group) => (
+                      <Button key={group.kind} variant="ghost" aria-pressed={selectedReviewKind === group.kind}
+                        onClick={() => { setReviewKind(group.kind); setShownReviews(25); }}
+                        className={`min-h-[40px] h-auto rounded-full border px-3.5 py-2 text-sm ${selectedReviewKind === group.kind ? themeClasses.button.primary : themeClasses.button.ghost}`}>
+                        {REVIEW_NAMES[group.kind]} <span className="ml-2 font-mono tabular-nums">{group.alerts.length}</span>
+                      </Button>
+                    ))}
+                  </div>
+                  {selectedReviews.slice(0, shownReviews).map((alert, i) => {
                     const meta = REVIEW_META[alert.kind];
                     return (
                       <Card key={`${alert.kind}-${i}`} className={`shadow-sm ${themeClasses.card.secondary}`}>
@@ -981,6 +940,10 @@ const StaffInventory = () => {
                       </Card>
                     );
                   })}
+                  <p className={`pt-2 text-sm ${themeClasses.text.muted}`}>Showing {Math.min(shownReviews, selectedReviews.length)} of {selectedReviews.length}</p>
+                  {shownReviews < selectedReviews.length && (
+                    <Button variant="ghost" onClick={() => setShownReviews((count) => count + 25)} className={`min-h-[44px] ${themeClasses.button.ghost}`}>Show 25 more</Button>
+                  )}
                 </div>
               )}
             </TabsContent>
@@ -1008,7 +971,7 @@ const StaffInventory = () => {
                 className={`transition-colors mr-4 group ${themeClasses.link}`}
               >
                 <ArrowLeft className="h-6 w-6 group-hover:-translate-x-1 transition-transform inline mr-2" />
-                Back to Dashboard
+                Back to dashboard
               </Link>
               <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${themeClasses.card.secondary}`}>
                 <Boxes className={`h-6 w-6 ${themeClasses.text.secondary}`} />
@@ -1017,7 +980,7 @@ const StaffInventory = () => {
                 <h1 className={`text-xl lg:text-2xl font-semibold tracking-tight ${themeClasses.text.primary}`}>
                   Inventory
                 </h1>
-                <p className={`text-xs font-medium transition-colors duration-300 ${themeClasses.text.secondary}`}>Staff Portal</p>
+                <p className={`text-xs font-medium transition-colors duration-300 ${themeClasses.text.secondary}`}>Staff portal</p>
               </div>
             </div>
 
