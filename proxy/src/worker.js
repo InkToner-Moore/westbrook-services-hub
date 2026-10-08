@@ -2,20 +2,20 @@ import { handleManager } from './manager.js';
 
 // AI Mode routing proxy (Cloudflare Worker).
 //
-// Holds the Gemini key server-side and does one job: take a staff utterance and
+// Holds the Anthropic key server-side and does one job: take a staff utterance and
 // return a routing decision (action + optional receipt subtype + confidence +
 // optional clarify) plus OPTIONAL field candidates. The candidates are suggestions
 // only. The SPA's deterministic engine still runs first and owns every value it can
 // extract; the client fills a candidate in only where deterministic extraction left
 // a field empty, marks it "guessed", and shows it for human confirmation. So this
 // proxy never sets a value the counter must accept, and business logic (IDs, tax,
-// Firestore writes) stays in the SPA. If Gemini fails, the client falls back to the
+// Firestore writes) stays in the SPA. If the model fails, the client falls back to the
 // deterministic engine.
 //
 // Secrets / vars (set with `wrangler secret put` or in wrangler.toml [vars]):
-//   GEMINI_API_KEY   (secret, required)  the Google AI Studio key
+//   ANTHROPIC_API_KEY (secret, required) the Anthropic API key
 //   ALLOWED_ORIGIN   (var, required)     exact staging origin allowed via CORS
-//   GEMINI_MODEL     (var, optional)     defaults to gemini-flash-lite-latest
+//   ANTHROPIC_MODEL  (var, optional)     defaults to claude-haiku-5-5
 
 const ACTIONS = [
   'receipt',
@@ -35,7 +35,7 @@ const ACTIONS = [
 ];
 const SUBTYPES = ['refill', 'supplies', 'shipping', 'key'];
 
-// Mirrors src/ai/providers/routingSchema.ts. Gemini enforces this shape.
+// Mirrors src/ai/providers/routingSchema.ts. The API enforces this shape (see toJsonSchema).
 // propertyOrdering makes the model commit to the coarse action first, then the
 // subtype, then confidence. Per-field descriptions carry the tie-break rules
 // right where the choice is made, which a weak model attends to better than a
@@ -178,6 +178,31 @@ function corsHeaders(origin) {
   };
 }
 
+// RESPONSE_SCHEMA is written in the compact OBJECT/STRING/nullable form. The
+// Anthropic API wants plain JSON Schema where every object is closed, every
+// property is required, and "may be null" is an anyOf with null.
+function toJsonSchema(node) {
+  const out = { type: node.type.toLowerCase() };
+  if (node.description) out.description = node.description;
+  if (node.enum) out.enum = node.enum;
+  if (node.items) out.items = toJsonSchema(node.items);
+  if (node.properties) {
+    out.properties = {};
+    for (const [key, child] of Object.entries(node.properties)) {
+      out.properties[key] = toJsonSchema(child);
+    }
+    out.required = Object.keys(node.properties);
+    out.additionalProperties = false;
+  }
+  if (!node.nullable) return out;
+  const { description, ...rest } = out;
+  const nullable = { anyOf: [rest, { type: 'null' }] };
+  if (description) nullable.description = description;
+  return nullable;
+}
+
+const OUTPUT_SCHEMA = toJsonSchema(RESPONSE_SCHEMA);
+
 function json(body, status, origin) {
   return new Response(JSON.stringify(body), {
     status,
@@ -210,7 +235,7 @@ export default {
     }
 
     // Manager-session endpoints live under /manager/* and are independent of the
-    // AI routing path below (they do not need the Gemini key).
+    // AI routing path below (they do not need the Anthropic key).
     const pathname = new URL(request.url).pathname;
     if (pathname.startsWith('/manager/')) {
       try {
@@ -221,7 +246,7 @@ export default {
       }
     }
 
-    if (!env.GEMINI_API_KEY) {
+    if (!env.ANTHROPIC_API_KEY) {
       return json({ error: 'not_configured' }, 500, corsOrigin);
     }
     const utterance = typeof payload?.utterance === 'string' ? payload.utterance.slice(0, 2000) : '';
@@ -231,8 +256,7 @@ export default {
     const repair = payload?.repair === true;
     const activeTab = typeof payload?.activeTab === 'string' ? payload.activeTab : null;
 
-    const model = env.GEMINI_MODEL || 'gemini-flash-lite-latest';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+    const model = env.ANTHROPIC_MODEL || 'claude-haiku-5-5';
 
     const userText =
       (activeTab ? `Active tab: ${activeTab}\n` : '') +
@@ -240,46 +264,54 @@ export default {
       `Utterance: ${utterance}`;
 
     const body = {
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-      contents: [{ role: 'user', parts: [{ text: userText }] }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: RESPONSE_SCHEMA,
-        temperature: 0,
-        candidateCount: 1,
-        // Routing is tiny, but the optional field candidates add a handful of short
-        // strings; keep the cap tight enough to bound Flash-Lite latency.
-        maxOutputTokens: 320,
-      },
+      model,
+      // Routing is tiny, but the object always carries every field (null when
+      // unstated), so leave room for it without letting a runaway answer cost much.
+      max_tokens: 512,
+      // One short classification per call: no thinking, so the answer is fast.
+      thinking: { type: 'disabled' },
+      // The prompt never changes between calls, so let it be cached.
+      system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content: userText }],
+      output_config: { format: { type: 'json_schema', schema: OUTPUT_SCHEMA } },
     };
 
-    let geminiRes;
+    let upstream;
     try {
-      geminiRes = await fetch(url, {
+      upstream = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+        },
         body: JSON.stringify(body),
       });
     } catch {
       return json({ error: 'upstream_unreachable' }, 502, corsOrigin);
     }
-    if (!geminiRes.ok) {
-      return json({ error: 'upstream_error', status: geminiRes.status }, 502, corsOrigin);
+    if (!upstream.ok) {
+      return json({ error: 'upstream_error', status: upstream.status }, 502, corsOrigin);
     }
 
     let data;
     try {
-      data = await geminiRes.json();
+      data = await upstream.json();
     } catch {
       return json({ error: 'upstream_bad_json' }, 502, corsOrigin);
     }
 
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    // A refusal or a cut-off answer is not a routing decision; the client falls
+    // back to the deterministic engine on any non-200.
+    if (data?.stop_reason !== 'end_turn') {
+      return json({ error: 'upstream_incomplete', reason: data?.stop_reason ?? null }, 502, corsOrigin);
+    }
+    const text = data?.content?.find((block) => block.type === 'text')?.text;
     if (!text) {
       return json({ error: 'upstream_empty' }, 502, corsOrigin);
     }
 
-    // The model returns JSON text (responseMimeType). Parse and pass it straight
+    // The model returns JSON text matching OUTPUT_SCHEMA. Parse and pass it straight
     // through; the client validates it against routingSchema.
     let routing;
     try {

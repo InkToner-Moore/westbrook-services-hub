@@ -1,12 +1,12 @@
 # AI Mode routing proxy
 
-The proxy is a tiny Cloudflare Worker that holds the Gemini API key server-side and
+The proxy is a tiny Cloudflare Worker that holds the Anthropic API key server-side and
 turns a staff utterance into a routing decision: it picks an action (and receipt
 subtype). For routing it never extracts names, prices, or any field value, and it
 never touches Firestore. (The same Worker also serves manager-session endpoints
 under `/manager/*`, a separate concern documented at the end of this file.) Field extraction and all business logic stay in the SPA's
 deterministic engine (`src/ai/providers/deterministic.ts`), so the model cannot emit
-customer data or run store logic. If the proxy or Gemini fails for any reason, the
+customer data or run store logic. If the proxy or the model fails for any reason, the
 client falls back to the deterministic engine and AI Mode keeps working, for free.
 
 Code: `proxy/` (`src/worker.js`, `wrangler.toml`).
@@ -16,33 +16,35 @@ Client: `src/ai/providers/llm.ts`, selected in `src/ai/providers/index.ts` when
 ## What runs where
 
 ```
-Staff browser ── POST {utterance} ──▶ Cloudflare Worker ── generateContent ──▶ Gemini Flash-Lite
-   (staging SPA)                        (holds GEMINI_API_KEY)                  (routing JSON)
+Staff browser ── POST {utterance} ──▶ Cloudflare Worker ── /v1/messages ──▶ Claude Haiku 5.5
+   (staging SPA)                        (holds ANTHROPIC_API_KEY)            (routing JSON)
         ▲                                       │
         └──────────── routing JSON ◀────────────┘
         │
    deterministic engine fills fields + provenance, runs the action
 ```
 
-## Cost (why this is effectively free)
+## Cost
 
 - **Cloudflare Workers free tier:** 100,000 requests/day. One staff query = one
   request. No card required.
-- **Gemini Flash-Lite:** cheapest Gemini model, chosen deliberately. The free API
-  tier has per-minute and per-day rate limits rather than a dollar cap; at counter
-  volume you stay inside it. If you ever exceed the free limits you can enable
-  billing (Flash-Lite is a fraction of a cent per call). If the model is rate-limited
-  or down, the client falls back to the deterministic engine, so nothing breaks.
+- **Claude Haiku 5.5** (`claude-haiku-5-5`), switched from Gemini Flash-Lite on
+  2026-10-08. There is no free tier; every call is billed per token. Measured that
+  day, one call is about 4,200 input tokens of prompt and schema, read from the
+  prompt cache after the first call, about 20 fresh input tokens for the utterance,
+  and 120 to 170 output tokens. It answers in 1.3 to 2.8 seconds; the client gives
+  up at 4 seconds. If the model is rate-limited or down, the client falls back to
+  the deterministic engine, so nothing breaks.
 
-Check current free-tier limits at https://ai.google.dev/gemini-api/docs/rate-limits
-before assuming headroom; Google adjusts them.
+Prices are at https://www.anthropic.com/pricing. Haiku 5.5 costs more above 100k
+tokens of context; a routing call is nowhere near that.
 
 ## One-time setup (what you do)
 
-You need a free Cloudflare account and a Google AI Studio (Gemini) API key.
+You need a free Cloudflare account and an Anthropic API key.
 
-1. **Get a Gemini key.** Go to https://aistudio.google.com/apikey, create an API
-   key, copy it. Do not paste it into any file in this repo.
+1. **Get an Anthropic key.** Go to https://console.anthropic.com/settings/keys,
+   create an API key, copy it. Do not paste it into any file in this repo.
 
 2. **Install wrangler and log in** (from the repo root):
    ```sh
@@ -57,9 +59,9 @@ You need a free Cloudflare account and a Google AI Studio (Gemini) API key.
    the first Pages deploy (see `deploy-staging.md`); you can deploy the Worker now
    with a placeholder and update it after.
 
-4. **Store the Gemini key as a secret** (never in a file):
+4. **Store the Anthropic key as a secret** (never in a file):
    ```sh
-   npx wrangler secret put GEMINI_API_KEY
+   npx wrangler secret put ANTHROPIC_API_KEY
    # paste the key when prompted
    ```
 
@@ -77,7 +79,7 @@ You need a free Cloudflare account and a Google AI Studio (Gemini) API key.
 
 ```sh
 cd proxy
-cp .dev.vars.example .dev.vars     # then put your Gemini key in .dev.vars (gitignored)
+cp .dev.vars.example .dev.vars     # then put your Anthropic key in .dev.vars (gitignored)
 npx wrangler dev                   # serves the Worker on http://localhost:8787
 ```
 
@@ -95,7 +97,7 @@ the client only sends the utterance and validates whatever routing comes back ag
 
 ## Security notes
 
-- The Gemini key exists only as a Worker secret. It is never in the repo, never in
+- The Anthropic key exists only as a Worker secret. It is never in the repo, never in
   the client bundle, never logged.
 - The Worker only accepts POSTs from `ALLOWED_ORIGIN`. This is a light guard, not a
   hard security boundary; the free tier and the deterministic fallback mean abuse

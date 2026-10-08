@@ -1,5 +1,5 @@
 // LlmProvider: an optional enhancement over the deterministic engine. It asks a
-// tiny server-side proxy (which holds the Gemini key) to route an utterance, then
+// tiny server-side proxy (which holds the model API key) to route an utterance, then
 // hands the routing decision back to the deterministic field-filler. The model only
 // improves routing; it never produces business values or runs logic. Any failure
 // (proxy down, bad JSON, schema mismatch, timeout) falls back to the deterministic

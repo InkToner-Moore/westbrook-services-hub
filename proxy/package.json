@@ -2,7 +2,7 @@
   "name": "inktonermoore-ai-proxy",
   "version": "1.0.0",
   "private": true,
-  "description": "Cloudflare Worker that proxies AI Mode routing requests to Gemini Flash-Lite",
+  "description": "Cloudflare Worker that proxies AI Mode routing requests to Claude Haiku",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy"

@@ -4,7 +4,7 @@
 // merges a candidate in only where deterministic extraction left a field empty, and
 // anything so filled is marked `guessed` so the confirmation slip flags it for a
 // human. The model never overwrites a value the counter actually stated, and never
-// executes anything. This is the contract the proxy's Gemini responseSchema mirrors;
+// executes anything. This is the contract the proxy's RESPONSE_SCHEMA mirrors;
 // the client validates against it and falls back to the deterministic engine on any
 // mismatch.
 import { z } from 'zod';
