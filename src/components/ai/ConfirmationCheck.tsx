@@ -32,6 +32,8 @@ import { formatDayHeading } from '@/lib/schedule';
 import ShipmentItemsEditor from './ShipmentItemsEditor';
 import IntentSuggestions from './IntentSuggestions';
 import { routeLabel } from '@/ai/intentOptions';
+import { receiptIntentToCartLines } from '@/ai/actions/cartLines';
+import { cartSubtotal, cartTaxTotal, cartTotal } from '@/ai/cart';
 
 // One icon per action for the slip header. Cartridge actions share the printer.
 const ACTION_ICON: Partial<Record<AiAction, LucideIcon>> = {
@@ -270,7 +272,7 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
       <button
         type="button"
         onClick={() => setEditingKey(spec.key)}
-        className={`group inline-flex items-center gap-1 font-mono text-[15px] tabular-nums ${
+        className={`group inline-flex min-h-[44px] items-center gap-1 font-mono text-[15px] tabular-nums xl:min-h-0 ${
           isEmpty ? themeClasses.text.muted : themeClasses.text.primary
         }`}
       >
@@ -347,12 +349,12 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
 
     const shown = spec.kind === 'date' && DATE_KEY.test(String(value)) ? formatDayHeading(String(value)) : String(value);
     const display = isEmpty ? (spec.marker === 'required' ? 'Add' : 'Optional') : shown;
-    const alignFigures = spec.kind === 'quantity';
+    const alignFigures = spec.kind === 'quantity' && !isEmpty;
     return (
       <button
         type="button"
         onClick={() => setEditingKey(spec.key)}
-        className={`group inline-flex items-center gap-1 text-[15px] ${alignFigures ? 'font-mono tabular-nums' : ''} ${
+        className={`group inline-flex min-h-[44px] items-center gap-1 text-[15px] xl:min-h-0 ${alignFigures ? 'font-mono tabular-nums' : ''} ${
           isEmpty ? themeClasses.text.muted : themeClasses.text.primary
         }`}
       >
@@ -384,6 +386,7 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
   const showTotal = priceNet != null && Number.isFinite(priceNet);
   const totalTax = showTotal && gstOn ? taxOf(priceNet) : 0;
   const totalDue = showTotal ? (gstOn ? grossFromNet(priceNet) : priceNet) : 0;
+  const shippingLines = isShipping ? receiptIntentToCartLines(draft.workingIntent) : [];
 
   return (
     <div className={`overflow-hidden rounded-2xl border ${themeClasses.card.primary}`}>
@@ -436,7 +439,8 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
               <li key={spec.key} className="flex items-center justify-between gap-3 py-2">
                 <div className="flex min-w-0 items-center gap-1.5">
                   <OmitToggle omitted={isOmitted} onToggle={() => toggleOmit(spec.key)} label={spec.label} />
-                  {spec.marker === 'required' && !isOmitted && isBlank(fv?.value) && <NeededMarker />}
+                  {/* The "?" means Confirm is waiting on this line, nothing softer. */}
+                  {spec.blocking && !isOmitted && isBlank(fv?.value) && <NeededMarker />}
                   <span
                     className={`text-[15px] ${themeClasses.text.secondary} ${
                       isOmitted ? 'line-through opacity-50' : ''
@@ -546,6 +550,26 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {/* A shipping slip has no single price line, so it gets its own total:
+            parcels and packing, the tax on them, and what the customer pays. It
+            is worked out by the same code that builds the receipt. */}
+        {shippingLines.length > 0 && (
+          <div className={`mt-3 space-y-1 border-t pt-2.5 ${rule}`}>
+            <div className={`flex items-center justify-between text-[13px] ${themeClasses.text.secondary}`}>
+              <span>Subtotal</span>
+              <span className="font-mono tabular-nums">${cartSubtotal(shippingLines).toFixed(2)}</span>
+            </div>
+            <div className={`flex items-center justify-between text-[13px] ${themeClasses.text.secondary}`}>
+              <span>Tax</span>
+              <span className="font-mono tabular-nums">${cartTaxTotal(shippingLines).toFixed(2)}</span>
+            </div>
+            <div className={`flex items-center justify-between text-[15px] font-semibold ${themeClasses.text.primary}`}>
+              <span>Total</span>
+              <span className="font-mono tabular-nums">${cartTotal(shippingLines).toFixed(2)}</span>
+            </div>
           </div>
         )}
 

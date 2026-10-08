@@ -15,7 +15,10 @@ import { getProvider } from './providers';
 import { segmentUtterance } from './segment';
 import { applyFollowUp, isFollowUp } from './followup';
 import { resolveKeyPrices } from './keys';
-import { getFieldSpecs } from './fieldSpecs';
+import { getFieldSpecs, missingRequired } from './fieldSpecs';
+import { isItemComplete, toShipmentItems } from './shipping';
+import { classifyChatWord, HELP_TEXT } from './chatWords';
+import { describeChange } from './describeChange';
 import { getExecutor, isImmediate } from './actions';
 import { receiptIntentToCartLines } from './actions/cartLines';
 import { recordPurchase } from './actions/purchase';
@@ -97,12 +100,28 @@ function describeUnsure(intent: Intent): string {
   return "I'm not sure which task that is.";
 }
 
-// The line the chat posts once a proposal's details move to the rail. Plain
-// words, pointing right, per the brief.
+// The line the chat posts once a proposal's details move to the slip. It says
+// "the slip", not "on the right": on a phone the slip is a sheet, not a column.
 function pointToArtifact(intent: Intent): string {
   const lead = describeIntent(intent);
-  return `${lead} I put the details on the right. Take a look and confirm.`.trim();
+  return `${lead} The details are on the slip. Check them and confirm, or tell me what to change.`.trim();
 }
+
+// What still stops a slip from being confirmed, as the labels to name. Mirrors
+// the slip's own check (useConfirmationDraft) for when no draft has reported in.
+function blockersOf(intent: Intent): string[] {
+  const missing = missingRequired(getFieldSpecs(intent) ?? [], intent).map((s) => s.label);
+  if (intent.action === 'receipt' && intent.subtype === 'shipping') {
+    if (!toShipmentItems(intent.fields.shipmentItems?.value).some(isItemComplete)) missing.push('a courier and cost');
+  }
+  return missing;
+}
+
+// A line that asks something rather than orders something.
+const QUESTION = /^(?:how|what|whats|why|when|can|could|do you|does|is the boss|are you)\b|\?$/i;
+
+const BEYOND_ME =
+  'That one is beyond me. I handle counter tasks: receipts, refills, keys, shipping, tracking, notes, stock and the schedule. Type help for examples.';
 
 // Data carried on a 'confirmation' artifact: the proposed intent plus enough to
 // re-route or resolve the chat turn it came from.
@@ -146,6 +165,9 @@ interface AiModeContextValue {
   confirmArtifactIntent: (turnId: string, finalIntent: Intent) => Promise<void>;
   // "Not now": the turn is dismissed and the slip clears without running anything.
   dismissArtifactIntent: (turnId: string) => void;
+  // The slip tells the provider how it currently reads, hand edits included, so
+  // a typed follow-up builds on those edits and a typed "yes" confirms them.
+  reportDraft: (turnId: string, intent: Intent) => void;
   // How many more confirmation slips wait behind the active one (from a multi-
   // action utterance). 0 when the active slip is the last or the only one.
   pendingCount: number;
@@ -190,6 +212,17 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     pendingRef.current = items;
     setPendingCount(items.length);
   }, []);
+
+  // The open slip as edited by hand in the rail. A ref, not state: nothing
+  // re-renders off it, it is only read when the next message is sent.
+  const draftRef = useRef<{ turnId: string; intent: Intent } | null>(null);
+  const reportDraft = useCallback((turnId: string, intent: Intent) => {
+    draftRef.current = { turnId, intent };
+  }, []);
+  // sendUtterance confirms or dismisses a slip on a typed "yes" / "cancel"; both
+  // are defined further down, so it reaches them through these refs.
+  const confirmRef = useRef<(turnId: string, intent: Intent) => Promise<void>>();
+  const dismissRef = useRef<(turnId: string) => void>();
 
   // Persist the open receipt across reloads.
   useEffect(() => {
@@ -292,7 +325,14 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // the counter knows there is a queue.
   const presentConfirmable = useCallback(
     (intent: Intent, sourceText: string, remaining: number) => {
-      const more = remaining > 0 ? ` Then I have ${remaining} more to go through with you.` : '';
+      const nextUp = pendingRef.current[0]?.intent;
+      const nextLabel = nextUp ? routeLabel(nextUp.action, nextUp.subtype)?.toLowerCase() : null;
+      const more =
+        remaining === 0
+          ? ''
+          : remaining === 1
+            ? ` After this one comes the ${nextLabel ?? 'next one'}.`
+            : ` Then ${remaining} more after it, starting with the ${nextLabel ?? 'next one'}.`;
       const turn = addAssistantTurn(`${pointToArtifact(intent)}${more}`, intent, sourceText);
       const data: ConfirmationArtifactData = { turnId: turn.id, intent, sourceText };
       setArtifact({ kind: 'confirmation', title: routeLabel(intent.action, intent.subtype) ?? 'Confirm details', data });
@@ -322,6 +362,9 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           console.error('[ai] immediate executor failed', intent.action, err);
           addAssistantTurn('Something went wrong with that. Please try again.');
         }
+      } else if (intent.action === 'unknown' && QUESTION.test(sourceText.trim())) {
+        // A question, not a task: a list of twelve tasks to pick from is no answer.
+        addAssistantTurn(BEYOND_ME);
       } else {
         addAssistantTurn(describeUnsure(intent), intent, sourceText);
       }
@@ -339,11 +382,51 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // Follow-up edit: when a slip is already open and this message does not start
         // a new action of its own, it is a change to the open slip ("make it $40",
         // "no gst", "change the courier to FedEx", "add another FedEx to Calgary").
-        if (artifact?.kind === 'confirmation') {
-          const data = artifact.data as ConfirmationArtifactData;
-          const active = data.intent;
+        const openSlip = artifact?.kind === 'confirmation' ? (artifact.data as ConfirmationArtifactData) : null;
+        // The slip as it stands now, including anything edited on it by hand.
+        const draft = openSlip && draftRef.current?.turnId === openSlip.turnId ? draftRef.current.intent : openSlip?.intent;
+
+        // A yes, a never mind, a hello: not a task, so it never reaches the parser.
+        const word = classifyChatWord(trimmed);
+        if (word === 'confirm' && openSlip && draft) {
+          const blockers = blockersOf(draft);
+          if (blockers.length > 0) addAssistantTurn(`Not yet. The slip still needs ${blockers.join(' and ')}.`);
+          else await confirmRef.current?.(openSlip.turnId, draft);
+          return;
+        }
+        if (word === 'cancel' && openSlip) {
+          dismissRef.current?.(openSlip.turnId);
+          return;
+        }
+        if (word === 'confirm' || word === 'cancel') {
+          addAssistantTurn('Nothing is open right now. Tell me what you need.');
+          return;
+        }
+        if (word === 'greeting') {
+          addAssistantTurn('Hi. Tell me what you need, like "ups to toronto 22" or "2 kw1".');
+          return;
+        }
+        if (word === 'thanks') {
+          addAssistantTurn('Anytime.');
+          return;
+        }
+        if (word === 'help') {
+          addAssistantTurn(HELP_TEXT);
+          return;
+        }
+
+        if (openSlip && draft) {
+          const data = openSlip;
+          const active = draft;
           if (await isFollowUp(active, trimmed)) {
             const nextIntent = applyFollowUp(active, trimmed);
+            // A key added or recounted by a follow-up needs its price looked up
+            // like the first. Left alone otherwise, so a typed price stands.
+            const keyList = (i: Intent) => {
+              const items = (i.fields.keyItems?.value as Array<{ model: string; qty: number }> | undefined) ?? [];
+              return items.map((k) => `${k.qty}x${k.model}`).join();
+            };
+            if (keyList(nextIntent) !== keyList(active)) await resolveKeyPrices(nextIntent);
             const sourceText = `${data.sourceText ?? ''} ${trimmed}`.trim();
             patchTurn(data.turnId, { intent: nextIntent, sourceText });
             setArtifact({
@@ -351,7 +434,14 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               title: routeLabel(nextIntent.action, nextIntent.subtype) ?? 'Confirm details',
               data: { turnId: data.turnId, intent: nextIntent, sourceText },
             });
-            addAssistantTurn('Updated the slip on the right. Confirm when it looks right, or tell me another change.');
+            const changed = describeChange(active, nextIntent);
+            addAssistantTurn(
+              changed
+                ? `${changed} Say yes to confirm, or tell me another change.`
+                : QUESTION.test(trimmed)
+                  ? BEYOND_ME
+                  : 'I could not tell what to change from that. Tap the line on the slip to fix it, or say it another way.',
+            );
             return;
           }
         }
@@ -527,6 +617,9 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     [setTurnStatus, addAssistantTurn, activateNext],
   );
 
+  confirmRef.current = confirmArtifactIntent;
+  dismissRef.current = dismissArtifactIntent;
+
   const value = useMemo<AiModeContextValue>(
     () => ({
       turns,
@@ -542,6 +635,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       rerouteIntent,
       confirmArtifactIntent,
       dismissArtifactIntent,
+      reportDraft,
       pendingCount,
       artifact,
       showArtifact,
@@ -566,6 +660,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       rerouteIntent,
       confirmArtifactIntent,
       dismissArtifactIntent,
+      reportDraft,
       pendingCount,
       artifact,
       showArtifact,

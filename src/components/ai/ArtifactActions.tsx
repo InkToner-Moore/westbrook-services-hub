@@ -24,6 +24,9 @@ interface ConfirmationFootProps {
   // this intent has no attachments and no extra controls render.
   attach?: IntentAttachments;
   onToggleAttach?: (key: keyof IntentAttachments, value: boolean) => void;
+  // What the customer pays, for a receipt slip. Shown beside Confirm so the
+  // amount is in view at the moment of confirming, however long the slip is.
+  total?: number | null;
 }
 
 interface ArtifactActionsProps {
@@ -36,7 +39,7 @@ const ArtifactActions: React.FC<ArtifactActionsProps> = ({ kind, data, confirmat
   const { themeClasses } = useTheme();
 
   if (kind === 'confirmation' && confirmation) {
-    const { canConfirm, missing, busy, onConfirm, onDismiss, attach, onToggleAttach } = confirmation;
+    const { canConfirm, missing, busy, onConfirm, onDismiss, attach, onToggleAttach, total } = confirmation;
     const attachToggle = (on: boolean, label: string, Icon: typeof CreditCard, onClick: () => void) => (
       <button
         type="button"
@@ -71,6 +74,11 @@ const ArtifactActions: React.FC<ArtifactActionsProps> = ({ kind, data, confirmat
               : 'Add a courier and cost to at least one item to continue.'}
         </p>
         <div className="flex items-center justify-end gap-2">
+          {total != null && total > 0 && (
+            <span className={`mr-auto text-[15px] font-semibold ${themeClasses.text.primary}`}>
+              Total <span className="font-mono tabular-nums">${total.toFixed(2)}</span>
+            </span>
+          )}
           <button
             type="button"
             onClick={onDismiss}

@@ -29,7 +29,7 @@ const IntentSuggestions: React.FC<Props> = ({ onPick, variant, currentAction, cu
 
   const options = (choices ?? ROUTE_OPTIONS).filter((o) => !sameRoute(o, currentAction, currentSubtype));
 
-  const chip = `rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors ${
+  const chip = `min-h-[44px] rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-colors sm:min-h-0 sm:px-3 ${
     isDarkMode
       ? 'border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700'
       : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'

@@ -3,7 +3,7 @@
 // the text so the deterministic router picks them up. Enter sends; Shift+Enter
 // makes a newline.
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowUp, X } from 'lucide-react';
+import { ArrowUp, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import QuickActions from './QuickActions';
 import type { ChipSpec } from './quickActionSpecs';
@@ -15,7 +15,21 @@ interface ComposerProps {
   onTrack: (courier: Courier, trackingNumber: string) => void;
   onAddPacking: (preset: PackingPreset) => void;
   disabled?: boolean;
+  // A conversation is under way: the shortcuts fold away to give the chat room.
+  compact?: boolean;
 }
+
+// Whether the shortcut rows were last left open or closed, kept per browser.
+const SHORTCUTS_KEY = 'ai-shortcuts-open';
+const readShortcuts = (): boolean | null => {
+  try {
+    const raw = localStorage.getItem(SHORTCUTS_KEY);
+    return raw === null ? null : raw === '1';
+  } catch {
+    return null;
+  }
+};
+const isPhone = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches;
 
 interface ActiveChip extends ChipSpec {
   id: string;
@@ -23,11 +37,25 @@ interface ActiveChip extends ChipSpec {
 
 let chipCounter = 0;
 
-const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disabled }) => {
+const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disabled, compact }) => {
   const { themeClasses, isDarkMode } = useTheme();
   const [text, setText] = useState('');
   const [chips, setChips] = useState<ActiveChip[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Shortcuts: open on an empty thread on a wide screen, folded on a phone or
+  // once a chat is going, unless the clerk has chosen one way or the other.
+  const [phone] = useState(isPhone);
+  const [shortcutsChoice, setShortcutsChoice] = useState<boolean | null>(readShortcuts);
+  const shortcutsOpen = shortcutsChoice ?? (!compact && !phone);
+  const toggleShortcuts = () => {
+    const next = !shortcutsOpen;
+    setShortcutsChoice(next);
+    try {
+      localStorage.setItem(SHORTCUTS_KEY, next ? '1' : '0');
+    } catch {
+      // Storage unavailable; the choice still holds for this visit.
+    }
+  };
 
   // Focus on mount, so arriving at AI Mode (the center pane) drops the cursor
   // straight in the box, ready to type.
@@ -87,7 +115,7 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
             }
           }}
           rows={1}
-          placeholder="Tell me what you need. For example: refill for Sarah, HP 65, $34"
+          placeholder={phone ? 'Tell me what you need' : 'Tell me what you need. For example: refill for Sarah, HP 65, $34'}
           className={`min-h-[2.75rem] max-h-40 flex-1 resize-none rounded-xl border bg-transparent px-3.5 py-2.5 text-[15px] leading-relaxed outline-none placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap ${themeClasses.input}`}
         />
         <button
@@ -102,8 +130,21 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
       </div>
 
       {/* Shortcuts are secondary help, kept quiet below a hairline. */}
-      <div className={`mt-2 border-t pt-2 ${divider}`}>
-        <QuickActions onAddChip={addChip} onTrack={onTrack} onAddPacking={onAddPacking} />
+      <div className={`mt-2 border-t pt-1 ${divider}`}>
+        <button
+          type="button"
+          onClick={toggleShortcuts}
+          aria-expanded={shortcutsOpen}
+          className={`inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-[13px] sm:min-h-[32px] ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
+        >
+          {shortcutsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+          {shortcutsOpen ? 'Hide shortcuts' : 'Shortcuts'}
+        </button>
+        {shortcutsOpen && (
+          <div className="pb-1 pt-1">
+            <QuickActions onAddChip={addChip} onTrack={onTrack} onAddPacking={onAddPacking} />
+          </div>
+        )}
       </div>
     </div>
   );

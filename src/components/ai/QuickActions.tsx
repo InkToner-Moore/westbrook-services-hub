@@ -32,18 +32,19 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack, onAddPa
   const [hovered, setHovered] = useState<Courier | null>(null);
   const [entry, setEntry] = useState('');
 
-  const pill = `inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1.5 text-[13px] transition-colors sm:py-1 ${
+  const pill = `inline-flex min-h-[44px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-[13px] transition-colors sm:min-h-0 sm:px-2.5 sm:py-1 ${
     isDarkMode
       ? 'border-slate-700 text-slate-300 hover:bg-slate-800'
       : 'border-slate-200 text-slate-600 hover:bg-slate-50'
   }`;
   // Fixed-width group labels so the pills on each row start at the same x, and
   // any that wrap line up under the first pill rather than under the label.
-  const groupLabel = `w-12 shrink-0 pt-1.5 text-[13px] ${themeClasses.text.muted}`;
-  // On a phone a long row scrolls sideways instead of wrapping, so the three
-  // groups stay three lines and the chat keeps its room.
-  const scrollRow =
-    'flex min-w-0 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden';
+  const groupLabel = `w-12 shrink-0 pt-3 text-[13px] sm:pt-1.5 ${themeClasses.text.secondary}`;
+  // Rows wrap, so every choice is on screen: a row that scrolled sideways cut
+  // its last pill off at the edge with nothing to say there was more.
+  const scrollRow = 'flex min-w-0 flex-wrap items-center gap-1.5';
+  // One quiet dot for every pill. Tool hues belong to the tiles, not to chrome.
+  const dot = `h-1.5 w-1.5 rounded-full ${isDarkMode ? 'bg-slate-500' : 'bg-slate-400'}`;
 
   return (
     <div className="space-y-1.5">
@@ -62,7 +63,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack, onAddPa
             onMouseLeave={() => setHovered((h) => (h === t.courier ? null : h))}
           >
             <button type="button" onClick={() => onAddChip(TRACK_CHIP_SPECS[t.kind])} className={pill}>
-              <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+              <span className={dot} />
               {t.label}
             </button>
             {hovered === t.courier && (
@@ -79,7 +80,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack, onAddPa
                     }
                   }}
                   placeholder={`${t.label} tracking number`}
-                  className={`w-full rounded-lg border px-2 py-1 text-xs outline-none ${themeClasses.input}`}
+                  className={`w-full rounded-lg border px-2 py-1.5 text-[13px] outline-none ${themeClasses.input}`}
                 />
               </div>
             )}
@@ -94,7 +95,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack, onAddPa
         <div className={scrollRow}>
           {PACKING_PRESETS.filter((p) => !p.custom).map((p) => (
             <button key={p.type} type="button" onClick={() => onAddPacking(p)} className={pill} title={p.type}>
-              <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
+              <span className={dot} />
               {p.type.replace(' Box', '').replace('Padded Envelope', 'Padded')}{' '}
               <span className="tabular-nums opacity-70">${p.cost}</span>
             </button>
@@ -108,7 +109,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack, onAddPa
         <div className={scrollRow}>
           {ACTION_CHIPS.map((spec) => (
             <button key={spec.kind} type="button" onClick={() => onAddChip(spec)} className={pill}>
-              <span className={`h-1.5 w-1.5 rounded-full ${spec.dot}`} />
+              <span className={dot} />
               {spec.label}
             </button>
           ))}

@@ -6,9 +6,9 @@
 // column (AI-first) with the rail in a slide-in drawer and the artifact in a
 // slide-up sheet that also opens by itself.
 // See docs/ui-rehaul/DESIGN-SPEC.md and PLAN.md.
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { Menu, PanelRight, PanelLeftOpen, PanelRightOpen, X, Sparkles } from 'lucide-react';
+import { ChevronDown, Menu, PanelRight, PanelLeftOpen, PanelRightOpen, X, Sparkles } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAiMode } from '@/ai/context';
 import type { ArtifactState } from '@/ai/types';
@@ -61,8 +61,19 @@ const StaffShell: React.FC = () => {
   // Something new to look at: bring it into view. On desktop that reopens the
   // rail if it was tucked away; below xl it lifts the sheet, so nobody has to
   // hunt for the panel button to find a slip waiting on Confirm.
+  // A typed change to the slip already open is not something new: the sheet
+  // stays down so the clerk can read the reply and keep typing.
+  const shownKey = useRef<string | null>(null);
   useEffect(() => {
-    if (!artifact || artifact.kind === 'none') return;
+    if (!artifact || artifact.kind === 'none') {
+      shownKey.current = null;
+      return;
+    }
+    const turnId = (artifact.data as { turnId?: string } | undefined)?.turnId;
+    const key = artifact.kind === 'confirmation' && turnId ? `slip:${turnId}` : null;
+    const sameSlip = key !== null && key === shownKey.current;
+    shownKey.current = key;
+    if (sameSlip) return;
     setRightCollapsed(false);
     if (window.matchMedia('(max-width: 1279px)').matches) setSheetOpen(true);
   }, [artifact]);
@@ -72,8 +83,13 @@ const StaffShell: React.FC = () => {
     setRailOpen(false);
   }, [pathname]);
 
+  const openWorkspace = () => {
+    setRightCollapsed(false);
+    setSheetOpen(true);
+  };
+
   return (
-    <ShellContext.Provider value={{ inShell: true }}>
+    <ShellContext.Provider value={{ inShell: true, openWorkspace }}>
       <div className={`flex h-[100dvh] w-full overflow-hidden ${themeClasses.background}`}>
         {/* Left rail - desktop (full, or a slim reopen strip when collapsed) */}
         {leftCollapsed ? (
@@ -102,7 +118,7 @@ const StaffShell: React.FC = () => {
               type="button"
               onClick={() => setRailOpen(true)}
               aria-label="Open menu"
-              className={`flex h-10 w-10 items-center justify-center rounded-xl ${themeClasses.interactive.hover}`}
+              className={`flex h-11 w-11 items-center justify-center rounded-xl ${themeClasses.interactive.hover}`}
             >
               <Menu className={`h-5 w-5 ${themeClasses.text.secondary}`} />
             </button>
@@ -110,15 +126,28 @@ const StaffShell: React.FC = () => {
               <Sparkles className="h-4 w-4 text-indigo-500" />
               Ink, Toner &amp; Moore
             </span>
-            <button
-              type="button"
-              onClick={() => setSheetOpen(true)}
-              aria-label="Open workspace"
-              className={`relative flex h-10 w-10 items-center justify-center rounded-xl ${themeClasses.interactive.hover}`}
-            >
-              <PanelRight className={`h-5 w-5 ${themeClasses.text.secondary}`} />
-              {showDot && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-blue-500" />}
-            </button>
+            {/* With something waiting, the button names it; an icon alone hides a
+                slip that still needs a Confirm. */}
+            {hasArtifact ? (
+              <button
+                type="button"
+                onClick={() => setSheetOpen(true)}
+                className={`inline-flex h-11 max-w-[9.5rem] items-center gap-1.5 rounded-xl px-3 text-sm font-medium ${themeClasses.button.secondary}`}
+              >
+                <PanelRight className="h-4 w-4 shrink-0" />
+                <span className="truncate">{artifact?.kind === 'confirmation' ? 'Open slip' : 'Open result'}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSheetOpen(true)}
+                aria-label="Open workspace"
+                className={`relative flex h-11 w-11 items-center justify-center rounded-xl ${themeClasses.interactive.hover}`}
+              >
+                <PanelRight className={`h-5 w-5 ${themeClasses.text.secondary}`} />
+                {showDot && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-blue-500" />}
+              </button>
+            )}
           </div>
 
           <main className="min-h-0 flex-1 overflow-auto">
@@ -163,14 +192,21 @@ const StaffShell: React.FC = () => {
           </div>
         )}
 
-        {/* Mobile artifact sheet */}
-        {sheetOpen && (
-          <div className="fixed inset-0 z-[80] xl:hidden">
+        {/* Mobile artifact sheet. It stays mounted while there is an artifact and
+            is only hidden when closed, so edits made on a slip survive a trip
+            back to the chat to type a change. */}
+        {(sheetOpen || hasArtifact) && (
+          <div className={`fixed inset-0 z-[80] xl:hidden ${sheetOpen ? '' : 'hidden'}`}>
             <div className="absolute inset-0 bg-black/40" onClick={() => setSheetOpen(false)} />
             <div className={`absolute inset-x-0 bottom-0 top-16 flex flex-col rounded-t-2xl border-t shadow-lg ${themeClasses.card.primary}`}>
-              <div className="flex justify-end p-2">
-                <button type="button" onClick={() => setSheetOpen(false)} aria-label="Close workspace" className={`rounded-lg p-1.5 ${themeClasses.interactive.hover}`}>
-                  <X className={`h-5 w-5 ${themeClasses.text.secondary}`} />
+              <div className="flex justify-end px-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setSheetOpen(false)}
+                  className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 text-sm ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
+                >
+                  <ChevronDown className="h-4 w-4" />
+                  Back to chat
                 </button>
               </div>
               <div className="min-h-0 flex-1">

@@ -6,6 +6,9 @@ import { createContext, useContext } from 'react';
 
 export interface ShellState {
   inShell: boolean;
+  // Bring the artifact (the slip, a receipt) into view. On a phone that lifts
+  // its sheet; on desktop it reopens the rail if it was tucked away.
+  openWorkspace?: () => void;
 }
 
 export const ShellContext = createContext<ShellState>({ inShell: false });

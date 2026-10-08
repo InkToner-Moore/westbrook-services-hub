@@ -17,11 +17,13 @@
 //        registerRefill(ARTIFACT_RENDERERS);
 // Agents never edit ARTIFACT_RENDERERS directly; they export `register(reg)` and
 // the integrator wires the single line above.
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 import { useAiMode, type ConfirmationArtifactData } from '@/ai/context';
 import { getFieldSpecs } from '@/ai/fieldSpecs';
 import ConfirmationCheck, { useConfirmationDraft, type ConfirmationDraft } from '@/components/ai/ConfirmationCheck';
 import ArtifactActions from '@/components/ai/ArtifactActions';
+import { receiptIntentToCartLines } from '@/ai/actions/cartLines';
+import { cartTotal } from '@/ai/cart';
 import { register as registerReceipt } from '@/components/ai/artifacts/ReceiptCard';
 import { register as registerRecord } from '@/components/ai/artifacts/RecordCard';
 import { register as registerNote } from '@/components/ai/artifacts/NoteCard';
@@ -66,6 +68,12 @@ const ConfirmationProvider: React.FC<{ data: unknown; children: React.ReactNode 
   const d = data as ConfirmationArtifactData;
   const specs = getFieldSpecs(d.intent) ?? [];
   const draft = useConfirmationDraft(d.intent, specs);
+  // Keep the provider in step with hand edits, so a typed follow-up or a typed
+  // "yes" acts on the slip as it reads now.
+  const { reportDraft } = useAiMode();
+  useEffect(() => {
+    reportDraft(d.turnId, draft.workingIntent);
+  }, [reportDraft, d.turnId, draft.workingIntent]);
   return (
     <ConfirmationDraftContext.Provider value={{ data: d, specs, draft }}>
       {children}
@@ -100,6 +108,7 @@ const ConfirmationFoot: React.FC<{ data: unknown }> = () => {
         onDismiss: () => dismissArtifactIntent(data.turnId),
         attach: draft.attach,
         onToggleAttach: draft.toggleAttach,
+        total: data.intent.action === 'receipt' ? cartTotal(receiptIntentToCartLines(draft.workingIntent)) : null,
       }}
     />
   );

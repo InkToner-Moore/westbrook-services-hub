@@ -6,7 +6,7 @@
 // over) puts the details on the right and just points there. The open receipt
 // shows as a compact strip above the composer.
 import React, { useEffect, useRef } from 'react';
-import { Eraser, Sparkles } from 'lucide-react';
+import { Eraser, PanelRight, Sparkles } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAiMode } from '@/ai/context';
 import { getFieldSpecs } from '@/ai/fieldSpecs';
@@ -19,6 +19,7 @@ import Composer from '@/components/ai/Composer';
 import IntentSuggestions from '@/components/ai/IntentSuggestions';
 import { ROUTE_OPTIONS, sameRoute } from '@/ai/intentOptions';
 import CartPanel from '@/components/ai/CartPanel';
+import { useShell } from './ShellContext';
 
 // When the engine narrowed it to two routes (a winner plus a runner-up), the
 // "did you mean" card should offer just those, not the whole menu. Returns the
@@ -46,9 +47,7 @@ function stuckBetween(intent: Intent) {
 const EXAMPLES = [
   'Refill for Sarah, HP 65, $34',
   'Ship to Vancouver, UPS, $22',
-  'Track UPS 1Z999AA10123456784',
-  'Record a refill for John, Canon 137',
-  'Sue left at 6 today',
+  '2 KW1 keys',
   'Who is working today?',
 ];
 
@@ -65,6 +64,7 @@ const AiChatPane: React.FC = () => {
     addCartLines,
     addAssistantTurn,
   } = useAiMode();
+  const { openWorkspace } = useShell();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Keep the newest turn in view, including the thinking indicator.
@@ -113,7 +113,7 @@ const AiChatPane: React.FC = () => {
           onClick={clear}
           title="Clear"
           aria-label="Clear conversation"
-          className={`flex h-10 w-10 items-center justify-center rounded-xl ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
+          className={`flex h-11 w-11 items-center justify-center rounded-xl ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
         >
           <Eraser className="h-5 w-5" />
         </button>
@@ -137,7 +137,7 @@ const AiChatPane: React.FC = () => {
                     key={ex}
                     type="button"
                     onClick={() => sendUtterance(ex)}
-                    className={`rounded-full border px-3 py-1.5 text-left text-[13px] transition-colors ${
+                    className={`min-h-[44px] rounded-full border px-3.5 py-1.5 text-left text-[14px] transition-colors sm:min-h-0 sm:px-3 sm:text-[13px] ${
                       isDarkMode
                         ? 'border-slate-700 text-slate-300 hover:border-indigo-700 hover:bg-indigo-900/20'
                         : 'border-slate-200 text-slate-600 hover:border-indigo-200 hover:bg-indigo-50'
@@ -154,6 +154,10 @@ const AiChatPane: React.FC = () => {
         {turns.map((turn) => {
           const showSuggestions =
             turn.role === 'assistant' && turn.intent && !getFieldSpecs(turn.intent) && turn.status === 'pending';
+          // A slip waiting on Confirm. Below the wide layout it sits in a sheet,
+          // so the turn carries a way back to it.
+          const slipWaiting =
+            turn.role === 'assistant' && turn.intent && !!getFieldSpecs(turn.intent) && turn.status === 'pending';
           return (
             <div key={turn.id} className="space-y-2">
               {turn.text &&
@@ -175,6 +179,17 @@ const AiChatPane: React.FC = () => {
                     {turn.text}
                   </div>
                 ))}
+
+              {slipWaiting && openWorkspace && (
+                <button
+                  type="button"
+                  onClick={openWorkspace}
+                  className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3.5 text-sm font-medium xl:hidden ${themeClasses.button.secondary}`}
+                >
+                  <PanelRight className="h-4 w-4" />
+                  Open the slip
+                </button>
+              )}
 
               {showSuggestions && (
                 <IntentSuggestions
@@ -201,7 +216,13 @@ const AiChatPane: React.FC = () => {
 
       <div className="mt-3">
         <CartPanel />
-        <Composer onSend={sendUtterance} onTrack={handleTrack} onAddPacking={handleAddPacking} disabled={busy} />
+        <Composer
+          onSend={sendUtterance}
+          onTrack={handleTrack}
+          onAddPacking={handleAddPacking}
+          disabled={busy}
+          compact={turns.length > 0}
+        />
       </div>
     </div>
   );

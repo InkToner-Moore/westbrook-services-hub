@@ -71,7 +71,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     text: {
       primary: isDarkMode ? 'text-[#f3f4f6]' : 'text-[#1a1d23]',
       secondary: isDarkMode ? 'text-[#9aa4b2]' : 'text-[#5b6270]',
-      muted: isDarkMode ? 'text-[#6b7280]' : 'text-[#8a8f9a]',
+      // The quietest text still has to pass AA on paper and on graphite.
+      muted: isDarkMode ? 'text-[#8b95a5]' : 'text-[#666d7a]',
       accent: isDarkMode ? 'text-blue-400' : 'text-blue-700',
       inverted: isDarkMode ? 'text-[#1a1d23]' : 'text-white',
     },
@@ -113,8 +114,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     },
 
     input: isDarkMode
-      ? 'bg-[#1f232c] border-[#2a2f3a] text-[#f3f4f6] placeholder:text-[#6b7280] focus:border-blue-400 focus:ring-blue-400/30'
-      : 'bg-[#f1efe9] border-[#e4e1d9] text-[#1a1d23] placeholder:text-[#8a8f9a] focus:border-blue-500 focus:ring-blue-500/30',
+      ? 'bg-[#1f232c] border-[#2a2f3a] text-[#f3f4f6] placeholder:text-[#8b95a5] focus:border-blue-400 focus:ring-blue-400/30'
+      : 'bg-[#f1efe9] border-[#e4e1d9] text-[#1a1d23] placeholder:text-[#666d7a] focus:border-blue-500 focus:ring-blue-500/30',
 
     link: isDarkMode
       ? 'text-blue-400 hover:text-blue-300'

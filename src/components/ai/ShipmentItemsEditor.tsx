@@ -36,8 +36,8 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
   const addItem = () => onChange([...items, emptyShipmentItem()]);
   const removeItem = (index: number) => onChange(items.filter((_, i) => i !== index));
 
-  const fieldClass = `w-full rounded-lg border px-2 py-1 text-sm outline-none ${themeClasses.input}`;
-  const labelClass = `mb-0.5 block text-[11px] font-medium ${themeClasses.text.muted}`;
+  const fieldClass = `min-h-[44px] w-full rounded-lg border px-2.5 py-1 text-[15px] outline-none xl:min-h-[34px] xl:px-2 xl:text-sm ${themeClasses.input}`;
+  const labelClass = `mb-0.5 block text-xs font-medium ${themeClasses.text.secondary}`;
 
   return (
     <div className="space-y-2">
@@ -56,7 +56,7 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
                   onClick={() => removeItem(index)}
                   title="Remove item"
                   aria-label={`Remove item ${index + 1}`}
-                  className={`flex h-6 w-6 items-center justify-center rounded-lg ${themeClasses.text.muted} ${themeClasses.interactive.hover}`}
+                  className={`flex h-11 w-11 items-center justify-center rounded-lg xl:h-7 xl:w-7 ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -65,7 +65,7 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
 
             <div className="grid grid-cols-2 gap-2">
               <div className="col-span-2">
-                <label className={labelClass}>Courier Service</label>
+                <label className={labelClass}>Courier service</label>
                 <input
                   className={fieldClass}
                   disabled={readOnly}
@@ -76,7 +76,7 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
               </div>
 
               <div className="col-span-2">
-                <label className={labelClass}>Tracking Number</label>
+                <label className={labelClass}>Tracking number</label>
                 <input
                   className={fieldClass}
                   disabled={readOnly}
@@ -86,7 +86,7 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
               </div>
 
               <div>
-                <label className={labelClass}>Destination City</label>
+                <label className={labelClass}>Destination city</label>
                 <input
                   className={fieldClass}
                   disabled={readOnly}
@@ -103,6 +103,8 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
                   value={item.province}
                   onChange={(e) => update(index, { province: e.target.value })}
                 >
+                  {/* Empty when the destination is outside Canada or not known yet. */}
+                  <option value="">None</option>
                   {PROVINCES.map((p) => (
                     <option key={p.code} value={p.code}>
                       {p.code} - {p.name}
@@ -122,7 +124,7 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
               </div>
 
               <div>
-                <label className={labelClass}>Shipping Cost</label>
+                <label className={labelClass}>Shipping cost</label>
                 <input
                   className={fieldClass}
                   disabled={readOnly}
@@ -138,7 +140,7 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
 
               <div className="col-span-2">
                 <label className={labelClass}>
-                  Shipping Taxes{' '}
+                  Shipping taxes{' '}
                   <span className="font-normal">
                     {taxEnabled
                       ? item.taxOverride != null
@@ -184,7 +186,7 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
         <button
           type="button"
           onClick={addItem}
-          className={`inline-flex items-center gap-1.5 rounded-xl border border-dashed px-3 py-1.5 text-sm ${
+          className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-dashed px-3 py-1.5 text-sm xl:min-h-[36px] ${
             isDarkMode ? 'border-slate-600 text-gray-300' : 'border-slate-300 text-slate-600'
           } ${themeClasses.interactive.hover}`}
         >
