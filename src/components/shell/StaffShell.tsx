@@ -1,8 +1,10 @@
 // The staff shell: the three-pane frame that replaces the old dashboard + overlay.
 // Left = tile rail, center = the active tool (AI chat by default) via <Outlet/>,
-// right = the artifact rail. On desktop all three show at once and each side rail
-// collapses to a slim reopen strip; on a phone it is a single column (AI-first)
-// with the rail in a slide-in drawer and the artifact in a slide-up sheet.
+// right = the artifact rail. On desktop the tile rail collapses to a slim reopen
+// strip, and the artifact rail only takes room while there is something in it (it
+// opens by itself when a result or a slip arrives). On a phone it is a single
+// column (AI-first) with the rail in a slide-in drawer and the artifact in a
+// slide-up sheet that also opens by itself.
 // See docs/ui-rehaul/DESIGN-SPEC.md and PLAN.md.
 import React, { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
@@ -29,7 +31,7 @@ const StaffShell: React.FC = () => {
   const [railOpen, setRailOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [leftCollapsed, setLeftCollapsed] = useState(() => readFlag('shell-left-collapsed'));
-  const [rightCollapsed, setRightCollapsed] = useState(() => readFlag('shell-right-collapsed'));
+  const [rightCollapsed, setRightCollapsed] = useState(false);
 
   const hasArtifact = !!artifact && artifact.kind !== 'none';
 
@@ -55,11 +57,15 @@ const StaffShell: React.FC = () => {
       localStorage.setItem('shell-left-collapsed', leftCollapsed ? '1' : '0');
     } catch { /* storage unavailable */ }
   }, [leftCollapsed]);
+
+  // Something new to look at: bring it into view. On desktop that reopens the
+  // rail if it was tucked away; below xl it lifts the sheet, so nobody has to
+  // hunt for the panel button to find a slip waiting on Confirm.
   useEffect(() => {
-    try {
-      localStorage.setItem('shell-right-collapsed', rightCollapsed ? '1' : '0');
-    } catch { /* storage unavailable */ }
-  }, [rightCollapsed]);
+    if (!artifact || artifact.kind === 'none') return;
+    setRightCollapsed(false);
+    if (window.matchMedia('(max-width: 1279px)').matches) setSheetOpen(true);
+  }, [artifact]);
 
   // Close the mobile drawer whenever the route changes (a tile was tapped).
   useEffect(() => {
@@ -120,25 +126,27 @@ const StaffShell: React.FC = () => {
           </main>
         </div>
 
-        {/* Right rail - desktop (full, or a slim reopen strip when collapsed) */}
-        {rightCollapsed ? (
-          <aside className={`hidden w-10 shrink-0 flex-col items-center border-l pt-2 xl:flex ${themeClasses.header}`}>
-            <button
-              type="button"
-              onClick={() => setRightCollapsed(false)}
-              aria-label="Expand workspace"
-              title="Expand workspace"
-              className={`relative flex h-9 w-9 items-center justify-center rounded-lg ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
-            >
-              <PanelRightOpen className="h-4 w-4" />
-              {showDot && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-blue-500" />}
-            </button>
-          </aside>
-        ) : (
+        {/* Right rail - desktop. Full while it holds something; a slim strip when
+            tucked away or when there is only a last item to bring back; gone
+            when there is nothing at all, so the tool gets the room. */}
+        {hasArtifact && !rightCollapsed ? (
           <aside className={`hidden w-[400px] shrink-0 border-l xl:block ${themeClasses.card.primary}`}>
             <ArtifactRail onCollapse={() => setRightCollapsed(true)} lastArtifact={lastArtifact} onReopenLast={reopenLast} />
           </aside>
-        )}
+        ) : showDot ? (
+          <aside className={`hidden w-10 shrink-0 flex-col items-center border-l pt-2 xl:flex ${themeClasses.header}`}>
+            <button
+              type="button"
+              onClick={() => (hasArtifact ? setRightCollapsed(false) : reopenLast())}
+              aria-label={hasArtifact ? 'Show panel' : 'Show last item'}
+              title={hasArtifact ? 'Show panel' : 'Show last item'}
+              className={`relative flex h-9 w-9 items-center justify-center rounded-lg ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
+            >
+              <PanelRightOpen className="h-4 w-4" />
+              {hasArtifact && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-blue-500" />}
+            </button>
+          </aside>
+        ) : null}
 
         {/* Mobile tile drawer */}
         {railOpen && (

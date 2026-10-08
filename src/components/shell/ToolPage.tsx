@@ -102,7 +102,7 @@ export function SegmentedTabs<T extends string>({
             {o.label}
             {o.badge ? (
               <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold text-white">
-                {o.badge}
+                {o.badge > 99 ? '99+' : o.badge}
               </span>
             ) : null}
           </button>
