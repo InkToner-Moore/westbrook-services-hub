@@ -36,7 +36,8 @@ numbered plan step.
 
 **Where things stand (observed 2026-10-08):**
 - Branch `ai-mode-ux-testing`, stacked on `haiku-router`. Tree clean, pushed,
-  `origin/dev` fast-forwarded to it. **Prod `main` untouched** (`0ffa16c`).
+  `origin/dev` fast-forwarded to it and the Cloudflare Pages check on it passed.
+  **Prod `main` untouched** (`0ffa16c`).
 - Open PRs: only **#1 `docs-align-claude-md`** (from Sept 1, not this work).
 - Gate as run at exit: `tsc -p tsconfig.app.json --noEmit` exit 0; `yarn build`
   built; `eslint src/ai src/components/ai src/components/shell
@@ -117,9 +118,26 @@ numbered plan step.
   then the dev server with `VITE_AI_PROXY_URL=http://localhost:8791`.
 - There is no staging login in keyvault, so an agent cannot sign in on staging.
 
-**Open questions for Parsa:** tax on a parcel leaving Canada; whether he wants
-a staging test login stored so staging can be clicked through. The carried ones
-below still stand.
+**Working rules (the older sections below still stand):**
+- Environment and gate are in `~/.claude/projects.d/WESTBROOK.md`. Before every
+  commit: `tsc -p tsconfig.app.json --noEmit`, `yarn build`, eslint on the
+  files you touched, `run.mjs`, `sweep.mjs`.
+- A misread line goes into `corpus.mjs` first, then gets fixed.
+- Helpers: Codex did both parser batches from a written spec that named the
+  files it could touch, and reviewed screenshots saved under `.playwright-mcp/`
+  (gitignored; the Playwright tool only reads script files from inside the
+  repo). Its second screenshot review was thin, so check what it says.
+- Push needs the credential-helper override (see the constraints below).
+
+**Still placeholder, must not reach a customer:** the whole rehaul is on
+staging only. `purchase` has no executor, so "charge card" records nothing real.
+
+**Open questions for Parsa** (answers may arrive mid-session: fold each in as
+its own commit, and never invent one to close a line):
+- What tax applies to a parcel leaving Canada. Lands in `src/ai/shipping.ts`.
+- Whether to store a staging test login in keyvault so an agent can click
+  through staging.
+- The carried ones in the section below still stand.
 
 ## Earlier (the engine pass and the Haiku router session, 2026-10-08)
 

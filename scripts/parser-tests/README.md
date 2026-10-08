@@ -38,6 +38,21 @@ This is the number to watch. Staff only reach for AI Mode if it reads them right
 nearly every time, so when it misreads something at the counter, add that line
 here first, then fix the engine until the sweep is clean again.
 
+## The live sweep
+
+`messy/run.mjs` runs a few hundred messy lines and some multi-turn chats through
+the whole chain: the offline engine, then the model router when the engine is
+unsure. It needs the proxy and makes about 100 model calls, so it is not part of
+the regression check.
+
+```sh
+PROXY=<worker url> node scripts/parser-tests/messy/run.mjs          # lines, then chats
+PROXY=<worker url> node scripts/parser-tests/messy/run.mjs chats    # or: lines
+```
+
+It has no expectations. Read the output; a line that reads wrong goes into
+`corpus.mjs` with what it should read, then gets fixed.
+
 ## What it covers
 
 - **Routing** (`DeterministicProvider.parse`): bare code -> inventory lookup,

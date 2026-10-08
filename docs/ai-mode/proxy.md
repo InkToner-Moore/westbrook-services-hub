@@ -33,8 +33,12 @@ Staff browser ── POST {utterance} ──▶ Cloudflare Worker ── /v1/mes
   day, one call is about 4,200 input tokens of prompt and schema, read from the
   prompt cache after the first call, about 20 fresh input tokens for the utterance,
   and 120 to 170 output tokens. It answers in 1.3 to 2.8 seconds; the client gives
-  up at 4 seconds. If the model is rate-limited or down, the client falls back to
-  the deterministic engine, so nothing breaks.
+  up at 4 seconds.
+- **Gemini Flash-Lite is the fallback** (added 2026-10-08). The worker gives Haiku
+  2.8 seconds; on a rate limit, an overload, a timeout or a non-answer it asks
+  Flash-Lite the same question with the same schema. It only runs when the
+  `GEMINI_API_KEY` secret is set. If both fail, the client falls back to the
+  deterministic engine, so nothing breaks.
 
 Prices are at https://www.anthropic.com/pricing. Haiku 5.5 costs more above 100k
 tokens of context; a routing call is nowhere near that.
@@ -63,6 +67,10 @@ You need a free Cloudflare account and an Anthropic API key.
    ```sh
    npx wrangler secret put ANTHROPIC_API_KEY
    # paste the key when prompted
+   ```
+   Optional, for the fallback router (a Google AI Studio key):
+   ```sh
+   npx wrangler secret put GEMINI_API_KEY
    ```
 
 5. **Deploy the Worker:**
