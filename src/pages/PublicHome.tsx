@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Phone, MapPin, ExternalLink, Clock, Printer, Key, Package, Sun, Moon, Search, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { Phone, MapPin, ExternalLink, Clock, Printer, Key, Package, Droplets, Sun, Moon, Search, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,10 +18,34 @@ import {
 const MAPS_URL = "https://www.google.com/maps/search/?api=1&query=Westbrook+Mall+Calgary";
 
 const STATUS_LABELS: Record<string, string> = {
-  in_progress: "In Progress",
-  ready: "Ready for Pickup",
-  picked_up: "Picked Up",
+  in_progress: "In progress",
+  ready: "Ready for pickup",
+  picked_up: "Picked up",
 };
+
+// What the customer should do next, shown under the status.
+const STATUS_NEXT: Record<string, string> = {
+  in_progress: "We're still working on it. Check back soon.",
+  ready: "Come by any time we're open.",
+};
+
+// Regular weekly hours. `days` are JS weekday numbers (0 = Sunday), so the row
+// that covers today can be picked out.
+const BUSINESS_HOURS = [
+  { label: "Monday and Tuesday", hours: "10 AM to 7 PM", days: [1, 2] },
+  { label: "Wednesday to Friday", hours: "10 AM to 9 PM", days: [3, 4, 5] },
+  { label: "Saturday", hours: "10 AM to 6 PM", days: [6] },
+  { label: "Sunday", hours: "11 AM to 5 PM", days: [0] },
+];
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+// The shop's weekday, not the visitor's: someone checking from another time
+// zone should still see Calgary's today.
+const calgaryWeekday = () =>
+  WEEKDAYS.indexOf(
+    new Intl.DateTimeFormat("en-CA", { weekday: "short", timeZone: "America/Edmonton" }).format(new Date())
+  );
 
 const STATUS_COLORS: Record<string, string> = {
   in_progress: "bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800",
@@ -40,18 +64,23 @@ const PublicHome = () => {
   const focusRing = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2";
 
   // Refill status checker state. Customers rarely hang on to the order ID, so
-  // they look themselves up by last name instead — which can match more than
+  // they look themselves up by last name instead, which can match more than
   // one refill, hence a list of results rather than a single status.
   const [refillLastName, setRefillLastName] = useState("");
   const [refillResults, setRefillResults] = useState<OrderStatusDoc[] | null>(null);
   const [refillError, setRefillError] = useState<string | null>(null);
+  // A name with no refills is an answer, not a failure, so it is not shown in red.
+  const [refillNotFound, setRefillNotFound] = useState(false);
   const [refillLoading, setRefillLoading] = useState(false);
+  const refillInputRef = useRef<HTMLInputElement>(null);
 
   const checkRefillStatus = async () => {
     const lastName = normalizeLastName(refillLastName);
+    setRefillNotFound(false);
     if (!lastName) {
-      setRefillError("Please enter your last name.");
+      setRefillError("Enter the last name on the order.");
       setRefillResults(null);
+      refillInputRef.current?.focus();
       return;
     }
 
@@ -69,43 +98,39 @@ const PublicHome = () => {
       if (matches.length > 0) {
         setRefillResults(matches);
       } else {
-        setRefillError("No refills found under that last name. Please give us a call and we'll look it up.");
+        setRefillNotFound(true);
       }
     } catch (error) {
       console.error('Failed to check refill status:', error);
-      setRefillError("Unable to check status right now. Please try again later.");
+      setRefillError("That didn't go through. Check your connection and try again, or give us a call.");
     } finally {
       setRefillLoading(false);
     }
   };
 
-  const businessHours = [
-    { days: "Monday & Tuesday", hours: "10 AM - 7 PM" },
-    { days: "Wednesday - Friday", hours: "10 AM - 9 PM" },
-    { days: "Saturday", hours: "10 AM - 6 PM" },
-    { days: "Sunday", hours: "11 AM - 5 PM" }
-  ];
+  const today = calgaryWeekday();
+  const todayHours = BUSINESS_HOURS.find((row) => row.days.includes(today));
 
   const services = [
     {
       icon: Printer,
       title: "Ink & toner cartridges",
-      description: "Compatible and brand-name cartridges for all major printer brands"
+      description: "Compatible and brand-name cartridges for all major printer brands."
     },
     {
-      icon: Package,
+      icon: Droplets,
       title: "Ink jet refills",
-      description: "Professional refill services - call or visit to verify cartridge compatibility"
+      description: "Bring your empty cartridge in. Call first to check that we can refill it."
     },
     {
       icon: Key,
       title: "Key cutting",
-      description: "House, mailbox, and automotive key cutting - call or visit to verify availability"
+      description: "House, mailbox, and car keys. Call first to check that we have your blank."
     },
     {
       icon: Package,
       title: "Shipping",
-      description: "UPS, FedEx, Purolator authorized centre"
+      description: "Authorized drop-off for UPS, FedEx, and Purolator."
     }
   ];
 
@@ -144,6 +169,7 @@ const PublicHome = () => {
             <div className="flex shrink-0 items-center gap-2">
               <a
                 href="tel:4036862835"
+                aria-label="Call (403) 686-2835"
                 className={`flex h-11 min-w-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium sm:px-4 ${themeClasses.button.primary} ${focusRing}`}
               >
                 <Phone className="h-4 w-4 shrink-0" />
@@ -158,13 +184,6 @@ const PublicHome = () => {
               >
                 {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </Button>
-
-              <Link
-                to="/staff"
-                className={`hidden h-11 items-center rounded-lg border px-4 text-sm font-medium sm:flex ${themeClasses.button.secondary} ${focusRing}`}
-              >
-                Staff login
-              </Link>
             </div>
           </div>
         </div>
@@ -181,30 +200,12 @@ const PublicHome = () => {
             Your neighbourhood counter inside Westbrook Mall. Drop by, call, or use the tools below.
           </p>
 
-          <div className="mt-5 flex flex-wrap gap-2.5">
-            <a
-              href="tel:4036862835"
-              className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium ${themeClasses.card.secondary} ${themeClasses.text.primary} ${focusRing}`}
-            >
-              <Phone className="h-4 w-4" />
-              (403) 686-2835
-            </a>
-            <a
-              href={MAPS_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium ${themeClasses.card.secondary} ${themeClasses.text.primary} ${focusRing}`}
-            >
-              <MapPin className="h-4 w-4" />
-              Westbrook Mall, Calgary
-            </a>
-            <span
-              className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium ${themeClasses.card.secondary} ${themeClasses.text.secondary}`}
-            >
-              <Clock className="h-4 w-4" />
-              Open 7 days a week
-            </span>
-          </div>
+          {todayHours && (
+            <p className={`mt-4 flex items-center gap-2 text-[15px] font-medium ${themeClasses.text.primary}`}>
+              <Clock className={`h-4 w-4 shrink-0 ${themeClasses.text.secondary}`} />
+              Open today, {todayHours.hours}
+            </p>
+          )}
         </section>
 
         {/* The two jobs a customer came here to do, ahead of anything else */}
@@ -226,25 +227,33 @@ const PublicHome = () => {
               </div>
             </div>
 
-            <div className="mt-5 flex flex-1 flex-col justify-center space-y-4">
+            <form
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!refillLoading) checkRefillStatus();
+              }}
+              className="mt-5 space-y-4"
+            >
               <div>
                 <Label htmlFor="refill-last-name" className={`mb-1.5 block text-sm font-medium ${themeClasses.text.primary}`}>
                   Last name
                 </Label>
                 <Input
                   id="refill-last-name"
+                  ref={refillInputRef}
                   placeholder="e.g. Smith"
+                  autoComplete="family-name"
                   value={refillLastName}
                   onChange={(e) => setRefillLastName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !refillLoading) checkRefillStatus();
-                  }}
+                  aria-invalid={!!refillError}
+                  aria-describedby="refill-feedback"
                   className={`h-11 ${themeClasses.input}`}
                 />
               </div>
 
               <Button
-                onClick={checkRefillStatus}
+                type="submit"
                 disabled={refillLoading}
                 className={`h-11 w-full font-medium ${themeClasses.button.primary}`}
               >
@@ -256,42 +265,62 @@ const PublicHome = () => {
                 Check status
               </Button>
 
-              {refillResults && (
-                <div className={`space-y-3 rounded-lg border p-4 ${themeClasses.card.secondary}`}>
-                  <p className={`text-sm ${themeClasses.text.secondary}`}>
-                    {refillResults.length === 1
-                      ? "Your refill status:"
-                      : `We found ${refillResults.length} refills under that name:`}
-                  </p>
+              <div id="refill-feedback" aria-live="polite" className="space-y-4 empty:hidden">
+                {refillResults && (
+                  <div className={`space-y-3 rounded-lg border p-4 ${themeClasses.card.secondary}`}>
+                    <p className={`text-sm ${themeClasses.text.secondary}`}>
+                      {refillResults.length === 1
+                        ? "Your refill"
+                        : `${refillResults.length} refills under that name`}
+                    </p>
 
-                  {refillResults.map((result) => (
-                    <div key={result.orderId} className="flex flex-col items-start gap-1">
-                      <Badge className={`px-4 py-1 text-base ${STATUS_COLORS[result.status] || STATUS_COLORS.in_progress}`}>
-                        {result.status === 'ready' ? (
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                        ) : (
-                          <Clock className="h-4 w-4 mr-2" />
+                    {refillResults.map((result) => (
+                      <div key={result.orderId} className="flex flex-col items-start gap-1">
+                        <Badge className={`px-4 py-1 text-base ${STATUS_COLORS[result.status] || STATUS_COLORS.in_progress}`}>
+                          {result.status === 'ready' ? (
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                          ) : (
+                            <Clock className="h-4 w-4 mr-2" />
+                          )}
+                          {STATUS_LABELS[result.status] || result.status}
+                        </Badge>
+                        {STATUS_NEXT[result.status] && (
+                          <span className={`text-sm ${themeClasses.text.secondary}`}>
+                            {STATUS_NEXT[result.status]}
+                          </span>
                         )}
-                        {STATUS_LABELS[result.status] || result.status}
-                      </Badge>
-                      {/* Only useful for telling several refills apart. */}
-                      {refillResults.length > 1 && (
-                        <span className={`font-mono text-xs tabular-nums ${themeClasses.text.muted}`}>
-                          {result.orderId}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+                        {/* Only useful for telling several refills apart. */}
+                        {refillResults.length > 1 && (
+                          <span className={`font-mono text-xs tabular-nums ${themeClasses.text.muted}`}>
+                            {result.orderId}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-              {refillError && (
-                <div className={`flex items-start gap-2 rounded-lg border p-4 ${themeClasses.status.error}`}>
-                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                  <p className="text-sm">{refillError}</p>
-                </div>
-              )}
-            </div>
+                {refillError && (
+                  <div className={`flex items-start gap-2 rounded-lg border p-4 ${themeClasses.status.error}`}>
+                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <p className="text-sm">{refillError}</p>
+                  </div>
+                )}
+
+                {refillNotFound && (
+                  <div className={`rounded-lg border p-4 text-sm ${themeClasses.card.secondary} ${themeClasses.text.secondary}`}>
+                    <p className={`font-medium ${themeClasses.text.primary}`}>No refills under that name</p>
+                    <p className="mt-1">
+                      Check the spelling, or call us at{" "}
+                      <a href="tel:4036862835" className={`rounded-sm font-medium hover:underline ${themeClasses.text.accent} ${focusRing}`}>
+                        (403) 686-2835
+                      </a>{" "}
+                      and we'll look it up.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </form>
           </div>
         </section>
 
@@ -337,18 +366,25 @@ const PublicHome = () => {
           <div className={`rounded-xl border p-5 sm:p-6 ${themeClasses.card.primary}`}>
             <h2 className={`flex items-center gap-2 text-lg font-semibold ${themeClasses.text.primary}`}>
               <Clock className="h-5 w-5" />
-              Business hours
+              Hours
             </h2>
             <div className="mt-4">
-              {businessHours.map((schedule, index) => (
+              {BUSINESS_HOURS.map((schedule, index) => (
                 <div
                   key={index}
-                  className={`flex justify-between py-2.5 first:pt-0 ${
+                  className={`flex items-center justify-between gap-3 py-2.5 first:pt-0 ${
                     index > 0 ? "border-t border-[#e4e1d9] dark:border-[#2a2f3a]" : ""
                   }`}
                 >
-                  <span className={themeClasses.text.secondary}>{schedule.days}</span>
-                  <span className={`font-medium ${themeClasses.text.primary}`}>{schedule.hours}</span>
+                  <span className={schedule.days.includes(today) ? `font-medium ${themeClasses.text.primary}` : themeClasses.text.secondary}>
+                    {schedule.label}
+                    {schedule.days.includes(today) && (
+                      <span className={`ml-2 rounded-full border px-2 py-0.5 text-xs ${themeClasses.card.secondary} ${themeClasses.text.secondary}`}>
+                        Today
+                      </span>
+                    )}
+                  </span>
+                  <span className={`shrink-0 whitespace-nowrap font-medium ${themeClasses.text.primary}`}>{schedule.hours}</span>
                 </div>
               ))}
             </div>
@@ -393,7 +429,7 @@ const PublicHome = () => {
                 </div>
               </div>
 
-              {/* Map — tap to open directions in Google Maps */}
+              {/* Map: tap to open directions in Google Maps */}
               <div className="w-full max-w-[14rem] shrink-0 space-y-2 sm:w-56">
                 <a
                   href={MAPS_URL}
@@ -436,6 +472,12 @@ const PublicHome = () => {
           <p className={themeClasses.text.secondary}>
             Ink, Toner &amp; Moore, Westbrook Mall, Calgary. Open 7 days a week.
           </p>
+          <Link
+            to="/staff"
+            className={`mt-2 inline-flex min-h-11 items-center rounded-sm px-2 text-sm hover:underline ${themeClasses.text.muted} ${focusRing}`}
+          >
+            Staff login
+          </Link>
         </div>
       </footer>
     </div>

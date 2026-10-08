@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Package, Loader2, ExternalLink } from "lucide-react";
+import { Package, Loader2, ExternalLink, AlertCircle } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
-import { toast } from "@/hooks/use-toast";
 import upsLogo from "@/assets/couriers/ups.png";
 import fedexLogo from "@/assets/couriers/fedex.png";
 import purolatorLogo from "@/assets/couriers/purolator.png";
@@ -15,20 +14,19 @@ interface SmartTrackerProps {
 }
 
 const SmartTracker = ({ className = "", showHeader = true }: SmartTrackerProps) => {
-  // Package tracking is always enabled since system settings was removed
   const { themeClasses, isDarkMode } = useTheme();
   const [trackingNumber, setTrackingNumber] = useState("");
   const [selectedCourier, setSelectedCourier] = useState<string>("");
   const [transferringTo, setTransferringTo] = useState<string>("");
+  const [missingNumber, setMissingNumber] = useState(false);
   const timerRef = useRef<number | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     return () => {
       if (timerRef.current) window.clearTimeout(timerRef.current);
     };
   }, []);
-
-  // Package tracking is always available
 
   // Flat brand fills only (no gradients as decoration) - one colour per
   // courier, used solely as the "you picked this one" highlight.
@@ -59,13 +57,11 @@ const SmartTracker = ({ className = "", showHeader = true }: SmartTrackerProps) 
   const handleCourierClick = (courierId: string) => {
     if (transferringTo) return;
 
-    if (!trackingNumber.trim()) {
-      setSelectedCourier(courierId);
-      toast({
-        title: "Missing tracking number",
-        description: "Please enter your tracking number first",
-        variant: "destructive"
-      });
+    // Numbers get pasted with spaces in them ("1Z 999 AA1 ..."); couriers want none.
+    const number = trackingNumber.replace(/\s+/g, "");
+    if (!number) {
+      setMissingNumber(true);
+      inputRef.current?.focus();
       return;
     }
 
@@ -75,7 +71,7 @@ const SmartTracker = ({ className = "", showHeader = true }: SmartTrackerProps) 
     setSelectedCourier(courierId);
     setTransferringTo(courier.name);
 
-    const trackingUrl = `${courier.url}${encodeURIComponent(trackingNumber.trim())}`;
+    const trackingUrl = `${courier.url}${encodeURIComponent(number)}`;
     timerRef.current = window.setTimeout(() => {
       window.location.href = trackingUrl;
     }, 1100);
@@ -107,11 +103,26 @@ const SmartTracker = ({ className = "", showHeader = true }: SmartTrackerProps) 
           </label>
           <Input
             id="tracking-number"
+            ref={inputRef}
             placeholder="e.g. 1Z999AA10123456784"
+            autoComplete="off"
+            autoCapitalize="characters"
+            spellCheck={false}
             value={trackingNumber}
-            onChange={(e) => setTrackingNumber(e.target.value)}
+            onChange={(e) => {
+              setTrackingNumber(e.target.value);
+              setMissingNumber(false);
+            }}
+            aria-invalid={missingNumber}
+            aria-describedby={missingNumber ? "tracking-number-error" : undefined}
             className={`h-11 font-mono tabular-nums ${themeClasses.input}`}
           />
+          {missingNumber && (
+            <p id="tracking-number-error" role="alert" className={`mt-2 flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${themeClasses.status.error}`}>
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              Enter the tracking number first, then choose the courier.
+            </p>
+          )}
         </div>
 
         {/* Courier Selection */}
@@ -127,16 +138,17 @@ const SmartTracker = ({ className = "", showHeader = true }: SmartTrackerProps) 
               </span>
             </div>
           ) : (
-            <label className={`mb-3 block text-sm font-medium ${themeClasses.text.primary}`}>
-              Shipping company, tap to track
-            </label>
+            <p id="tracking-courier-label" className={`mb-1.5 text-sm font-medium ${themeClasses.text.primary}`}>
+              Courier
+            </p>
           )}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div role="group" aria-labelledby={transferringTo ? undefined : "tracking-courier-label"} className="grid grid-cols-3 gap-2 sm:gap-3">
             {couriers.map((courier) => {
               const isSelected = selectedCourier === courier.id;
               return (
                 <button
                   key={courier.id}
+                  type="button"
                   onClick={() => handleCourierClick(courier.id)}
                   disabled={!!transferringTo}
                   aria-label={`Track with ${courier.name}`}
