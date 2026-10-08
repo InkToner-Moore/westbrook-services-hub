@@ -88,7 +88,7 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
           }}
           rows={1}
           placeholder="Tell me what you need. For example: refill for Sarah, HP 65, $34"
-          className={`min-h-[2.75rem] max-h-40 flex-1 resize-none rounded-xl border bg-transparent px-3.5 py-2.5 text-[15px] leading-relaxed outline-none ${themeClasses.input}`}
+          className={`min-h-[2.75rem] max-h-40 flex-1 resize-none rounded-xl border bg-transparent px-3.5 py-2.5 text-[15px] leading-relaxed outline-none placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap ${themeClasses.input}`}
         />
         <button
           type="button"

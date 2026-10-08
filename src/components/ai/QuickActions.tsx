@@ -32,7 +32,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack, onAddPa
   const [hovered, setHovered] = useState<Courier | null>(null);
   const [entry, setEntry] = useState('');
 
-  const pill = `inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] transition-colors ${
+  const pill = `inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1.5 text-[13px] transition-colors sm:py-1 ${
     isDarkMode
       ? 'border-slate-700 text-slate-300 hover:bg-slate-800'
       : 'border-slate-200 text-slate-600 hover:bg-slate-50'
@@ -40,6 +40,10 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack, onAddPa
   // Fixed-width group labels so the pills on each row start at the same x, and
   // any that wrap line up under the first pill rather than under the label.
   const groupLabel = `w-12 shrink-0 pt-1.5 text-[13px] ${themeClasses.text.muted}`;
+  // On a phone a long row scrolls sideways instead of wrapping, so the three
+  // groups stay three lines and the chat keeps its room.
+  const scrollRow =
+    'flex min-w-0 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden';
 
   return (
     <div className="space-y-1.5">
@@ -87,7 +91,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack, onAddPa
       {/* Pack: fixed-price supplies added straight to the receipt. */}
       <div className="flex items-start gap-1.5">
         <span className={groupLabel}>Pack</span>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className={scrollRow}>
           {PACKING_PRESETS.filter((p) => !p.custom).map((p) => (
             <button key={p.type} type="button" onClick={() => onAddPacking(p)} className={pill} title={p.type}>
               <span className="h-1.5 w-1.5 rounded-full bg-teal-500" />
@@ -101,7 +105,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack, onAddPa
       {/* Actions */}
       <div className="flex items-start gap-1.5">
         <span className={groupLabel}>Start</span>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className={scrollRow}>
           {ACTION_CHIPS.map((spec) => (
             <button key={spec.kind} type="button" onClick={() => onAddChip(spec)} className={pill}>
               <span className={`h-1.5 w-1.5 rounded-full ${spec.dot}`} />

@@ -3,8 +3,8 @@
 // it); this is still the centrepiece of AI Mode, so it stays styled as what it
 // is: a counter slip. A titled header names the action, the fields read as a
 // ledger (label left, value right, figures aligned), and guessed values are
-// called out so staff can trust what was inferred. Markers: "?" = needed,
-// "i" = optional. The pinned Confirm / Not now controls live in the rail's foot
+// called out so staff can trust what was inferred. A "?" marks a
+// value that is still needed. The pinned Confirm / Not now controls live in the rail's foot
 // (ArtifactActions); this component owns the ledger and, via
 // `useConfirmationDraft`, the field-edit state both the slip and the foot read.
 import React, { useEffect, useMemo, useState } from 'react';
@@ -19,6 +19,7 @@ import {
   Package,
   FileText,
   X,
+  Check,
   type LucideIcon,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -27,6 +28,7 @@ import { type FieldSpec, isFieldVisible, missingRequired } from '@/ai/fieldSpecs
 import { GST_RATE, grossFromNet, netFromGross, taxOf } from '@/lib/canadaTax';
 import { isItemComplete, toShipmentItems, type ShipmentItem } from '@/ai/shipping';
 import { packingLabel, packingLineTotal, type PackingItem } from '@/lib/packing';
+import { formatDayHeading } from '@/lib/schedule';
 import ShipmentItemsEditor from './ShipmentItemsEditor';
 import IntentSuggestions from './IntentSuggestions';
 import { routeLabel } from '@/ai/intentOptions';
@@ -149,54 +151,48 @@ export function useConfirmationDraft(intent: Intent, specs: FieldSpec[]): Confir
   };
 }
 
-// The circle to the left of a field row. Filled = included, empty = omitted.
-// State is carried by shape (fill) and by the struck-through row, not colour
-// alone, per the accessibility floor.
+// The tick box to the left of a field row. Ticked = on the slip, empty = left
+// off. State is carried by shape (the tick) and by the struck-through row, not
+// colour alone, per the accessibility floor. Kept quiet so the values lead.
 function OmitToggle({ omitted, onToggle, label }: { omitted: boolean; onToggle: () => void; label: string }) {
+  const { themeClasses } = useTheme();
   return (
     <button
       type="button"
       role="switch"
       aria-checked={!omitted}
-      aria-label={omitted ? `Include ${label} on the slip` : `Omit ${label} from the slip`}
-      title={omitted ? 'Omitted. Click to include.' : 'Included. Click to omit.'}
+      aria-label={omitted ? `Include ${label} on the slip` : `Leave ${label} off the slip`}
+      title={omitted ? 'Left off. Click to include.' : 'On the slip. Click to leave it off.'}
       onClick={onToggle}
-      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
     >
       <span
-        className={`h-3.5 w-3.5 rounded-full border-2 transition-colors ${
-          omitted ? 'border-slate-400' : 'border-blue-600 bg-blue-600'
-        }`}
-      />
+        className={`flex h-4 w-4 items-center justify-center rounded border border-current ${omitted ? themeClasses.text.muted : themeClasses.text.secondary}`}
+      >
+        {!omitted && <Check className="h-3 w-3" strokeWidth={3} />}
+      </span>
     </button>
   );
 }
 
-function Marker({ marker }: { marker: FieldSpec['marker'] }) {
+// A brass "?" on a row that still needs a value. Filled and optional rows carry
+// no marker: an empty optional value already reads "Optional".
+function NeededMarker() {
   const { isDarkMode } = useTheme();
-  if (marker === 'required') {
-    return (
-      <span
-        title="Needed"
-        className={`inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold ${
-          isDarkMode ? 'bg-amber-800/70 text-amber-200' : 'bg-amber-100 text-amber-800'
-        }`}
-      >
-        ?
-      </span>
-    );
-  }
   return (
     <span
-      title="Optional"
-      className={`inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-semibold ${
-        isDarkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'
+      title="Needed"
+      className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+        isDarkMode ? 'bg-amber-800/70 text-amber-200' : 'bg-amber-100 text-amber-800'
       }`}
     >
-      i
+      ?
     </span>
   );
 }
+
+// A stored date is a 'YYYY-MM-DD' key; the slip shows it the way a person reads it.
+const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
 interface ConfirmationCheckProps {
   intent: Intent;
@@ -205,6 +201,8 @@ interface ConfirmationCheckProps {
   // Re-route this utterance to a different action when the router guessed wrong.
   onReroute?: (action: AiAction, subtype?: ReceiptSubtype) => void;
 }
+
+const isBlank = (value: unknown) => value === null || value === undefined || value === '';
 
 const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, draft, onReroute }) => {
   const { themeClasses, isDarkMode } = useTheme();
@@ -347,7 +345,8 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
       );
     }
 
-    const display = isEmpty ? (spec.marker === 'required' ? 'Add' : 'Optional') : String(value);
+    const shown = spec.kind === 'date' && DATE_KEY.test(String(value)) ? formatDayHeading(String(value)) : String(value);
+    const display = isEmpty ? (spec.marker === 'required' ? 'Add' : 'Optional') : shown;
     const alignFigures = spec.kind === 'quantity';
     return (
       <button
@@ -437,7 +436,7 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
               <li key={spec.key} className="flex items-center justify-between gap-3 py-2">
                 <div className="flex min-w-0 items-center gap-1.5">
                   <OmitToggle omitted={isOmitted} onToggle={() => toggleOmit(spec.key)} label={spec.label} />
-                  <Marker marker={spec.marker} />
+                  {spec.marker === 'required' && !isOmitted && isBlank(fv?.value) && <NeededMarker />}
                   <span
                     className={`text-[15px] ${themeClasses.text.secondary} ${
                       isOmitted ? 'line-through opacity-50' : ''
