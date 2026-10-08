@@ -27,6 +27,34 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
+## The studio site (written 2026-10-08, a side job, not part of the rehaul)
+
+`studio/` is a separate static site for Ink, Toner & Moore Studio, Parsa's software
+side of the shop. Plain HTML, CSS and one small script, no build, nothing shared with
+the app. It is live at `https://studio.ink-toner-moore.pages.dev`, which is the
+`studio` branch alias of the staging Pages project, put there by direct upload:
+
+```sh
+export CLOUDFLARE_ACCOUNT_ID=73a4f935ed801ea9299664d719bb9180
+keyvault run westbrook_cloudflare_dev -- ./proxy/node_modules/.bin/wrangler \
+  pages deploy studio --project-name ink-toner-moore --branch studio --commit-dirty=true
+```
+
+Do not create a git branch named `studio`: Cloudflare would build the app on it and
+take over the alias. Branch `studio-site` holds the work.
+
+- Checked: served locally and screenshotted at 390x844 and 1440x900, light and dark,
+  no overflow, no console errors; the live URL returns the page, its 404 and the
+  `_headers`; `ink-toner-moore.pages.dev` still serves the app.
+- Placeholder, must change before a customer is sent there: the email is
+  `hi@parsaj.dev` (the card's `studio@inktonermoore.com` does not exist and
+  `inktonermoore.com` is not registered), the phone is the shop's line, and the page
+  carries `noindex`. All copy is a first draft Parsa has not read.
+- Open for Parsa: which domain (`.ca` as he now says, or the `.com` on the cards),
+  the studio mailbox, whether to show prices, and whether Harvey is fine with the
+  shop's phone on it. Moving to `studio.inktonermoore.ca` needs a Pages custom domain
+  and a Porkbun CNAME, and likely its own Pages project.
+
 ## START HERE (written 2026-10-08, exit of the AI Mode UX and messy-testing session)
 
 **Next session is for:** more of the same, on staging this time: click AI Mode
