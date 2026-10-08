@@ -53,7 +53,7 @@ const CartridgeLineFields = ({
           className={`transition-all duration-300 ${themeClasses.button.ghost}`}
         >
           <Plus className="h-4 w-4 mr-1" />
-          Add Cartridge
+          Add cartridge
         </Button>
       </div>
 

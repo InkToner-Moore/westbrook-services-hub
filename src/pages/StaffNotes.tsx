@@ -3,7 +3,6 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { ValidatedInput } from "@/components/ui/validated-input";
 import { ValidatedTextarea } from "@/components/ui/validated-textarea";
 import { FormErrorSummary } from "@/components/ui/form-error-summary";
@@ -26,6 +25,9 @@ import { useTheme } from "@/hooks/useTheme";
 import { useValidation } from "@/hooks/useValidation";
 import { useListUndoRedo } from "@/hooks/useUndoRedo";
 import { noteSchema } from "@/utils/validation";
+import { useShell } from "@/components/shell/ShellContext";
+import { ToolPage } from "@/components/shell/ToolPage";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import StaffLayout from "@/components/StaffLayout";
 import {
   getCollection,
@@ -48,11 +50,13 @@ const DELETED_NOTES_COLLECTION = 'deletedNotes';
 
 const StaffNotes = () => {
   const { themeClasses } = useTheme();
+  const { inShell } = useShell();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
 
   const noteForm = useForm<Omit<Note, 'id' | 'createdAt' | 'updatedAt'>>();
   const noteValidation = useValidation(noteSchema);
@@ -71,7 +75,7 @@ const StaffNotes = () => {
         notesList.clearHistory();
       } catch (error) {
         console.error('Failed to load notes:', error);
-        toast({ title: "Error", description: "Failed to load notes from database" });
+        toast({ title: "Couldn't load notes", description: "Check the connection and try again." });
       } finally {
         setLoading(false);
       }
@@ -115,17 +119,18 @@ const StaffNotes = () => {
       await setDocument(NOTES_COLLECTION, noteId, newNote);
       notesList.addItem(newNote);
       noteForm.reset();
+      setAdding(false);
       setShowSuccess(true);
 
       toast({
-        title: "Note Added",
+        title: "Note added",
         description: `"${data.title}" has been saved`,
       });
 
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (error) {
       console.error('Failed to add note:', error);
-      toast({ title: "Error", description: "Failed to save note to database" });
+      toast({ title: "That didn't save", description: "Check the connection and try again." });
     }
   };
 
@@ -150,14 +155,15 @@ const StaffNotes = () => {
         notesList.updateItem(existingNoteIndex, updatedNote);
         setEditingNote(null);
         noteForm.reset();
+        setAdding(false);
 
         toast({
-          title: "Note Updated",
+          title: "Note updated",
           description: `"${data.title}" has been updated`,
         });
       } catch (error) {
         console.error('Failed to update note:', error);
-        toast({ title: "Error", description: "Failed to update note" });
+        toast({ title: "That didn't save", description: "Check the connection and try again." });
       }
     }
   };
@@ -177,16 +183,19 @@ const StaffNotes = () => {
       await deleteDocument(NOTES_COLLECTION, id);
       notesList.removeItem(index);
       toast({
-        title: "Note Removed",
+        title: "Note deleted",
         description: "Note has been moved to deleted notes",
       });
     } catch (error) {
       console.error('Failed to delete note:', error);
-      toast({ title: "Error", description: "Failed to delete note" });
+      toast({ title: "That didn't save", description: "Check the connection and try again." });
     }
   };
 
   const startEditing = (note: Note) => {
+    setAdding(true);
+    setShowSuccess(false);
+    noteValidation.clearErrors();
     setEditingNote(note.id);
     noteForm.setValue('title', note.title);
     noteForm.setValue('content', note.content);
@@ -196,16 +205,20 @@ const StaffNotes = () => {
   const cancelEditing = () => {
     setEditingNote(null);
     noteForm.reset();
+    noteValidation.clearErrors();
+    setShowSuccess(false);
+    setAdding(false);
   };
 
-  return (
-    <StaffLayout
-      title="Staff Notes"
-      subtitle="Keep track of important information and reminders"
-      tool="notes"
-      icon={StickyNote}
-      iconColor="text-amber-600 dark:text-amber-400"
-    >
+  const newNoteButton = (
+    <Button onClick={() => { cancelEditing(); setAdding(true); }} className={`min-h-[44px] rounded-lg px-4 font-semibold ${themeClasses.button.primary}`}>
+      <Plus className="h-4 w-4 mr-2" />
+      New note
+    </Button>
+  );
+
+  const content = (
+    <>
       {/* Success Message */}
       {showSuccess && (
         <div className="mb-6">
@@ -217,22 +230,24 @@ const StaffNotes = () => {
       )}
 
       <div className={`rounded-xl border p-4 sm:p-6 ${themeClasses.card.primary}`}>
-        <div className="grid grid-cols-1 gap-6 2xl:grid-cols-3">
+        <div className="flex flex-col gap-6">
           {/* Add/Edit Note Form */}
-          <div className="2xl:col-span-1">
-            <Card className={`${themeClasses.card.secondary} rounded-xl shadow-none`}>
-              <CardHeader>
-                <CardTitle className={`flex items-center gap-2 text-lg font-semibold ${themeClasses.text.primary}`}>
-                  <Plus className="h-5 w-5" />
-                  <span>{editingNote ? 'Edit note' : 'Add new note'}</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form
-                  onSubmit={noteForm.handleSubmit(editingNote ?
-                    (data) => updateNote(editingNote, data) :
-                    addNote
-                  )}
+          {adding && (
+            <div>
+              <Card className={`${themeClasses.card.secondary} rounded-xl shadow-none`}>
+                <CardHeader>
+                  <CardTitle className={`flex items-center gap-2 text-lg font-semibold ${themeClasses.text.primary}`}>
+                    <Plus className="h-5 w-5" />
+                    <span>{editingNote ? 'Edit note' : 'Add new note'}</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form
+                    onSubmit={noteForm.handleSubmit(editingNote ?
+                      (data) => updateNote(editingNote, data) :
+                      addNote
+          
+          )}
                   className="space-y-6"
                 >
                   <FormErrorSummary errors={noteValidation.errors} />
@@ -271,34 +286,22 @@ const StaffNotes = () => {
                     />
                   </div>
 
-                  <div className="flex gap-3">
-                    <Button
-                      type="submit"
-                      size="lg"
-                      className={`flex-1 font-semibold ${themeClasses.button.primary}`}
-                    >
+                  <div className="flex gap-2 justify-end">
+                    <Button type="button" variant="ghost" onClick={cancelEditing} className={`min-h-[44px] ${themeClasses.button.ghost}`}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" size="lg" className={`min-h-[44px] font-semibold ${themeClasses.button.primary}`}>
                       {editingNote ? 'Update note' : 'Add note'}
                     </Button>
-
-                    {editingNote && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="lg"
-                        onClick={cancelEditing}
-                        className={themeClasses.button.ghost}
-                      >
-                        Cancel
-                      </Button>
-                    )}
                   </div>
                 </form>
               </CardContent>
             </Card>
           </div>
+          )}
 
               {/* Notes List */}
-          <div className="2xl:col-span-2">
+          <div>
             {/* Controls */}
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
               <div className="flex-1">
@@ -371,15 +374,23 @@ const StaffNotes = () => {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteNote(note.id)}
-                            aria-label={`Delete ${note.title}`}
-                            className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" aria-label="Delete note" className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete this note?</AlertDialogTitle>
+                                <AlertDialogDescription>This removes the note for everyone. It can't be undone.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteNote(note.id)} className="bg-red-600 hover:bg-red-700 text-white">Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </div>
 
@@ -401,14 +412,11 @@ const StaffNotes = () => {
                     <CardContent className="p-12 text-center">
                       <FileText className={`h-14 w-14 mx-auto mb-4 ${themeClasses.text.muted}`} />
                       <h3 className={`text-lg font-semibold mb-2 ${themeClasses.text.primary}`}>
-                        {searchQuery || selectedCategory !== "all" ? "No matching notes" : "No notes yet"}
+                        {searchQuery || selectedCategory !== "all" ? "Nothing matches that search" : "No notes yet"}
                       </h3>
-                      <p className={themeClasses.text.secondary}>
-                        {searchQuery || selectedCategory !== "all" ?
-                          "Try adjusting your search or filter criteria" :
-                          "Create your first note to get started"
-                        }
-                      </p>
+                      {searchQuery || selectedCategory !== "all" ? (
+                        <Button variant="ghost" onClick={() => { setSearchQuery(""); setSelectedCategory("all"); }} className={`min-h-[44px] ${themeClasses.button.ghost}`}>Clear search</Button>
+                      ) : newNoteButton}
                     </CardContent>
                   </Card>
                 )}
@@ -417,6 +425,20 @@ const StaffNotes = () => {
           </div>
         </div>
       </div>
+    </>
+  );
+
+  if (inShell) {
+    return <ToolPage tool="notes" subtitle="Keep track of important information and reminders" actions={!adding && newNoteButton}>{content}</ToolPage>;
+  }
+
+  return (
+    <StaffLayout title="Staff Notes" subtitle="Keep track of important information and reminders" icon={StickyNote} iconColor={themeClasses.text.secondary}>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h2 className={`text-xl font-semibold ${themeClasses.text.primary}`}>Staff notes</h2>
+        {!adding && newNoteButton}
+      </div>
+      {content}
     </StaffLayout>
   );
 };
