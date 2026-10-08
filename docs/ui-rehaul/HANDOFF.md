@@ -2,6 +2,31 @@
 
 Read `DESIGN-SPEC.md` and `PLAN.md` first. This records where the rehaul stands.
 
+## Which project this is (written 2026-10-07)
+
+**This repo is V2 of the Ink Toner & Moore app, and it is where the app work happens.**
+When Parsa says "ITM", "the v2", "the staff dashboard" or names any tool the shop uses,
+he means this. V1 and V2 are one app, each with the customer side and the staff side
+together; there is no separate customer repo and staff repo.
+
+- **V1**: this GitHub repo's `main`, live at inktonermoore.ca. The checkout at
+  `../westbrook-services-hub-v1` is for looking only.
+- **V2**: this checkout (registered as WESTBROOK). Staging is `ink-toner-moore.pages.dev`.
+- **Not the app**: `/home/user/Programming/trout-sites/inktonermoore`, registered as
+  TROUT-ITM (named ITM-SITE until 2026-10-07). It is a separate site for the shop built
+  on the Laketrout platform, customer pages only, never live. Nothing from here belongs
+  there and nothing from there belongs here.
+
+**The last two sessions, both opened in TROUT-ITM by mistake on 2026-10-07:**
+
+1. The first did its work here: everything under the next START HERE. It is committed on
+   `timesheet-shifts-ux` and on staging (`origin/dev` matched that branch when checked
+   later the same day).
+2. The second changed nothing in this repo. It fixed the test suites in TROUT-ITM and in
+   the Laketrout template, then checked this repo: tree clean, no stray code in either
+   direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
+   not: the Cloudflare login on this machine is still expired.
+
 ## START HERE (shifts replace the punch clock, key board + consistency pass, 2026-10-07)
 
 **What shipped (branch `timesheet-shifts-ux`, on staging; prod `main` untouched):**
