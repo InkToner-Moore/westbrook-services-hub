@@ -27,7 +27,63 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
-## START HERE (shifts replace the punch clock, key board + consistency pass, 2026-10-07)
+## START HERE (staff UX pass, 2026-10-08)
+
+Parsa's brief: one session on staff-side UX/UI, consistency, ease of use, less
+clutter. Staff side only; **the customer-facing side (`PublicHome`) is the next
+session.** Branch `staff-ux-pass` (on top of `timesheet-shifts-ux`), on staging;
+prod `main` untouched. No DEV data or rules changed (the browser pass only read).
+
+**Shipped:**
+1. **Right panel only when it holds something** (`StaffShell.tsx`). The empty
+   "Workspace" panel is gone from the tool pages. It shows while there is a result
+   or a slip, opens by itself when one arrives (the phone sheet too), collapses to a
+   slim strip when tucked away or when there is only a last item to bring back.
+2. **Slip** (`ConfirmationCheck.tsx`): the per-row dot is a tick box, the `?` shows
+   only on a value still missing, dates read "Thu, Oct 8".
+3. **Composer on a phone**: quick-action rows scroll sideways (three lines, not
+   six), the hint no longer clips.
+4. **Notes and Cartridges**: list and search first; the add form opens from
+   "New note" / "New order" and closes on save or cancel. Notes delete now asks.
+   Order form in columns. Empty and no-match states with a next step.
+5. **Inventory**: flat row icons, one stock control (the switch, labelled), quiet
+   delete, "Add key" / "Add refill" open labelled forms, Review grouped by kind with
+   counts and 25 at a time, tabs fit on a phone.
+6. All-caps tracked labels replaced (Timesheet day heads, two AI cards). Tab count
+   badge caps at 99+ (`SegmentedTabs`).
+
+**The pattern to keep** (so the next page matches): list first; one primary
+"New X" / "Add X" button (in `ToolPage` `actions`, or beside the search inside a
+tab); the form is a card above the list with Cancel + submit bottom right; delete
+is a ghost icon button behind an AlertDialog; sentence-case labels above inputs;
+toasts are plain ("Note added", "That didn't save" / "Check the connection and try
+again.").
+
+**Gate:** `tsc -p tsconfig.app.json --noEmit` clean, `yarn build` green, parser
+tests 30/30, eslint baseline-only. Checked in a browser against DEV Firestore
+(read only), desktop and 390px, light; dark spot-checked before the page edits.
+
+**Not done, staff side (next up if wanted):**
+- **Directory**: the category badge shows twice on admin cards, edit/delete icons
+  sit on every tile, icons are gradients, "Add tile" should read "Add site".
+- **Receipts**: Title Case labels ("Receipt Number", "Courier Service"), a long
+  form; not touched this session.
+- Inventory **Review still lists 400+ items** (306 "No price"). Grouping makes it
+  usable, but the count itself wants a data clean-up or looser checks.
+- Hours tab shows each total twice ("34h 15m" and "34.25 h").
+- Login page and the user menu were not looked at. Dark mode was not re-checked
+  after the Notes / Cartridges / Inventory edits.
+- Standalone (deep-link) headers still carry the old long titles (carried over).
+- A Gemini inventory of cross-page inconsistencies was started and timed out twice;
+  nothing came back, so there is no written audit.
+
+**To look at the app with real data locally** (what this session did): get the dev
+web config from the Firebase Management API with the dev SA, start `yarn dev` with
+those `VITE_FIREBASE_*` in the environment and `VITE_DEV_BYPASS_AUTH=false`, then
+sign the browser in with a custom token for the dev staff uid
+(`dev-db-backups/tools/fb.mjs` has `customToken`). Never the repo `.env`.
+
+## Earlier (shifts replace the punch clock, key board + consistency pass, 2026-10-07)
 
 **What shipped (branch `timesheet-shifts-ux`, on staging; prod `main` untouched):**
 
