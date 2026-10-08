@@ -27,11 +27,106 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
-## START HERE (written 2026-10-08, engine pass exit; updated the same day at the exit of the Haiku router session)
+## START HERE (written 2026-10-08, exit of the AI Mode UX and messy-testing session)
 
-**Next session is for:** UI/UX work on AI Mode, plus extensive testing of it with
+**Next session is for:** more of the same, on staging this time: click AI Mode
+through at `ink-toner-moore.pages.dev` with a real login, including the things
+that write Firestore, and keep feeding misread lines into the corpus. It is not a
+numbered plan step.
+
+**Where things stand (observed 2026-10-08):**
+- Branch `ai-mode-ux-testing`, stacked on `haiku-router`. Tree clean, pushed,
+  `origin/dev` fast-forwarded to it. **Prod `main` untouched** (`0ffa16c`).
+- Open PRs: only **#1 `docs-align-claude-md`** (from Sept 1, not this work).
+- Gate as run at exit: `tsc -p tsconfig.app.json --noEmit` exit 0; `yarn build`
+  built; `eslint src/ai src/components/ai src/components/shell
+  scripts/parser-tests proxy/src` 0 errors (react-refresh warnings only);
+  `run.mjs` 30 pass; `sweep.mjs` 463 of 470, 0 missed, 7 known gaps.
+- Checked in a real browser, local dev server with the auth bypass and a local
+  copy of the proxy on the real Haiku key: the chat and slip changes below, at
+  1440x900 and 390x844, light and dark. **Not checked:** anything on staging,
+  and anything that writes or reads Firestore (inventory lookups, key prices
+  from inventory, the schedule, saving a note or a refill). The demo Firebase
+  config rejects those locally.
+- No DEV data or rules changed.
+
+**Built this session, do NOT rebuild:**
+1. **Parser, 45 more lines read right** (`c36db24`). The 19 unseen-input misses
+   listed in the section below are fixed and in the corpus. Then a sweep of 200
+   messy lines and 10 chats found about 25 more, also fixed and in the corpus:
+   street numbers and postal codes as the price, a leading "2" meaning "to",
+   typo'd and foreign cities (kept as typed, province left empty), repeated key
+   codes, "dupe", filler words taken as names ("actually", "no wait"), misspelt
+   cue words ("refil", "reciept"), "ready for pickup" read as picked up, list
+   questions read as status changes, courier sites read as tracking, how-to
+   questions read as sales, a follow-up key or parcel replacing the first one.
+2. **The live sweep** (`scripts/parser-tests/messy/`): `PROXY=<worker url> node
+   scripts/parser-tests/messy/run.mjs [lines|chats]` runs the messy lines
+   through the engine and the model and prints how each is read. About 100
+   model calls. No expectations in it: read the output, put a miss in
+   `corpus.mjs`, then fix.
+3. **Chat words** (`src/ai/chatWords.ts`, used in `context.tsx`): with a slip
+   open, a typed yes confirms it (or names what is still missing) and cancel /
+   nvm dismisses it. Hi, thanks and help get a plain reply. A question the
+   engine cannot route gets one line saying so, not the twelve-task picker.
+4. **Replies say what changed** (`src/ai/describeChange.ts`): "Shipping cost is
+   now $25.00.", "Added a parcel: UPS to Calgary $30.00."
+5. **Hand edits survive a typed follow-up.** The slip reports its draft to the
+   provider (`reportDraft`), and a follow-up or a typed yes acts on that.
+6. **Slip totals.** A shipping slip shows subtotal, tax and total; every receipt
+   slip shows its total beside Confirm. Both come from `receiptIntentToCartLines`
+   and `cartTotal`, the code that builds the receipt.
+7. **A key with no price on file** leaves Price empty and blocks Confirm. It
+   used to show a guessed $0.00 and "Ready when you are".
+8. **Mobile.** The sheet has a Back to chat button, stays down when a typed
+   change edits the same slip, and stays mounted while closed so its edits
+   hold. The chat turn and the top bar carry a labelled button back to the
+   slip. Shortcuts (Track / Pack / Start) fold behind a "Shortcuts" button on a
+   phone and once a chat is going (the choice is kept in `localStorage`
+   `ai-shortcuts-open`), and wrap instead of scrolling off screen. 44px targets.
+9. **Contrast.** `themeClasses.text.muted` and input placeholders were under AA
+   in both themes; now `#666d7a` light, `#8b95a5` dark. This touches every page
+   that uses muted text.
+10. **Proxy fallback** (`569d05e`, deployed): Haiku gets 2.8 seconds; on a rate
+    limit, overload, timeout or non-answer the worker asks Gemini Flash-Lite
+    (the `GEMINI_API_KEY` secret that was already there). Proven on the live
+    worker by deploying once with a model name that does not exist: Flash-Lite
+    answered in 1.6 seconds. The worker was then redeployed on Haiku.
+
+**Known gaps (act on cold):**
+- In the corpus as `known`: a described key has no count ("4 copies of her
+  house key" keeps "house key", loses the 4); a refill slip has no quantity; a
+  second box of the same kind; a span of days ("oct 8-10").
+- **Order status by name.** "sarah's hp 65 is ready" routes to a status change
+  but the slip still needs the order number typed. Staff will not know it. The
+  fix is a lookup of open orders by customer name or model in
+  `src/ai/actions/cartridge.ts`, with a pick list when several match. This is
+  the biggest remaining reason a clerk would leave AI Mode for the classic page.
+- "first one is 24" on a two-parcel slip changes the last parcel (no per-item
+  targeting).
+- "charge 34 to card" routes to purchase with no amount, and `purchase` still
+  has no executor.
+- A destination with an empty province is taxed at the Alberta rate
+  (`taxesForProvince` falls back to AB). Nobody decided what a foreign parcel
+  should be taxed; ask Parsa.
+- "moneris login" opens a directory slip that also shows the charge-card toggle.
+- French lines get the name only because the model reads it.
+- The local proxy needs `SSL_CERT_FILE=/etc/ssl/certs/ca-bundle.crt` and a port
+  other than 8787 (Computah's web server holds it):
+  `cd proxy && keyvault run westbrook_anthropic_dev -- sh -c 'npx --no-install wrangler dev --port 8791 --var ALLOWED_ORIGIN:http://localhost:8080 --var "ANTHROPIC_API_KEY:$ANTHROPIC_API_KEY"'`,
+  then the dev server with `VITE_AI_PROXY_URL=http://localhost:8791`.
+- There is no staging login in keyvault, so an agent cannot sign in on staging.
+
+**Open questions for Parsa:** tax on a parcel leaving Canada; whether he wants
+a staging test login stored so staging can be clicked through. The carried ones
+below still stand.
+
+## Earlier (the engine pass and the Haiku router session, 2026-10-08)
+
+
+**That session was for:** UI/UX work on AI Mode, plus extensive testing of it with
 messy, human, typed-at-the-counter input (Parsa's words, kept in the section
-below). Building and testing, not planning. It is not a numbered plan step.
+below). It happened; see START HERE above.
 
 **Where things stand (observed 2026-10-08):**
 - Branch `haiku-router` (the proxy swap, `fa435ef`, plus handoff commits),
@@ -134,8 +229,9 @@ below). Building and testing, not planning. It is not a numbered plan step.
 - **The honest number is 101 of 120 (84%) on unseen input.** The corpus was
   written by the same hand that fixed the engine, so its 259 of 262 only guards
   against regressions. Codex wrote 120 fresh lines, fixed its expectations
-  first, then ran them: 19 missed (3 of them it called debatable). None of the
-  19 is in the corpus or fixed yet. Add them to `corpus.mjs` first, then fix:
+  first, then ran them: 19 missed (3 of them it called debatable). All 19 were
+  added to the corpus and fixed in the next session (the refill quantity one is
+  a `known`). They were:
   - Follow-ups: "actually model 97" set the price to 97; "quantity is 3" set
     the price to 3; "three of them instead" did not change a key count.
   - Key counts: "4xKW1" (no space), "duplicate WR5 four times", "qty=3",
