@@ -27,20 +27,20 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
-## START HERE (written 2026-10-08, session exit after the AI Mode engine pass)
+## START HERE (written 2026-10-08, engine pass exit; updated the same day at the exit of the Haiku router session)
 
 **Next session is for:** UI/UX work on AI Mode, plus extensive testing of it with
 messy, human, typed-at-the-counter input (Parsa's words, kept in the section
 below). Building and testing, not planning. It is not a numbered plan step.
 
 **Where things stand (observed 2026-10-08):**
-- Branch `ai-engine-pass` (one engine commit, `9aecaec`, plus this handoff
-  commit), stacked on `public-ux-pass`. Tree clean. Check `git status -sb` and
-  `git rev-parse origin/dev` for whether it was pushed and promoted; the exit
-  report in chat said which. **Prod `main` untouched** (`0ffa16c`).
+- Branch `haiku-router` (the proxy swap, `fa435ef`, plus handoff commits),
+  stacked on `ai-engine-pass` (`9aecaec` is the engine commit). Tree clean,
+  pushed, and `origin/dev` was fast-forwarded to it, so staging carries
+  everything here. **Prod `main` untouched** (`0ffa16c`).
 - Open PRs: only **#1 `docs-align-claude-md`** (from Sept 1, not this work).
-- Gate as run at exit: `tsc -p tsconfig.app.json --noEmit` exit 0; `yarn build`
-  built; `eslint src/ai scripts/parser-tests` 0 errors, 1 warning (the usual
+- Gate as run at the later exit: `tsc -p tsconfig.app.json --noEmit` exit 0; `yarn build`
+  built; `eslint src/ai scripts/parser-tests proxy/src` 0 errors, 1 warning (the usual
   react-refresh one on `context.tsx`); `node scripts/parser-tests/run.mjs` 30
   pass, 0 fail; `node scripts/parser-tests/sweep.mjs` 259 of 262, 0 missed, 3
   known gaps.
@@ -55,7 +55,11 @@ below). Building and testing, not planning. It is not a numbered plan step.
   `ANTHROPIC_API_KEY`). Checked with ten counter lines through the live worker
   from the staging origin: all routed sensibly, 1.3 to 2.8 seconds each, prompt
   cache hit on repeat calls. Not checked: AI Mode clicked through in a browser on
-  staging with the new model. The old `GEMINI_API_KEY` secret is still on the
+  staging with the new model, and whether the Pages build of `dev` finished.
+  One thing seen: for "2 kw1 keys" Haiku answered `clarify` (key sale or stock
+  question) where Gemini's old answer is unknown. The offline engine reads that
+  line first, so it may never show, but check it in the app; if it does show,
+  the fix is a line in `SYSTEM_PROMPT`, then `wrangler deploy`. The old `GEMINI_API_KEY` secret is still on the
   worker, unused; `wrangler rollback` returns to the Gemini version.
   Wrangler sees three Cloudflare accounts, so set
   `CLOUDFLARE_ACCOUNT_ID=73a4f935ed801ea9299664d719bb9180` (the ITM one) on every
@@ -151,6 +155,15 @@ below). Building and testing, not planning. It is not a numbered plan step.
   receipt on its own; "cut" or "key" in the line still does.
 - The Codex helper cannot write to `/tmp` (read-only sandbox). It ran its probes
   through node stdin with esbuild `write:false`. Say so in the brief.
+- `git push` fails on this machine: the global credential helper points at a
+  missing `.gh-wrapped`. Push with
+  `git -c credential.helper= -c credential.helper='!/home/user/.nix-profile/bin/gh auth git-credential' push ...`
+  until Parsa fixes the config. `gh` itself works.
+- The proxy's `RESPONSE_SCHEMA` stays in its compact OBJECT/STRING/nullable
+  form; `toJsonSchema` in `worker.js` converts it for the Anthropic API (every
+  property required, nullables as anyOf with null). Edit the compact schema, do
+  not hand-write a second one. Haiku 5.5 takes `thinking: {type: "disabled"}`
+  and `output_config.format`; no temperature is sent.
 - The Playwright tool prints the code it runs (carried). `browser_run_code`
   returning a short string is far cheaper than a snapshot.
 
