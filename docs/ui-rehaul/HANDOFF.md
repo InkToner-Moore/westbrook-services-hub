@@ -116,11 +116,24 @@ below). Building and testing, not planning. It is not a numbered plan step.
   or delete a shift.
 
 **Constraints found this session (the older lists below still stand):**
-- The corpus was written by the same hand that fixed the engine, so 259 of 262
-  is a floor on regressions, not proof of how it does on fresh input. A Codex
-  run over 120 unseen lines was started and had not reported when this was
-  written; if its result is not in the chat or the corpus, run that check again
-  before trusting the number.
+- **The honest number is 101 of 120 (84%) on unseen input.** The corpus was
+  written by the same hand that fixed the engine, so its 259 of 262 only guards
+  against regressions. Codex wrote 120 fresh lines, fixed its expectations
+  first, then ran them: 19 missed (3 of them it called debatable). None of the
+  19 is in the corpus or fixed yet. Add them to `corpus.mjs` first, then fix:
+  - Follow-ups: "actually model 97" set the price to 97; "quantity is 3" set
+    the price to 3; "three of them instead" did not change a key count.
+  - Key counts: "4xKW1" (no space), "duplicate WR5 four times", "qty=3",
+    "qty 6", "SC1 (3)" all read as one key.
+  - "two parcels UPS: to Prince George BC $27 and to Kamloops BC $25" is one
+    parcel (same root as the known gap above).
+  - Not routed: "no more KW10 blanks" (out of stock), "hire employee Rowan".
+  - Models with a hyphen before the digits ("MLT-D111S", "PC-211").
+  - Names: "Zoë Martin" (accented letters), "intake: Vera left Canon 240".
+  - "to St. Albert AB" gives the city "St".
+  - "binder clips qty 2 $6.75" keeps "qty" in the item.
+  - A refill slip has no quantity field ("refill hp 910 qty 3 $81").
+  - A semicolon inside a note is rewritten as "and".
 - A three-digit code ("TN660") is treated as a cartridge, not a key blank, when
   the engine is only inferring a key order. The key inventory has blanks with
   three digits. If staff type one bare with a count, it will not open a key
