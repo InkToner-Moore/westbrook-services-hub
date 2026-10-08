@@ -7,6 +7,8 @@ import type { AiAction, AiParseContext, AiProvider, FieldValue, Intent, ReceiptS
 import { getFieldSpecs } from '../fieldSpecs';
 import {
   NOTE_LEAD,
+  normalizeUtterance,
+  extractCountry,
   bareAmounts,
   classifyTimesheetOp,
   courierLabel,
@@ -91,13 +93,15 @@ function extractShipmentItems(text: string) {
     const match = extractTracking(piece);
     const { trackingNumber } = match;
     const city = extractCity(piece) ?? '';
+    const country = extractCountry(piece);
     return {
       ...emptyShipmentItem(),
       courier: courierLabel(match),
       trackingNumber: trackingNumber ?? '',
       city,
-      // The province as typed, else the one the city is in, else the shop's own.
-      province: extractProvince(piece) ?? provinceOfCity(city) ?? base.province,
+      // A known Canadian city supplies its province; unknown and foreign cities do not.
+      province: country && country !== 'Canada' ? '' : extractProvince(piece) ?? provinceOfCity(city) ?? (city ? '' : base.province),
+      country: country ?? base.country,
       // Strip packing ("box $5") before pricing so a packing amount interleaved
       // among the shipment fields is never taken as the shipping cost.
       cost: extractShippingCost(stripPacking(piece), trackingNumber, extractPhone(piece)) ?? null,
@@ -111,14 +115,18 @@ function extractShipmentItems(text: string) {
     // A courier counts when it is named in words: a "1Z..." number implies UPS,
     // but it belongs to the UPS already named, it does not start a second parcel.
     const names = (t: string) => new RegExp(COURIER_TOKENS.source, 'i').test(t);
+    const nextDestination = current !== null && Boolean(extractCity(piece)) &&
+      extractShippingCost(stripPacking(piece)) !== null && Boolean(extractCity(current)) &&
+      extractShippingCost(stripPacking(current)) !== null;
+    const inherited = current !== null ? courierLabel(extractTracking(current)) : '';
     const second =
       current !== null &&
-      ((names(piece) && names(current)) ||
+      ((names(piece) && names(current)) || nextDestination ||
         Boolean(extractTracking(piece).trackingNumber && extractTracking(current).trackingNumber));
     if (current === null) current = piece;
     else if (second) {
       groups.push(current);
-      current = piece;
+      current = !names(piece) && nextDestination && inherited ? `${inherited} ${piece}` : piece;
     } else current = `${current} ${piece}`;
   }
   if (current !== null) groups.push(current);
@@ -156,10 +164,10 @@ const INVENTORY_WRITE_VERB =
 // token (so a real sentence is never swallowed) and no write verb present.
 function looksLikeInventoryLookup(text: string): boolean {
   const t = text.trim().replace(/\?+$/, '').trim();
-  if (INVENTORY_WRITE_VERB.test(text)) return false;
+  if (INVENTORY_WRITE_VERB.test(text) || /^\d{1,2}[x×]/i.test(t) || extractKeyItems(text).some((it) => it.qty > 1)) return false;
   // One short alphanumeric token that contains a digit: a key code (KW1, SC4) or a
   // cartridge SKU (564XL, TN660), whichever way the letters and digits fall.
-  return /^[A-Za-z0-9]{2,7}$/.test(t) && /\d/.test(t);
+  return /^[A-Za-z0-9]{2,7}$/.test(t) && /\d/.test(t) && /[A-Za-z]/.test(t);
 }
 
 // Several keys, or a key with a quantity, or the word "key" alongside a code:
@@ -206,6 +214,17 @@ const RULES: Rule[] = [
   // goes on to mention.
   (t) => (NOTE_LEAD.test(t) ? strong('note', 0.9) : null),
 
+  (t) => hasCue(t, 'how do i', 'how do you', 'what can you do', 'can you email', 'can you make', 'could you email', 'how can i', 'email receipt', 'email receipts')
+    ? strong('unknown', 0.9) : null,
+  (t) => hasCue(t, 'directory', 'website', 'site', 'login', 'portal', 'login page') ||
+    (hasCue(t, 'link') && pieceHasCourier(t)) ? strong('directory', 0.8) : null,
+  (t) => hasCue(t, 'orders', 'refills', 'refill') &&
+    (hasCue(t, 'list', 'show', 'what', 'whats', "what's", 'any', 'status') && extractMoney(t) === null)
+    ? strong('cartridge_list', 0.8) : null,
+  (t) => (hasCue(t, 'hours') || /^\s*swap\b/i.test(t)) ? strong('timesheet', 0.8) : null,
+  (t) => hasThing(t) && (hasCue(t, 'received', 'came in') ||
+    (hasCue(t, 'got') && /\b\d+\b.*\bin\b/i.test(t))) ? strong('inventory', 0.8) : null,
+
   // A cartridge status change: a status word plus an order id or a change verb.
   // A bare mention of "pickup" is not enough ("dropped off a Canon for pickup" is
   // a new order).
@@ -225,7 +244,7 @@ const RULES: Rule[] = [
       t,
       'clock in', 'clock out', 'clock-in', 'clock-out', 'clocked in', 'clocked out', 'punch in', 'punch out',
       'punch the clock', 'punch clock', 'timesheet', 'time sheet', 'timecard', 'time card', 'add employee',
-      'new employee', 'hours for', 'shift', 'shifts', 'schedule',
+      'new employee', 'hire employee', 'onboard employee', 'register employee', 'create employee', 'hours for', 'shift', 'shifts', 'schedule',
     ) ||
     /\bwho(?:'?s|\s+is)?\s+(?:working|on|in|works|scheduled|here)\b/i.test(t) ||
     /\bwhen\s+(?:does|is|do|did)\s+\w+\s+work(?:ing)?\b/i.test(t) ||
@@ -264,7 +283,7 @@ const RULES: Rule[] = [
 
   // Telling us something ran out, or is back.
   (t) =>
-    /\bout\s+of\s+stock\b|\bsold\s+out\b|\bran\s+out\s+of\b|\b(?:we'?re|were|we\s+are|i'?m|im)\s+out\s+of\b|\bback\s+in\s+stock\b/i.test(t)
+    /\bno\s+more\b|\bnone\s+left\b|\bout\s+of\s+stock\b|\bsold\s+out\b|\bran\s+out\s+of\b|\b(?:we'?re|were|we\s+are|i'?m|im)\s+out\s+of\b|\bback\s+in\s+stock\b/i.test(t)
       ? strong('inventory', 0.8)
       : null,
 
@@ -317,7 +336,7 @@ const RULES: Rule[] = [
   // Key cutting: the phrase, a cut/copy verb with a code, an order of several
   // codes, or a key with a price on it ("mailbox key 5 bucks").
   (t) => {
-    const cutVerb = /\b(?:cut|cutting|copy|copies|duplicat\w*)\b/i.test(t);
+    const cutVerb = hasCue(t, 'cut', 'cutting', 'copy', 'copies', 'dup', 'dupe', 'duplicate', 'duplicated', 'duplicates');
     if (
       hasCue(t, 'key cut', 'key cutting', 'cut a key', 'key copy', 'copy a key') ||
       /\bkeys?\b[^.?!]*\b(?:cut|copy|copies|duplicat\w*|made|make)\b/i.test(t) ||
@@ -503,7 +522,7 @@ export class DeterministicProvider implements AiProvider {
   readonly name = 'deterministic';
 
   async parse(utterance: string, context?: AiParseContext): Promise<Intent> {
-    const text = utterance;
+    const text = normalizeUtterance(utterance);
 
     // The user corrected a misroute: take the forced action as given and only
     // run extraction. Confidence 1 because the human chose it.
@@ -537,6 +556,7 @@ export class DeterministicProvider implements AiProvider {
     if (action === 'receipt' && !subtype) {
       if (extractKeyItems(text).length > 0) subtype = 'key';
       else if (pieceHasCourier(text)) subtype = 'shipping';
+      else if (hasCue(text, 'key', 'keys')) subtype = 'key';
       else if (extractBrand(text)) subtype = 'refill';
       else subtype = 'supplies';
     }
@@ -553,6 +573,7 @@ export class DeterministicProvider implements AiProvider {
 // degrades to exactly the deterministic result and the model never touches
 // business values. Mutates intent.fields in place.
 export function populateIntentFields(intent: Intent, text: string): void {
+  text = normalizeUtterance(text);
   const { action, subtype } = intent;
 
   // Timesheet fans into ops via a classifier; it does not use the generic
@@ -643,6 +664,9 @@ export function populateIntentFields(intent: Intent, text: string): void {
       // longer one is more likely a cartridge or part of the address.
       const keyItems = extractKeyItems(text).filter((it) => subtype === 'key' || !/\d{3}$/.test(it.model));
       if (keyItems.length > 0) intent.fields.keyItems = { value: keyItems, source: 'explicit' };
+      if (subtype === 'key' && keyItems.length > 1 && keyItems.every((it) => it.unitPrice != null)) {
+        intent.fields.price = explicit(Math.round(keyItems.reduce((sum, it) => sum + it.qty * it.unitPrice!, 0) * 100) / 100);
+      }
     }
   }
 

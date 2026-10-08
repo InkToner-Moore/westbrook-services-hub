@@ -83,7 +83,9 @@ async function splitSoft(chunk: string): Promise<string[]> {
     // Keys listed with "and" between them are one key receipt.
     const isKeys = (r: Probe) => r.action === 'receipt' && r.subtype === 'key';
     const bothKeys = isKeys(currentRoute) && isKeys(partRoute);
-    if (bothRoute && !bothShipping && !bothKeys && !sameShift && !moreDays) {
+    const moreModels = currentRoute.action === 'receipt' && currentRoute.subtype === 'refill' &&
+      partRoute.action === 'inventory_lookup' && /^[A-Za-z0-9-]+$/.test(parts[i].trim());
+    if (bothRoute && !moreModels && !bothShipping && !bothKeys && !sameShift && !moreDays) {
       segments.push(current);
       current = parts[i];
     } else {
@@ -100,6 +102,7 @@ async function splitSoft(chunk: string): Promise<string[]> {
 export async function segmentUtterance(text: string): Promise<string[]> {
   const trimmed = text.trim();
   if (!trimmed) return [];
+  if (NOTE_LEAD.test(trimmed) || /^\s*swap\b/i.test(trimmed)) return [trimmed];
 
   // A chunk after "then" / "plus" / a new line that is not an action on its own
   // ("plus box $5", "then charge her card") carries on the one before it.

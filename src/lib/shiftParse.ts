@@ -63,6 +63,7 @@ export function parseTimeRange(text: string): { start: string; end: string; rest
     const sm = m[2] ? Number(m[2]) : 0;
     const eh = Number(m[4]);
     const em = m[5] ? Number(m[5]) : 0;
+    if (toMinutes(sh, sm, meridiem(m[3])) === null || toMinutes(eh, em, meridiem(m[6])) === null) return null;
     let sMer = meridiem(m[3]);
     const eMer = meridiem(m[6]);
     // "4-9pm": a single trailing pm covers the start too when that keeps it in order.

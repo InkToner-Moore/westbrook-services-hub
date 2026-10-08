@@ -7,6 +7,17 @@ import type { PackingItem } from '@/lib/packing';
 import type { IntentAttachments } from './types';
 import { parseBreakMinutes, parseTimeRange } from '@/lib/shiftParse';
 
+export function normalizeUtterance(text: string): string {
+  const cues: Record<string, string> = {
+    refil: 'refill', reffil: 'refill', reciept: 'receipt', recipt: 'receipt',
+    receit: 'receipt', reciet: 'receipt', recept: 'receipt', shiping: 'shipping',
+    trakcing: 'tracking', trackng: 'tracking', inventry: 'inventory',
+  };
+  return text.replace(/\b(?:refil|reffil|reciept|recipt|receit|reciet|recept|shiping|trakcing|trackng|inventry)\b/gi,
+    (word) => cues[word.toLowerCase()]).replace(/\bh\s+p\b/gi, 'HP')
+    .replace(/\b(\d+[a-z]*)\s+(xx?l)\b/gi, '$1$2');
+}
+
 export function todayIso(): string {
   const d = new Date();
   const y = d.getFullYear();
@@ -117,6 +128,9 @@ export function bareAmounts(text: string, exclude: Array<string | null | undefin
     if (x) t = t.replace(new RegExp(String(x).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), ' ');
   }
   t = t
+    .replace(/\b[a-z]\d[a-z]\s*\d[a-z]\d\b/gi, ' ')
+    .replace(/\b\d+\s+(?:(?:[a-z]+\s+){0,3})(?:(?:st|street|ave|avenue|rd|road|blvd|dr|drive|way|cres|crt|court|pl|lane|hwy|unit|apt|suite)\b|#)/gi, ' ')
+    .replace(/\b2\s+(?=[a-z])/gi, (m, offset) => CANADIAN_CITIES.some((city) => new RegExp(`^${city}\\b`, 'i').test(t.slice(offset + m.length))) ? ' ' : m)
     .replace(/\d[\d\s.-]{9,}\d/g, ' ')
     .replace(/(?<!\d)\d{6,}(?!\d)/g, ' ')
     .replace(/\b\d{1,2}:\d{2}\b/g, ' ')
@@ -142,7 +156,8 @@ export function extractPrice(
 ): number | null {
   const strict = extractMoney(text);
   if (strict !== null) return strict;
-  const all = bareAmounts(text, exclude);
+  const amounts = text.replace(/(?<![A-Za-z0-9])x\s?\d{1,3}\b/gi, ' ').replace(/\b(?:qty|quantity)\s*(?:is\s+|[:=]\s*)?\d{1,3}\b/gi, ' ');
+  const all = bareAmounts(amounts, exclude);
   const nums = mode === 'sale' ? all.filter((n) => !n.beforeWord) : all;
   if (nums.length === 0) return null;
   const decimal = nums.find((n) => n.decimal);
@@ -178,10 +193,10 @@ const digitsForWords = (text: string): string => text.replace(NUMBER_WORD_RE, (w
 export function extractSaleQuantity(text: string): number | null {
   const t = digitsForWords(text);
   const stated =
-    t.match(/\b(?:qty|quantity)\s*[:=]?\s*(\d{1,3})\b/i) ||
+    t.match(/\b(?:qty|quantity)\s*(?:is\s+|[:=]\s*)?(\d{1,3})\b/i) ||
     t.match(/(?<![A-Za-z0-9])x\s?(\d{1,3})\b/i) ||
     t.match(/(?<![A-Za-z0-9$.])(\d{1,3})\s*x(?![A-Za-z0-9])/i) ||
-    t.match(/(?<![A-Za-z0-9$.])(\d{1,3})\s+of\s+(?:them|those|these)\b/i);
+    t.match(/(?<![A-Za-z0-9$.])(\d{1,3})\s+of\s+(?:em|them|those|these)\b/i);
   if (stated) return Number(stated[1]);
   const counted = /(?<![A-Za-z0-9.#$-])(\d{1,3})(?![A-Za-z0-9$]|\.\d)\s+([A-Za-z'-]+)/g;
   let m: RegExpExecArray | null;
@@ -217,9 +232,12 @@ const NOT_A_MODEL = /^\d+(?:x\d+|am|pm|st|nd|rd|th|day|min|mins|hr|hrs|pcs|pk|kg
 // A cartridge model looks like an alphanumeric token that contains a digit, e.g.
 // "65", "564XL", "CE278A", "TN660". Prefer a token following a known brand.
 export function extractModel(text: string): string | null {
+  text = normalizeUtterance(text);
+  const stated = text.match(/\bmodel\s*(?:is\s+|[:=]\s*)?([A-Za-z-]*\d[A-Za-z0-9-]*)\b/i);
+  if (stated) return stated[1].toUpperCase();
   const brand = extractBrand(text);
   if (brand) {
-    const m = text.match(new RegExp(`(?<![a-z])${brand}\\s*([A-Za-z]*\\d[A-Za-z0-9-]*)`, 'i'));
+    const m = text.match(new RegExp(`(?<![a-z])${brand}\\s*([A-Za-z-]*\\d[A-Za-z0-9-]*)`, 'i'));
     if (m) return m[1].toUpperCase();
   }
   // No brand: a token with both a letter and a digit, once ids are out of the way.
@@ -227,8 +245,12 @@ export function extractModel(text: string): string | null {
   for (const x of [extractOrderId(text), extractPhone(text), extractTracking(text).trackingNumber]) {
     if (x) t = t.replace(new RegExp(x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), ' ');
   }
-  for (const m of t.matchAll(/\b([A-Za-z]{0,3}\d[A-Za-z0-9]{1,7})\b/g)) {
+  for (const m of t.matchAll(/\b([A-Za-z-]{0,6}\d[A-Za-z0-9-]{1,7})\b/g)) {
     if (/[A-Za-z]/.test(m[1]) && !NOT_A_MODEL.test(m[1])) return m[1].toUpperCase();
+  }
+  if (hasCue(text, 'refill', 'refilled', 'refilling')) {
+    const number = t.match(/(?<![$\w])\d{1,4}(?![\w.]|\$)/);
+    if (number) return number[0];
   }
   return null;
 }
@@ -275,16 +297,15 @@ const NAME_STOPWORDS = new Set(
 );
 
 function titleCase(name: string): string {
-  return name
-    .split(/\s+/)
-    .map((w) => w.replace(/(^|[-'’])([a-z])/gi, (_, lead, ch) => lead + ch.toUpperCase()).replace(/(?<=[A-Za-z])[A-Z]+/g, (rest) => rest.toLowerCase()))
-    .join(' ');
+  return name.toLowerCase().replace(/(^|[\s-])([\p{L}])/gu, (_, lead, ch) => lead + ch.toUpperCase())
+    .replace(/\b([od])(['’])([\p{L}])/giu, (_, lead, apostrophe, ch) => lead.toUpperCase() + apostrophe + ch.toUpperCase());
 }
 
 // More words that are never part of a customer's name: joiners, field labels,
 // payment and tax words, verbs that lead a request.
 const NOT_A_NAME = new Set([
   ...NAME_STOPWORDS,
+  'actually', 'wait', 'oops', 'sorry', 'um', 'uh', 'ok', 'okay', 'nvm', 'cancel', 'swap', 'delete', 'remove', 'change', 'pls', 'thanks', 'une', 'pour', 'need', 'can', 'u', 'could', 'you', 'make', 'gimme', 'give', 'not', 'more', 'another',
   ...OTHER_BRANDS.map((b) => b.toLowerCase()),
   'and', 'to', 'at', 'in', 'on', 'with', 'no', 'tax', 'gst', 'by', 'from', 'then', 'please', 'cash', 'card', 'paid',
   'phone', 'number', 'email', 'him', 'her', 'his', 'them', 'me', 'us', 'it', 'this', 'that', 'free', 'now', 'later',
@@ -294,12 +315,13 @@ const NOT_A_NAME = new Set([
   'check', 'restock', 'sold', 'bought', 'add', 'cut', 'track', 'trace', 'where', 'mark', 'set', 'note', 'yesterday',
   'each', 'all', 'both', 'pages', 'units', 'instead', 'tracking', 'box', 'boxes', 'label', 'labels',
 ]);
-const isNameWord = (w: string): boolean => /^[a-z][a-z'’-]+$/i.test(w) && !NOT_A_NAME.has(w.toLowerCase());
+const isNameWord = (w: string): boolean => /^\p{L}[\p{L}\p{M}'’-]*$/u.test(w) && !NOT_A_NAME.has(w.toLowerCase());
 
 // The name at the front of `words`: up to three name-like words, stopping at the
 // first word that is not one ("sarah hp 65" gives Sarah). Null when the first word
 // is not a name.
 export function nameFrom(words: string, max = 3): string | null {
+  words = normalizeUtterance(words);
   const picked: string[] = [];
   // A comma or colon ends the name ("for Sarah, HP 65").
   for (const w of words.trim().split(/[,;:\n]/)[0].split(/\s+/)) {
@@ -315,8 +337,12 @@ export function nameFrom(words: string, max = 3): string | null {
 // "sarah chen hp 65 refill"). However it is typed, upper or lower case. Brands,
 // couriers and field words are never taken as a name, and everything here is
 // confirmable in the check.
-const NAME_CUE = /\b(?:for|name(?:d)?(?:\s+is)?|customer(?:\s+name)?\s+is|customer\s+name)\s+(?=[A-Za-z])/gi;
+const NAME_CUE = /\b(?:for|name(?:d)?(?:\s+is)?|customer(?:\s+name)?\s+is|customer\s+name)\s+(?=\p{L})/giu;
 export function extractName(text: string, opts: { leading?: boolean } = {}): string | null {
+  text = normalizeUtterance(text);
+  const possessive = text.match(/\b([a-z]+?)(?:['’]s|s)\s+refills?\b/i);
+  if (possessive && isNameWord(possessive[1])) return titleCase(possessive[1]);
+  text = text.replace(/^\s*intake\s*:\s*/i, '');
   NAME_CUE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = NAME_CUE.exec(text)) !== null) {
@@ -440,7 +466,7 @@ export interface KeyOrderItem {
 // (KW1, SC4, Y1, WR5, CO10, IN33), as a standalone token. The lookarounds keep it
 // from matching a fragment inside a tracking number ("1Z999AA10..." never yields
 // "Z999") or a phone/price run. Plural "s" is tolerated and dropped.
-const KEY_ORDER_RE = /(?:(?<![\d$.])(\d{1,2})\s*(?:x|×)?\s+)?(?<![A-Za-z0-9$.])([A-Za-z]{1,3}\d{1,3})s?(?![A-Za-z0-9])/gi;
+const KEY_ORDER_RE = /(?<![A-Za-z0-9$.])(?:(\d{1,2})(?:\s*(?:x|×)\s*|\s+))?([A-Za-z]{1,3}\d{1,3})s?(?![A-Za-z0-9])/gi;
 
 // The count may also come after the code ("kw1 x2"), as a word ("two kw1s"), or
 // on the word "keys" ("3 keys kw1", "made 3 copies of a kw1"). A price is never a
@@ -456,15 +482,30 @@ export function extractKeyItems(text: string): KeyOrderItem[] {
     if (/^X\d+$/.test(model)) continue;
     const codeStart = m.index + m[0].toUpperCase().lastIndexOf(model);
     if (/\b(?:from|slot|position|spot|hook|row)\s+$/i.test(t.slice(0, codeStart))) continue;
-    const after = /^\s*(?:x|×|\*)\s*(\d{1,2})\b/i.exec(t.slice(m.index + m[0].length));
+    const tail = t.slice(m.index + m[0].length);
+    const after = /^\s*(?:(?:x|×|\*)\s*|(?:qty|quantity)\s*(?:is\s+|[:=]\s*)?)(\d{1,2})\b/i.exec(tail) ||
+      /^\s*\((\d{1,2})\)/.exec(tail) ||
+      /^\s*(\d{1,2})\s+times\b/i.exec(tail);
     const qty = after ? parseInt(after[1], 10) : m[1] ? parseInt(m[1], 10) : 1;
-    items.push({ model, qty: Math.max(1, qty) });
+    const nextCode = tail.search(new RegExp(KEY_ORDER_RE.source, 'i'));
+    const unitPrice = extractMoney(nextCode < 0 ? tail : tail.slice(0, nextCode));
+    items.push({ model, qty: Math.max(1, qty), ...(unitPrice !== null ? { unitPrice } : {}) });
   }
   if (items.length === 1 && items[0].qty === 1) {
     const counted = /(?<![\d$.])(\d{1,2})\s+(?:keys?|copies|copy|cuts?|duplicates?)\b/i.exec(t);
     if (counted) items[0].qty = Math.max(1, parseInt(counted[1], 10));
   }
-  return items;
+  if (items.length === 1 && items[0].qty === 1) {
+    const qty = extractSaleQuantity(t);
+    if (qty !== null) items[0].qty = qty;
+  }
+  const merged: KeyOrderItem[] = [];
+  for (const item of items) {
+    const previous = merged.find((it) => it.model === item.model && it.unitPrice === item.unitPrice);
+    if (previous) previous.qty += item.qty;
+    else merged.push(item);
+  }
+  return merged;
 }
 
 // A board move/clear from an utterance: "put SC1 in B3", "move HR1 to H1",
@@ -545,10 +586,23 @@ export function extractOrderId(text: string): string | null {
 // enum value the app uses (in_progress | ready | picked_up).
 export function extractCartridgeStatus(text: string): string | null {
   const lower = text.toLowerCase();
-  if (/\bpick(ed)?\s*up\b|\bpicked\b|\bcollected\b/.test(lower)) return 'picked_up';
-  if (/\bready\b|\bdone\b|\bcomplete[d]?\b/.test(lower)) return 'ready';
+  if (hasCue(text, 'ready')) return 'ready';
+  if (hasCue(text, 'picked up', 'collected')) return 'picked_up';
+  if (hasCue(text, 'done', 'complete', 'completed')) return 'ready';
   if (/\bin\s*progress\b|\bworking\b|\bstarted\b/.test(lower)) return 'in_progress';
   return null;
+}
+
+const COUNTRIES: Array<[string, string[]]> = [
+  ['United Kingdom', ['uk', 'england', 'united kingdom', 'britain']],
+  ['United States', ['usa', 'us', 'united states']],
+  ['France', ['france']], ['Germany', ['germany']], ['China', ['china']],
+  ['India', ['india']], ['Mexico', ['mexico']], ['Australia', ['australia']],
+  ['Philippines', ['philippines']], ['Japan', ['japan']], ['Italy', ['italy']],
+  ['Canada', ['canada']],
+];
+export function extractCountry(text: string): string | null {
+  return COUNTRIES.find(([, names]) => names.some((name) => hasCue(text, name)))?.[0] ?? null;
 }
 
 // Canadian province from a name or two-letter code in the text.
@@ -587,7 +641,7 @@ inProvince('NT', 'yellowknife');
 inProvince('NU', 'iqaluit');
 
 export function provinceOfCity(city: string | null | undefined): string | null {
-  return city ? CITY_PROVINCE[city.trim().toLowerCase()] ?? null : null;
+  return city ? CITY_PROVINCE[city.trim().toLowerCase().replace(/\./g, '')] ?? null : null;
 }
 
 // A province from its name or its two-letter code, upper or lower case ("calgary
@@ -637,15 +691,18 @@ export function extractCity(text: string): string | null {
   hits.sort((a, b) => a.index - b.index);
   const before = (h: { index: number }) => text.slice(0, h.index);
   const dest = hits.find((h) => /\bto\s+$/i.test(before(h))) ?? hits.find((h) => !/\bfrom\s+$/i.test(before(h)));
-  if (dest) return titleCase(dest.city);
+  if (dest) return /^st john'?s$/i.test(dest.city) ? "St. John's" : titleCase(dest.city);
 
-  const m = text.match(/\bto\s+([A-Z][A-Za-z]*(?:\s+[A-Z][A-Za-z]+)?)/);
+  const destination = text.replace(/\b(?:united states|united kingdom)\b/gi, '');
+  const m = destination.match(/\bto\s+([a-z][a-z'’.]*(?:\s+[a-z][a-z'’.]*){0,3})/i);
   if (!m) return null;
-  const city = m[1].trim();
-  const lower = city.toLowerCase();
-  if (PROVINCES.some((p) => p.names.includes(lower) || p.code.toLowerCase() === lower)) return null;
-  if (city.split(/\s+/).some((w) => COURIER_WORDS.has(w.toLowerCase()))) return null;
-  return city;
+  const words: string[] = [];
+  for (const word of m[1].trim().split(/\s+/)) {
+    if (PROVINCES.some((p) => p.names.includes(word.toLowerCase()) || p.code.toLowerCase() === word.toLowerCase()) ||
+      COURIER_WORDS.has(word.toLowerCase()) || extractCountry(word) || (NOT_A_NAME.has(word.toLowerCase()) && word.toLowerCase() !== 'new')) break;
+    words.push(word);
+  }
+  return words.length ? titleCase(words.join(' ')) : null;
 }
 
 // Packing supplies named in an utterance ("box $4", "large box $10", "padded
@@ -767,6 +824,7 @@ export function classifyTimesheetOp(text: string): TimesheetOp {
   if (/\b(?:clock|punch|sign|check)(?:ed|ing)?\s*-?\s*(?:in|out|on|off)\b|\bpunch(?:\s+the)?\s+clock\b/.test(lower)) {
     return 'punch_off';
   }
+  if (hasCue(text, 'hours', 'how many hours')) return 'view';
   const hasRange = parseTimeRange(text) != null;
   // A planning verb with a time range is a new shift, even one that names a break.
   if (ADJUST_CUES.test(lower) && !(hasRange && /\b(?:add|new|schedule|book|put)\b/.test(lower))) {
@@ -799,6 +857,8 @@ export function extractShiftAdjustment(text: string): { start: string | null; en
 
 // Words that follow a timesheet cue but are never a name (shift nouns, adverbs).
 const TIMESHEET_NAME_STOPWORDS = new Set([
+  ...NOT_A_NAME,
+  'how', 'many', 'not', 'it', 'wait',
   'in', 'out', 'off', 'on', 'now', 'today', 'for', 'of', 'lunch', 'break',
   'shift', 'work', 'the', 'a', 'an', 'me', 'myself', 'please', 'employee',
   'again', 'early', 'late', 'is', 'and', 'at', 'from', 'to', 'until', 'till',
@@ -819,6 +879,9 @@ const TIMESHEET_NAME_STOPWORDS = new Set([
 // noun or a time is never read as a name. Confirmable in the check for add_employee;
 // used directly for the immediate punch/view ops.
 export function extractEmployeeName(text: string): string | null {
+  text = normalizeUtterance(text).replace(/\b([a-z]+?)(?:['’]s|s)(?=\s+(?:shift|hours))/gi, '$1');
+  const correction = text.match(/\b(?:it\s+was|for)\s+([a-z]+)(?:\s+not\b|$)/i);
+  if (correction && !TIMESHEET_NAME_STOPWORDS.has(correction[1].toLowerCase())) return titleCase(correction[1]);
   const nameToken = "([A-Za-z][A-Za-z'.-]*(?:\\s+[A-Za-z][A-Za-z'.-]*)?)";
   const m1 = text.match(new RegExp(`\\b(?:clock|punch|sign|check)\\s*(?:in|out|off|on)\\s+(?:for\\s+)?${nameToken}`, 'i'));
   const m2 = text.match(new RegExp(`\\b(?:add|new|register|create|hire|onboard)\\s+(?:an?\\s+)?employee\\s+(?:named\\s+|called\\s+)?${nameToken}`, 'i'));
@@ -871,6 +934,7 @@ function withoutSideDetails(text: string, price: number | null, quantity: number
   if (name) t = t.replace(new RegExp(`\\b(?:for|name(?:d)?(?:\\s+is)?|customer(?:\\s+name)?(?:\\s+is)?)\\s+${escapeRe(name)}`, 'i'), ' ');
   for (const x of [extractPhone(text), extractEmail(text)]) if (x) t = t.replace(x, ' ');
   for (const re of SIDE_PHRASES) t = t.replace(re, ' ');
+  t = t.replace(/\b(?:qty|quantity)\s*(?:is\s+|[:=]\s*)?\d{1,3}\b|(?<![A-Za-z0-9])x\s?\d{1,3}\b/gi, ' ');
   t = t.replace(MONEY_PHRASE, ' ');
   // The bare price (last time it appears) and the count (first time).
   if (price != null) {
@@ -879,7 +943,6 @@ function withoutSideDetails(text: string, price: number | null, quantity: number
     const last = hits[hits.length - 1];
     if (last) t = `${t.slice(0, last.index)} ${t.slice(last.index! + last[0].length)}`;
   }
-  t = t.replace(/\b(?:qty|quantity)\s*[:=]?\s*\d{1,3}\b|(?<![A-Za-z0-9])x\s?\d{1,3}\b/gi, ' ');
   if (quantity != null) t = t.replace(new RegExp(`(?<![A-Za-z0-9.$])${quantity}(?:\\s*x)?(?![A-Za-z0-9])`), ' ');
   return t.replace(/\s+/g, ' ').trim();
 }
@@ -904,11 +967,11 @@ export function describeSale(text: string, price: number | null, quantity: numbe
 
 // A key with no blank code on it: "house key copy $4" gives "house key".
 export function describeKey(text: string, price: number | null): string | null {
-  const t = withoutSideDetails(text, price, null).replace(
-    /\b(?:receipt|invoice|cut|cutting|copy|copies|copied|duplicate[ds]?|made|make|please|a|an|of)\b/gi,
+  const t = withoutSideDetails(digitsForWords(normalizeUtterance(text)), price, extractSaleQuantity(text)).replace(
+    /\b(?:lady|guy|customer|he|she|wants|needs|need|can|u|could|you|pls|me|gimme|give|her|his|my|for|receipt|invoice|cut|cutting|copy|copies|copied|dup|dupe|duplicate[ds]?|made|make|please|a|an|of)\b/gi,
     ' ',
   );
-  return tidy(t);
+  return tidy(t.replace(/\bkeys\b/gi, 'key'));
 }
 
 // The item an inventory change is about: a key code ("KW1"), a cartridge ("HP

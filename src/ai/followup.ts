@@ -13,11 +13,17 @@ import type { FieldValue, Intent } from './types';
 import { DeterministicProvider, populateIntentFields } from './providers/deterministic';
 import {
   courierLabel,
+  normalizeUtterance,
+  extractCountry,
+  extractEmployeeName,
+  extractKeyItems,
+  hasCue,
   extractAttachments,
   extractCity,
   extractPacking,
   extractPhone,
   extractProvince,
+  extractSaleQuantity,
   extractShippingCost,
   extractTaxToggle,
   extractTracking,
@@ -27,9 +33,11 @@ import {
 } from './extract';
 import { emptyShipmentItem, isItemComplete, toShipmentItems } from './shipping';
 import { getFieldSpecs, missingRequired } from './fieldSpecs';
+import { parseClockTime } from '@/lib/shiftParse';
+import { formatTime12, parseHhmm } from '@/lib/schedule';
 import type { PackingItem } from '@/lib/packing';
 
-const ADD_ITEM = /\b(add|another|second|third|also|plus)\b/i;
+const ADD_ITEM = /\b(add|and|another|second|third|also|plus|one more)\b/i;
 // The free-text fields. A follow-up never rewrites one from its own leftover
 // words ("make it 40" is not an item called "make it"); it only fills one that is
 // still empty when the message is a bare answer.
@@ -44,6 +52,9 @@ const probe = new DeterministicProvider();
 // box $5" (which on their own would only be a guess) change the slip. On an open
 // shipping slip, anything about a parcel or a courier is about that slip.
 export async function isFollowUp(active: Intent, text: string): Promise<boolean> {
+  text = normalizeUtterance(text);
+  if (active.action === 'timesheet' && (hasCue(text, 'break', 'actually', 'it was') || /\bfor\s+\w+\s+not\b/i.test(text))) return true;
+  if (active.action === 'receipt' && active.subtype === 'key' && hasCue(text, 'add', 'and', 'plus') && /^(?:add|and|plus)\b/i.test(text.trim()) && extractKeyItems(text).length > 0) return true;
   const route = await probe.parse(text);
   if (route.action === 'unknown' || route.confidence < 0.7) return true;
   if (active.action === 'receipt' && active.subtype === 'shipping') {
@@ -61,17 +72,68 @@ function hasShipmentDetail(text: string): boolean {
 }
 
 export function applyFollowUp(active: Intent, text: string): Intent {
+  text = normalizeUtterance(text);
   const next: Intent = { ...active, fields: { ...active.fields } };
   let changed = false;
+  if (active.action === 'note') {
+    next.fields.content = explicit([active.fields.content?.value, text.trim()].filter(Boolean).join(' '));
+    return next;
+  }
+  if (active.action === 'receipt' && hasCue(text, 'free', 'no charge', 'on the house') && !hasCue(text, 'tax free', 'gst free')) {
+    next.fields.price = explicit(0);
+    if (active.subtype === 'shipping') next.fields.shipmentItems = explicit(toShipmentItems(active.fields.shipmentItems?.value).map((item) => ({ ...item, cost: 0 })));
+    return next;
+  }
+  if (active.action === 'timesheet') {
+    const nameCorrection = hasCue(text, 'it was') || /\bfor\s+\w+\s+not\b/i.test(text);
+    if (nameCorrection) {
+      const name = extractEmployeeName(text);
+      if (name) next.fields.employeeName = explicit(name);
+      return next;
+    }
+    const time = text.trim().match(/^(?:actually\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)$/i);
+    if (time) {
+      const start = parseClockTime(String(active.fields.actualStart?.value || active.fields.start?.value || ''));
+      const end = parseClockTime(String(active.fields.actualEnd?.value || active.fields.end?.value || ''));
+      const startMinutes = start ? parseHhmm(start) : null;
+      const endMinutes = end ? parseHhmm(end) : null;
+      const nearStart = parseClockTime(time[1], startMinutes);
+      const nearEnd = parseClockTime(time[1], endMinutes);
+      const startDistance = nearStart && startMinutes != null ? Math.abs(parseHhmm(nearStart)! - startMinutes) : Infinity;
+      const endDistance = nearEnd && endMinutes != null ? Math.abs(parseHhmm(nearEnd)! - endMinutes) : Infinity;
+      const value = startDistance <= endDistance ? nearStart : nearEnd;
+      if (value) next.fields[startDistance <= endDistance ? 'actualStart' : 'actualEnd'] = explicit(formatTime12(value));
+      return next;
+    }
+  }
 
   // Re-extract for the same action and merge only explicitly-stated values. The
   // shipmentItems block is handled on its own below, so skip it here.
   const reread: Intent = { action: active.action, subtype: active.subtype, fields: {}, confidence: 1 };
   populateIntentFields(reread, text);
   for (const [key, value] of Object.entries(reread.fields)) {
+    if (active.action === 'timesheet' && (key === 'op' || key === 'employeeName')) continue;
     if (key === 'shipmentItems' || key === 'packing' || DESCRIPTIVE.has(key)) continue;
     if (value.source === 'explicit') {
-      next.fields[key] = value;
+      if (key === 'keyItems' && active.subtype === 'key' && ADD_ITEM.test(text) && Array.isArray(value.value)) {
+        const existing = Array.isArray(active.fields.keyItems?.value) ? active.fields.keyItems.value : [];
+        const items = existing.map((item) => ({ ...item }));
+        for (const item of value.value) {
+          const previous = items.find((it) => it.model === item.model);
+          if (previous) previous.qty += item.qty;
+          else items.push(item);
+        }
+        next.fields[key] = explicit(items);
+      } else next.fields[key] = value;
+      changed = true;
+    }
+  }
+
+  const quantity = extractSaleQuantity(text);
+  if (active.action === 'receipt' && active.subtype === 'key' && quantity !== null) {
+    const items = active.fields.keyItems?.value;
+    if (Array.isArray(items) && items.length === 1 && !reread.fields.keyItems) {
+      next.fields.keyItems = explicit(items.map((item) => ({ ...item, qty: quantity })));
       changed = true;
     }
   }
@@ -111,25 +173,28 @@ export function applyFollowUp(active: Intent, text: string): Intent {
     const { trackingNumber } = match;
     const courier = courierLabel(match) || null;
     const city = extractCity(parcelText);
-    const province = extractProvince(parcelText) ?? provinceOfCity(city);
+    const country = extractCountry(parcelText);
+    const province = country && country !== 'Canada' ? '' : extractProvince(parcelText) ?? provinceOfCity(city) ?? (city ? '' : null);
     const cost = extractShippingCost(parcelText, trackingNumber, extractPhone(parcelText));
     const i = Math.max(0, items.length - 1);
     const last = items[i] ?? emptyShipmentItem();
     const wholeParcel = Boolean(courier) && cost != null && Boolean(city || province) && isItemComplete(last);
-    const startsNewItem = (ADD_ITEM.test(text) && Boolean(courier || trackingNumber)) || wholeParcel;
+    const startsNewItem = (ADD_ITEM.test(text) && Boolean(courier || trackingNumber || city)) || wholeParcel;
 
     if (startsNewItem) {
       items.push({
         ...emptyShipmentItem(),
-        courier: courier ?? '',
+        courier: courier ?? last.courier,
         trackingNumber: trackingNumber ?? '',
         city: city ?? '',
         province: province ?? emptyShipmentItem().province,
+        country: country ?? last.country,
         cost: cost ?? null,
       });
     } else {
       items[i] = {
         ...last,
+        ...(country ? { country } : {}),
         ...(courier ? { courier } : {}),
         ...(trackingNumber ? { trackingNumber } : {}),
         ...(city ? { city } : {}),
