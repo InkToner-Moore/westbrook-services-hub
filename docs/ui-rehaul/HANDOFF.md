@@ -27,61 +27,112 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
-## START HERE (staff UX pass, 2026-10-08)
+## START HERE (written 2026-10-08, after the staff UX pass)
 
-Parsa's brief: one session on staff-side UX/UI, consistency, ease of use, less
-clutter. Staff side only; **the customer-facing side (`PublicHome`) is the next
-session.** Branch `staff-ux-pass` (on top of `timesheet-shifts-ux`), on staging;
-prod `main` untouched. No DEV data or rules changed (the browser pass only read).
+**Next session is for:** the same UX pass on the **customer-facing side**
+(`src/pages/PublicHome.tsx`, `SmartTracker.tsx`): consistency, ease of use, less
+clutter. Building, not planning. It is not a numbered plan step. Staff-side
+leftovers are listed below and are second in line.
 
-**Shipped:**
-1. **Right panel only when it holds something** (`StaffShell.tsx`). The empty
-   "Workspace" panel is gone from the tool pages. It shows while there is a result
-   or a slip, opens by itself when one arrives (the phone sheet too), collapses to a
-   slim strip when tucked away or when there is only a last item to bring back.
-2. **Slip** (`ConfirmationCheck.tsx`): the per-row dot is a tick box, the `?` shows
-   only on a value still missing, dates read "Thu, Oct 8".
-3. **Composer on a phone**: quick-action rows scroll sideways (three lines, not
-   six), the hint no longer clips.
+**Where things stand (observed 2026-10-08, about 02:30 MDT):**
+- Branch `staff-ux-pass` (tip is this handoff commit, on top of `c5d0370`), stacked on
+  `timesheet-shifts-ux`. Tree clean, in sync with `origin/staff-ux-pass`.
+  `origin/dev` (staging, `ink-toner-moore.pages.dev`) is on the same commit.
+  **Prod `main` untouched** (`0ffa16c`).
+- Open PRs: only **#1 `docs-align-claude-md`** (from Sept 1, not this work).
+- Gate as run: `tsc -p tsconfig.app.json --noEmit` exit 0; `yarn build` built;
+  `node scripts/parser-tests/run.mjs` 30 pass, 0 fail; eslint on the touched
+  folders shows 6 errors, all the old `no-explicit-any` ones (4 in
+  `StaffCartridges.tsx`, 2 in `CartridgeLineFields.tsx`), the rest are the usual
+  react-refresh warnings.
+- No DEV data or rules changed this session. The browser pass only read.
+
+**Built this session, do NOT rebuild:**
+1. **Right panel only when it holds something** (`StaffShell.tsx`). No empty
+   "Workspace" panel on tool pages. It shows while there is a result or a slip,
+   opens by itself when one arrives (the phone sheet too), and collapses to a slim
+   strip when tucked away or when there is only a last item to bring back. The
+   `shell-right-collapsed` localStorage flag is no longer used.
+2. **Slip** (`ConfirmationCheck.tsx`): the per-row include toggle is a tick box,
+   the `?` shows only on a required value that is still empty (there is no "i"
+   marker any more), dates display through `formatDayHeading`.
+3. **Composer on a phone** (`QuickActions.tsx`, `Composer.tsx`): Pack and Start rows
+   scroll sideways below `sm`; the hint is one line with an ellipsis.
 4. **Notes and Cartridges**: list and search first; the add form opens from
-   "New note" / "New order" and closes on save or cancel. Notes delete now asks.
-   Order form in columns. Empty and no-match states with a next step.
-5. **Inventory**: flat row icons, one stock control (the switch, labelled), quiet
-   delete, "Add key" / "Add refill" open labelled forms, Review grouped by kind with
-   counts and 25 at a time, tabs fit on a phone.
+   "New note" / "New order" (`ToolPage` `actions`) and closes on save or cancel.
+   Notes delete asks (AlertDialog). Order form in columns. Empty and no-match
+   states carry a next step.
+5. **Inventory**: flat row icons, one stock control (the labelled switch), ghost
+   delete, "Add key" / "Add refill" open labelled forms, Review grouped by kind
+   with counts and 25 at a time, tab icons hidden on a phone.
 6. All-caps tracked labels replaced (Timesheet day heads, two AI cards). Tab count
    badge caps at 99+ (`SegmentedTabs`).
 
-**The pattern to keep** (so the next page matches): list first; one primary
-"New X" / "Add X" button (in `ToolPage` `actions`, or beside the search inside a
-tab); the form is a card above the list with Cancel + submit bottom right; delete
-is a ghost icon button behind an AlertDialog; sentence-case labels above inputs;
-toasts are plain ("Note added", "That didn't save" / "Check the connection and try
-again.").
+**The page pattern to keep** (the customer side should feel like the same hand):
+list first; one primary "New X" / "Add X" button; the form is a card above the
+list with Cancel then submit, bottom right; delete is a ghost icon button behind
+an AlertDialog; sentence-case labels above inputs, never placeholder-only; toasts
+are plain ("Note added", "That didn't save" / "Check the connection and try
+again."); 44px tap targets.
 
-**Gate:** `tsc -p tsconfig.app.json --noEmit` clean, `yarn build` green, parser
-tests 30/30, eslint baseline-only. Checked in a browser against DEV Firestore
-(read only), desktop and 390px, light; dark spot-checked before the page edits.
+**Constraints (new this session; the older lists further down still stand):**
+- GitButler is gone. Older sections say `but status` / `but push`; use plain `git`
+  and `gh`. A bare `git push` still fails here ("could not read Username"); push
+  with the inline credential helper from the 2026-09-06 section.
+- The Playwright tool **prints the code it runs**, so a token inlined in a script
+  lands in the session log. A one-hour, non-manager DEV custom token was printed
+  that way this session (expired by now). Next time have the page fetch the token
+  from somewhere rather than inlining it.
+- The Playwright tool only reads files under the repo or `.playwright-mcp/`. That
+  folder is excluded in `.git/info/exclude` (local only) and was emptied at exit,
+  since its screenshots showed DEV customer data.
+- The Gemini helper timed out twice (280 s) on a whole-staff-UI read. Give it a
+  few files at a time, or do not use it for that.
+- The customer side is public: re-check the public/private data boundary on
+  anything touched there (`orderStatus` is the only public-readable collection).
 
-**Not done, staff side (next up if wanted):**
-- **Directory**: the category badge shows twice on admin cards, edit/delete icons
-  sit on every tile, icons are gradients, "Add tile" should read "Add site".
-- **Receipts**: Title Case labels ("Receipt Number", "Courier Service"), a long
-  form; not touched this session.
-- Inventory **Review still lists 400+ items** (306 "No price"). Grouping makes it
-  usable, but the count itself wants a data clean-up or looser checks.
-- Hours tab shows each total twice ("34h 15m" and "34.25 h").
-- Login page and the user menu were not looked at. Dark mode was not re-checked
-  after the Notes / Cartridges / Inventory edits.
+**Not done on the staff side (deferred, act on cold):**
+- **Directory** (`StaffDirectory.tsx`): the category badge shows twice on admin
+  cards (top right and bottom left), edit/delete icons sit on every tile, tile
+  icons are gradients (banned by DESIGN-SPEC), "Add tile" should read "Add site".
+- **Receipts** (`StaffReceipts.tsx`): Title Case labels ("Receipt Number",
+  "Courier Service", "Destination City"), a long form. Not touched.
+- **Hours tab** shows each total twice ("34h 15m" and "34.25 h").
+- **Login page and user menu** were not looked at. **Dark mode** was checked on
+  Timesheet and Inventory before the page edits, not after.
 - Standalone (deep-link) headers still carry the old long titles (carried over).
-- A Gemini inventory of cross-page inconsistencies was started and timed out twice;
-  nothing came back, so there is no written audit.
+- No written cross-page audit exists (the helper that was to produce it timed out).
 
-**To look at the app with real data locally** (what this session did): get the dev
-web config from the Firebase Management API with the dev SA, start `yarn dev` with
-those `VITE_FIREBASE_*` in the environment and `VITE_DEV_BYPASS_AUTH=false`, then
-sign the browser in with a custom token for the dev staff uid
-(`dev-db-backups/tools/fb.mjs` has `customToken`). Never the repo `.env`.
+**Open questions (answers may arrive mid-session; fold each in as its own commit,
+never invent one to close a line):**
+- Inventory Review still holds 400+ items on DEV (306 "No price", 202 "Priced, not
+  on the board"). Clean the data, or loosen the checks in `computeReviews`
+  (`lib/keyBoard.ts`)? Parsa's call.
+- Is the tick box per slip row still wanted on every row, or only on optional ones?
+  Parsa asked for the per-field omit originally; it was kept and made quieter.
+- Carried: the proxy deploy (`cd proxy && npx wrangler login && npx wrangler
+  deploy`) still waits on Parsa's Cloudflare login. Shipping to `main` needs his
+  say plus the prod rules and seeds listed in the sections below.
+
+**Working rules:**
+- Env: `export PATH="/nix/store/zm0k3k5802qlww0llyl13s7hiw0jd6yl-nodejs-24.18.1/bin:$PATH"`
+  and `COREPACK_ENABLE_DOWNLOAD_PROMPT=0`, then `corepack yarn ...`.
+- Gate before every commit: `corepack yarn tsc -p tsconfig.app.json --noEmit`,
+  `corepack yarn build`, `corepack yarn eslint <changed files>` (baseline-only is
+  the bar), `node scripts/parser-tests/run.mjs` when the AI layer is touched.
+- One branch per session, coherent commits by area, promote to `origin/dev` by
+  fast-forward without asking (standing instruction, 2026-10-07). Back up DEV
+  before changing its data or rules (see the next section).
+- **To see the app with real data locally:** fetch the dev web config from the
+  Firebase Management API with the dev SA, start `yarn dev` with those
+  `VITE_FIREBASE_*` in the environment and `VITE_DEV_BYPASS_AUTH=false`, then sign
+  the browser in with a custom token for the dev staff uid
+  (`dev-db-backups/tools/fb.mjs` exports `customToken`). Never the repo `.env`
+  for anything that writes; its project id is PROD.
+
+**Still placeholder, must not reach a customer:** unchanged from the sections
+below (Moneris device send is stubbed, manager PIN worker is not hardened, none of
+the rehaul is on prod).
 
 ## Earlier (shifts replace the punch clock, key board + consistency pass, 2026-10-07)
 
