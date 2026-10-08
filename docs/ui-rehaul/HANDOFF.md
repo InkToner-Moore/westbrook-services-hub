@@ -27,7 +27,122 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
-## START HERE (written 2026-10-08, session exit after the customer-side UX pass)
+## START HERE (written 2026-10-08, session exit after the AI Mode engine pass)
+
+**Next session is for:** UI/UX work on AI Mode, plus extensive testing of it with
+messy, human, typed-at-the-counter input (Parsa's words, kept in the section
+below). Building and testing, not planning. It is not a numbered plan step.
+
+**Where things stand (observed 2026-10-08):**
+- Branch `ai-engine-pass` (one engine commit, `9aecaec`, plus this handoff
+  commit), stacked on `public-ux-pass`. Tree clean. Check `git status -sb` and
+  `git rev-parse origin/dev` for whether it was pushed and promoted; the exit
+  report in chat said which. **Prod `main` untouched** (`0ffa16c`).
+- Open PRs: only **#1 `docs-align-claude-md`** (from Sept 1, not this work).
+- Gate as run at exit: `tsc -p tsconfig.app.json --noEmit` exit 0; `yarn build`
+  built; `eslint src/ai scripts/parser-tests` 0 errors, 1 warning (the usual
+  react-refresh one on `context.tsx`); `node scripts/parser-tests/run.mjs` 30
+  pass, 0 fail; `node scripts/parser-tests/sweep.mjs` 259 of 262, 0 missed, 3
+  known gaps.
+- One real-browser check, local dev server with the auth bypass and no LLM
+  proxy: "ups to toronto 22" opened a shipping slip taxed HST 13%, "sarah jones"
+  filled the customer, "make it 25" changed the cost. Nothing that writes
+  Firestore was exercised, and nothing was checked on staging.
+- No DEV data or rules changed. The proxy was not touched and is still not
+  deployed (Cloudflare login expired, `wrangler whoami` says not logged in).
+
+**Built this session, do NOT rebuild:**
+1. **The counter corpus** (`scripts/parser-tests/corpus.mjs`, run by
+   `sweep.mjs`): 262 lines and follow-ups the way staff type them, each with the
+   action, receipt type, fields, shipment items and keys the engine must read.
+   The engine scored 108 of 204 (53%) on the first version of it before any fix.
+   55 of the lines came from a Codex bug hunt and were added after the fixes; 49
+   of those passed unseen. `sweep.mjs "some line"` shows how one line is read.
+   **This is the regression harness now.** Add the line first, then fix.
+2. **The router is an ordered list of rules** (`RULES` in
+   `src/ai/providers/deterministic.ts`), first fit wins, so the order is the
+   priority. Cue words match as whole words (`hasCue` in `extract.ts`), which
+   ended "cups" naming UPS, "notebook" being a note and "membership" being a
+   shipment. The old `ROUTES` keyword table and its hit counting are gone.
+3. **Weak routes.** A guess from shape alone (an item and a price, a brand name,
+   a lone number) scores 0.6, under the 0.7 trust threshold in `llm.ts`. Three
+   things key off that: the LLM gets a say when it is on, the splitter
+   (`segment.ts`) never treats a weak piece as a second action, and an open slip
+   takes a weak message as an edit (`isFollowUp` in `followup.ts`).
+4. **What it now reads** (all in `extract.ts` unless said):
+   - Shipping with no "$" and no capitals ("ups to toronto 22", "fedex 30").
+     Province comes from the city (`CITY_PROVINCE`), lowercase codes work, a
+     lowercase "on" only counts right after a city.
+   - A number after "tracking" (or ten digits after "DHL") is the tracking
+     number, never the phone. A phone is no longer sliced out of a "1Z..." number.
+   - Sales fill in the item (`describeSale`) and the count (`extractSaleQuantity`):
+     "sale 3 pens 4.50" is 3 pens at 4.50. Counter services with a number
+     ("20 copies $5", "fax 3 pages $6") are sales.
+   - Prices with no "$" (`extractPrice`, `bareAmounts`). "is" and "at" are no
+     longer price cues, so "her number is 4035551212" cannot become the price.
+   - "out of stock" / "we're out of" / "sold out" save as out of stock, on the
+     item named (`extractInStock`, `describeStockItem`). It used to save in stock.
+   - Names in lowercase, after "for", leading the line, or as the one doing
+     something ("sarah dropped off an hp 65"), hyphens and apostrophes kept.
+   - Key counts in any form ("kw1 x2", "two kw1s", "3 keys kw1"). "x2" is not a
+     blank, a price is not a count, "from B3" is not a blank.
+   - "no tax" / "tax free" on the first line (`extractTaxToggle`).
+   - A line that opens with note / remind me / todo is a note, whole, whatever
+     it mentions (`NOTE_LEAD`).
+   - "sarah dropped off an hp 65" is a refill record, not a receipt.
+   - Shifts: "who works saturday", "when does sue work", "sue worked 10-6 today",
+     "sue arrived 10:30 today", a planned shift that names a break.
+5. **Follow-ups** (`followup.ts`): a bare number is the price or the parcel
+   cost, a bare name fills the customer, "2 of them" is the count, "charge her
+   card" turns the pay toggle on, "add a box $5" is a box and not a second
+   parcel, a whole second parcel is appended. A follow-up never rewrites the
+   item description from its own leftover words. `context.tsx` now just calls
+   `isFollowUp`.
+6. A plain sale no longer adds its box twice (packing rides only on non-sale
+   receipts). A bare "card" is no longer a pay cue ("membership card").
+
+**Known gaps, in the corpus as `known` (act on cold):**
+- Two parcels under one courier name ("ship 2 ups parcels to toronto $22 and
+  calgary $30") are read as one.
+- A second box of the same kind, or "2 boxes", is not counted.
+- A span of days ("oct 8-10") gives only its two ends.
+- Also from the Codex hunt, not fixed and not in the corpus: an invalid time
+  ("10:75-18:00") is silently normalized (`lib/shiftParse.ts`); "refill hp65 $34,
+  564XL" splits the trailing model off as a lookup; "kw1 $5 sc1 $6" takes only
+  the first price.
+- Still open from before: payment is recorded per intent, not per final receipt;
+  `key_location` is missing from the proxy enum; `purchase` has no executor; AI
+  inventory create omits `price` / `cutCode`; the chat cannot undo an adjustment
+  or delete a shift.
+
+**Constraints found this session (the older lists below still stand):**
+- The corpus was written by the same hand that fixed the engine, so 259 of 262
+  is a floor on regressions, not proof of how it does on fresh input. A Codex
+  run over 120 unseen lines was started and had not reported when this was
+  written; if its result is not in the chat or the corpus, run that check again
+  before trusting the number.
+- A three-digit code ("TN660") is treated as a cartridge, not a key blank, when
+  the engine is only inferring a key order. The key inventory has blanks with
+  three digits. If staff type one bare with a count, it will not open a key
+  receipt on its own; "cut" or "key" in the line still does.
+- The Codex helper cannot write to `/tmp` (read-only sandbox). It ran its probes
+  through node stdin with esbuild `write:false`. Say so in the brief.
+- The Playwright tool prints the code it runs (carried). `browser_run_code`
+  returning a short string is far cheaper than a snapshot.
+
+**Open questions for Parsa:**
+- He asked at exit whether a newer Haiku is cheaper than Gemini Flash Lite and
+  whether to switch the router to it. Not checked: no price was looked up this
+  session, and the newest Haiku this session knows of is 4.5. Compare the real
+  per-token prices before deciding. The swap itself is small (the worker in
+  `proxy/` holds the model call) but needs the Cloudflare login either way.
+- The standing rule holds: the model picks the action, the engine owns every
+  value. Nothing this session needed to break it.
+- Carried, still unanswered: stat holidays in "Open today", staff login in the
+  footer, the missing street address, the Inventory Review backlog, the tick box
+  on every slip row.
+
+## Earlier (the customer-side UX pass exit, 2026-10-08)
 
 **Next session is for:** examining and working on the **AI Mode engine** (routing,
 extraction, segmentation, follow-ups, executors; `src/ai/` and `proxy/`). Building,
