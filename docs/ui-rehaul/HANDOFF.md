@@ -48,8 +48,19 @@ below). Building and testing, not planning. It is not a numbered plan step.
   proxy: "ups to toronto 22" opened a shipping slip taxed HST 13%, "sarah jones"
   filled the customer, "make it 25" changed the cost. Nothing that writes
   Firestore was exercised, and nothing was checked on staging.
-- No DEV data or rules changed. The proxy was not touched and is still not
-  deployed (Cloudflare login expired, `wrangler whoami` says not logged in).
+- No DEV data or rules changed.
+- **Proxy, updated later on 2026-10-08 (branch `haiku-router`):** Parsa logged
+  wrangler back in and the worker is deployed. The router now calls Claude Haiku
+  5.5 instead of Gemini Flash-Lite (`proxy/src/worker.js`, secret
+  `ANTHROPIC_API_KEY`). Checked with ten counter lines through the live worker
+  from the staging origin: all routed sensibly, 1.3 to 2.8 seconds each, prompt
+  cache hit on repeat calls. Not checked: AI Mode clicked through in a browser on
+  staging with the new model. The old `GEMINI_API_KEY` secret is still on the
+  worker, unused; `wrangler rollback` returns to the Gemini version.
+  Wrangler sees three Cloudflare accounts, so set
+  `CLOUDFLARE_ACCOUNT_ID=73a4f935ed801ea9299664d719bb9180` (the ITM one) on every
+  command. Keys are in keyvault: `westbrook_cloudflare_dev`,
+  `westbrook_anthropic_dev`.
 
 **Built this session, do NOT rebuild:**
 1. **The counter corpus** (`scripts/parser-tests/corpus.mjs`, run by
@@ -144,11 +155,9 @@ below). Building and testing, not planning. It is not a numbered plan step.
   returning a short string is far cheaper than a snapshot.
 
 **Open questions for Parsa:**
-- He asked at exit whether a newer Haiku is cheaper than Gemini Flash Lite and
-  whether to switch the router to it. Not checked: no price was looked up this
-  session, and the newest Haiku this session knows of is 4.5. Compare the real
-  per-token prices before deciding. The swap itself is small (the worker in
-  `proxy/` holds the model call) but needs the Cloudflare login either way.
+- Answered 2026-10-08: Parsa said to switch the router to Haiku 5.5 (cheaper than
+  Flash Lite under 100k tokens of context, dearer above, by his account; no price
+  was looked up here). Done, see the proxy line above.
 - The standing rule holds: the model picks the action, the engine owns every
   value. Nothing this session needed to break it.
 - Carried, still unanswered: stat holidays in "Open today", staff login in the
