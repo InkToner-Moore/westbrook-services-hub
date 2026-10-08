@@ -116,7 +116,7 @@ const Slip: React.FC<{ opts: SimpleReceiptOptions; size: ReceiptSize }> = ({ opt
         {items.length > 0 && (
           <>
             <div className={`my-3 border-t ${rule}`} />
-            <p className={`mb-1 text-[11px] font-semibold uppercase tracking-wide ${themeClasses.text.muted}`}>
+            <p className={`mb-1 text-[13px] font-semibold ${themeClasses.text.secondary}`}>
               Items
             </p>
             <div className={`divide-y ${divide}`}>

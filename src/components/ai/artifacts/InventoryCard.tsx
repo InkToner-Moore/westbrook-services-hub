@@ -576,7 +576,7 @@ const LookupCard: React.FC<{ data: InventoryLookupData }> = ({ data }) => {
 
         {keys.length > 0 && (
           <>
-            <p className={`pt-1 text-[11px] font-semibold uppercase tracking-wide ${themeClasses.text.muted}`}>Keys</p>
+            <p className={`pt-1 text-[13px] font-semibold ${themeClasses.text.secondary}`}>Keys</p>
             <ul className={`divide-y ${divide}`}>
               {keys.map((k) => (
                 <KeyRow
@@ -591,7 +591,7 @@ const LookupCard: React.FC<{ data: InventoryLookupData }> = ({ data }) => {
 
         {refills.length > 0 && (
           <>
-            <p className={`pt-3 text-[11px] font-semibold uppercase tracking-wide ${themeClasses.text.muted}`}>Refills</p>
+            <p className={`pt-3 text-[13px] font-semibold ${themeClasses.text.secondary}`}>Refills</p>
             <ul className={`divide-y ${divide}`}>
               {refills.map((r) => (
                 <RefillRow

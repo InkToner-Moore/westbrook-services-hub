@@ -270,7 +270,7 @@ function VisualSchedule({
             const isToday = dayKey === todayKey;
             return (
               <div key={dayKey} className={`flex min-w-[92px] flex-1 items-center justify-center gap-1.5 border-l px-1 py-2 ${edge}`}>
-                <span className={`text-[11px] font-semibold uppercase tracking-wide ${isToday ? themeClasses.text.accent : themeClasses.text.secondary}`}>
+                <span className={`text-[13px] font-medium ${isToday ? themeClasses.text.accent : themeClasses.text.secondary}`}>
                   {d.toLocaleDateString(undefined, { weekday: "short" })}
                 </span>
                 <span className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-sm font-semibold ${isToday ? todayBadge : themeClasses.text.primary}`}>
