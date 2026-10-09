@@ -1,7 +1,7 @@
 // Contact details live here. The same values are repeated in index.html as
 // fallbacks for when scripts are off, so change both.
 const CONTACT = {
-  email: "hi@parsaj.dev",
+  email: "studio@inktonermoore.ca",
   phone: "403-686-2835",
   phoneHref: "tel:4036862835",
   place: "Ink, Toner & Moore, Westbrook Mall, Calgary",
