@@ -1,13 +1,13 @@
 export const PHONE_DISPLAY = "(403) 686-2835";
 export const PHONE_HREF = "tel:4036862835";
-export const EMAIL = "inktonerandmoore@gmail.com";
+export const EMAIL = "contact@inktonermoore.ca";
 export const MAPS_URL = "https://www.google.com/maps/search/?api=1&query=Westbrook+Mall+Calgary";
 // One entry per JS weekday, starting with Sunday. Hours use the 24-hour clock.
 export const WEEK = [
   { day: "Sunday", open: 11, close: 17 },
   { day: "Monday", open: 10, close: 19 },
   { day: "Tuesday", open: 10, close: 19 },
-  { day: "Wednesday", open: 10, close: 21 },
+  { day: "Wednesday", open: 10, close: 19 },
   { day: "Thursday", open: 10, close: 21 },
   { day: "Friday", open: 10, close: 21 },
   { day: "Saturday", open: 10, close: 18 },
