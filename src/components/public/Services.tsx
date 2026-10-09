@@ -27,6 +27,7 @@ const Services = () => {
         {services.map((service) => (
           <li
             key={service.kind}
+            id={`service-${service.kind}`}
             className={
               `pub-service pub-service-${service.kind} relative grid md:grid-cols-12 ` +
               "gap-4 md:gap-6 items-center border-t last:border-b border-pub-edge " +
@@ -36,7 +37,7 @@ const Services = () => {
             <h3 className="pub-service-title font-display font-medium pr-24 md:pr-0 md:col-span-5">
               {service.title}
             </h3>
-            <p className="max-w-[42ch] text-pub-muted md:col-span-5">{service.description}</p>
+            <p className="max-w-[42ch] pr-24 text-pub-muted md:col-span-5 md:pr-0">{service.description}</p>
             <div
               className={
                 "pub-service-art absolute top-8 right-0 h-[72px] w-[72px] md:static md:col-span-2" +

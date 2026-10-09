@@ -145,10 +145,9 @@
 
 /* The copier scan reveals the headline once, with room above and below the letters. */
 .public-site .pub-hero-title.font-display {
-  font-size: clamp(2.5rem, 8.6vw, 7.75rem);
-  line-height: 0.98;
-  letter-spacing: -0.022em;
-  text-wrap: balance;
+  font-size: clamp(3.4rem, 19vw, 7rem);
+  line-height: 0.92;
+  letter-spacing: -0.035em;
   padding-block: 0.16em;
   margin-block: -0.16em;
   animation: pub-scan 900ms cubic-bezier(0.2, 0.7, 0.1, 1) 150ms both;
@@ -169,7 +168,7 @@
   padding-block: 0.16em;
   margin-bottom: -0.16em;
   margin-top: calc(1.75rem - 0.16em);
-  font-size: clamp(2.5rem, 8.6vw, 7.75rem);
+  font-size: clamp(3.4rem, 19vw, 7rem);
 }
 
 .public-site .pub-scan-bar {
@@ -190,20 +189,85 @@
 }
 
 .public-site .pub-hero-copy {
-  animation: pub-fade 400ms 700ms both;
+  animation: pub-fade 400ms 900ms both;
 }
 
 .public-site .pub-hero-actions {
-  animation: pub-fade 400ms 850ms both;
+  animation: pub-fade 400ms 1050ms both;
 }
 
-.public-site .pub-key-rule {
-  animation: pub-scan 1200ms cubic-bezier(0.2, 0.7, 0.1, 1) 900ms both;
+.public-site .pub-hero-layout {
+  display: grid;
+  grid-template-areas: "title" "copy" "actions" "services";
 }
 
-.public-site .pub-key-tip {
-  width: 200px;
-  height: 40px;
+.public-site .pub-scan {
+  grid-area: title;
+  min-width: 0;
+}
+
+.public-site .pub-hero-title > span {
+  white-space: nowrap;
+}
+
+.public-site .pub-hero-copy {
+  grid-area: copy;
+}
+
+.public-site .pub-hero-actions {
+  grid-area: actions;
+}
+
+.public-site .pub-hero-services {
+  grid-area: services;
+}
+
+.public-site .pub-hero-service {
+  --pub-delay: 700ms;
+  text-decoration: none;
+}
+
+.public-site .pub-hero-services li:nth-child(2) .pub-hero-service {
+  --pub-delay: 840ms;
+}
+
+.public-site .pub-hero-services li:nth-child(3) .pub-hero-service {
+  --pub-delay: 980ms;
+}
+
+.public-site .pub-hero-services li:nth-child(4) .pub-hero-service {
+  --pub-delay: 1120ms;
+}
+
+.public-site .pub-hero-service-art {
+  width: 64px;
+  height: 64px;
+  transition: color 200ms;
+}
+
+.public-site .pub-hero-service:is(:hover, :focus-visible) .pub-hero-service-art {
+  color: var(--pub-accent);
+}
+
+.public-site .pub-hero-service-key:is(:hover, :focus-visible) .pub-hero-service-art {
+  color: var(--pub-brass);
+}
+
+.public-site .pub-hero-service:is(:hover, :focus-visible) > span {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.public-site .pub-hero-service .pub-draw {
+  animation: pub-draw 900ms cubic-bezier(0.2, 0.7, 0.1, 1) var(--pub-delay) both;
+}
+
+.public-site .pub-hero-service > span {
+  animation: pub-fade 400ms var(--pub-delay) both;
+}
+
+.public-site .pub-service {
+  scroll-margin-top: 96px;
 }
 
 .public-site .pub-service-title {
@@ -283,19 +347,12 @@
   transform: translateY(0);
 }
 
-.public-site .pub-footer-wordmark.font-display {
-  font-size: clamp(1.9rem, 9vw, 8rem);
-  white-space: nowrap;
-  line-height: 0.9;
-  letter-spacing: -0.04em;
-  color: color-mix(in srgb, var(--pub-ink) 12%, transparent);
-}
-
-.dark .public-site .pub-footer-wordmark.font-display {
-  color: color-mix(in srgb, var(--pub-ink) 14%, transparent);
-}
-
 @media (min-width: 640px) {
+  .public-site .pub-hero-title.font-display,
+  .public-site .pub-scan {
+    font-size: clamp(6rem, 13vw, 11.5rem);
+  }
+
   .public-site .pub-container {
     padding-inline: 32px;
   }
@@ -317,15 +374,33 @@
 }
 
 @media (min-width: 1024px) {
+  .public-site .pub-hero-layout {
+    grid-template-areas: "title services" "copy copy" "actions actions";
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    column-gap: 40px;
+  }
+
+  .public-site .pub-hero-service-art {
+    width: 104px;
+    height: 104px;
+  }
+
   .public-site .pub-container {
     padding-inline: 48px;
   }
 }
 
-@media (max-width: 419px) {
-  .public-site .pub-key-tip {
-    width: 130px;
-    height: 26px;
+@media (max-width: 379px) {
+  .public-site .pub-hero-service-art {
+    width: 56px;
+    height: 56px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.public-site) {
+    scroll-behavior: smooth;
   }
 }
 
