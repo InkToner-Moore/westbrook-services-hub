@@ -19,10 +19,12 @@ export default {
 		},
 		extend: {
 			fontFamily: {
+				display: ['"Bricolage Grotesque"', '"IBM Plex Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
 				sans: ['"IBM Plex Sans"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
 				mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
 			},
 			colors: {
+				pub: {counter: 'var(--pub-counter)', paper: 'var(--pub-paper)', sunk: 'var(--pub-sunk)', edge: 'var(--pub-edge)', ink: 'var(--pub-ink)', muted: 'var(--pub-muted)', accent: 'var(--pub-accent)', brass: 'var(--pub-brass)', open: 'var(--pub-open)'},
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',

@@ -9,12 +9,15 @@ import purolatorLogo from "@/assets/couriers/purolator.png";
 
 interface SmartTrackerProps {
   className?: string;
+  variant?: "card" | "plain";
   // The card's own titled header. Hidden when a surrounding layout (the staff
   // shell's tool title bar) already names the tool, so it does not read twice.
   showHeader?: boolean;
 }
 
-const SmartTracker = ({ className = "", showHeader = true }: SmartTrackerProps) => {
+const SmartTracker = ({ className = "", showHeader = true, variant = "card" }: SmartTrackerProps) => {
+  const plain = variant === "plain";
+  const headerVisible = showHeader && !plain;
   const { themeClasses, isDarkMode } = useTheme();
   const [trackingNumber, setTrackingNumber] = useState("");
   const [selectedCourier, setSelectedCourier] = useState<string>("");
@@ -79,8 +82,8 @@ const SmartTracker = ({ className = "", showHeader = true }: SmartTrackerProps) 
   };
 
   return (
-    <div className={`rounded-xl border p-5 sm:p-6 ${className} ${themeClasses.card.primary}`}>
-      {showHeader && (
+    <div className={plain ? className : `rounded-xl border p-5 sm:p-6 ${className} ${themeClasses.card.primary}`}>
+      {headerVisible && (
         <div className="flex items-center gap-3">
           <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${isDarkMode ? "bg-blue-950/60" : "bg-blue-50"}`}>
             <Package className={`h-5 w-5 ${isDarkMode ? "text-blue-300" : "text-blue-700"}`} />
@@ -96,10 +99,10 @@ const SmartTracker = ({ className = "", showHeader = true }: SmartTrackerProps) 
         </div>
       )}
 
-      <div className={`${showHeader ? "mt-5" : ""} space-y-5`}>
+      <div className={`${headerVisible ? "mt-5" : ""} space-y-5`}>
         {/* Tracking Number Input */}
         <div>
-          <label htmlFor="tracking-number" className={`mb-1.5 block text-sm font-medium ${themeClasses.text.primary}`}>
+          <label htmlFor="tracking-number" className={`mb-1.5 block text-sm font-medium ${plain ? "text-pub-ink" : themeClasses.text.primary}`}>
             Tracking number
           </label>
           <Input
@@ -116,10 +119,10 @@ const SmartTracker = ({ className = "", showHeader = true }: SmartTrackerProps) 
             }}
             aria-invalid={missingNumber}
             aria-describedby={missingNumber ? "tracking-number-error" : undefined}
-            className={`h-11 font-mono tabular-nums ${themeClasses.input}`}
+            className={plain ? "pub-field h-14 rounded-xl border-pub-edge bg-pub-counter text-lg md:text-lg font-mono tabular-nums text-pub-ink" : `h-11 font-mono tabular-nums ${themeClasses.input}`}
           />
           {missingNumber && (
-            <p id="tracking-number-error" role="alert" className={`mt-2 flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${themeClasses.status.error}`}>
+            <p id="tracking-number-error" role="alert" className={`mt-2 flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${plain ? "pub-error" : themeClasses.status.error}`}>
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               Enter the tracking number first, then choose the courier.
             </p>
@@ -131,7 +134,7 @@ const SmartTracker = ({ className = "", showHeader = true }: SmartTrackerProps) 
           {transferringTo ? (
             <div
               role="status"
-              className={`mb-3 flex items-center gap-3 rounded-lg border px-4 py-3 ${themeClasses.status.info}`}
+              className={`mb-3 flex items-center gap-3 rounded-lg border px-4 py-3 ${plain ? "border-pub-edge bg-pub-counter text-pub-ink" : themeClasses.status.info}`}
             >
               <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
               <span className="font-medium">
@@ -139,7 +142,7 @@ const SmartTracker = ({ className = "", showHeader = true }: SmartTrackerProps) 
               </span>
             </div>
           ) : (
-            <p id="tracking-courier-label" className={`mb-1.5 text-sm font-medium ${themeClasses.text.primary}`}>
+            <p id="tracking-courier-label" className={`mb-1.5 text-sm font-medium ${plain ? "text-pub-ink" : themeClasses.text.primary}`}>
               Courier
             </p>
           )}
@@ -153,16 +156,16 @@ const SmartTracker = ({ className = "", showHeader = true }: SmartTrackerProps) 
                   onClick={() => handleCourierClick(courier.id)}
                   disabled={!!transferringTo}
                   aria-label={`Track with ${courier.name}`}
-                  className={`relative flex min-h-[76px] flex-col items-center justify-center gap-2 rounded-lg border p-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
+                  className={`${plain ? "pub-courier relative flex min-h-[84px] min-w-0 flex-col items-center justify-center gap-2 rounded-xl border p-2 transition-colors" : "relative flex min-h-[76px] flex-col items-center justify-center gap-2 rounded-lg border p-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"} ${
                     isSelected
                       ? `${courier.color} border-transparent text-white`
-                      : `${themeClasses.card.secondary}`
+                      : plain ? "border-pub-edge bg-pub-counter hover:border-pub-ink" : `${themeClasses.card.secondary}`
                   } ${
                     transferringTo && !isSelected ? "opacity-40" : ""
                   }`}
                 >
                   <div className={`flex h-8 w-full max-w-[76px] items-center justify-center rounded-md p-1 ${
-                    isSelected ? "bg-white/20" : "bg-white dark:bg-[#f1efe9]"
+                    isSelected ? "bg-white/20" : plain ? "bg-white" : "bg-white dark:bg-[#f1efe9]"
                   }`}>
                     <img
                       src={courier.logo}
@@ -175,7 +178,7 @@ const SmartTracker = ({ className = "", showHeader = true }: SmartTrackerProps) 
                       }}
                     />
                   </div>
-                  <span className={`text-xs font-semibold ${isSelected ? "text-white" : themeClasses.text.primary}`}>
+                  <span className={`text-xs font-semibold ${isSelected ? "text-white" : plain ? "text-pub-ink" : themeClasses.text.primary}`}>
                     {courier.name}
                   </span>
                   {transferringTo && isSelected ? (
