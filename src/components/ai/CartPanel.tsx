@@ -1,5 +1,5 @@
-// The open receipt: a compact strip above the composer, in the chat pane rather
-// than a floating panel. Items collected from the chat, the Pack pills, or the
+// The open receipt: a compact strip above the composer or below a tool page.
+// Items collected from the chat, the Pack pills, or the
 // classic Packing/Receipts page all land here so the counter can see what is on
 // the open receipt while adding to it from anywhere. Finish builds one combined
 // receipt and opens it in the artifact rail. sessionStorage persistence and all
@@ -10,7 +10,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAiMode } from '@/ai/context';
 import { cartTotal } from '@/ai/cart';
 
-const CartPanel: React.FC = () => {
+const CartPanel: React.FC<{ className?: string }> = ({ className = 'mb-3' }) => {
   const { themeClasses, isDarkMode } = useTheme();
   const { cart, removeCartLine, clearCart, finalizeCart, addResult } = useAiMode();
   const [collapsed, setCollapsed] = useState(true);
@@ -25,7 +25,7 @@ const CartPanel: React.FC = () => {
   };
 
   return (
-    <div className={`mb-3 overflow-hidden rounded-2xl border ${themeClasses.card.primary}`}>
+    <div className={`overflow-hidden rounded-2xl border ${themeClasses.card.primary} ${className}`}>
       <button
         type="button"
         onClick={() => setCollapsed((v) => !v)}
@@ -67,7 +67,7 @@ const CartPanel: React.FC = () => {
                     onClick={() => removeCartLine(line.id)}
                     title="Remove"
                     aria-label="Remove item"
-                    className={`rounded p-1 ${themeClasses.interactive.hover}`}
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded ${themeClasses.interactive.hover}`}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
