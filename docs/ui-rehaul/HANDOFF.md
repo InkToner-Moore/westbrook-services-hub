@@ -27,7 +27,45 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
-## START HERE (written 2026-10-08, exit of the studio site and two counter fixes session)
+## START HERE (written 2026-10-09, the customer page redesign)
+
+**Next session is for:** Parsa's notes on the new customer page, if any. Otherwise the
+choices in the section below still stand (studio copy and domain, or AI Mode on staging).
+
+**Where things stand (observed 2026-10-09):**
+- Branch `public-redesign`, off `studio-site`. Pushed, and `origin/dev` fast-forwarded to
+  it, so staging has it. **Prod `main` untouched** (`0ffa16c`).
+- Rollback point: the tag `public-pre-redesign` (pushed) is the tree before this work.
+- Gate on the tip: `tsc -p tsconfig.app.json --noEmit` exit 0; `yarn build` built; eslint
+  on the public files and `SmartTracker.tsx` clean; dash scan clean.
+- Checked in a real browser on the local dev server: 320 to 1920 wide with no sideways
+  scroll, light and dark, keyboard focus, reduced motion, the courier redirect (number
+  cleaned), the empty-field errors, the no-match refill state, and the refill tickets
+  with faked results. `/staff/tracking` still renders the old tracker card.
+  **Not checked:** a real refill match, and the page on staging itself.
+
+**Built this session, do NOT rebuild:**
+- The customer page at `/` is rebuilt as sections under `src/components/public/`, with
+  its own tokens in `src/styles/public.css` (`pub-*` Tailwind colours, they flip under
+  `.dark` on their own; the new files do not use `themeClasses`). Store facts and the
+  open-now state live in `src/lib/storeInfo.ts`.
+- Display type is Bricolage Grotesque (`font-display`), loaded in `index.html`. Body
+  stays IBM Plex.
+- Load moment: a scan bar reveals the headline, then the key-shaped rule wipes in. The
+  rest of the motion answers the visitor (service drawings redraw on hover, refill
+  tickets feed out, hours bars grow once).
+- `SmartTracker` has `variant="plain"` for the public page. The default `card` variant
+  is what staff uses and is unchanged.
+- All copy and facts are the old page's, word for word. The hero status is new: it says
+  open or closed right now in Calgary time, where the old line gave today's hours.
+
+**Constraints this session found:**
+- The hours bars are full by default and only replay growing in. Do not go back to
+  starting them empty: a missed observer would show the shop closed all week.
+- The open-now status knows nothing about stat holidays or mall closures (same gap the
+  old "Open today" line had).
+
+## Earlier (written 2026-10-08, exit of the studio site and two counter fixes session)
 
 **Next session is for:** building, and Parsa picks which. Not a numbered plan step.
 Either carry on the studio site (his copy notes, then the move to

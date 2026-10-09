@@ -95,7 +95,10 @@ src/
                        ShellContext (the `inShell` chromeless signal), tiles, UserMenu
     ai/                AI chat + artifact layer: Composer, ConfirmationCheck,
                        ArtifactPanel/ArtifactActions, artifacts/ (per-action cards)
-    SmartTracker.tsx   courier detection + tracking UI (shared public/staff)
+    public/            the customer page's sections (header, hero, tools, services,
+                       hours, location, footer); styled by styles/public.css tokens
+    SmartTracker.tsx   courier picker + tracking UI (shared public/staff; the public
+                       page uses variant="plain")
     StaffHeader.tsx StaffLayout.tsx   chrome for deep-linked standalone tool pages
     ProtectedRoute.tsx        auth gate
     ui/                shadcn/ui components; edit here for shared primitives
@@ -107,12 +110,13 @@ src/
     firebase.ts        app/auth/db init from VITE_FIREBASE_* env
     firestore.ts       generic CRUD helpers + ID generators (ORD-/NOTE-/REQ-/INV-)
     orderStatus.ts     public order-status mirror (schema + name normalizing)
+    storeInfo.ts       public store facts: phone, email, weekly hours, open-now state
     timesheet.ts       the employees (team) model
     schedule.ts        scheduleShifts model: planned shifts, actual times, break, hours math
     shiftParse.ts      free-text shift parser ("4-9", "oct 8, 9", "30 min break")
     cartridges.ts simpleReceipt.ts utils.ts
   utils/               dataExport, validation
-  styles/print.css     src/index.css  src/App.css
+  styles/print.css     styles/public.css (public page tokens, `pub-*`)  src/index.css  src/App.css
 ```
 
 ## Data model (Firestore)
