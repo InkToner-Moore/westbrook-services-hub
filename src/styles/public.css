@@ -266,6 +266,78 @@
   animation: pub-fade 400ms var(--pub-delay) both;
 }
 
+.public-site .pub-key {
+  display: flex;
+  align-items: stretch;
+  height: 4em;
+  color: var(--pub-brass);
+  width: 100%;
+  /* Sized from the viewport so the key keeps a key's proportions, not a saw blade's. */
+  font-size: clamp(11px, 2.9vw, 24px);
+  animation: pub-key-insert 1100ms cubic-bezier(0.2, 0.7, 0.1, 1) 1300ms both;
+}
+
+.public-site .pub-key-head {
+  width: 4.75em;
+  height: 4em;
+  flex-shrink: 0;
+}
+
+.public-site .pub-key-blade {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  margin-left: -0.5px;
+}
+
+.public-site .pub-key-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 1.625em;
+  height: 0.75em;
+  background: currentColor;
+}
+
+.public-site .pub-key-groove {
+  position: absolute;
+  left: 0.5em;
+  right: 0;
+  top: 1.875em;
+  height: 1.5px;
+  background: var(--pub-counter);
+  opacity: 0.55;
+}
+
+/* Whole mask tiles repeat across the blade, with a small overlap to hide the seam. */
+.public-site .pub-key-teeth {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 2.375em;
+  height: 0.625em;
+  margin-top: -1px;
+  background: currentColor;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 10' preserveAspectRatio='none'%3E%3Cpath fill='black' d='M0 0H160V3H150L146 9H138L134 3H122V6H112V3H102L97 10H90L85 3H70L66 7H58L54 3H44V8H34V3H24L20 5H12L8 3H0Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 10' preserveAspectRatio='none'%3E%3Cpath fill='black' d='M0 0H160V3H150L146 9H138L134 3H122V6H112V3H102L97 10H90L85 3H70L66 7H58L54 3H44V8H34V3H24L20 5H12L8 3H0Z'/%3E%3C/svg%3E");
+  -webkit-mask-size: 10em 0.625em;
+  mask-size: 10em 0.625em;
+  -webkit-mask-repeat: round no-repeat;
+  mask-repeat: round no-repeat;
+}
+
+.public-site .pub-key-tip {
+  width: 2.5em;
+  height: 4em;
+  flex-shrink: 0;
+  margin-left: -0.5px;
+}
+
+/* Match the space below the key to its margin above without changing the tools. */
+.public-site section:has(> .pub-key) + section {
+  padding-top: 3.5rem;
+}
+
 .public-site .pub-service {
   scroll-margin-top: 96px;
 }
@@ -348,6 +420,10 @@
 }
 
 @media (min-width: 640px) {
+  .public-site section:has(> .pub-key) + section {
+    padding-top: 5rem;
+  }
+
   .public-site .pub-hero-title.font-display,
   .public-site .pub-scan {
     font-size: clamp(6rem, 13vw, 11.5rem);
@@ -421,6 +497,16 @@
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .public-site .pub-service:hover .pub-draw {
     animation: pub-draw 700ms cubic-bezier(0.2, 0.7, 0.1, 1) both;
+  }
+}
+
+@keyframes pub-key-insert {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0);
   }
 }
 

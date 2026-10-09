@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Phone } from "lucide-react";
 import { openState, PHONE_HREF, MAPS_URL } from "@/lib/storeInfo";
 import ServiceArt from "./ServiceArt";
+import KeyRule from "./KeyRule";
 
 const services = [
   { kind: "cartridge", label: "Ink & toner" },
@@ -20,7 +21,7 @@ const Hero = () => {
   }, []);
 
   return (
-    <section className="pt-12 sm:pt-20 pb-14 sm:pb-20">
+    <section className="pt-12 sm:pt-20">
       <p className="pub-hero-status flex items-center gap-2 text-base font-medium">
         <span className={`h-2 w-2 rounded-full ${status.open ? "bg-pub-open" : "bg-pub-muted"}`} />
         {status.label}
@@ -65,6 +66,7 @@ const Hero = () => {
           </a>
         </div>
       </div>
+      <KeyRule />
     </section>
   );
 };
