@@ -3,6 +3,8 @@
 // blocks iframe embedding (see docs/ai-mode/00-research.md). A live-status adapter
 // (WhereParcel or a better option) can slot in behind this same shape later.
 
+import { cleanTrackingNumber } from '@/lib/utils';
+
 export type Courier = 'FedEx' | 'Purolator' | 'UPS' | 'Canada Post' | 'DHL';
 
 // Verified deep-link patterns (docs/ai-mode/00-research.md).
@@ -29,5 +31,5 @@ export function buildTrackingCard(courier: Courier | null, trackingNumber: strin
 }
 
 export function carrierUrl(courier: Courier, trackingNumber: string): string {
-  return CARRIER_URLS[courier](trackingNumber);
+  return CARRIER_URLS[courier](cleanTrackingNumber(trackingNumber));
 }

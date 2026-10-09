@@ -15,6 +15,7 @@ import type { ArtifactState } from '@/ai/types';
 import { ShellContext } from './ShellContext';
 import TileRail from './TileRail';
 import ArtifactRail from './ArtifactRail';
+import CartPanel from '@/components/ai/CartPanel';
 
 const readFlag = (key: string) => {
   try {
@@ -26,8 +27,9 @@ const readFlag = (key: string) => {
 
 const StaffShell: React.FC = () => {
   const { themeClasses } = useTheme();
-  const { artifact, showArtifact } = useAiMode();
+  const { artifact, showArtifact, cart } = useAiMode();
   const { pathname } = useLocation();
+  const isChatRoute = pathname.replace(/\/+$/, '') === '/staff/ai';
   const [railOpen, setRailOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [leftCollapsed, setLeftCollapsed] = useState(() => readFlag('shell-left-collapsed'));
@@ -153,6 +155,13 @@ const StaffShell: React.FC = () => {
           <main className="min-h-0 flex-1 overflow-auto">
             <Outlet />
           </main>
+          {!isChatRoute && cart.length > 0 && (
+            <div className={`shrink-0 border-t pb-[env(safe-area-inset-bottom)] ${themeClasses.background}`}>
+              <div className="mx-auto w-full max-w-5xl px-4 py-3 sm:px-6">
+                <CartPanel className="" />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right rail - desktop. Full while it holds something; a slim strip when
@@ -206,7 +215,7 @@ const StaffShell: React.FC = () => {
                   className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 text-sm ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
                 >
                   <ChevronDown className="h-4 w-4" />
-                  Back to chat
+                  {isChatRoute ? 'Back to chat' : 'Back'}
                 </button>
               </div>
               <div className="min-h-0 flex-1">
