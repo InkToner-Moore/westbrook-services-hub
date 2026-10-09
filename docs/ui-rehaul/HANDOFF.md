@@ -27,38 +27,98 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
-## The studio site (written 2026-10-08, a side job, not part of the rehaul)
+## START HERE (written 2026-10-08, exit of the studio site and two counter fixes session)
 
-`studio/` is a separate static site for Ink, Toner & Moore Studio, Parsa's software
-side of the shop. Plain HTML, CSS and one small script, no build, nothing shared with
-the app. It is live at `https://studio.ink-toner-moore.pages.dev`, which is the
-`studio` branch alias of the staging Pages project, put there by direct upload:
+**Next session is for:** building, and Parsa picks which. Not a numbered plan step.
+Either carry on the studio site (his copy notes, then the move to
+`studio.inktonermoore.ca`), or go back to AI Mode: the staging click-through and
+"order status by name" from the section below.
 
-```sh
-export CLOUDFLARE_ACCOUNT_ID=73a4f935ed801ea9299664d719bb9180
-keyvault run westbrook_cloudflare_dev -- ./proxy/node_modules/.bin/wrangler \
-  pages deploy studio --project-name ink-toner-moore --branch studio --commit-dirty=true
-```
+**Where things stand (observed 2026-10-08):**
+- Branch `studio-site`: the studio work plus a merge of `tracker-trim-receipt-visible`
+  (the two app fixes). Tree clean, pushed. `origin/dev` fast-forwarded to it, so
+  staging has everything and `studio/` now sits on `dev` too (the app build ignores
+  it). **Prod `main` untouched** (`0ffa16c`).
+- Open PRs: only **#1 `docs-align-claude-md`** (Sept 1, not this work).
+- Gate as run at exit on the merged tip: `tsc -p tsconfig.app.json --noEmit` exit 0;
+  `yarn build` built; eslint on `src/ai src/components/ai src/components/shell
+  src/components/SmartTracker.tsx src/lib/utils.ts scripts/parser-tests proxy/src`
+  0 errors, 22 warnings; `run.mjs` 30 pass; `sweep.mjs` 463 of 470, 0 missed, 7
+  known gaps.
+- Checked in a real browser on the local dev server with the auth bypass: both app
+  fixes below. **Not checked on staging with a login** (there is still none).
+- No DEV data or rules changed.
 
-Do not create a git branch named `studio`: Cloudflare would build the app on it and
-take over the alias. Branch `studio-site` holds the work.
+**Built this session, do NOT rebuild:**
+1. **The studio site** (`studio/`, live at `https://studio.ink-toner-moore.pages.dev`).
+   A separate static site for Ink, Toner & Moore Studio, Parsa's software side of the
+   shop (the site his business cards point at). Plain HTML, CSS and one script, no
+   build, nothing shared with the app. `studio/README.md` says how it works.
+   - The look is a print job: white paper, the four process inks, Archivo set narrow
+     and heavy, a headline made of cyan, magenta and yellow plates that come into
+     register as black on load and drift with the pointer and scroll. Light only on
+     purpose (the plates need white paper). Parsa asked for bold but dead simple for
+     non-technical shop owners; keep both.
+   - The first, plain version is the tag `studio-v1-plain` (pushed), kept as the
+     rollback he asked for.
+   - It deploys by direct upload to the `studio` branch alias of the staging Pages
+     project, not by a git push:
+     ```sh
+     export CLOUDFLARE_ACCOUNT_ID=73a4f935ed801ea9299664d719bb9180
+     keyvault run westbrook_cloudflare_dev -- ./proxy/node_modules/.bin/wrangler \
+       pages deploy studio --project-name ink-toner-moore --branch studio
+     ```
+   - Checked: screenshots from 320 to 1440 wide, no sideways scroll, tap targets 44px
+     or more, no console errors; the live URL serves the page, its 404 and `_headers`.
+2. **Tracking numbers are cleaned before they reach a courier** (`493e6f7`).
+   `cleanTrackingNumber` in `src/lib/utils.ts` strips spaces, commas and stray
+   punctuation at the ends. Used by `SmartTracker` (public and staff), the AI track
+   action and `carrierUrl`. A lone comma counts as no number.
+3. **The open receipt shows on every tool page** (`255e769`). `CartPanel` was mounted
+   only in the chat pane; `StaffShell` now also pins it under the centre pane on any
+   non-chat route while the receipt has lines. Finish opens the receipt in the right
+   rail (desktop) or the sheet (phone). The sheet's back button says "Back" off the
+   chat route.
 
-- Look (second pass, same day): a print job. White paper, the four process inks, a
-  headline made of cyan, magenta and yellow plates that come into register on load.
-  Light only on purpose. The plain first version is the tag `studio-v1-plain`.
-- Checked: served locally and screenshotted from 320 to 1440 wide,
-  no overflow, no console errors; the live URL returns the page, its 404 and the
-  `_headers`; `ink-toner-moore.pages.dev` still serves the app.
-- Placeholder, must change before a customer is sent there: the email is
-  `hi@parsaj.dev` (the card's `studio@inktonermoore.com` does not exist and
-  `inktonermoore.com` is not registered), the phone is the shop's line, and the page
-  carries `noindex`. All copy is a first draft Parsa has not read.
-- Open for Parsa: which domain (`.ca` as he now says, or the `.com` on the cards),
-  the studio mailbox, whether to show prices, and whether Harvey is fine with the
-  shop's phone on it. Moving to `studio.inktonermoore.ca` needs a Pages custom domain
-  and a Porkbun CNAME, and likely its own Pages project.
+**Constraints this session found (the older lists below still stand):**
+- **Never create a git branch named `studio`.** Cloudflare would build the app on it
+  and take over the `studio.ink-toner-moore.pages.dev` alias.
+- The Pages project is git-connected and still takes a direct upload to a branch
+  alias. That is how the studio site gets there.
+- Prod (`main`) still has the old tracker code: it only trims the ends, so a trailing
+  comma still goes to the courier on inktonermoore.ca. Left alone under the standing
+  rule. Parsa was told and has not said to port it.
+- The vault holds private planning about the studio (prices, the Laketrout structure,
+  terms with the shop's owner). None of it goes on the public page. No prices are
+  shown; the page says a price comes before any work starts.
 
-## START HERE (written 2026-10-08, exit of the AI Mode UX and messy-testing session)
+**Open questions for Parsa** (answers may arrive mid-session: fold each in as its own
+commit, and never invent one to close a line):
+- Answered 2026-10-08: the studio domain is **`.ca`**, not the `.com` on the cards.
+  The email is **`studio@inktonermoore.ca`**, which he says will exist soon. It is on
+  the page now. `inktonermoore.ca` had no MX record when checked, so mail to it
+  bounces until he sets the mailbox up.
+- Answered 2026-10-08: no "This is the shop's line" note under the phone. Removed.
+  The phone shown is still the shop's number, 403-686-2835.
+- He has not read the studio copy line by line. It says "we", names him as the
+  developer ("Ask for Parsa"), and the main button is "Get a price".
+- When to move to `studio.inktonermoore.ca`. Needs a Pages custom domain and a
+  Porkbun CNAME, likely its own Pages project, and the `noindex` meta tag in
+  `studio/index.html` and `studio/404.html` removed. Lands in `studio/` and Cloudflare.
+- Whether to port the tracker comma fix to prod `main`.
+- The carried ones in the sections below still stand (parcel tax leaving Canada, a
+  staging test login in keyvault, stat holidays, the rest).
+
+**Working rules:** unchanged, see the section below. The studio site has no gate of
+its own beyond the dash scan (`grep -rnP '[\x{2014}\x{2013}]' studio/`) and a look in
+a browser. Helpers this session: Codex built the first studio pass and both app fixes
+from written specs and its reports held up against the diff; Haiku drove the browser.
+
+**Still placeholder, must not reach a customer:** the studio page is `noindex` and on
+a staging host; its email does not receive mail yet. The whole rehaul is on staging
+only, and `purchase` still has no executor.
+
+## Earlier (the AI Mode UX and messy-testing session, 2026-10-08)
 
 **Next session is for:** more of the same, on staging this time: click AI Mode
 through at `ink-toner-moore.pages.dev` with a real login, including the things
