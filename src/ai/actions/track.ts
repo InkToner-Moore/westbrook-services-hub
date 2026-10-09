@@ -3,10 +3,11 @@
 import type { Intent } from '../types';
 import type { ActionResult } from './types';
 import { buildTrackingCard, type Courier } from '../tracking';
+import { cleanTrackingNumber } from '@/lib/utils';
 
 export function executeTrack(intent: Intent): ActionResult {
   const courier = (intent.fields.courier?.value as Courier | null) ?? null;
-  const trackingNumber = String(intent.fields.trackingNumber?.value ?? '').trim();
+  const trackingNumber = cleanTrackingNumber(String(intent.fields.trackingNumber?.value ?? ''));
 
   if (!trackingNumber) {
     return {

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Package, Loader2, ExternalLink, AlertCircle } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
+import { cleanTrackingNumber } from "@/lib/utils";
 import upsLogo from "@/assets/couriers/ups.png";
 import fedexLogo from "@/assets/couriers/fedex.png";
 import purolatorLogo from "@/assets/couriers/purolator.png";
@@ -57,8 +58,8 @@ const SmartTracker = ({ className = "", showHeader = true }: SmartTrackerProps) 
   const handleCourierClick = (courierId: string) => {
     if (transferringTo) return;
 
-    // Numbers get pasted with spaces in them ("1Z 999 AA1 ..."); couriers want none.
-    const number = trackingNumber.replace(/\s+/g, "");
+    // Pasted numbers can contain spaces, commas and surrounding punctuation; strip them for couriers.
+    const number = cleanTrackingNumber(trackingNumber);
     if (!number) {
       setMissingNumber(true);
       inputRef.current?.focus();
