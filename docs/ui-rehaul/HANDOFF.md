@@ -43,7 +43,10 @@ keyvault run westbrook_cloudflare_dev -- ./proxy/node_modules/.bin/wrangler \
 Do not create a git branch named `studio`: Cloudflare would build the app on it and
 take over the alias. Branch `studio-site` holds the work.
 
-- Checked: served locally and screenshotted at 390x844 and 1440x900, light and dark,
+- Look (second pass, same day): a print job. White paper, the four process inks, a
+  headline made of cyan, magenta and yellow plates that come into register on load.
+  Light only on purpose. The plain first version is the tag `studio-v1-plain`.
+- Checked: served locally and screenshotted from 320 to 1440 wide,
   no overflow, no console errors; the live URL returns the page, its 404 and the
   `_headers`; `ink-toner-moore.pages.dev` still serves the app.
 - Placeholder, must change before a customer is sent there: the email is
