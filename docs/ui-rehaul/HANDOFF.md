@@ -58,8 +58,11 @@ choices in the section below still stand (studio copy and domain, or AI Mode on 
   bars grow once).
 - Parsa rejected the first hero on 2026-10-09: the old list headline ("Printing, ink and
   toner, keys, and shipping.") set large, and a brass rule drawn as a long key that he
-  could not read as a key. Do not bring either back. That version is the tag
-  `public-redesign-v1`.
+  could not read as a key. That version is the tag `public-redesign-v1`. Do not bring
+  the list headline back. He liked the key idea, not that execution, so the key is back
+  as a solid brass key under the hero (`KeyRule.tsx`): round head with a hole, teeth
+  along the whole blade from a repeating mask, pointed tip, sized from the viewport so
+  it keeps a key's proportions. He has not seen this version yet.
 - Parsa's changes the same day: Wednesday closes at 7 PM, and the public email is
   `contact@inktonermoore.ca` (no MX record on the domain when checked, so it bounces
   until the mailbox exists; sort that before this reaches prod).
