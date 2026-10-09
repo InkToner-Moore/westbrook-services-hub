@@ -51,12 +51,21 @@ choices in the section below still stand (studio copy and domain, or AI Mode on 
   open-now state live in `src/lib/storeInfo.ts`.
 - Display type is Bricolage Grotesque (`font-display`), loaded in `index.html`. Body
   stays IBM Plex.
-- Load moment: a scan bar reveals the headline, then the key-shaped rule wipes in. The
-  rest of the motion answers the visitor (service drawings redraw on hover, refill
-  tickets feed out, hours bars grow once).
+- The hero is the shop's name set very large in two lines, with the four service
+  drawings beside it as links down to each service row. Load moment: a scan bar reveals
+  the name, then the four drawings ink in one after another. The rest of the motion
+  answers the visitor (service drawings redraw on hover, refill tickets feed out, hours
+  bars grow once).
+- Parsa rejected the first hero on 2026-10-09: the old list headline ("Printing, ink and
+  toner, keys, and shipping.") set large, and a brass rule drawn as a long key that he
+  could not read as a key. Do not bring either back. That version is the tag
+  `public-redesign-v1`.
+- Parsa's changes the same day: Wednesday closes at 7 PM, and the public email is
+  `contact@inktonermoore.ca` (no MX record on the domain when checked, so it bounces
+  until the mailbox exists; sort that before this reaches prod).
 - `SmartTracker` has `variant="plain"` for the public page. The default `card` variant
   is what staff uses and is unchanged.
-- All copy and facts are the old page's, word for word. The hero status is new: it says
+- Copy and facts are the old page's apart from the changes above and the hero line. The hero status is new: it says
   open or closed right now in Calgary time, where the old line gave today's hours.
 
 **Constraints this session found:**
