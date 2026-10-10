@@ -27,7 +27,93 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
-## START HERE (written 2026-10-10, exit of the courier tiles session)
+## START HERE (written 2026-10-10, exit of the staff rehaul session)
+
+**Next session is for:** Parsa's notes on the restyled staff side, once he has used it
+on staging. Not a numbered plan step. He said "go cook, I trust your judgement", so
+the direction below was chosen for him and he has not yet seen it.
+
+**The direction taken** (now written into `DESIGN-SPEC.md`, which was revised to match):
+the staff side shares the customer page's palette, display face and motion rule.
+- One ink navy (text, wordmark, primary buttons, the active tile), one indigo accent
+  (links, focus, AI Mode), one brass (needed and guessed markers). The per-tool tile
+  hues are retired. Green, red and amber stay for status; colours that encode data
+  (employee shifts, key board slots, note and directory categories) stay.
+- Bricolage Grotesque for the shop name in the rail (two lines, as on the customer
+  hero), page titles, card titles and the question on an empty chat. Body stays Plex.
+- Primary actions are ink pills. No gradients, no decorative shadows.
+- Nothing plays on load. The only new motion is a press on a tile and a scanning bar
+  while the chat reads a message (it replaces the bouncing dots).
+
+**Where things stand (observed 2026-10-10, at exit):** see the last lines of this
+section for the branch, push and staging state.
+- Gate as run on the final tree: `tsc -p tsconfig.app.json --noEmit` exit 0; `yarn
+  build` built; `eslint` on `src/components/shell src/components/ai` 0 errors; eslint
+  on every changed file shows only the old errors (six `no-explicit-any` in
+  `StaffCartridges.tsx` and `CartridgeLineFields.tsx`, one in `ThemeContext.tsx`, the
+  `require` in `tailwind.config.ts`); `scripts/parser-tests/run.mjs` 30 of 30; dash
+  scan on the changed files clean. `sweep.mjs` was not run (`src/ai` was not touched).
+- Checked in a real browser on the local dev server with the auth bypass, light and
+  dark at 1440 wide and light at 390 wide: every staff route, the add forms on Notes,
+  Cartridges, Inventory and Directory, the key board tab, the Hours and Team tabs, the
+  slips for a shipment, keys, a refill, a note and a sale, a confirmed sale through to
+  the receipt preview, and the login page (on a second server without the bypass,
+  nothing typed). The customer page was looked at in light and dark after the palette
+  variables moved.
+- A second reader (Codex) went through the whole diff for behaviour changes and found
+  none beyond the ones listed below.
+- **Not checked:** anything on staging; anything that reads or writes Firestore (lists
+  with real rows, the schedule with shifts, the key board with keys, directory tiles),
+  since the local config rejects reads, so pages were seen in their empty states only;
+  the standalone deep-link headers; print output.
+- No DEV data or rules changed. No secrets written anywhere.
+
+**Built this session, do NOT rebuild:**
+- The `--pub-*` palette variables moved from `.public-site` to `:root` / `.dark` in
+  `src/index.css`, so `pub-*` Tailwind colours work on the staff side. The shadcn HSL
+  variables in the same file are on the same ladder (dialogs, menus and toasts match).
+- `themeClasses` values moved to the shared palette, with new keys `display`, `ink`,
+  `accent`, `brass`, `edge`. `button.primary` is the ink fill: near-white in dark, so
+  never pair it with a hard-coded `text-white`.
+- Shell: one-colour tiles (`tiles.ts`), the two-line wordmark and a live open-now line
+  in the rail (from `lib/storeInfo`, where "Staff Dashboard" used to be), display page
+  titles (`ToolPage.tsx`), the chat's big question and scanning bar, the composer, the
+  slip (paper header, brass chips, pill Confirm).
+- Tool pages, login, not-found and the result cards moved onto the tokens.
+- The staff leftovers from 2026-10-08 that are now done: Directory (flat icons, one
+  category badge on admin cards, "Add site"), Receipts (sentence-case labels on
+  screen only; nothing written to the receipt or PDF changed), the login page.
+
+**Constraints this session found (the older lists below still stand):**
+- A `pub-*` colour takes no opacity modifier: `bg-pub-ink/10` generates no class.
+- The login page is at `/staff`, not `/staff/login`, and the auth bypass skips it. To
+  see it, run a second dev server with `VITE_DEV_BYPASS_AUTH=false` on another port.
+- Codex wraps long `className` strings across lines inside the quotes. It works; a few
+  are left in `AiChatPane.tsx`, `Composer.tsx`, `StaffReceipts.tsx`, `StaffInventory.tsx`.
+- At 390 wide the Receipts tab strip, the Timesheet calendar and the Cartridges search
+  placeholder run to the right edge. All three were like that before this session.
+
+**Still open on the staff side (act on cold):**
+- The Hours tab still shows each total twice ("34h 15m" and "34.25 h"). Left alone:
+  the decimal may be what payroll uses. Ask Parsa.
+- Directory still shows edit and delete icons on every tile.
+- The Purolator wordmark, the mobile overflow above, the standalone headers.
+
+**Open questions for Parsa** (answers may arrive mid-session: fold each in as its own
+commit, and never invent one to close a line):
+- His verdict on the direction: the one-colour tiles (the tool hues are gone), ink
+  buttons, the display titles. Lands in `DESIGN-SPEC.md` and the files above.
+- The Hours totals, above.
+- Carried: the `contact@inktonermoore.ca` mailbox, when the redesign goes to prod, the
+  studio copy and domain, the tracker comma fix on prod, parcel tax leaving Canada, a
+  staging test login in keyvault, stat holidays.
+
+**Working rules:** as in the section below. Tag `staff-pre-rehaul` is the state before
+this session's work.
+
+**Still placeholder, must not reach a customer:** unchanged from the section below.
+
+## Earlier (written 2026-10-10, exit of the courier tiles session)
 
 **Next session is for:** the UI/UX rehaul of the staff dashboard, so it matches the
 customer page. Planning first (a short direction Parsa can react to), then building.
