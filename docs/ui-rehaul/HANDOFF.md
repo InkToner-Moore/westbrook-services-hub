@@ -68,7 +68,16 @@ numbered plan step.
   now, with `noValidate` so a 12 minute break still saves), and Directory and
   Cartridges show the reason under the field when a submit is refused.
 
+- Added later in the same session, from Parsa's lineup: a footer link on the customer
+  page to the studio site (`STUDIO_URL` in `lib/storeInfo.ts`, the staging address; it
+  must become `studio.inktonermoore.ca` before the page reaches prod), and the Hours
+  tab's shift list is grouped under a bar per week (with the week's total) and a
+  heading per day. The Schedule tab's List view already had a rule per day and shows
+  one week, so it was left alone.
+
 **Constraints this session found:**
+- To see a list that needs Firestore rows locally, expose the state setter on `window`
+  for one run, seed it from the browser, then delete the line.
 - Wrapping a dialog in a `<form>` turns on the browser's own checks (`step`, `min`).
   Add `noValidate` when the handler already validates.
 - `TabsContent` still comes from Radix on Receipts and Inventory; its `id` and
