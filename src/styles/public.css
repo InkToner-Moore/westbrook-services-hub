@@ -266,34 +266,6 @@
   animation: pub-fade 400ms var(--pub-delay) both;
 }
 
-.public-site .pub-key {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  color: var(--pub-brass);
-  animation: pub-key-insert 1100ms cubic-bezier(0.2, 0.7, 0.1, 1) 1300ms both;
-}
-
-.public-site .pub-key-line {
-  flex: 1;
-  min-width: 0;
-  height: 1.5px;
-  background: currentColor;
-}
-
-/* The line meets the key's head at the left edge of the drawing, 3 units in. */
-.public-site .pub-key-art {
-  width: 84px;
-  height: 29px;
-  flex-shrink: 0;
-  margin-left: -2px;
-}
-
-/* Match the space below the key to its margin above without changing the tools. */
-.public-site section:has(> .pub-key) + section {
-  padding-top: 3.5rem;
-}
-
 .public-site .pub-service {
   scroll-margin-top: 96px;
 }
@@ -376,16 +348,6 @@
 }
 
 @media (min-width: 640px) {
-  .public-site .pub-key-art {
-    width: 128px;
-    height: 44px;
-    margin-left: -3px;
-  }
-
-  .public-site section:has(> .pub-key) + section {
-    padding-top: 5rem;
-  }
-
   .public-site .pub-hero-title.font-display,
   .public-site .pub-scan {
     font-size: clamp(6rem, 13vw, 11.5rem);
@@ -459,16 +421,6 @@
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .public-site .pub-service:hover .pub-draw {
     animation: pub-draw 700ms cubic-bezier(0.2, 0.7, 0.1, 1) both;
-  }
-}
-
-@keyframes pub-key-insert {
-  from {
-    clip-path: inset(0 100% 0 0);
-  }
-
-  to {
-    clip-path: inset(0 0 0 0);
   }
 }
 
