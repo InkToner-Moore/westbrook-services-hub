@@ -29,9 +29,34 @@ together; there is no separate customer repo and staff repo.
 
 ## START HERE (written 2026-10-10, exit of the staff rehaul session)
 
-**Next session is for:** Parsa's notes on the restyled staff side, once he has used it
-on staging. Not a numbered plan step. He said "go cook, I trust your judgement", so
-the direction below was chosen for him and he has not yet seen it.
+**Next session is for:** building. A UI/UX pass on every form and every tab control on
+the staff side. Not a numbered plan step (`PLAN.md` has no completion markers).
+
+**Parsa's closing notes, in his own words (2026-10-10):**
+> For next session:
+> The forms (all of them) ui/ux can be better for sure
+> Same with all tabs for sure tbh
+
+How this session reads them (an interpretation, not his words; show him one form and
+one tab control early before doing all of them):
+- This session changed the colours, type and button shapes of the forms and tabs but
+  not their structure, spacing or flow. That structure is what he is pointing at.
+- "All forms" on the staff side: the Receipts form (five types, the longest one), the
+  Cartridges new-order form, the Notes form, the Inventory add-key and add-refill
+  forms, the Directory add-site dialog, the Timesheet shift and team dialogs, the
+  manager PIN dialog, login, and the fields inside the slip (`ConfirmationCheck.tsx`,
+  `ShipmentItemsEditor.tsx`). Whether he also means the two customer forms (tracker,
+  refill check) was not said; he called the customer side good on 2026-10-10.
+- "All tabs": there are two tab controls. `SegmentedTabs` in `shell/ToolPage.tsx`
+  (Timesheet, the calendar/list switch) and the shadcn `TabsList` restyled by hand in
+  `StaffReceipts.tsx` and `StaffInventory.tsx`. The receipt card's "Full sheet / 4x6
+  label" switch and the Directory category filter are tab-like too. They do not look
+  or behave alike, and the Receipts strip runs off the right edge on a phone.
+- He gave no detail on what is wrong with them. Do not invent it: ask, or show options.
+
+**The direction this session took.** He said "Go cook!!! I trust your judgement", so
+it was chosen for him. He has seen it (the notes above came after) and did not object
+to the palette, tiles or type, but he has not given an explicit verdict either.
 
 **The direction taken** (now written into `DESIGN-SPEC.md`, which was revised to match):
 the staff side shares the customer page's palette, display face and motion rule.
@@ -45,8 +70,14 @@ the staff side shares the customer page's palette, display face and motion rule.
 - Nothing plays on load. The only new motion is a press on a tile and a scanning bar
   while the chat reads a message (it replaces the bouncing dots).
 
-**Where things stand (observed 2026-10-10, at exit):** see the last lines of this
-section for the branch, push and staging state.
+**Where things stand (observed 2026-10-10, at exit):**
+- Branch `staff-rehaul` (off `public-redesign`), tip is the handoff commit on top of
+  `268a4bc`; the last code change is `37e4442`. Tree clean, level with its remote.
+  `origin/dev` was fast-forwarded to it and the Cloudflare Pages check on `268a4bc`
+  completed with success, so staging has the restyle. **Prod `main` untouched**
+  (`0ffa16c`).
+- Open PRs: only **#1 `docs-align-claude-md`** (Sept 1, not this work). Nothing from
+  this branch is in a PR; nothing is merged to `main`.
 - Gate as run on the final tree: `tsc -p tsconfig.app.json --noEmit` exit 0; `yarn
   build` built; `eslint` on `src/components/shell src/components/ai` 0 errors; eslint
   on every changed file shows only the old errors (six `no-explicit-any` in

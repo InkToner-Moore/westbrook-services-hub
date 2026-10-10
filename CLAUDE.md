@@ -116,7 +116,9 @@ src/
     shiftParse.ts      free-text shift parser ("4-9", "oct 8, 9", "30 min break")
     cartridges.ts simpleReceipt.ts utils.ts
   utils/               dataExport, validation
-  styles/print.css     styles/public.css (public page tokens, `pub-*`)  src/index.css  src/App.css
+  styles/print.css     styles/public.css (public page styles)
+  src/index.css        the shared palette (`--pub-*`, used as `pub-*` classes by both
+                       sides), the shadcn variables, staff motion
 ```
 
 ## Data model (Firestore)
@@ -158,8 +160,10 @@ production — production builds set `VITE_NODE_ENV=production` and no bypass fl
 Custom system, not `next-themes` at runtime. `ThemeContext` holds `isDarkMode`
 (persisted in `localStorage` under `staff-theme-v2`, **default light**), toggles the
 `.dark` class and `color-scheme` on the root, and exposes a `themeClasses` bag of
-Tailwind strings. Staff components style off `themeClasses.*` rather than raw
-`dark:` variants in many places — match the surrounding file's approach when you
+Tailwind strings. The palette is shared with the customer page: `pub-*` colours
+(`bg-pub-paper`, `text-pub-ink`) flip with the theme on their own and take no
+opacity modifier. Staff components style off `themeClasses.*` or `pub-*` rather
+than raw `dark:` variants — match the surrounding file's approach when you
 edit one.
 
 ## Environment
