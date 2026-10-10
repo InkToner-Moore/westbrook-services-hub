@@ -1,3 +1,4 @@
+import { useFormClasses, FieldGrid, Field, FormActions } from "@/components/shell/FormKit";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -8,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,7 +58,7 @@ import {
 } from "@/lib/firestore";
 import ThemeToggleButton from "@/components/ThemeToggleButton";
 import { KeyBoardMap } from "@/components/KeyBoardMap";
-import { ToolPage } from "@/components/shell/ToolPage";
+import { ToolPage, SegmentedTabs, FilterChips } from "@/components/shell/ToolPage";
 import {
   getKeyBoard,
   buildLocationIndex,
@@ -166,6 +167,7 @@ const getRefillIconStyle = (label: string) => {
 };
 
 const StaffInventory = () => {
+  const kit = useFormClasses();
   const { user, logout } = useAuth();
   const { themeClasses } = useTheme();
   const { inShell } = useShell();
@@ -438,42 +440,22 @@ const StaffInventory = () => {
     return parts;
   };
 
-  // The shared tab look (same as SegmentedTabs on the other tool pages): the
-  // active tab lifts onto the card surface instead of flooding with colour.
-  const tabTrigger = "min-h-[44px] shrink-0 gap-2 rounded-lg px-2 sm:px-4 text-sm font-medium " +
-    "text-pub-muted data-[state=active]:bg-pub-paper data-[state=active]:text-pub-ink";
+  const tabs = (
+    <SegmentedTabs idBase="inventory" label="Inventory sections" value={activeTab} onChange={setActiveTab} options={[
+      { value: "keys", label: "Keys", shortLabel: "Keys", icon: Key },
+      { value: "board", label: "Key board", shortLabel: "Board", icon: MapPin },
+      { value: "refills", label: "Refills", shortLabel: "Refills", icon: Droplets },
+      { value: "review", label: "Review", shortLabel: "Review", icon: ClipboardCheck, badge: reviewWarningCount },
+    ]} />
+  );
 
   const content = (
     <div className="border rounded-xl p-4 sm:p-6 bg-pub-paper border-pub-edge">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="mb-6 inline-flex h-auto max-w-full justify-start gap-1 overflow-x-auto rounded-xl border p-1
-              bg-pub-sunk border-pub-edge">
-              <TabsTrigger value="keys" className={tabTrigger}>
-                <Key className="hidden h-4 w-4 sm:inline" />
-                <span>Keys</span>
-              </TabsTrigger>
-              <TabsTrigger value="board" className={tabTrigger}>
-                <MapPin className="hidden h-4 w-4 sm:inline" />
-                <span>Key board</span>
-              </TabsTrigger>
-              <TabsTrigger value="refills" className={tabTrigger}>
-                <Droplets className="hidden h-4 w-4 sm:inline" />
-                <span>Refills</span>
-              </TabsTrigger>
-              <TabsTrigger value="review" className={tabTrigger}>
-                <ClipboardCheck className="hidden h-4 w-4 sm:inline" />
-                <span>Review</span>
-                {reviews.some((r) => r.severity === "warn") && (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px]
-                    font-semibold text-white">
-                    {reviewWarningCount > 99 ? "99+" : reviewWarningCount}
-                  </span>
-                )}
-              </TabsTrigger>
-            </TabsList>
+
 
             {/* The physical key board, on its own tab so the price list stays short. */}
-            <TabsContent value="board">
+            <TabsContent value="board" id="inventory-panel-board" aria-labelledby="inventory-tab-board">
               <KeyBoardMap
                 board={board}
                 loading={boardLoading}
@@ -485,28 +467,26 @@ const StaffInventory = () => {
               />
             </TabsContent>
 
-            <TabsContent value="keys">
+            <TabsContent value="keys" id="inventory-panel-keys" aria-labelledby="inventory-tab-keys">
               {addingKey && (
-                <Card className="mb-6 shadow-none bg-pub-sunk border-pub-edge">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="font-display font-semibold text-pub-ink text-lg">Add a key</CardTitle>
+                <Card className="mb-6 rounded-xl border border-pub-edge bg-pub-paper p-4 sm:p-5 shadow-none">
+                  <CardHeader className="p-0">
+                    <CardTitle className="font-display text-[17px] font-semibold text-pub-ink mb-4">Add a key</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-0">
                     <form onSubmit={newKeyForm.handleSubmit(addKey)} className="space-y-4">
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div className="space-y-1">
-                          <Label htmlFor="new-key-model" className="font-medium text-pub-ink">Key</Label>
-                          <Input id="new-key-model" {...newKeyForm.register("model", { required: true })} placeholder="e.g. KW1, SC1, Mailbox 1646" className={`min-h-[44px] ${themeClasses.input}`} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label htmlFor="new-key-price" className="font-medium text-pub-ink">Price before tax</Label>
-                          <Input id="new-key-price" {...newKeyForm.register("price")} inputMode="decimal" placeholder="0.00" className={`min-h-[44px] ${themeClasses.input}`} />
-                        </div>
-                      </div>
-                      <div className="flex gap-2 justify-end">
-                        <Button type="button" variant="ghost" onClick={() => { newKeyForm.reset(); setAddingKey(false); }} className={`rounded-full min-h-[44px] ${themeClasses.button.ghost}`}>Cancel</Button>
-                        <Button type="submit" className={`min-h-[44px] rounded-full px-4 font-semibold ${themeClasses.button.primary}`}>Add key</Button>
-                      </div>
+                      <FieldGrid>
+                        <Field label="Key" htmlFor="new-key-model" span={8} required error={newKeyForm.formState.errors.model?.message || (newKeyForm.formState.errors.model ? "Key is required" : undefined)}>
+                          <Input id="new-key-model" {...newKeyForm.register("model", { required: true })} placeholder="e.g. KW1, SC1, Mailbox 1646" className={kit.input} />
+                        </Field>
+                        <Field label="Price before tax" htmlFor="new-key-price" span={4} error={newKeyForm.formState.errors.price?.message}>
+                          <Input id="new-key-price" {...newKeyForm.register("price")} inputMode="decimal" placeholder="0.00" className={`${kit.input} ${kit.mono}`} />
+                        </Field>
+                      </FieldGrid>
+                      <FormActions>
+                        <Button type="button" variant="ghost" onClick={() => { newKeyForm.reset(); setAddingKey(false); }} className={kit.ghost}>Cancel</Button>
+                        <Button type="submit" className={kit.primary}>Add key</Button>
+                      </FormActions>
                     </form>
                   </CardContent>
                 </Card>
@@ -520,7 +500,7 @@ const StaffInventory = () => {
                     placeholder="Search keys by model..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className={`min-h-[44px] pl-10 pr-10 transition-colors ${themeClasses.input}`}
+                    className={`${kit.input} pl-10 pr-10`}
                   />
                   {searchTerm && (
                     <button
@@ -607,8 +587,7 @@ const StaffInventory = () => {
                               </p>
                             ) : null}
                             {location ? (
-                              <p className="mt-0.5 flex items-center gap-1 text-xs font-mono tabular-nums transition-colors duration-300
-                                text-pub-muted">
+                              <p className="mt-0.5 flex items-center gap-1 text-xs font-mono tabular-nums transition-colors duration-300 text-pub-muted">
                                 <MapPin className="h-3 w-3 shrink-0 text-pub-ink" />
                                 {location}
                               </p>
@@ -673,40 +652,35 @@ const StaffInventory = () => {
               )}
             </TabsContent>
 
-            <TabsContent value="refills">
+            <TabsContent value="refills" id="inventory-panel-refills" aria-labelledby="inventory-tab-refills">
               {addingRefill && (
-                <Card className="mb-6 shadow-none bg-pub-sunk border-pub-edge">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="font-display font-semibold text-pub-ink text-lg">Add a refill</CardTitle>
+                <Card className="mb-6 rounded-xl border border-pub-edge bg-pub-paper p-4 sm:p-5 shadow-none">
+                  <CardHeader className="p-0">
+                    <CardTitle className="font-display text-[17px] font-semibold text-pub-ink mb-4">Add a refill</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-0">
                     <form onSubmit={newRefillForm.handleSubmit(addRefill)} className="space-y-4">
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-6">
-                        <div className="space-y-1 sm:col-span-3">
-                          <Label htmlFor="new-refill-brand" className="font-medium text-pub-ink">Brand</Label>
-                          <Input id="new-refill-brand" {...newRefillForm.register("brand")} placeholder="e.g. HP" className={`min-h-[44px] ${themeClasses.input}`} />
-                        </div>
-                        <div className="space-y-1 sm:col-span-3">
-                          <Label htmlFor="new-refill-cartridge" className="font-medium text-pub-ink">Cartridge</Label>
-                          <Input id="new-refill-cartridge" {...newRefillForm.register("cartridge", { required: true })} placeholder="e.g. 65XL" className={`min-h-[44px] ${themeClasses.input}`} />
-                        </div>
-                        <div className="space-y-1 sm:col-span-2">
-                          <Label htmlFor="new-refill-priceBlack" className="font-medium text-pub-ink">Black price</Label>
-                          <Input id="new-refill-priceBlack" {...newRefillForm.register("priceBlack")} inputMode="decimal" placeholder="0.00" className={`min-h-[44px] ${themeClasses.input}`} />
-                        </div>
-                        <div className="space-y-1 sm:col-span-2">
-                          <Label htmlFor="new-refill-priceColour" className="font-medium text-pub-ink">Colour price</Label>
-                          <Input id="new-refill-priceColour" {...newRefillForm.register("priceColour")} inputMode="decimal" placeholder="0.00" className={`min-h-[44px] ${themeClasses.input}`} />
-                        </div>
-                        <div className="space-y-1 sm:col-span-2">
-                          <Label htmlFor="new-refill-priceXl" className="font-medium text-pub-ink">XL price</Label>
-                          <Input id="new-refill-priceXl" {...newRefillForm.register("priceXl")} inputMode="decimal" placeholder="0.00" className={`min-h-[44px] ${themeClasses.input}`} />
-                        </div>
-                      </div>
-                      <div className="flex gap-2 justify-end">
-                        <Button type="button" variant="ghost" onClick={() => { newRefillForm.reset(); setAddingRefill(false); }} className={`rounded-full min-h-[44px] ${themeClasses.button.ghost}`}>Cancel</Button>
-                        <Button type="submit" className={`min-h-[44px] rounded-full px-4 font-semibold ${themeClasses.button.primary}`}>Add refill</Button>
-                      </div>
+                      <FieldGrid>
+                        <Field label="Brand" htmlFor="new-refill-brand" span={3} error={newRefillForm.formState.errors.brand?.message}>
+                          <Input id="new-refill-brand" {...newRefillForm.register("brand")} placeholder="e.g. HP" className={kit.input} />
+                        </Field>
+                        <Field label="Cartridge" htmlFor="new-refill-cartridge" span={3} required error={newRefillForm.formState.errors.cartridge?.message || (newRefillForm.formState.errors.cartridge ? "Cartridge is required" : undefined)}>
+                          <Input id="new-refill-cartridge" {...newRefillForm.register("cartridge", { required: true })} placeholder="e.g. 65XL" className={kit.input} />
+                        </Field>
+                        <Field label="Black price" htmlFor="new-refill-priceBlack" span={2} half error={newRefillForm.formState.errors.priceBlack?.message}>
+                          <Input id="new-refill-priceBlack" {...newRefillForm.register("priceBlack")} inputMode="decimal" placeholder="0.00" className={`${kit.input} ${kit.mono}`} />
+                        </Field>
+                        <Field label="Colour price" htmlFor="new-refill-priceColour" span={2} half error={newRefillForm.formState.errors.priceColour?.message}>
+                          <Input id="new-refill-priceColour" {...newRefillForm.register("priceColour")} inputMode="decimal" placeholder="0.00" className={`${kit.input} ${kit.mono}`} />
+                        </Field>
+                        <Field label="XL price" htmlFor="new-refill-priceXl" span={2} half error={newRefillForm.formState.errors.priceXl?.message}>
+                          <Input id="new-refill-priceXl" {...newRefillForm.register("priceXl")} inputMode="decimal" placeholder="0.00" className={`${kit.input} ${kit.mono}`} />
+                        </Field>
+                      </FieldGrid>
+                      <FormActions>
+                        <Button type="button" variant="ghost" onClick={() => { newRefillForm.reset(); setAddingRefill(false); }} className={kit.ghost}>Cancel</Button>
+                        <Button type="submit" className={kit.primary}>Add refill</Button>
+                      </FormActions>
                     </form>
                   </CardContent>
                 </Card>
@@ -720,7 +694,7 @@ const StaffInventory = () => {
                     placeholder="Search refills by brand or cartridge..."
                     value={refillSearch}
                     onChange={(e) => setRefillSearch(e.target.value)}
-                    className={`min-h-[44px] pl-10 pr-10 transition-colors ${themeClasses.input}`}
+                    className={`${kit.input} pl-10 pr-10`}
                   />
                   {refillSearch && (
                     <button
@@ -862,7 +836,7 @@ const StaffInventory = () => {
               )}
             </TabsContent>
 
-            <TabsContent value="review">
+            <TabsContent value="review" id="inventory-panel-review" aria-labelledby="inventory-tab-review">
               <div className="mb-4">
                 <h3 className="font-display font-semibold text-pub-ink text-lg">Things to look at</h3>
                 <p className="text-sm text-pub-muted">
@@ -886,15 +860,11 @@ const StaffInventory = () => {
                 </Card>
               ) : (
                 <div className="space-y-2">
-                  <div className="mb-4 flex flex-wrap gap-2" aria-label="Review filters">
-                    {reviewGroups.map((group) => (
-                      <Button key={group.kind} variant="ghost" aria-pressed={selectedReviewKind === group.kind}
-                        onClick={() => { setReviewKind(group.kind); setShownReviews(25); }}
-                        className={`min-h-[40px] h-auto rounded-full border px-3.5 py-2 text-sm ${selectedReviewKind === group.kind ? themeClasses.button.primary : themeClasses.button.ghost}`}>
-                        {REVIEW_NAMES[group.kind]} <span className="ml-2 font-mono tabular-nums">{group.alerts.length}</span>
-                      </Button>
-                    ))}
-                  </div>
+                  <FilterChips label="Review filters" className="mb-4" value={selectedReviewKind}
+                    onChange={(kind) => { setReviewKind(kind); setShownReviews(25); }}
+                    options={reviewGroups.map((group) => ({
+                      value: group.kind, label: REVIEW_NAMES[group.kind], count: group.alerts.length,
+                    }))} />
                   {selectedReviews.slice(0, shownReviews).map((alert, i) => {
                     const meta = REVIEW_META[alert.kind];
                     return (
@@ -951,7 +921,7 @@ const StaffInventory = () => {
 
   if (inShell) {
     return (
-      <ToolPage tool="inventory" subtitle="Key and refill prices, and where each key lives on the board">
+      <ToolPage tabs={tabs} tool="inventory" subtitle="Key and refill prices, and where each key lives on the board">
         {content}
       </ToolPage>
     );
@@ -1013,6 +983,7 @@ const StaffInventory = () => {
           </p>
         </div>
 
+        <div className="mb-5">{tabs}</div>
         {content}
       </main>
     </div>

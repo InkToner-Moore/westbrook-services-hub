@@ -37,7 +37,7 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
   const removeItem = (index: number) => onChange(items.filter((_, i) => i !== index));
 
   const fieldClass = `min-h-[44px] w-full rounded-lg border px-2.5 py-1 text-[15px] outline-none xl:min-h-[34px] xl:px-2 xl:text-sm ${themeClasses.input}`;
-  const labelClass = `mb-0.5 block text-xs font-medium text-pub-muted`;
+  const labelClass = `mb-0.5 block text-[13px] font-medium text-pub-ink`;
 
   return (
     <div className="space-y-2">
@@ -45,7 +45,7 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
         const taxLines = itemTaxLines(item);
         const taxTotal = taxEnabled ? itemTaxTotal(item) : 0;
         return (
-          <div key={index} className="rounded-xl border p-2.5 bg-pub-sunk border-pub-edge">
+          <div key={index} className="rounded-xl border p-2.5 bg-pub-paper border-pub-edge">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-xs font-semibold text-pub-muted">
                 Item {index + 1}

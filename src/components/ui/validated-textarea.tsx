@@ -158,9 +158,7 @@ const ValidatedTextarea = forwardRef<HTMLTextAreaElement, ValidatedTextareaProps
       {displayError && (
         <p 
           id={`${inputId}-error`}
-          className={cn(
-            'text-sm font-medium text-red-600 dark:text-red-400 flex items-center gap-1'
-          )}
+          className={`mt-1.5 text-[13px] font-medium flex items-center gap-1 ${themeClasses.text.danger}`}
           role="alert"
         >
           <AlertCircle className="h-3 w-3 flex-shrink-0" />

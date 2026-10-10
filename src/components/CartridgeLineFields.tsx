@@ -1,9 +1,7 @@
+import { useFormClasses, FormSection, FieldGrid, Field, ItemCard, AddRowButton } from "@/components/shell/FormKit";
 import { UseFormReturn, useFieldArray } from "react-hook-form";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
 import {
   CARTRIDGE_BRANDS,
   CARTRIDGE_TYPES,
@@ -23,71 +21,29 @@ interface CartridgeLineFieldsProps {
   compact?: boolean;
 }
 
-// Marks a form field as required.
-const RequiredMark = () => (
-  <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>
-);
 
 // Repeatable brand/model/type/price block , one per cartridge on an order or receipt.
 const CartridgeLineFields = ({
   form,
-  themeClasses,
   requirePrice = false,
-  compact = false,
 }: CartridgeLineFieldsProps) => {
+  const kit = useFormClasses();
   const { control, register, setValue, watch } = form;
   const { fields, append, remove } = useFieldArray({ control, name: 'cartridges' });
   const subtotal = cartridgesSubtotal(watch('cartridges') ?? []);
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <Label className="font-medium transition-colors duration-300 text-pub-ink">
-          Cartridges
-        </Label>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => append(emptyCartridgeLine())}
-          className={`transition-colors ${themeClasses.button.ghost}`}
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          Add cartridge
-        </Button>
-      </div>
-
+    <FormSection title="Cartridges" action={<AddRowButton onClick={() => append(emptyCartridgeLine())}>Add cartridge</AddRowButton>}>
+      <div className="space-y-3">
       {fields.map((field, index) => (
-        <div
-          key={field.id}
-          className="rounded-xl border p-4 space-y-3 transition-colors bg-pub-sunk border-pub-edge"
-        >
-          <div className="flex justify-between items-center">
-            <span className="font-display text-sm font-semibold transition-colors text-pub-ink">
-              Cartridge {index + 1}
-            </span>
-            {fields.length > 1 && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => remove(index)}
-                className={`transition-colors ${themeClasses.button.danger}`}
-                title="Remove this cartridge"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-
-          <div className={`grid grid-cols-1 gap-3 ${compact ? '' : 'md:grid-cols-2'}`}>
-            <div>
-              <Label className="font-medium transition-colors duration-300 text-pub-ink">Brand</Label>
+        <ItemCard key={field.id} title={`Cartridge ${index + 1}`} onRemove={fields.length > 1 ? () => remove(index) : undefined} removeLabel="Remove this cartridge">
+          <FieldGrid>
+            <Field label="Brand" span={3} half>
               <Select
                 value={watch(`cartridges.${index}.brand`) || undefined}
                 onValueChange={(value) => setValue(`cartridges.${index}.brand`, value)}
               >
-                <SelectTrigger className={`transition-colors ${themeClasses.input}`}>
+                <SelectTrigger className={kit.input}>
                   <SelectValue placeholder="Select brand" />
                 </SelectTrigger>
                 <SelectContent>
@@ -96,15 +52,14 @@ const CartridgeLineFields = ({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
 
-            <div>
-              <Label className="font-medium transition-colors duration-300 text-pub-ink">Type</Label>
+            <Field label="Type" span={3} half>
               <Select
                 value={watch(`cartridges.${index}.type`) || undefined}
                 onValueChange={(value) => setValue(`cartridges.${index}.type`, value)}
               >
-                <SelectTrigger className={`transition-colors ${themeClasses.input}`}>
+                <SelectTrigger className={kit.input}>
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -113,27 +68,29 @@ const CartridgeLineFields = ({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
 
-            <div>
-              <Label className="font-medium transition-colors duration-300 text-pub-ink">
-                Model<RequiredMark />
-              </Label>
+            <Field label="Model" span={4} required error={form.formState.errors.cartridges?.[index]?.model?.message as string}>
               <Input
                 {...register(`cartridges.${index}.model`, { required: 'Model is required' })}
                 placeholder="e.g. HP 564XL, Canon PG-245"
-                className={`transition-colors ${themeClasses.input}`}
+                className={kit.input}
               />
-            </div>
+            </Field>
 
-            <div>
-              <Label className="font-medium transition-colors duration-300 text-pub-ink">
-                Price ($){requirePrice && <RequiredMark />}
-              </Label>
+            <Field
+              label="Price ($)"
+              span={2}
+              half
+              required={requirePrice}
+              hint={requirePrice ? undefined : "Blank if unknown"}
+              error={form.formState.errors.cartridges?.[index]?.price?.message as string}
+            >
               <Input
                 type="number"
                 step="0.01"
-                placeholder={requirePrice ? "Enter the refill price" : "Leave blank if unspecified"}
+                inputMode="decimal"
+                placeholder="0.00"
                 {...register(`cartridges.${index}.price`, {
                   valueAsNumber: true,
                   validate: (value: unknown) =>
@@ -141,12 +98,13 @@ const CartridgeLineFields = ({
                     (isFilledNumber(value) && value >= 0) ||
                     'A valid price is required',
                 })}
-                className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
+                className={`${kit.input} ${kit.mono}`}
               />
-            </div>
-          </div>
-        </div>
+            </Field>
+          </FieldGrid>
+        </ItemCard>
       ))}
+      </div>
 
       {/* Only worth showing once there's more than one line to add up. */}
       {fields.length > 1 && (
@@ -155,7 +113,7 @@ const CartridgeLineFields = ({
           <span className="font-mono tabular-nums">${subtotal.toFixed(2)}</span>
         </div>
       )}
-    </div>
+    </FormSection>
   );
 };
 

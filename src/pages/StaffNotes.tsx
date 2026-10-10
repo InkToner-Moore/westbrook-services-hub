@@ -1,8 +1,9 @@
+import { useFormClasses, FieldGrid, Field, FormActions } from "@/components/shell/FormKit";
 import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { ValidatedInput } from "@/components/ui/validated-input";
 import { ValidatedTextarea } from "@/components/ui/validated-textarea";
 import { FormErrorSummary } from "@/components/ui/form-error-summary";
@@ -49,6 +50,7 @@ const NOTES_COLLECTION = 'notes';
 const DELETED_NOTES_COLLECTION = 'deletedNotes';
 
 const StaffNotes = () => {
+  const kit = useFormClasses();
   const { themeClasses } = useTheme();
   const { inShell } = useShell();
   const [searchQuery, setSearchQuery] = useState("");
@@ -252,48 +254,49 @@ const StaffNotes = () => {
                 >
                   <FormErrorSummary errors={noteValidation.errors} />
 
-                  <div>
-                    <Label className="font-medium text-pub-ink">Title</Label>
+                  <FieldGrid>
+                  <Field label="Title" span={8} required>
                     <ValidatedInput
                       {...noteForm.register('title')}
                       placeholder="Enter note title..."
                       error={noteValidation.errors.title}
-                      className={`min-h-[44px] ${themeClasses.input}`}
+                      className={kit.input}
                     />
-                  </div>
+                  </Field>
 
-                  <div>
-                    <Label className="font-medium text-pub-ink">Category</Label>
-                    <select
-                      {...noteForm.register('category')}
-                      className={`min-h-[44px] w-full rounded-lg border px-3 text-sm ${themeClasses.input}`}
-                    >
-                      <option value="general">General</option>
-                      <option value="customer">Customer</option>
-                      <option value="inventory">Inventory</option>
-                      <option value="shipping">Shipping</option>
-                      <option value="urgent">Urgent</option>
-                    </select>
-                  </div>
+                  <Field label="Category" span={4} required error={noteValidation.errors.category}>
+                    <Controller name="category" control={noteForm.control} defaultValue="general" render={({ field }) => (
+                      <Select name={field.name} value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger ref={field.ref} onBlur={field.onBlur} className={kit.input}><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="general">General</SelectItem>
+                          <SelectItem value="customer">Customer</SelectItem>
+                          <SelectItem value="inventory">Inventory</SelectItem>
+                          <SelectItem value="shipping">Shipping</SelectItem>
+                          <SelectItem value="urgent">Urgent</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )} />
+                  </Field>
 
-                  <div>
-                    <Label className="font-medium text-pub-ink">Content</Label>
+                  <Field label="Content" span={12} required>
                     <ValidatedTextarea
                       {...noteForm.register('content')}
                       placeholder="Enter note content..."
                       error={noteValidation.errors.content}
-                      className={`min-h-[120px] ${themeClasses.input}`}
+                      className={`${kit.textarea} min-h-[140px]`}
                     />
-                  </div>
+                  </Field>
 
-                  <div className="flex gap-2 justify-end">
-                    <Button type="button" variant="ghost" onClick={cancelEditing} className={`rounded-full min-h-[44px] ${themeClasses.button.ghost}`}>
+                  </FieldGrid>
+                  <FormActions>
+                    <Button type="button" variant="ghost" onClick={cancelEditing} className={kit.ghost}>
                       Cancel
                     </Button>
-                    <Button type="submit" size="lg" className={`rounded-full min-h-[44px] font-semibold ${themeClasses.button.primary}`}>
+                    <Button type="submit" size="lg" className={kit.primary}>
                       {editingNote ? 'Update note' : 'Add note'}
                     </Button>
-                  </div>
+                  </FormActions>
                 </form>
               </CardContent>
             </Card>

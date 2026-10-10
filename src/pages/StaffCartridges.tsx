@@ -1,3 +1,4 @@
+import { useFormClasses, FormSection, FieldGrid, Field, FormActions } from "@/components/shell/FormKit";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -137,9 +138,7 @@ const DetailField = ({
     <span className="text-pub-muted">
       {label}:{' '}
       <span
-        className={`${mono && !isEmpty ? 'font-mono tabular-nums' : ''} ${
-          isEmpty ? 'text-pub-muted' : 'text-pub-ink'
-        }`}
+        className={`${mono && !isEmpty ? 'font-mono tabular-nums' : ''} ${isEmpty ? 'text-pub-muted' : 'text-pub-ink'}`}
       >
         {isEmpty ? 'Unspecified' : value}
       </span>
@@ -158,6 +157,7 @@ const ReceiptDialog = ({
   order: CartridgeOrder;
   themeClasses: any;
 }) => {
+  const kit = useFormClasses();
   const [open, setOpen] = useState(false);
   // GST applies to almost every sale, so it's on unless staff opt out.
   const [addGst, setAddGst] = useState(true);
@@ -230,7 +230,7 @@ const ReceiptDialog = ({
           <Receipt className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-pub-paper border-pub-edge text-pub-ink max-w-md max-h-[85vh] overflow-y-auto">
+      <DialogContent className="bg-pub-paper border-pub-edge text-pub-ink sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display font-semibold text-pub-ink">Cartridge Refill Receipt</DialogTitle>
           <DialogDescription>
@@ -239,18 +239,15 @@ const ReceiptDialog = ({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={downloadAs('4x6')} className="space-y-3">
-          <div>
-            <Label className="font-medium">Customer name</Label>
-            <Input {...register('customerName')} className={themeClasses.input} />
-          </div>
-          <div>
-            <Label className="font-medium">Phone number</Label>
-            <Input className={`${themeClasses.input} font-mono tabular-nums`} {...register('customerPhone')} />
-          </div>
-          <div>
-            <Label className="font-medium">Email (optional)</Label>
-            <Input type="email" {...register('customerEmail')} className={themeClasses.input} />
-          </div>
+          <Field label="Customer name" span={12}>
+            <Input {...register('customerName')} className={kit.input} />
+          </Field>
+          <Field label="Phone number" span={12}>
+            <Input className={`${kit.input} ${kit.mono}`} {...register('customerPhone')} />
+          </Field>
+          <Field label="Email" span={12}>
+            <Input type="email" {...register('customerEmail')} className={kit.input} />
+          </Field>
 
           <CartridgeLineFields
             form={form}
@@ -268,22 +265,21 @@ const ReceiptDialog = ({
           </label>
           {addGst && subtotal > 0 && <GstBreakdown price={subtotal} />}
 
-          <div>
-            <Label className="font-medium">Notes</Label>
-            <Textarea rows={2} {...register('notes')} className={themeClasses.input} />
-          </div>
+          <Field label="Notes" span={12}>
+            <Textarea rows={2} {...register('notes')} className={kit.textarea} />
+          </Field>
           <DialogFooter className="gap-2 sm:gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={downloadAs('letter')}
-              className={`rounded-full ${themeClasses.button.secondary}`}
+              className={kit.secondary}
             >
               Download Full Page
             </Button>
             <Button
               type="submit"
-              className={`font-semibold rounded-full transition-colors ${themeClasses.button.primary}`}
+              className={kit.primary}
             >
               Download 4×6
             </Button>
@@ -375,6 +371,7 @@ const EditOrderForm = ({
 };
 
 const StaffCartridges = () => {
+  const kit = useFormClasses();
   const { user, logout } = useAuth();
   const { themeClasses, isDarkMode } = useTheme();
   const { inShell } = useShell();
@@ -614,65 +611,61 @@ const StaffCartridges = () => {
             <div>
               <Card className={`shadow-none ${themeClasses.card.primary}`}>
                 <CardHeader>
-                  <CardTitle className="font-display font-semibold text-pub-ink flex items-center space-x-2 text-lg">
-                    <Plus className="h-5 w-5" />
-                    <span>New cartridge order</span>
+                  <CardTitle className="font-display text-[19px] font-semibold text-pub-ink mb-5">
+                    New cartridge order
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={newOrderForm.handleSubmit(addNewOrder)} className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                      <div>
-                        <Label className="font-medium text-pub-ink">Customer name<RequiredMark /></Label>
+                    <FormSection title="Customer">
+                    <FieldGrid>
+                      <Field label="Customer name" span={5} required error={newOrderForm.formState.errors.customerName?.message || (newOrderForm.formState.errors.customerName ? "Customer name is required" : undefined)}>
                         <Input
                           {...newOrderForm.register('customerName', { required: true })}
-                          placeholder="Enter customer name"
-                          className={`${themeClasses.input}`}
+                          className={kit.input}
                         />
-                      </div>
-                      <div>
-                        <Label className="font-medium text-pub-ink">Phone number<RequiredMark /></Label>
+                      </Field>
+                      <Field label="Phone number" span={4} required error={newOrderForm.formState.errors.customerPhone?.message || (newOrderForm.formState.errors.customerPhone ? "Phone number is required" : undefined)}>
                         <Input
                           {...newOrderForm.register('customerPhone', { required: true })}
                           placeholder="(403) 555-0123"
-                          className={`${themeClasses.input} font-mono tabular-nums`}
+                          className={`${kit.input} ${kit.mono}`}
                         />
-                      </div>
-                      <div>
-                        <Label className="font-medium text-pub-ink">Email (optional)</Label>
+                      </Field>
+                      <Field label="Email" span={3} error={newOrderForm.formState.errors.customerEmail?.message}>
                         <Input
                           {...newOrderForm.register('customerEmail')}
                           type="email"
-                          placeholder="customer@email.com"
-                          className={`${themeClasses.input}`}
+                          placeholder="name@example.com"
+                          className={kit.input}
                         />
-                      </div>
-                    </div>
+                      </Field>
+                    </FieldGrid>
+                    </FormSection>
 
                     <CartridgeLineFields
                       form={newOrderForm}
                       themeClasses={themeClasses}
                     />
   
-                    <div>
-                      <Label className="font-medium text-pub-ink">Notes</Label>
+                    <FormSection><FieldGrid><Field label="Notes" span={12} error={newOrderForm.formState.errors.notes?.message}>
                       <Textarea
                         {...newOrderForm.register('notes')}
                         placeholder="Any special notes or instructions"
-                        className={`${themeClasses.input}`}
+                        className={kit.textarea}
                         rows={3}
                       />
-                    </div>
+                    </Field></FieldGrid></FormSection>
   
-                    <div className="flex gap-2 justify-end">
-                      <Button type="button" variant="ghost" onClick={() => { newOrderForm.reset(); setAdding(false); }} className={`rounded-full min-h-[44px] ${themeClasses.button.ghost}`}>
+                    <FormActions>
+                      <Button type="button" variant="ghost" onClick={() => { newOrderForm.reset(); setAdding(false); }} className={kit.ghost}>
                         Cancel
                       </Button>
-                      <Button type="submit" className={`min-h-[44px] font-semibold rounded-full transition-colors ${themeClasses.button.primary}`}>
+                      <Button type="submit" className={kit.primary}>
                         <Plus className="h-4 w-4 mr-2" />
                         Add order
                       </Button>
-                    </div>
+                    </FormActions>
                   </form>
                 </CardContent>
               </Card>
@@ -686,16 +679,16 @@ const StaffCartridges = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-pub-muted" />
                 <Input
-                  placeholder="Search by customer name, phone, model, or order ID..."
+                  placeholder="Search name, phone, model or order ID"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`pl-10 ${themeClasses.input}`}
+                  className={`${kit.input} pl-10`}
                 />
               </div>
               <div className="relative">
                 <Filter className="absolute left-3 top-3 h-4 w-4 text-pub-muted" />
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className={`pl-10 w-48 ${themeClasses.input}`}>
+                  <SelectTrigger className={`${kit.input} pl-10 w-48`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

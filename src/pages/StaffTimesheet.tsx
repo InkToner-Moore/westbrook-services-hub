@@ -1,3 +1,4 @@
+import { useFormClasses, FieldGrid, Field, FormActions } from "@/components/shell/FormKit";
 // The Timesheet tool page. Three tabs:
 //   Schedule  the week's planned shifts, as a calendar or a list. Managers plan
 //             them; anyone can open a shift and log what really happened (a
@@ -19,7 +20,6 @@ import {
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
@@ -54,7 +54,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -447,6 +446,7 @@ const blankForm = { employeeId: "", date: "", start: "10:00", end: "17:00", note
 
 const StaffTimesheet = () => {
   const { themeClasses, isDarkMode } = useTheme();
+  const fc = useFormClasses();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [shifts, setShifts] = useState<ScheduleShift[]>([]);
   const [loading, setLoading] = useState(true);
@@ -923,16 +923,16 @@ const StaffTimesheet = () => {
   const teamContent = (
     <div className="rounded-xl border bg-pub-paper border-pub-edge">
       <div className="p-4">
-        <form onSubmit={newEmployeeForm.handleSubmit(addEmployee)} className="mb-4 flex flex-col gap-3 sm:flex-row">
+        <form onSubmit={newEmployeeForm.handleSubmit(addEmployee)} className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="flex-1">
             <Label className="sr-only">Employee name</Label>
             <Input
               {...newEmployeeForm.register("name", { required: true })}
               placeholder="Add someone, e.g. Sarah Chen"
-              className={`min-h-[44px] ${themeClasses.input}`}
+              className={`${fc.input} flex-1`}
             />
           </div>
-          <Button type="submit" className={`min-h-[44px] rounded-full font-semibold ${themeClasses.button.primary}`}>
+          <Button type="submit" className={fc.primary}>
             <UserPlus className="mr-2 h-4 w-4" />
             Add employee
           </Button>
@@ -963,19 +963,19 @@ const StaffTimesheet = () => {
                       <UserMinus className="h-4 w-4" />
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent className="bg-pub-paper border-pub-edge text-pub-ink">
+                  <AlertDialogContent className="sm:max-w-md rounded-xl border-pub-edge bg-pub-paper p-5 sm:p-6">
                     <AlertDialogHeader>
-                      <AlertDialogTitle className="font-display font-semibold text-pub-ink">Remove {employee.name}?</AlertDialogTitle>
-                      <AlertDialogDescription>
+                      <AlertDialogTitle className="font-display text-[19px] font-semibold leading-tight text-pub-ink">Remove {employee.name}?</AlertDialogTitle>
+                      <AlertDialogDescription className="text-[13px] text-pub-muted">
                         They come off the list for new shifts. Their past shifts and hours are kept, and you can bring them back any time.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => setEmployeeActive(employee, false)} className="bg-red-600 text-white hover:bg-red-700">
+                    <FormActions className="mt-2">
+                      <AlertDialogCancel type="button" className={fc.ghost}>Cancel</AlertDialogCancel>
+                      <AlertDialogAction type="button" onClick={() => setEmployeeActive(employee, false)} className={fc.primary}>
                         Remove
                       </AlertDialogAction>
-                    </AlertDialogFooter>
+                    </FormActions>
                   </AlertDialogContent>
                 </AlertDialog>
               </div>
@@ -1037,13 +1037,13 @@ const StaffTimesheet = () => {
 
   const shiftDialog = (
     <Dialog open={shiftDialogOpen} onOpenChange={setShiftDialogOpen}>
-      <DialogContent className="bg-pub-paper border-pub-edge text-pub-ink max-h-[92vh] overflow-y-auto sm:max-w-md">
+      <DialogContent className="sm:max-w-md rounded-xl border-pub-edge bg-pub-paper p-5 sm:p-6 max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display font-semibold text-pub-ink flex items-center gap-2">
+          <DialogTitle className="font-display text-[19px] font-semibold leading-tight text-pub-ink flex items-center gap-2">
             {editingShift ? <PencilLine className="h-5 w-5" /> : <CalendarPlus className="h-5 w-5" />}
             {!editingShift ? "Add a shift" : isManager ? "Edit shift" : "Log actual times"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-[13px] text-pub-muted">
             {!editingShift
               ? "Plan who works and when. Staff see this on the schedule."
               : isManager
@@ -1052,212 +1052,185 @@ const StaffTimesheet = () => {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {planning && (
-            <>
-              <div className="space-y-1.5">
-                <Label htmlFor="shift-employee" className="text-pub-muted">
-                  Employee
-                </Label>
-                <select
-                  id="shift-employee"
-                  value={shiftForm.employeeId}
-                  onChange={(e) => setShiftForm((f) => ({ ...f, employeeId: e.target.value }))}
-                  className={`min-h-[44px] w-full rounded-lg border px-3 text-sm ${themeClasses.input}`}
-                >
-                  {activeEmployees.length === 0 && <option value="">No employees yet</option>}
-                  {editingShift && !activeEmployees.some((e) => e.id === editingShift.employeeId) && (
-                    <option value={editingShift.employeeId}>{editingShift.employeeName}</option>
-                  )}
-                  {activeEmployees.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        {/* noValidate: saveShift does the checking; the browser's step check would refuse a 12 minute break. */}
+        <form noValidate className="space-y-4" onSubmit={(event) => { event.preventDefault(); saveShift(); }}>
+        <FieldGrid>
+            {planning && (
+              <>
+                <Field htmlFor="shift-employee" label="Employee" span={12} required>
+                  <select
+                    id="shift-employee"
+                    value={shiftForm.employeeId}
+                    onChange={(e) => setShiftForm((f) => ({ ...f, employeeId: e.target.value }))}
+                    className={`${fc.input} w-full`}
+                  >
+                    {activeEmployees.length === 0 && <option value="">No employees yet</option>}
+                    {editingShift && !activeEmployees.some((e) => e.id === editingShift.employeeId) && (
+                      <option value={editingShift.employeeId}>{editingShift.employeeName}</option>
+                    )}
+                    {activeEmployees.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="shift-date" className="text-pub-muted">
-                  Day
-                </Label>
-                <Input
-                  id="shift-date"
-                  type="date"
-                  value={shiftForm.date}
-                  onChange={(e) => setShiftForm((f) => ({ ...f, date: e.target.value }))}
-                  className={`min-h-[44px] ${themeClasses.input}`}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="shift-start" className="text-pub-muted">
-                    Start
-                  </Label>
+                <Field htmlFor="shift-date" label="Day" span={6} required>
                   <Input
-                    id="shift-start"
-                    type="time"
-                    value={shiftForm.start}
-                    onChange={(e) => setShiftForm((f) => ({ ...f, start: e.target.value }))}
-                    className={`min-h-[44px] font-mono tabular-nums ${themeClasses.input}`}
+                    id="shift-date"
+                    type="date"
+                    value={shiftForm.date}
+                    onChange={(e) => setShiftForm((f) => ({ ...f, date: e.target.value }))}
+                    className={fc.input}
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="shift-end" className="text-pub-muted">
-                    End
-                  </Label>
-                  <Input
-                    id="shift-end"
-                    type="time"
-                    value={shiftForm.end}
-                    onChange={(e) => setShiftForm((f) => ({ ...f, end: e.target.value }))}
-                    className={`min-h-[44px] font-mono tabular-nums ${themeClasses.input}`}
-                  />
-                </div>
-              </div>
+                </Field>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="shift-note" className="text-pub-muted">
-                  Note (optional)
-                </Label>
-                <Input
-                  id="shift-note"
-                  value={shiftForm.note}
-                  onChange={(e) => setShiftForm((f) => ({ ...f, note: e.target.value }))}
-                  placeholder="e.g. opening, covering Sam"
-                  className={`min-h-[44px] ${themeClasses.input}`}
-                />
-              </div>
-            </>
-          )}
+                <>
+                  <Field htmlFor="shift-start" label="Start" span={3} half required>
+                    <Input
+                      id="shift-start"
+                      type="time"
+                      value={shiftForm.start}
+                      onChange={(e) => setShiftForm((f) => ({ ...f, start: e.target.value }))}
+                      className={`${fc.input} ${fc.mono}`}
+                    />
+                  </Field>
+                  <Field htmlFor="shift-end" label="End" span={3} half required>
+                    <Input
+                      id="shift-end"
+                      type="time"
+                      value={shiftForm.end}
+                      onChange={(e) => setShiftForm((f) => ({ ...f, end: e.target.value }))}
+                      className={`${fc.input} ${fc.mono}`}
+                    />
+                  </Field>
+                </>
 
-          {editingShift && (
-            <div className="space-y-3 rounded-lg border p-3 bg-pub-sunk border-pub-edge">
-              <div>
-                <p className="font-display text-sm font-semibold text-pub-ink">What actually happened</p>
-                <p className="text-[13px] text-pub-muted">Optional. Fill in only what was different from the plan.</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="shift-actual-start" className="text-pub-muted">
-                    Started at
-                  </Label>
+                <Field htmlFor="shift-note" label="Note (optional)" span={12}>
                   <Input
-                    id="shift-actual-start"
-                    type="time"
-                    value={shiftForm.actualStart}
-                    onChange={(e) => setShiftForm((f) => ({ ...f, actualStart: e.target.value }))}
-                    className={`min-h-[44px] font-mono tabular-nums ${themeClasses.input}`}
+                    id="shift-note"
+                    value={shiftForm.note}
+                    onChange={(e) => setShiftForm((f) => ({ ...f, note: e.target.value }))}
+                    placeholder="e.g. opening, covering Sam"
+                    className={fc.input}
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="shift-actual-end" className="text-pub-muted">
-                    Left at
-                  </Label>
-                  <Input
-                    id="shift-actual-end"
-                    type="time"
-                    value={shiftForm.actualEnd}
-                    onChange={(e) => setShiftForm((f) => ({ ...f, actualEnd: e.target.value }))}
-                    className={`min-h-[44px] font-mono tabular-nums ${themeClasses.input}`}
-                  />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="shift-break" className="text-pub-muted">
-                  Break (minutes)
-                </Label>
-                <Input
-                  id="shift-break"
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  max={600}
-                  step={5}
-                  value={shiftForm.breakMinutes}
-                  onChange={(e) => setShiftForm((f) => ({ ...f, breakMinutes: e.target.value }))}
-                  placeholder="0"
-                  className={`min-h-[44px] font-mono tabular-nums ${themeClasses.input}`}
-                />
-              </div>
-              <div className={`flex items-center justify-between gap-3 border-t pt-2 text-sm ${edgeBorder}`}>
-                <span className="text-pub-muted">
-                  <ShiftTimes shift={preview} />
-                </span>
-                <span className="shrink-0 font-mono font-semibold tabular-nums text-pub-ink">
-                  {formatShiftDuration(workedMinutes(preview))}
-                </span>
-              </div>
-              {formAdjusted && (
-                <button
-                  type="button"
-                  onClick={() => setShiftForm((f) => ({ ...f, actualStart: "", actualEnd: "", breakMinutes: "" }))}
-                  className="inline-flex min-h-[36px] items-center gap-1.5 text-[13px] underline-offset-2 hover:underline text-pub-muted"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  Back to the planned times
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+                </Field>
+              </>
+            )}
 
-        <DialogFooter className="gap-2 sm:gap-2">
+            {editingShift && (
+              <div className="col-span-2 space-y-3 rounded-lg border border-pub-edge bg-pub-paper p-3 sm:col-span-12">
+                <div>
+                  <p className="font-display text-sm font-semibold text-pub-ink">What actually happened</p>
+                  <p className="text-[13px] text-pub-muted">Optional. Fill in only what was different from the plan.</p>
+                </div>
+                <FieldGrid>
+                  <Field htmlFor="shift-actual-start" label="Started at" span={3} half>
+                    <Input
+                      id="shift-actual-start"
+                      type="time"
+                      value={shiftForm.actualStart}
+                      onChange={(e) => setShiftForm((f) => ({ ...f, actualStart: e.target.value }))}
+                      className={`${fc.input} ${fc.mono}`}
+                    />
+                  </Field>
+                  <Field htmlFor="shift-actual-end" label="Left at" span={3} half>
+                    <Input
+                      id="shift-actual-end"
+                      type="time"
+                      value={shiftForm.actualEnd}
+                      onChange={(e) => setShiftForm((f) => ({ ...f, actualEnd: e.target.value }))}
+                      className={`${fc.input} ${fc.mono}`}
+                    />
+                  </Field>
+                <Field htmlFor="shift-break" label="Break (minutes)" span={4} half>
+                  <Input
+                    id="shift-break"
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={600}
+                    step={5}
+                    value={shiftForm.breakMinutes}
+                    onChange={(e) => setShiftForm((f) => ({ ...f, breakMinutes: e.target.value }))}
+                    placeholder="0"
+                    className={`${fc.input} ${fc.mono}`}
+                  />
+                </Field>
+                </FieldGrid>
+                <div className={`flex items-center justify-between gap-3 border-t pt-2 text-sm ${edgeBorder}`}>
+                  <span className="text-pub-muted">
+                    <ShiftTimes shift={preview} />
+                  </span>
+                  <span className="shrink-0 font-mono font-semibold tabular-nums text-pub-ink">
+                    {formatShiftDuration(workedMinutes(preview))}
+                  </span>
+                </div>
+                {formAdjusted && (
+                  <button
+                    type="button"
+                    onClick={() => setShiftForm((f) => ({ ...f, actualStart: "", actualEnd: "", breakMinutes: "" }))}
+                    className="inline-flex min-h-[36px] items-center gap-1.5 text-[13px] underline-offset-2 hover:underline text-pub-muted"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Back to the planned times
+                  </button>
+                )}
+              </div>
+            )}
+        </FieldGrid>
+
+        <FormActions className="mt-2">
           {editingShift && isManager && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button type="button" variant="ghost" className={`min-h-[44px] rounded-lg text-red-600 hover:text-red-700 sm:mr-auto ${themeClasses.button.ghost}`}>
+                <Button type="button" variant="ghost" className={`h-11 w-full rounded-full px-5 text-[15px] font-medium sm:w-auto sm:mr-auto ${themeClasses.button.ghost} ${themeClasses.text.danger}`}>
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent className="bg-pub-paper border-pub-edge text-pub-ink">
+              <AlertDialogContent className="sm:max-w-md rounded-xl border-pub-edge bg-pub-paper p-5 sm:p-6">
                 <AlertDialogHeader>
-                  <AlertDialogTitle className="font-display font-semibold text-pub-ink">Remove this shift?</AlertDialogTitle>
-                  <AlertDialogDescription>
+                  <AlertDialogTitle className="font-display text-[19px] font-semibold leading-tight text-pub-ink">Remove this shift?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-[13px] text-pub-muted">
                     This removes {editingShift.employeeName}'s shift on {formatDayHeading(editingShift.date)},{" "}
                     {formatTime12(editingShift.start)} to {formatTime12(editingShift.end)}.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <FormActions className="mt-2">
+                  <AlertDialogCancel type="button" className={fc.ghost}>Cancel</AlertDialogCancel>
                   <AlertDialogAction
+                    type="button"
                     onClick={async () => {
                       await deleteShift(editingShift);
                       setShiftDialogOpen(false);
                     }}
-                    className="bg-red-600 text-white hover:bg-red-700"
+                    className={fc.primary}
                   >
                     Remove
                   </AlertDialogAction>
-                </AlertDialogFooter>
+                </FormActions>
               </AlertDialogContent>
             </AlertDialog>
           )}
-          <Button type="button" variant="ghost" onClick={() => setShiftDialogOpen(false)} className={`min-h-[44px] rounded-full ${themeClasses.button.ghost}`}>
+          <Button type="button" variant="ghost" onClick={() => setShiftDialogOpen(false)} className={fc.ghost}>
             Cancel
           </Button>
-          <Button type="button" onClick={saveShift} disabled={savingShift} className={`min-h-[44px] rounded-full font-semibold ${themeClasses.button.primary}`}>
+          <Button type="submit" disabled={savingShift} className={fc.primary}>
             {savingShift && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {editingShift ? "Save" : "Add shift"}
           </Button>
-        </DialogFooter>
+        </FormActions>
+        </form>
       </DialogContent>
     </Dialog>
   );
 
   return (
     <StaffLayout
-      tool="timesheet"
-      title="Timesheet"
-      subtitle="The schedule, the hours, and the team"
-      icon={Clock}
-      iconColor="text-pub-ink"
-      backTo="/staff/ai"
-      backLabel="Back"
-    >
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      actions={managerControl}
+      tabs={
         <SegmentedTabs<Tab>
           label="Timesheet sections"
           value={tab}
@@ -1268,8 +1241,15 @@ const StaffTimesheet = () => {
             { value: "team", label: "Team", icon: Users },
           ]}
         />
-        {managerControl}
-      </div>
+      }
+      tool="timesheet"
+      title="Timesheet"
+      subtitle="The schedule, the hours, and the team"
+      icon={Clock}
+      iconColor="text-pub-ink"
+      backTo="/staff/ai"
+      backLabel="Back"
+    >
       {tab === "schedule" ? scheduleContent : tab === "hours" ? hoursContent : teamContent}
       {shiftDialog}
     </StaffLayout>

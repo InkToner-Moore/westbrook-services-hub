@@ -1,3 +1,4 @@
+import { useFormClasses, FieldGrid, Field, FormActions } from "@/components/shell/FormKit";
 // The reusable manager-PIN modal. Two modes:
 //   'unlock' - enter the PIN to turn on manager mode.
 //   'set'    - choose a PIN (first-time setup, or changing it): PIN + confirm.
@@ -11,11 +12,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { isValidPin } from "@/lib/managerAuth";
@@ -31,6 +30,7 @@ interface ManagerPinDialogProps {
 
 const ManagerPinDialog = ({ open, onOpenChange, mode, requireCurrent, onSubmit }: ManagerPinDialogProps) => {
   const { themeClasses } = useTheme();
+  const fc = useFormClasses();
   const [pin, setPin] = useState("");
   const [confirm, setConfirm] = useState("");
   const [current, setCurrent] = useState("");
@@ -79,13 +79,13 @@ const ManagerPinDialog = ({ open, onOpenChange, mode, requireCurrent, onSubmit }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-pub-paper border-pub-edge text-pub-ink sm:max-w-md">
+      <DialogContent className="sm:max-w-md rounded-xl border-pub-edge bg-pub-paper p-5 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="font-display font-semibold text-pub-ink flex items-center gap-2">
+          <DialogTitle className="font-display text-[19px] font-semibold leading-tight text-pub-ink flex items-center gap-2">
             <ShieldCheck className="h-5 w-5" />
             {setting ? (requireCurrent ? "Change the manager PIN" : "Set the manager PIN") : "Manager sign in"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-[13px] text-pub-muted">
             {setting
               ? "Use a PIN of 4 to 8 digits. Anyone who knows it can edit the schedule and manager settings."
               : "Enter the manager PIN to make changes."}
@@ -93,82 +93,75 @@ const ManagerPinDialog = ({ open, onOpenChange, mode, requireCurrent, onSubmit }
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {setting && requireCurrent && (
-            <div className="space-y-1.5">
-              <Label htmlFor="manager-pin-current" className="text-pub-muted">
-                Current PIN
-              </Label>
+          <FieldGrid>
+            {setting && requireCurrent && (
+              <Field htmlFor="manager-pin-current" label="Current PIN" span={12} required>
+                <Input
+                  id="manager-pin-current"
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={current}
+                  onChange={(e) => setCurrent(e.target.value.replace(/\D/g, ""))}
+                  placeholder="Current PIN"
+                  className={`${fc.input} ${fc.mono} tracking-widest`}
+                />
+              </Field>
+            )}
+            <Field htmlFor="manager-pin" label={setting ? "New PIN" : "PIN"} span={12} required>
               <Input
-                id="manager-pin-current"
+                id="manager-pin"
                 type="password"
                 inputMode="numeric"
                 autoComplete="off"
-                value={current}
-                onChange={(e) => setCurrent(e.target.value.replace(/\D/g, ""))}
-                placeholder="Current PIN"
-                className={`min-h-[44px] font-mono tabular-nums tracking-widest ${themeClasses.input}`}
+                autoFocus
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                placeholder="4 to 8 digits"
+                className={`${fc.input} ${fc.mono} tracking-widest`}
               />
-            </div>
-          )}
-          <div className="space-y-1.5">
-            <Label htmlFor="manager-pin" className="text-pub-muted">
-              {setting ? "New PIN" : "PIN"}
-            </Label>
-            <Input
-              id="manager-pin"
-              type="password"
-              inputMode="numeric"
-              autoComplete="off"
-              autoFocus
-              value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-              placeholder="4 to 8 digits"
-              className={`min-h-[44px] font-mono tabular-nums tracking-widest ${themeClasses.input}`}
-            />
-          </div>
+            </Field>
 
-          {setting && (
-            <div className="space-y-1.5">
-              <Label htmlFor="manager-pin-confirm" className="text-pub-muted">
-                Confirm PIN
-              </Label>
-              <Input
-                id="manager-pin-confirm"
-                type="password"
-                inputMode="numeric"
-                autoComplete="off"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value.replace(/\D/g, ""))}
-                placeholder="Repeat the PIN"
-                className={`min-h-[44px] font-mono tabular-nums tracking-widest ${themeClasses.input}`}
-              />
-            </div>
-          )}
+            {setting && (
+              <Field htmlFor="manager-pin-confirm" label="Confirm PIN" span={12} required>
+                <Input
+                  id="manager-pin-confirm"
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value.replace(/\D/g, ""))}
+                  placeholder="Repeat the PIN"
+                  className={`${fc.input} ${fc.mono} tracking-widest`}
+                />
+              </Field>
+            )}
 
+          </FieldGrid>
           {error && (
-            <p className={`rounded-lg border px-3 py-2 text-sm ${themeClasses.status.error}`}>
+            <p className={`rounded-lg border px-3 py-2 text-[13px] font-medium ${themeClasses.status.error}`}>
               {error}
             </p>
           )}
 
-          <DialogFooter className="gap-2 sm:gap-2">
+          <FormActions className="mt-2">
             <Button
               type="button"
               variant="ghost"
               onClick={() => onOpenChange(false)}
-              className={`min-h-[44px] rounded-full ${themeClasses.button.ghost}`}
+              className={fc.ghost}
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={busy}
-              className={`min-h-[44px] rounded-full font-semibold ${themeClasses.button.primary}`}
+              className={fc.primary}
             >
               {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {setting ? "Save PIN" : "Unlock"}
             </Button>
-          </DialogFooter>
+          </FormActions>
         </form>
       </DialogContent>
     </Dialog>

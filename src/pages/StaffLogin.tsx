@@ -1,9 +1,9 @@
+import { useFormClasses, Field } from "@/components/shell/FormKit";
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Printer, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
@@ -11,6 +11,7 @@ import { toast } from "@/hooks/use-toast";
 
 const StaffLogin = () => {
   const { themeClasses } = useTheme();
+  const fc = useFormClasses();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -67,48 +68,49 @@ const StaffLogin = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="font-medium transition-colors text-pub-ink">Email</Label>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <Field label="Email" htmlFor="email" required>
                 <Input
                   id="email"
+                  autoComplete="username"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
                   required
-                  className={`h-12 transition-colors ${themeClasses.input}`}
+                  className={fc.input}
                 />
-              </div>
+              </Field>
               
-              <div className="space-y-2">
-                <Label htmlFor="password" className="font-medium transition-colors text-pub-ink">Password</Label>
+              <Field label="Password" htmlFor="password" required>
                 <div className="relative">
                   <Input
                     id="password"
+                    autoComplete="current-password"
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
                     required
-                    className={`h-12 pr-12 transition-colors ${themeClasses.input}`}
+                    className={`${fc.input} pr-12`}
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                     className={`absolute right-1 top-1 h-10 w-10 transition-colors ${themeClasses.button.ghost} ${themeClasses.interactive.focus}`}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
-              </div>
+              </Field>
 
               <Button
                 type="submit"
                 disabled={loading}
-                className={`w-full h-12 min-h-[48px] font-semibold rounded-full transition-colors ${themeClasses.button.primary} ${themeClasses.interactive.focus}`}
+                className={`${fc.primary} sm:w-full ${themeClasses.interactive.focus}`}
               >
                 {loading ? "Signing in..." : "Sign In"}
               </Button>

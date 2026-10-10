@@ -1,13 +1,12 @@
+import CartridgeLineFields from "@/components/CartridgeLineFields";
 import { useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
   Receipt,
   Package,
@@ -33,9 +32,18 @@ import {
   packingSubtotal,
   type PackingItem,
 } from "@/lib/packing";
+import { SegmentedTabs } from "@/components/shell/ToolPage";
 import StaffLayout from "@/components/StaffLayout";
 import GstBreakdown from "@/components/GstBreakdown";
-import CartridgeLineFields from "@/components/CartridgeLineFields";
+import {
+  useFormClasses,
+  FormSection,
+  FieldGrid,
+  Field,
+  ItemCard,
+  AddRowButton,
+  FormActions
+} from "@/components/shell/FormKit";
 import {
   GST_RATE,
   generateReceiptNumber,
@@ -147,15 +155,15 @@ let receiptCartLineId = 0;
 const nextCartLineId = () => `sr-${(receiptCartLineId += 1)}`;
 
 const StaffReceipts = () => {
+  const kit = useFormClasses();
   const { addCartLines } = useAiMode();
   const { themeClasses } = useTheme();
-  const tabActive = "text-pub-muted data-[state=active]:bg-pub-paper data-[state=active]:text-pub-ink";
   const checkboxClass = "border-pub-edge data-[state=checked]:bg-pub-ink data-[state=checked]:text-pub-paper";
   const [activeTab, setActiveTab] = useState("shipping");
   const [packingRows, setPackingRows] = useState<(PackingItem & { id: string })[]>([]);
   const [packingCustomName, setPackingCustomName] = useState("");
   const [packingCustomCost, setPackingCustomCost] = useState("");
-  
+
   const shippingForm = useForm<ShippingReceiptData>({
     defaultValues: {
       receiptNumber: generateReceiptNumber('SH'),
@@ -230,9 +238,10 @@ const StaffReceipts = () => {
   };
 
   const setProvincialTax = (province: string, formType: 'shipping' | 'key', itemIndex?: number) => {
-    const taxes = provincialTaxRates[province as keyof typeof provincialTaxRates] || provincialTaxRates['Alberta'];
+    const taxes = provincialTaxRates[province as keyof typeof provincialTaxRates] ||
+      provincialTaxRates['Alberta'];
     const taxesWithAmount = taxes.map(tax => ({ ...tax, amount: 0 }));
-    
+
     if (formType === 'shipping' && itemIndex !== undefined) {
       shippingForm.setValue(`shippingItems.${itemIndex}.taxes`, taxesWithAmount);
     } else if (formType === 'key') {
@@ -243,7 +252,8 @@ const StaffReceipts = () => {
   // Add the current tab's items to the open receipt instead of downloading now.
   // Same open receipt the Packing tab and the chat feed; Finish prints it. A
   // single item is just a one-item receipt.
-  const gstLine = (price: number) => [{ label: `GST (${(GST_RATE * 100).toFixed(0)}%)`, amount: round2(price * GST_RATE) }];
+  const gstLine =
+    (price: number) => [{ label: `GST (${(GST_RATE * 100).toFixed(0)}%)`, amount: round2(price * GST_RATE) }];
   const addedToast = () =>
     toast({ title: "Added to the receipt", description: "It is on the open receipt panel. Finish it when ready." });
 
@@ -387,567 +397,627 @@ const StaffReceipts = () => {
       title="Receipt Generator"
       subtitle="Shipping, key cutting, cartridge refills, toner sales, and packing"
       tool="receipts"
+      tabs={
+        <SegmentedTabs
+          idBase="receipts"
+          label="Receipt types"
+          value={activeTab}
+          onChange={setActiveTab}
+          options={[
+            { value: "shipping", label: "Shipping", shortLabel: "Shipping", icon: Package },
+            { value: "key", label: "Key cutting", shortLabel: "Keys", icon: Key },
+            { value: "cartridge", label: "Cartridge refill", shortLabel: "Refill", icon: Printer },
+            { value: "toner", label: "Toner sale", shortLabel: "Toner", icon: Droplets },
+            { value: "packing", label: "Packing", shortLabel: "Packing", icon: Box },
+          ]}
+        />
+      }
       icon={Receipt}
     >
-      <div className="border rounded-xl p-4 sm:p-6 bg-pub-paper border-pub-edge">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="mb-8 inline-flex h-auto max-w-full justify-start gap-1 overflow-x-auto rounded-xl border p-1
-              bg-pub-sunk border-pub-edge">
-              <TabsTrigger
-                value="shipping"
-                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-none ${tabActive}`}
-              >
-                <Package className="h-4 w-4" />
-                <span>Shipping</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="key"
-                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-none ${tabActive}`}
-              >
-                <Key className="h-4 w-4" />
-                <span>Key cutting</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="cartridge"
-                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-none ${tabActive}`}
-              >
-                <Printer className="h-4 w-4" />
-                <span>Cartridge refill</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="toner"
-                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-none ${tabActive}`}
-              >
-                <Droplets className="h-4 w-4" />
-                <span>Toner sale</span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="packing"
-                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-none ${tabActive}`}
-              >
-                <Box className="h-4 w-4" />
-                <span>Packing</span>
-              </TabsTrigger>
-            </TabsList>
+      <div className="border rounded-xl p-5 sm:p-6 bg-pub-paper border-pub-edge">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
 
-            {/* Shipping Receipt Form */}
-            <TabsContent value="shipping">
-              <form onSubmit={shippingForm.handleSubmit(addShippingToReceipt)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Label htmlFor="receiptNumber" className="font-medium transition-colors duration-300 text-pub-ink">Receipt number</Label>
+          {/* Shipping Receipt Form */}
+          <TabsContent value="shipping" id="receipts-panel-shipping" aria-labelledby="receipts-tab-shipping">
+            <form onSubmit={shippingForm.handleSubmit(addShippingToReceipt)} className="space-y-6">
+              <FormSection>
+                <FieldGrid>
+                  <Field label="Receipt number" htmlFor="receiptNumber" span={4}>
                     <div className="flex gap-2">
                       <Input
                         id="receiptNumber"
                         {...shippingForm.register('receiptNumber')}
-                        className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
+                        className={`${kit.input} ${kit.mono} flex-1`}
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => generateNewReceiptNumber('SH', 'shipping')}
-                        className={`px-3 transition-colors ${themeClasses.button.ghost}`}
+                        className={`h-11 w-11 shrink-0 rounded-lg border ${themeClasses.button.secondary} ${themeClasses.interactive.focus}`}
                         title="Generate new receipt number"
                       >
                         <RefreshCw className="h-4 w-4" />
                       </Button>
                     </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="date" className="font-medium transition-colors duration-300 text-pub-ink">Date</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      {...shippingForm.register('date')}
-                      className={`transition-colors ${themeClasses.input}`}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="customerName" className="font-medium transition-colors duration-300 text-pub-ink">Customer name</Label>
-                    <Input
-                      id="customerName"
-                      {...shippingForm.register('customerName')}
-                      placeholder="Enter customer name"
-                      className={`transition-colors ${themeClasses.input}`}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="customerPhone" className="font-medium transition-colors duration-300 text-pub-ink">Customer phone</Label>
+                  </Field>
+                  <Field label="Date" htmlFor="date" span={3}>
+                    <Input id="date" type="date" {...shippingForm.register('date')} className={kit.input} />
+                  </Field>
+                </FieldGrid>
+              </FormSection>
+              <FormSection title="Customer">
+                <FieldGrid>
+                  <Field label="Customer name" htmlFor="customerName" span={6}>
+                    <Input id="customerName" {...shippingForm.register('customerName')} className={kit.input} />
+                  </Field>
+                  <Field label="Customer phone" htmlFor="customerPhone" span={4}>
                     <Input
                       id="customerPhone"
                       {...shippingForm.register('customerPhone')}
                       placeholder="(403) 555-0123"
-                      className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
+                      className={`${kit.input} ${kit.mono}`}
                     />
-                  </div>
-                </div>
-
-                <div className="mt-8">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-display font-semibold text-pub-ink text-lg transition-colors duration-300">Shipping items</h3>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => {
+                  </Field>
+                </FieldGrid>
+              </FormSection>
+              <FormSection
+                title="Shipping items"
+                action={
+                  <AddRowButton
+                    onClick={() => {
+                      const currentItems = shippingForm.getValues('shippingItems') || [];
+                      const newItem: ShippingItem = {
+                        id: (currentItems.length + 1).toString(),
+                        courier: '',
+                        trackingNumber: '',
+                        destinationCity: '',
+                        destinationProvince: 'AB',
+                        destinationCountry: 'Canada',
+                        shippingCost: 0,
+                        addOns: [],
+                        taxes: provincialTaxRates['Alberta'].map(tax => ({ ...tax, amount: 0 }))
+                      };
+                      shippingForm.setValue('shippingItems', [...currentItems, newItem]);
+                    }}
+                  >Add shipping item
+                  </AddRowButton>}
+              >
+                <div className="mt-3 space-y-2">
+                  {shippingForm.watch('shippingItems')?.map((_, itemIndex) => (
+                    <ItemCard
+                      key={itemIndex}
+                      title={<>Package {itemIndex + 1}</>}
+                      onRemove={shippingForm.watch('shippingItems')?.length > 1 ? () => {
                         const currentItems = shippingForm.getValues('shippingItems') || [];
-                        const newItem: ShippingItem = {
-                          id: (currentItems.length + 1).toString(),
-                          courier: '',
-                          trackingNumber: '',
-                          destinationCity: '',
-                          destinationProvince: 'AB',
-                          destinationCountry: 'Canada',
-                          shippingCost: 0,
-                          addOns: [],
-                          taxes: provincialTaxRates['Alberta'].map(tax => ({ ...tax, amount: 0 }))
-                        };
-                        shippingForm.setValue('shippingItems', [...currentItems, newItem]);
-                      }}
-                      className={`transition-colors ${themeClasses.button.ghost}`}
+                        const newItems = currentItems.filter((_, i) => i !== itemIndex);
+                        shippingForm.setValue('shippingItems', newItems);
+                      } : undefined}
+                      removeLabel={`Remove package ${itemIndex + 1}`}
                     >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add shipping item
-                    </Button>
-                  </div>
-                  
-                  <div className="space-y-8">
-                    {shippingForm.watch('shippingItems')?.map((_, itemIndex) => (
-                      <Card key={itemIndex} className="shadow-none p-6 bg-pub-sunk border-pub-edge">
-                        <div className="flex justify-between items-center mb-4">
-                          <h4 className="font-display font-semibold text-pub-ink transition-colors duration-300">
-                            Package {itemIndex + 1}
-                          </h4>
-                          {shippingForm.watch('shippingItems')?.length > 1 && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
+                      <FieldGrid>
+                        <Field
+                          label="Courier service"
+                          htmlFor={`shippingForm-shippingItems-${itemIndex}-courier`}
+                          span={5}
+                        >
+                          <Input
+                            {...shippingForm.register(`shippingItems.${itemIndex}.courier`)}
+                            id={`shippingForm-shippingItems-${itemIndex}-courier`}
+                            placeholder="UPS Ground"
+                            className={kit.input}
+                          />
+                        </Field>
+                        <Field
+                          label="Tracking number"
+                          htmlFor={`shippingForm-shippingItems-${itemIndex}-trackingNumber`}
+                          span={7}
+                        >
+                          <Input
+                            {...shippingForm.register(`shippingItems.${itemIndex}.trackingNumber`)}
+                            id={`shippingForm-shippingItems-${itemIndex}-trackingNumber`}
+                            className={`${kit.input} ${kit.mono}`}
+                          />
+                        </Field>
+                        <Field
+                          label="Destination city"
+                          htmlFor={`shippingForm-shippingItems-${itemIndex}-destinationCity`}
+                          span={5}
+                        >
+                          <Input
+                            {...shippingForm.register(`shippingItems.${itemIndex}.destinationCity`)}
+                            id={`shippingForm-shippingItems-${itemIndex}-destinationCity`}
+                            className={kit.input}
+                          />
+                        </Field>
+                        <Field
+                          label="Province/state"
+                          htmlFor={`shippingForm-shippingItems-${itemIndex}-destinationProvince`}
+                          span={2}
+                          half
+                        >
+                          <Input
+                            {...shippingForm.register(`shippingItems.${itemIndex}.destinationProvince`)}
+                            defaultValue="AB"
+                            id={`shippingForm-shippingItems-${itemIndex}-destinationProvince`}
+                            placeholder="AB"
+                            className={kit.input}
+                          />
+                        </Field>
+                        <Field
+                          label="Country"
+                          htmlFor={`shippingForm-shippingItems-${itemIndex}-destinationCountry`}
+                          span={3}
+                          half
+                        >
+                          <Input
+                            {...shippingForm.register(`shippingItems.${itemIndex}.destinationCountry`)}
+                            defaultValue="Canada"
+                            id={`shippingForm-shippingItems-${itemIndex}-destinationCountry`}
+                            placeholder="Canada"
+                            className={kit.input}
+                          />
+                        </Field>
+                        <Field
+                          label="Cost ($)"
+                          htmlFor={`shippingForm-shippingItems-${itemIndex}-shippingCost`}
+                          span={2}
+                          half
+                        >
+                          <Input
+                            type="number"
+                            step="0.01"
+                            {...shippingForm.register(
+                              `shippingItems.${itemIndex}.shippingCost`,
+                              { valueAsNumber: true }
+                            )}
+                            id={`shippingForm-shippingItems-${itemIndex}-shippingCost`}
+                            inputMode="decimal"
+                            placeholder="0.00"
+                            className={`${kit.input} ${kit.mono}`}
+                          />
+                        </Field>
+                      </FieldGrid>
+                      {/* Add-ons section */}
+                      <div className="space-y-3">
+                        <div
+                          className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-pub-edge pt-4"
+                        >
+                          <h5 className="text-[13px] font-medium text-pub-ink">Add-ons</h5>
+                          <div className="flex items-center gap-2">
+                            <AddRowButton
                               onClick={() => {
-                                const currentItems = shippingForm.getValues('shippingItems') || [];
-                                const newItems = currentItems.filter((_, i) => i !== itemIndex);
-                                shippingForm.setValue('shippingItems', newItems);
-                              }}
-                              className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label className="font-medium transition-colors duration-300 text-pub-ink">Courier service</Label>
-                            <Input
-                              {...shippingForm.register(`shippingItems.${itemIndex}.courier`)}
-                              placeholder="e.g., FedEx Priority Overnight, UPS Ground, Purolator Express"
-                              className={`transition-colors ${themeClasses.input}`}
-                            />
-                          </div>
-                          <div>
-                            <Label className="font-medium transition-colors duration-300 text-pub-ink">Tracking number</Label>
-                            <Input
-                              {...shippingForm.register(`shippingItems.${itemIndex}.trackingNumber`)}
-                              placeholder="Enter tracking number"
-                              className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
-                            />
-                          </div>
-                          <div>
-                            <Label className="font-medium transition-colors duration-300 text-pub-ink">Destination city</Label>
-                            <Input
-                              {...shippingForm.register(`shippingItems.${itemIndex}.destinationCity`)}
-                              placeholder="Enter city"
-                              className={`transition-colors ${themeClasses.input}`}
-                            />
-                          </div>
-                          <div>
-                            <Label className="font-medium transition-colors duration-300 text-pub-ink">Province/state</Label>
-                            <Input
-                              {...shippingForm.register(`shippingItems.${itemIndex}.destinationProvince`)}
-                              placeholder="AB, BC, ON, CA, etc."
-                              defaultValue="AB"
-                              className={`transition-colors ${themeClasses.input}`}
-                            />
-                          </div>
-                          <div>
-                            <Label className="font-medium transition-colors duration-300 text-pub-ink">Country</Label>
-                            <Input
-                              {...shippingForm.register(`shippingItems.${itemIndex}.destinationCountry`)}
-                              placeholder="Canada, USA, etc."
-                              defaultValue="Canada"
-                              className={`transition-colors ${themeClasses.input}`}
-                            />
-                          </div>
-                          <div>
-                            <Label className="font-medium transition-colors duration-300 text-pub-ink">Shipping cost ($)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              {...shippingForm.register(`shippingItems.${itemIndex}.shippingCost`, { valueAsNumber: true })}
-                              placeholder="0.00"
-                              className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
-                            />
-                          </div>
-                        </div>
-                        
-                        {/* Add-ons section */}
-                        <div className="mt-6">
-                          <div className="flex justify-between items-center mb-3">
-                            <Label className="font-medium transition-colors duration-300 text-pub-ink">Add-ons</Label>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                const currentAddOns = shippingForm.getValues(`shippingItems.${itemIndex}.addOns`) || [];
+                                const currentAddOns =
+                                  shippingForm.getValues(`shippingItems.${itemIndex}.addOns`) || [];
                                 const newAddOn: ShippingAddOn = {
                                   type: 'Small Box',
                                   cost: 5,
                                   taxes: provincialTaxRates['Alberta'].map(tax => ({ ...tax, amount: 0 }))
                                 };
-                                shippingForm.setValue(`shippingItems.${itemIndex}.addOns`, [...currentAddOns, newAddOn]);
+                                shippingForm.setValue(
+                                  `shippingItems.${itemIndex}.addOns`,
+                                  [...currentAddOns, newAddOn]
+                                );
                               }}
-                              className={`transition-colors ${themeClasses.button.ghost}`}
-                            >
-                              <Plus className="h-3 w-3 mr-1" />
-                              Add
-                            </Button>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            {shippingForm.watch(`shippingItems.${itemIndex}.addOns`)?.map((_, addonIndex) => (
-                              <div key={addonIndex} className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:items-end">
-                                <div>
-                                  <Label className="text-sm font-medium text-pub-ink">Add-on type</Label>
-                                  <Select 
-                                    onValueChange={(value) => {
-                                      const addon = shippingAddOns.find(a => a.type === value);
-                                      if (addon) {
-                                        shippingForm.setValue(`shippingItems.${itemIndex}.addOns.${addonIndex}.type`, value);
-                                        shippingForm.setValue(`shippingItems.${itemIndex}.addOns.${addonIndex}.cost`, addon.cost);
-                                      }
-                                    }}
-                                  >
-                                    <SelectTrigger className={`h-8 text-sm ${themeClasses.input}`}>
-                                      <SelectValue placeholder="Select add-on" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {shippingAddOns.map(addon => (
-                                        <SelectItem key={addon.type} value={addon.type}>
-                                          {addon.type}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                
-                                {shippingForm.watch(`shippingItems.${itemIndex}.addOns.${addonIndex}.type`) === 'Custom' && (
-                                  <div>
-                                    <Label className="text-sm font-medium text-pub-ink">Custom name</Label>
-                                    <Input
-                                      {...shippingForm.register(`shippingItems.${itemIndex}.addOns.${addonIndex}.customName`)}
-                                      placeholder="Custom item name"
-                                      className={`h-8 text-sm ${themeClasses.input}`}
-                                    />
-                                  </div>
-                                )}
-                                
-                                <div className="flex gap-1">
-                                  <div className="flex-1">
-                                    <Label className="text-sm font-medium text-pub-ink">Price ($)</Label>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      {...shippingForm.register(`shippingItems.${itemIndex}.addOns.${addonIndex}.cost`, { valueAsNumber: true })}
-                                      placeholder="0.00"
-                                      className={`h-8 text-sm ${themeClasses.input} font-mono tabular-nums`}
-                                    />
-                                  </div>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      const currentAddOns = shippingForm.getValues(`shippingItems.${itemIndex}.addOns`) || [];
-                                      const newAddOns = currentAddOns.filter((_, i) => i !== addonIndex);
-                                      shippingForm.setValue(`shippingItems.${itemIndex}.addOns`, newAddOns);
-                                    }}
-                                    className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                                
-                                {/* Add-on specific taxes */}
-                                <div className="mt-4 pt-3 border-t border-pub-edge">
-                                  <div className="flex justify-between items-center mb-2">
-                                    <Label className="text-sm font-medium text-pub-ink">Add-on taxes</Label>
-                                    <div className="flex gap-2">
-                                      <Select onValueChange={(province) => {
-                                        const taxes = provincialTaxRates[province as keyof typeof provincialTaxRates] || provincialTaxRates['Alberta'];
-                                        const taxesWithAmount = taxes.map(tax => ({ ...tax, amount: 0 }));
-                                        shippingForm.setValue(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes`, taxesWithAmount);
-                                      }}>
-                                        <SelectTrigger className={`w-32 h-7 text-xs ${themeClasses.input}`}>
-                                          <SelectValue placeholder="Alberta" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {Object.keys(provincialTaxRates).map(province => (
-                                            <SelectItem key={province} value={province}>{province}</SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                          const currentTaxes = shippingForm.getValues(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes`) || [];
-                                          shippingForm.setValue(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes`, [...currentTaxes, { name: '', percentage: 0, amount: 0 }]);
-                                        }}
-                                        className={`h-7 px-2 text-xs ${themeClasses.button.ghost}`}
-                                      >
-                                        <Plus className="h-3 w-3" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="space-y-1">
-                                    {shippingForm.watch(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes`)?.map((_, taxIndex) => (
-                                      <div key={taxIndex} className="grid grid-cols-3 gap-2 items-center">
-                                        <Input
-                                          {...shippingForm.register(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes.${taxIndex}.name`)}
-                                          placeholder="Tax name"
-                                          className={`h-7 text-xs ${themeClasses.input}`}
-                                        />
-                                        <Input
-                                          type="number"
-                                          step="0.01"
-                                          {...shippingForm.register(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes.${taxIndex}.percentage`, { valueAsNumber: true })}
-                                          placeholder="%"
-                                          className={`h-7 text-xs ${themeClasses.input} font-mono tabular-nums`}
-                                        />
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => {
-                                            const currentTaxes = shippingForm.getValues(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes`) || [];
-                                            const newTaxes = currentTaxes.filter((_, i) => i !== taxIndex);
-                                            shippingForm.setValue(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes`, newTaxes);
-                                          }}
-                                          className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
+                            >Add
+                            </AddRowButton>
                           </div>
                         </div>
-                        
-                        {/* Shipping taxes section */}
-                        <div className="mt-6">
-                          <div className="flex justify-between items-center mb-3">
-                            <Label className="font-medium transition-colors duration-300 text-pub-ink">Shipping taxes</Label>
-                            <div className="flex gap-2">
-                              <Select onValueChange={(province) => setProvincialTax(province, 'shipping', itemIndex)}>
-                                <SelectTrigger className={`w-32 h-8 text-sm ${themeClasses.input}`}>
-                                  <SelectValue placeholder="Alberta" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {Object.keys(provincialTaxRates).map(province => (
-                                    <SelectItem key={province} value={province}>{province}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  const currentTaxes = shippingForm.getValues(`shippingItems.${itemIndex}.taxes`) || [];
-                                  shippingForm.setValue(`shippingItems.${itemIndex}.taxes`, [...currentTaxes, { name: '', percentage: 0, amount: 0 }]);
-                                }}
-                                className={`transition-colors ${themeClasses.button.ghost}`}
+                        <div className="mt-3 space-y-2">
+                          {shippingForm.watch(`shippingItems.${itemIndex}.addOns`)?.map((_, addonIndex) => (
+                            <FieldGrid key={addonIndex}>
+                              <Field
+                                label={addonIndex === 0 ? "Add-on type" : undefined}
+                                htmlFor={`shipping-addon-type-${addonIndex}-${itemIndex}`}
+                                span={7}
                               >
-                                <Plus className="h-3 w-3 mr-1" />
-                                Add tax
-                              </Button>
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-2">
-                            {shippingForm.watch(`shippingItems.${itemIndex}.taxes`)?.map((_, taxIndex) => (
-                              <div key={taxIndex} className="grid grid-cols-3 gap-2 items-end">
-                                <Input
-                                  {...shippingForm.register(`shippingItems.${itemIndex}.taxes.${taxIndex}.name`)}
-                                  placeholder="Tax name"
-                                  className={`h-8 text-sm ${themeClasses.input}`}
-                                />
+                                <Select
+                                  onValueChange={(value) => {
+                                    const addon = shippingAddOns.find(a => a.type === value);
+                                    if (addon) {
+                                      shippingForm.setValue(`shippingItems.${itemIndex}.addOns.${addonIndex}.type`, value);
+                                      shippingForm.setValue(
+                                        `shippingItems.${itemIndex}.addOns.${addonIndex}.cost`,
+                                        addon.cost
+                                      );
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger
+                                    id={`shipping-addon-type-${addonIndex}-${itemIndex}`}
+                                    aria-label={addonIndex > 0 ? "Add-on type" : undefined}
+                                    className={kit.input}
+                                  >
+                                    <SelectValue placeholder="Select add-on" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {shippingAddOns.map(addon => (
+                                      <SelectItem key={addon.type} value={addon.type}>
+                                        {addon.type}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </Field>
+                              <Field
+                                label={addonIndex === 0 ? "Price ($)" : undefined}
+                                htmlFor={`shippingForm-shippingItems-${itemIndex}-addOns-${addonIndex}-cost`}
+                                span={3}
+                                half
+                              >
                                 <Input
                                   type="number"
                                   step="0.01"
-                                  {...shippingForm.register(`shippingItems.${itemIndex}.taxes.${taxIndex}.percentage`, { valueAsNumber: true })}
-                                  placeholder="%"
-                                  className={`h-8 text-sm ${themeClasses.input} font-mono tabular-nums`}
+                                  {...shippingForm.register(
+                                    `shippingItems.${itemIndex}.addOns.${addonIndex}.cost`,
+                                    { valueAsNumber: true }
+                                  )}
+                                  id={`shippingForm-shippingItems-${itemIndex}-addOns-${addonIndex}-cost`}
+                                  aria-label={addonIndex > 0 ? "Price ($)" : undefined}
+                                  inputMode="decimal"
+                                  placeholder="0.00"
+                                  className={`${kit.input} ${kit.mono}`}
                                 />
+                              </Field>
+                              <Field span={2} half className="flex items-end justify-end">
                                 <Button
                                   type="button"
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => {
-                                    const currentTaxes = shippingForm.getValues(`shippingItems.${itemIndex}.taxes`) || [];
-                                    const newTaxes = currentTaxes.filter((_, i) => i !== taxIndex);
-                                    shippingForm.setValue(`shippingItems.${itemIndex}.taxes`, newTaxes);
+                                    const currentAddOns =
+                                      shippingForm.getValues(`shippingItems.${itemIndex}.addOns`) || [];
+                                    const newAddOns = currentAddOns.filter((_, i) => i !== addonIndex);
+                                    shippingForm.setValue(`shippingItems.${itemIndex}.addOns`, newAddOns);
                                   }}
-                                  className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
+                                  className={`h-11 w-11 rounded-lg ${themeClasses.button.ghost} ${themeClasses.interactive.focus}`}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
+                              </Field>
+                              {shippingForm.watch(`shippingItems.${itemIndex}.addOns.${addonIndex}.type`) === 'Custom' && (
+                                <Field
+                                  label={addonIndex === 0 ? "Custom name" : undefined}
+                                  htmlFor={`shippingForm-shippingItems-${itemIndex}-addOns-${addonIndex}-customName`}
+                                  span={12}
+                                >
+                                  <Input
+                                    {...shippingForm.register(`shippingItems.${itemIndex}.addOns.${addonIndex}.customName`)}
+                                    id={`shippingForm-shippingItems-${itemIndex}-addOns-${addonIndex}-customName`}
+                                    aria-label={addonIndex > 0 ? "Custom name" : undefined}
+                                    className={kit.input}
+                                  />
+                                </Field>
+                              )}
+                              {/* Add-on specific taxes */}
+                              <div className="col-span-2 sm:col-span-12">
+                                <div
+                                  className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-pub-edge pt-4"
+                                >
+                                  <h5 className="text-[13px] font-medium text-pub-ink">Add-on taxes</h5>
+                                  <div className="flex items-center gap-2">
+                                    <Select
+                                      onValueChange={(province) => {
+                                        const taxes =
+                                          provincialTaxRates[province as keyof typeof provincialTaxRates] ||
+                                          provincialTaxRates['Alberta'];
+                                        const taxesWithAmount = taxes.map(tax => ({ ...tax, amount: 0 }));
+                                        shippingForm.setValue(
+                                          `shippingItems.${itemIndex}.addOns.${addonIndex}.taxes`,
+                                          taxesWithAmount
+                                        );
+                                      }}
+                                    >
+                                      <SelectTrigger
+                                        id={`shipping-addon-tax-province-${addonIndex}-${itemIndex}`}
+                                        className={`h-9 w-36 rounded-full px-3.5 text-[13px] ${themeClasses.input}`}
+                                      >
+                                        <SelectValue placeholder="Alberta" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {Object.keys(provincialTaxRates).map(province => (
+                                          <SelectItem key={province} value={province}>{province}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <AddRowButton
+                                      onClick={() => {
+                                        const currentTaxes =
+                                          shippingForm.getValues(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes`) || [];
+                                        shippingForm.setValue(
+                                          `shippingItems.${itemIndex}.addOns.${addonIndex}.taxes`,
+                                          [...currentTaxes, { name: '', percentage: 0, amount: 0 }]
+                                        );
+                                      }}
+                                    >Add tax</AddRowButton>
+                                  </div>
+                                </div>
+                                <div className="mt-3 space-y-2">
+                                  {shippingForm.watch(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes`)?.map((_, taxIndex) => (
+                                    <FieldGrid key={taxIndex}>
+                                      <Field
+                                        label={taxIndex === 0 ? "Tax name" : undefined}
+                                        htmlFor={`shippingForm-shippingItems-${itemIndex}-addOns-${addonIndex}-taxes-${taxIndex}-name`}
+                                        span={7}
+                                      >
+                                        <Input
+                                          {...shippingForm.register(
+                                            `shippingItems.${itemIndex}.addOns.${addonIndex}.taxes.${taxIndex}.name`
+                                          )}
+                                          id={`shippingForm-shippingItems-${itemIndex}-addOns-${addonIndex}-taxes-${taxIndex}-name`}
+                                          aria-label={taxIndex > 0 ? "Tax name" : undefined}
+                                          className={kit.input}
+                                        />
+                                      </Field>
+                                      <Field
+                                        label={taxIndex === 0 ? "Percent (%)" : undefined}
+                                        htmlFor={`shippingForm-shippingItems-${itemIndex}-addOns-${addonIndex}-taxes-${taxIndex}-percentage`}
+                                        span={3}
+                                        half
+                                      >
+                                        <Input
+                                          type="number"
+                                          step="0.01"
+                                          {...shippingForm.register(
+                                            `shippingItems.${itemIndex}.addOns.${addonIndex}.taxes.${taxIndex}.percentage`,
+                                            { valueAsNumber: true }
+                                          )}
+                                          id={`shippingForm-shippingItems-${itemIndex}-addOns-${addonIndex}-taxes-${taxIndex}-percentage`}
+                                          aria-label={taxIndex > 0 ? "Percent (%)" : undefined}
+                                          inputMode="decimal"
+                                          placeholder="%"
+                                          className={`${kit.input} ${kit.mono}`}
+                                        />
+                                      </Field>
+                                      <Field span={2} half className="flex items-end justify-end">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            const currentTaxes =
+                                              shippingForm.getValues(`shippingItems.${itemIndex}.addOns.${addonIndex}.taxes`) || [];
+                                            const newTaxes = currentTaxes.filter((_, i) => i !== taxIndex);
+                                            shippingForm.setValue(
+                                              `shippingItems.${itemIndex}.addOns.${addonIndex}.taxes`,
+                                              newTaxes
+                                            );
+                                          }}
+                                          className={`h-11 w-11 rounded-lg ${themeClasses.button.ghost} ${themeClasses.interactive.focus}`}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </Field>
+                                    </FieldGrid>
+                                  ))}</div>
                               </div>
-                            ))}
+                            </FieldGrid>
+                          ))}
+                        </div>
+                      </div>
+                      {/* Shipping taxes section */}
+                      <div className="space-y-3">
+                        <div
+                          className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-pub-edge pt-4"
+                        >
+                          <h5 className="text-[13px] font-medium text-pub-ink">Shipping taxes</h5>
+                          <div className="flex items-center gap-2">
+                            <Select onValueChange={(province) => setProvincialTax(province, 'shipping', itemIndex)}>
+                              <SelectTrigger
+                                id={`shipping-tax-province-${itemIndex}`}
+                                className={`h-9 w-36 rounded-full px-3.5 text-[13px] ${themeClasses.input}`}
+                              >
+                                <SelectValue placeholder="Alberta" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.keys(provincialTaxRates).map(province => (
+                                  <SelectItem key={province} value={province}>{province}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <AddRowButton
+                              onClick={() => {
+                                const currentTaxes =
+                                  shippingForm.getValues(`shippingItems.${itemIndex}.taxes`) || [];
+                                shippingForm.setValue(
+                                  `shippingItems.${itemIndex}.taxes`,
+                                  [...currentTaxes, { name: '', percentage: 0, amount: 0 }]
+                                );
+                              }}
+                            >Add tax
+                            </AddRowButton>
                           </div>
                         </div>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  className={`w-full h-12 font-semibold rounded-full transition-colors ${themeClasses.button.primary}`}
-                >
+                        <div className="mt-3 space-y-2">
+                          {shippingForm.watch(`shippingItems.${itemIndex}.taxes`)?.map((_, taxIndex) => (
+                            <FieldGrid key={taxIndex}>
+                              <Field
+                                label={taxIndex === 0 ? "Tax name" : undefined}
+                                htmlFor={`shippingForm-shippingItems-${itemIndex}-taxes-${taxIndex}-name`}
+                                span={7}
+                              >
+                                <Input
+                                  {...shippingForm.register(`shippingItems.${itemIndex}.taxes.${taxIndex}.name`)}
+                                  id={`shippingForm-shippingItems-${itemIndex}-taxes-${taxIndex}-name`}
+                                  aria-label={taxIndex > 0 ? "Tax name" : undefined}
+                                  className={kit.input}
+                                />
+                              </Field>
+                              <Field
+                                label={taxIndex === 0 ? "Percent (%)" : undefined}
+                                htmlFor={`shippingForm-shippingItems-${itemIndex}-taxes-${taxIndex}-percentage`}
+                                span={3}
+                                half
+                              >
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  {...shippingForm.register(
+                                    `shippingItems.${itemIndex}.taxes.${taxIndex}.percentage`,
+                                    { valueAsNumber: true }
+                                  )}
+                                  id={`shippingForm-shippingItems-${itemIndex}-taxes-${taxIndex}-percentage`}
+                                  aria-label={taxIndex > 0 ? "Percent (%)" : undefined}
+                                  inputMode="decimal"
+                                  placeholder="%"
+                                  className={`${kit.input} ${kit.mono}`}
+                                />
+                              </Field>
+                              <Field span={2} half className="flex items-end justify-end">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    const currentTaxes =
+                                      shippingForm.getValues(`shippingItems.${itemIndex}.taxes`) || [];
+                                    const newTaxes = currentTaxes.filter((_, i) => i !== taxIndex);
+                                    shippingForm.setValue(`shippingItems.${itemIndex}.taxes`, newTaxes);
+                                  }}
+                                  className={`h-11 w-11 rounded-lg ${themeClasses.button.ghost} ${themeClasses.interactive.focus}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </Field>
+                            </FieldGrid>
+                          ))}
+                        </div>
+                      </div>
+                    </ItemCard>
+                  ))}</div>
+              </FormSection>
+              <FormActions>
+                <Button type="submit" className={kit.primary}>
                   <Receipt className="h-5 w-5 mr-2" />
                   Add to receipt
                 </Button>
-              </form>
-            </TabsContent>
+              </FormActions>
+            </form>
+          </TabsContent>
 
-            {/* Key Cutting Receipt Form */}
-            <TabsContent value="key">
-              <form onSubmit={keyForm.handleSubmit(addKeyToReceipt)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Label htmlFor="keyReceiptNumber" className="font-medium transition-colors duration-300 text-pub-ink">Receipt number</Label>
+          {/* Key Cutting Receipt Form */}
+          <TabsContent value="key" id="receipts-panel-key" aria-labelledby="receipts-tab-key">
+            <form onSubmit={keyForm.handleSubmit(addKeyToReceipt)} className="space-y-6">
+              <FormSection>
+                <FieldGrid>
+                  <Field label="Receipt number" htmlFor="keyReceiptNumber" span={4}>
                     <div className="flex gap-2">
                       <Input
                         id="keyReceiptNumber"
                         {...keyForm.register('receiptNumber')}
-                        className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
+                        className={`${kit.input} ${kit.mono} flex-1`}
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => generateNewReceiptNumber('KEY', 'key')}
-                        className={`px-3 transition-colors ${themeClasses.button.ghost}`}
+                        className={`h-11 w-11 shrink-0 rounded-lg border ${themeClasses.button.secondary} ${themeClasses.interactive.focus}`}
                         title="Generate new receipt number"
                       >
                         <RefreshCw className="h-4 w-4" />
                       </Button>
                     </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="keyDate" className="font-medium transition-colors duration-300 text-pub-ink">Date</Label>
-                    <Input
-                      id="keyDate"
-                      type="date"
-                      {...keyForm.register('date')}
-                      className={`transition-colors ${themeClasses.input}`}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="keyCustomerName" className="font-medium transition-colors duration-300 text-pub-ink">Customer name</Label>
-                    <Input
-                      id="keyCustomerName"
-                      {...keyForm.register('customerName')}
-                      placeholder="Enter customer name"
-                      className={`transition-colors ${themeClasses.input}`}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="keyCustomerPhone" className="font-medium transition-colors duration-300 text-pub-ink">Customer phone</Label>
+                  </Field>
+                  <Field label="Date" htmlFor="keyDate" span={3}>
+                    <Input id="keyDate" type="date" {...keyForm.register('date')} className={kit.input} />
+                  </Field>
+                </FieldGrid>
+              </FormSection>
+              <FormSection title="Customer">
+                <FieldGrid>
+                  <Field label="Customer name" htmlFor="keyCustomerName" span={6}>
+                    <Input id="keyCustomerName" {...keyForm.register('customerName')} className={kit.input} />
+                  </Field>
+                  <Field label="Customer phone" htmlFor="keyCustomerPhone" span={4}>
                     <Input
                       id="keyCustomerPhone"
                       {...keyForm.register('customerPhone')}
                       placeholder="(403) 555-0123"
-                      className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
+                      className={`${kit.input} ${kit.mono}`}
                     />
-                  </div>
-                </div>
-
-                <div className="mt-8">
-                  <h3 className="font-display font-semibold text-pub-ink mb-4 text-lg transition-colors duration-300">Key items</h3>
-                  <div className="space-y-4">
-                    {keyForm.watch('keyItems')?.map((_, index) => (
-                      <div key={index} className="grid grid-cols-2 gap-3 items-end sm:grid-cols-4 sm:gap-4">
-                        <div>
-                          <Label className="font-medium transition-colors duration-300 text-pub-ink">Key model</Label>
+                  </Field>
+                </FieldGrid>
+              </FormSection>
+              <FormSection
+                title="Key items"
+                action={
+                  <AddRowButton
+                    onClick={() => {
+                      const currentItems = keyForm.getValues('keyItems') || [];
+                      keyForm.setValue(
+                        'keyItems',
+                        [...currentItems, { model: '', quantity: 1, priceEach: 0, total: 0 }]
+                      );
+                    }}
+                  >Add key item</AddRowButton>}
+              >
+                <div className="mt-3 space-y-2">
+                  {keyForm.watch('keyItems')?.map((_, index) => (
+                    <ItemCard
+                      key={index}
+                      title={`Key ${index + 1}`}
+                      onRemove={() => {
+                        const currentItems = keyForm.getValues('keyItems') || [];
+                        const newItems = currentItems.filter((_, i) => i !== index);
+                        keyForm.setValue(
+                          'keyItems',
+                          newItems.length > 0 ? newItems : [{ model: '', quantity: 1, priceEach: 0, total: 0 }]
+                        );
+                      }}
+                      removeLabel={`Remove key ${index + 1}`}
+                    >
+                      <FieldGrid>
+                        <Field label="Key model" htmlFor={`keyForm-keyItems-${index}-model`} span={6} required>
                           <Input
                             {...keyForm.register(`keyItems.${index}.model`)}
+                            id={`keyForm-keyItems-${index}-model`}
                             placeholder="House key, mailbox, etc."
-                            className={`transition-colors ${themeClasses.input}`}
+                            className={kit.input}
                           />
-                        </div>
-                        <div>
-                          <Label className="font-medium transition-colors duration-300 text-pub-ink">Quantity</Label>
+                        </Field>
+                        <Field label="Quantity" htmlFor={`keyForm-keyItems-${index}-quantity`} span={3} half>
                           <Input
                             type="number"
                             min="1"
                             {...keyForm.register(`keyItems.${index}.quantity`, { valueAsNumber: true })}
-                            className={`transition-colors ${themeClasses.input}`}
+                            id={`keyForm-keyItems-${index}-quantity`}
+                            className={`${kit.input} ${kit.mono}`}
                           />
-                        </div>
-                        <div>
-                          <Label className="font-medium transition-colors duration-300 text-pub-ink">Price each ($)</Label>
+                        </Field>
+                        <Field
+                          label="Price each ($)"
+                          htmlFor={`keyForm-keyItems-${index}-priceEach`}
+                          span={3}
+                          half
+                          required
+                        >
                           <Input
                             type="number"
                             step="0.01"
                             {...keyForm.register(`keyItems.${index}.priceEach`, { valueAsNumber: true })}
+                            id={`keyForm-keyItems-${index}-priceEach`}
+                            inputMode="decimal"
                             placeholder="0.00"
-                            className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
+                            className={`${kit.input} ${kit.mono}`}
                           />
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            const currentItems = keyForm.getValues('keyItems') || [];
-                            const newItems = currentItems.filter((_, i) => i !== index);
-                            keyForm.setValue('keyItems', newItems.length > 0 ? newItems : [{ model: '', quantity: 1, priceEach: 0, total: 0 }]);
-                          }}
-                          className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => {
-                        const currentItems = keyForm.getValues('keyItems') || [];
-                        keyForm.setValue('keyItems', [...currentItems, { model: '', quantity: 1, priceEach: 0, total: 0 }]);
-                      }}
-                      className={`transition-colors ${themeClasses.button.ghost}`}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add key item
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="mt-8">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-display font-semibold text-pub-ink text-lg transition-colors duration-300">Taxes</h3>
-                    <div className="flex gap-2">
+                        </Field>
+                      </FieldGrid>
+                    </ItemCard>
+                  ))}</div>
+              </FormSection>
+              <FormSection>
+                <div className="space-y-3">
+                  <div
+                    className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-pub-edge pt-4"
+                  >
+                    <h5 className="text-[13px] font-medium text-pub-ink">Taxes</h5>
+                    <div className="flex items-center gap-2">
                       <Select onValueChange={(province) => setProvincialTax(province, 'key')}>
-                        <SelectTrigger className={`w-20 h-8 text-sm ${themeClasses.input}`}>
+                        <SelectTrigger
+                          id="key-tax-province"
+                          className={`h-9 w-36 rounded-full px-3.5 text-[13px] ${themeClasses.input}`}
+                        >
                           <SelectValue placeholder="Alberta" />
                         </SelectTrigger>
                         <SelectContent>
@@ -956,420 +1026,487 @@ const StaffReceipts = () => {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
+                      <AddRowButton
                         onClick={() => {
                           const currentTaxes = keyForm.getValues('taxes') || [];
                           keyForm.setValue('taxes', [...currentTaxes, { name: '', percentage: 0, amount: 0 }]);
                         }}
-                        className={`transition-colors ${themeClasses.button.ghost}`}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add tax
-                      </Button>
+                      >Add tax
+                      </AddRowButton>
                     </div>
                   </div>
-                  <div className="space-y-4">
+                  <div className="mt-3 space-y-2">
                     {keyForm.watch('taxes')?.map((_, index) => (
-                      <div key={index} className="grid grid-cols-3 gap-4 items-end">
-                        <div>
-                          <Label className="font-medium transition-colors duration-300 text-pub-ink">Tax name</Label>
+                      <FieldGrid key={index}>
+                        <Field
+                          label={index === 0 ? "Tax name" : undefined}
+                          htmlFor={`keyForm-taxes-${index}-name`}
+                          span={7}
+                        >
                           <Input
                             {...keyForm.register(`taxes.${index}.name`)}
+                            id={`keyForm-taxes-${index}-name`}
+                            aria-label={index > 0 ? "Tax name" : undefined}
                             placeholder="GST, HST, PST, etc."
-                            className={`transition-colors ${themeClasses.input}`}
+                            className={kit.input}
                           />
-                        </div>
-                        <div>
-                          <Label className="font-medium transition-colors duration-300 text-pub-ink">Percentage (%)</Label>
+                        </Field>
+                        <Field
+                          label={index === 0 ? "Percentage (%)" : undefined}
+                          htmlFor={`keyForm-taxes-${index}-percentage`}
+                          span={3}
+                          half
+                        >
                           <Input
                             type="number"
                             step="0.01"
                             {...keyForm.register(`taxes.${index}.percentage`, { valueAsNumber: true })}
+                            id={`keyForm-taxes-${index}-percentage`}
+                            aria-label={index > 0 ? "Percentage (%)" : undefined}
+                            inputMode="decimal"
                             placeholder="5.00"
-                            className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
+                            className={`${kit.input} ${kit.mono}`}
                           />
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            const currentTaxes = keyForm.getValues('taxes') || [];
-                            const newTaxes = currentTaxes.filter((_, i) => i !== index);
-                            keyForm.setValue('taxes', newTaxes);
-                          }}
-                          className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+                        </Field>
+                        <Field span={2} half className="flex items-end justify-end">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const currentTaxes = keyForm.getValues('taxes') || [];
+                              const newTaxes = currentTaxes.filter((_, i) => i !== index);
+                              keyForm.setValue('taxes', newTaxes);
+                            }}
+                            className={`h-11 w-11 rounded-lg ${themeClasses.button.ghost} ${themeClasses.interactive.focus}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </Field>
+                      </FieldGrid>
+                    ))}</div>
                 </div>
-
-                <Button
-                  type="submit"
-                  className={`w-full h-12 font-semibold rounded-full transition-colors ${themeClasses.button.primary}`}
-                >
+              </FormSection>
+              <FormActions>
+                <Button type="submit" className={kit.primary}>
                   <Receipt className="h-5 w-5 mr-2" />
                   Add to receipt
                 </Button>
-              </form>
-            </TabsContent>
+              </FormActions>
+            </form>
+          </TabsContent>
 
-            {/* Cartridge Refill Receipt Form */}
-            <TabsContent value="cartridge">
-              <form onSubmit={cartridgeForm.handleSubmit(addCartridgeToReceipt)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Label htmlFor="crReceiptNumber" className="font-medium transition-colors duration-300 text-pub-ink">Receipt number</Label>
+          {/* Cartridge Refill Receipt Form */}
+          <TabsContent
+            value="cartridge"
+            id="receipts-panel-cartridge"
+            aria-labelledby="receipts-tab-cartridge"
+          >
+            <form onSubmit={cartridgeForm.handleSubmit(addCartridgeToReceipt)} className="space-y-6">
+              <FormSection>
+                <FieldGrid>
+                  <Field label="Receipt number" htmlFor="crReceiptNumber" span={4}>
                     <div className="flex gap-2">
                       <Input
                         id="crReceiptNumber"
                         {...cartridgeForm.register('receiptNumber')}
-                        className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
+                        className={`${kit.input} ${kit.mono} flex-1`}
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => cartridgeForm.setValue('receiptNumber', generateReceiptNumber('CR'))}
-                        className={`px-3 transition-colors ${themeClasses.button.ghost}`}
+                        className={`h-11 w-11 shrink-0 rounded-lg border ${themeClasses.button.secondary} ${themeClasses.interactive.focus}`}
                         title="Generate new receipt number"
                       >
                         <RefreshCw className="h-4 w-4" />
                       </Button>
                     </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="crDate" className="font-medium transition-colors duration-300 text-pub-ink">Date</Label>
-                    <Input id="crDate" type="date" {...cartridgeForm.register('date')} className={`transition-colors ${themeClasses.input}`} />
-                  </div>
-                  <div>
-                    <Label className="font-medium transition-colors duration-300 text-pub-ink">Customer name</Label>
-                    <Input {...cartridgeForm.register('customerName')} placeholder="Enter customer name" className={`transition-colors ${themeClasses.input}`} />
-                  </div>
-                  <div>
-                    <Label className="font-medium transition-colors duration-300 text-pub-ink">Customer phone</Label>
-                    <Input {...cartridgeForm.register('customerPhone')} placeholder="(403) 555-0123" className={`transition-colors ${themeClasses.input} font-mono tabular-nums`} />
-                  </div>
-                  <div>
-                    <Label className="font-medium transition-colors duration-300 text-pub-ink">Email</Label>
-                    <Input type="email" {...cartridgeForm.register('customerEmail')} placeholder="customer@email.com" className={`transition-colors ${themeClasses.input}`} />
-                  </div>
-                </div>
+                  </Field>
+                  <Field label="Date" htmlFor="crDate" span={3}>
+                    <Input id="crDate" type="date" {...cartridgeForm.register('date')} className={kit.input} />
+                  </Field>
+                </FieldGrid>
+              </FormSection>
+              <FormSection title="Customer">
+                <FieldGrid>
+                  <Field label="Customer name" htmlFor="cartridgeForm-customerName" span={6}>
+                    <Input
+                      {...cartridgeForm.register('customerName')}
+                      id="cartridgeForm-customerName"
+                      className={kit.input}
+                    />
+                  </Field>
+                  <Field label="Customer phone" htmlFor="cartridgeForm-customerPhone" span={4}>
+                    <Input
+                      {...cartridgeForm.register('customerPhone')}
+                      id="cartridgeForm-customerPhone"
+                      placeholder="(403) 555-0123"
+                      className={`${kit.input} ${kit.mono}`}
+                    />
+                  </Field>
+                  <Field label="Email" htmlFor="cartridgeForm-customerEmail" span={6}>
+                    <Input
+                      type="email"
+                      {...cartridgeForm.register('customerEmail')}
+                      id="cartridgeForm-customerEmail"
+                      placeholder="customer@email.com"
+                      className={kit.input}
+                    />
+                  </Field>
+                </FieldGrid>
+              </FormSection>
+              <CartridgeLineFields
+                form={cartridgeForm}
+                themeClasses={themeClasses}
+                requirePrice
+              />
 
-                <CartridgeLineFields
-                  form={cartridgeForm}
-                  themeClasses={themeClasses}
-                  requirePrice
-                />
-                {cartridgeForm.formState.errors.cartridges && (
-                  <p className="text-sm text-red-500">Every cartridge needs a model and a valid price.</p>
-                )}
-
+              <FormSection>
+                <FieldGrid>
+                  <Field
+                    span={12}
+                    error={
+                      cartridgeForm.formState.errors.cartridges ? "Every cartridge needs a model and a valid price." : undefined}
+                  >{null}</Field>
+                </FieldGrid>
+              </FormSection>
+              <FormSection>
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium cursor-pointer select-none transition-colors duration-300
-                    text-pub-ink">
-                    <Checkbox checked={cartridgeAddGst} onCheckedChange={(c) => setCartridgeAddGst(c === true)} className={checkboxClass} />
-                    Add GST ({(GST_RATE * 100).toFixed(0)}%)
-                  </label>
+                  <FieldGrid>
+                    <Field label={<>Add GST ({(GST_RATE * 100).toFixed(0)}%)</>} htmlFor="cartridge-gst" span={6}>
+                      <Checkbox
+                        id="cartridge-gst"
+                        checked={cartridgeAddGst}
+                        onCheckedChange={(c) => setCartridgeAddGst(c === true)}
+                        className={checkboxClass}
+                      />
+                    </Field>
+                  </FieldGrid>
                   {cartridgeAddGst && cartridgeSubtotal > 0 && (
                     <GstBreakdown price={cartridgeSubtotal} />
                   )}
                 </div>
-
-                <div>
-                  <Label className="font-medium transition-colors duration-300 text-pub-ink">Notes</Label>
-                  <Textarea rows={2} {...cartridgeForm.register('notes')} placeholder="Any special notes" className={`transition-colors ${themeClasses.input}`} />
-                </div>
-
+              </FormSection>
+              <FormSection>
+                <FieldGrid>
+                  <Field label="Notes" htmlFor="cartridgeForm-notes" span={12}>
+                    <Textarea
+                      rows={2}
+                      {...cartridgeForm.register('notes')}
+                      id="cartridgeForm-notes"
+                      className={kit.textarea}
+                    />
+                  </Field>
+                </FieldGrid>
+              </FormSection>
+              <FormSection>
                 <p className="text-sm text-pub-muted">Blank fields are left off the printed receipt.</p>
-
-                <Button
-                  type="submit"
-                  className={`w-full h-12 font-semibold rounded-full transition-colors ${themeClasses.button.primary}`}
-                >
+              </FormSection>
+              <FormActions>
+                <Button type="submit" className={kit.primary}>
                   <Receipt className="h-5 w-5 mr-2" />
                   Add to receipt
                 </Button>
-              </form>
-            </TabsContent>
+              </FormActions>
+            </form>
+          </TabsContent>
 
-            {/* Toner Sale Receipt Form */}
-            <TabsContent value="toner">
-              <form onSubmit={tonerForm.handleSubmit(addTonerToReceipt)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Label htmlFor="tonReceiptNumber" className="font-medium transition-colors duration-300 text-pub-ink">Receipt number</Label>
+          {/* Toner Sale Receipt Form */}
+          <TabsContent value="toner" id="receipts-panel-toner" aria-labelledby="receipts-tab-toner">
+            <form onSubmit={tonerForm.handleSubmit(addTonerToReceipt)} className="space-y-6">
+              <FormSection>
+                <FieldGrid>
+                  <Field label="Receipt number" htmlFor="tonReceiptNumber" span={4}>
                     <div className="flex gap-2">
                       <Input
                         id="tonReceiptNumber"
                         {...tonerForm.register('receiptNumber')}
-                        className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
+                        className={`${kit.input} ${kit.mono} flex-1`}
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => tonerForm.setValue('receiptNumber', generateReceiptNumber('TON'))}
-                        className={`px-3 transition-colors ${themeClasses.button.ghost}`}
+                        className={`h-11 w-11 shrink-0 rounded-lg border ${themeClasses.button.secondary} ${themeClasses.interactive.focus}`}
                         title="Generate new receipt number"
                       >
                         <RefreshCw className="h-4 w-4" />
                       </Button>
                     </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="tonDate" className="font-medium transition-colors duration-300 text-pub-ink">Date</Label>
-                    <Input id="tonDate" type="date" {...tonerForm.register('date')} className={`transition-colors ${themeClasses.input}`} />
-                  </div>
-                  <div>
-                    <Label className="font-medium transition-colors duration-300 text-pub-ink">Customer name</Label>
-                    <Input {...tonerForm.register('customerName')} placeholder="Optional" className={`transition-colors ${themeClasses.input}`} />
-                  </div>
-                  <div>
-                    <Label className="font-medium transition-colors duration-300 text-pub-ink">Customer phone</Label>
-                    <Input {...tonerForm.register('customerPhone')} placeholder="Optional" className={`transition-colors ${themeClasses.input} font-mono tabular-nums`} />
-                  </div>
-                </div>
-
-                {/* Toners , one line per toner sold, so a single sale can cover several. */}
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <Label className="font-medium transition-colors duration-300 text-pub-ink">Toners</Label>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => tonerLines.append(emptyTonerLine())}
-                      className={`transition-colors ${themeClasses.button.ghost}`}
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add toner
-                    </Button>
-                  </div>
-
-                  {tonerLines.fields.map((field, index) => (
-                    <div key={field.id} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
-                      <div>
-                        <Label className="font-medium transition-colors duration-300 text-pub-ink">
-                          Model <span className="text-red-500">*</span>
-                        </Label>
+                  </Field>
+                  <Field label="Date" htmlFor="tonDate" span={3}>
+                    <Input id="tonDate" type="date" {...tonerForm.register('date')} className={kit.input} />
+                  </Field>
+                </FieldGrid>
+              </FormSection>
+              <FormSection title="Customer">
+                <FieldGrid>
+                  <Field label="Customer name" htmlFor="tonerForm-customerName" span={6} optional>
+                    <Input {...tonerForm.register('customerName')} id="tonerForm-customerName" className={kit.input} />
+                  </Field>
+                  <Field label="Customer phone" htmlFor="tonerForm-customerPhone" span={4} optional>
+                    <Input
+                      {...tonerForm.register('customerPhone')}
+                      id="tonerForm-customerPhone"
+                      placeholder="(403) 555-0123"
+                      className={`${kit.input} ${kit.mono}`}
+                    />
+                  </Field>
+                </FieldGrid>
+              </FormSection>
+              <FormSection
+                title="Toners"
+                action={
+                  <AddRowButton onClick={() => tonerLines.append(emptyTonerLine())}>Add toner
+                  </AddRowButton>}
+              >
+                <div className="space-y-3">{tonerLines.fields.map((field, index) => (
+                  <ItemCard
+                    key={field.id}
+                    title={`Toner ${index + 1}`}
+                    onRemove={tonerLines.fields.length > 1 ? () => tonerLines.remove(index) : undefined}
+                    removeLabel={`Remove toner ${index + 1}`}
+                  >
+                    <FieldGrid>
+                      <Field
+                        label="Model"
+                        htmlFor={`tonerForm-toners-${index}-model`}
+                        span={8}
+                        required
+                        error={tonerForm.formState.errors.toners?.[index]?.model?.message as string}
+                      >
                         <Input
                           {...tonerForm.register(`toners.${index}.model`, { required: 'Model is required' })}
-                          placeholder="e.g. HP 26A, Brother TN660"
-                          className={`transition-colors ${themeClasses.input}`}
+                          id={`tonerForm-toners-${index}-model`}
+                          placeholder="HP 26A"
+                          className={kit.input}
                         />
-                      </div>
-                      <div>
-                        <Label className="font-medium transition-colors duration-300 text-pub-ink">
-                          Price ($) <span className="text-red-500">*</span>
-                        </Label>
+                      </Field>
+                      <Field
+                        label="Price ($)"
+                        htmlFor={`tonerForm-toners-${index}-price`}
+                        span={3}
+                        half
+                        required
+                        error={tonerForm.formState.errors.toners?.[index]?.price?.message as string}
+                      >
                         <Input
                           type="number"
                           step="0.01"
-                          placeholder="Enter the sale price"
                           {...tonerForm.register(`toners.${index}.price`, {
                             valueAsNumber: true,
                             validate: (v) => (isFilledNumber(v) && v >= 0) || 'A valid price is required',
                           })}
-                          className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
+                          id={`tonerForm-toners-${index}-price`}
+                          inputMode="decimal"
+                          placeholder="0.00"
+                          className={`${kit.input} ${kit.mono}`}
                         />
-                      </div>
-                      {tonerLines.fields.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => tonerLines.remove(index)}
-                          className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
-                          title="Remove this toner"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-
-                  {tonerForm.formState.errors.toners && (
-                    <p className="text-sm text-red-500">Every toner needs a model and a valid price.</p>
-                  )}
-
-                  {/* Only worth showing once there's more than one line to add up. */}
-                  {tonerLines.fields.length > 1 && (
-                    <div className="flex justify-between text-sm font-semibold transition-colors duration-300 text-pub-ink">
-                      <span>Subtotal</span>
-                      <span className="font-mono tabular-nums">${tonerSubtotal.toFixed(2)}</span>
-                    </div>
-                  )}
-                </div>
-
+                      </Field>
+                    </FieldGrid>
+                  </ItemCard>
+                ))}</div>
+                <FieldGrid>
+                  <Field
+                    span={12}
+                    error={
+                      tonerForm.formState.errors.toners ? "Every toner needs a model and a valid price." : undefined}
+                  >{null}</Field>
+                </FieldGrid>
+                {/* Only worth showing once there's more than one line to add up. */}
+              </FormSection>
+              <FormSection>
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium cursor-pointer select-none transition-colors duration-300
-                    text-pub-ink">
-                    <Checkbox checked={tonerAddGst} onCheckedChange={(c) => setTonerAddGst(c === true)} className={checkboxClass} />
-                    Add GST ({(GST_RATE * 100).toFixed(0)}%)
-                  </label>
+                  <FieldGrid>
+                    <Field label={<>Add GST ({(GST_RATE * 100).toFixed(0)}%)</>} htmlFor="toner-gst" span={6}>
+                      <Checkbox
+                        id="toner-gst"
+                        checked={tonerAddGst}
+                        onCheckedChange={(c) => setTonerAddGst(c === true)}
+                        className={checkboxClass}
+                      />
+                    </Field>
+                  </FieldGrid>
                   {tonerAddGst && tonerSubtotal > 0 && (
                     <GstBreakdown price={tonerSubtotal} />
                   )}
                 </div>
-
+              </FormSection>
+              <FormSection>
                 <p className="text-sm text-pub-muted">Blank fields are left off the printed receipt.</p>
-
-                <Button
-                  type="submit"
-                  className={`w-full h-12 font-semibold rounded-full transition-colors ${themeClasses.button.primary}`}
-                >
+              </FormSection>
+              <FormActions
+                summary={tonerLines.fields.length > 1 && (
+                  <div className="flex justify-between text-sm font-semibold  text-pub-ink">
+                    <span>Subtotal</span>
+                    <span className="font-mono tabular-nums">${tonerSubtotal.toFixed(2)}</span>
+                  </div>
+                )}
+              >
+                <Button type="submit" className={kit.primary}>
                   <Receipt className="h-5 w-5 mr-2" />
                   Add to receipt
                 </Button>
-              </form>
-            </TabsContent>
+              </FormActions>
+            </form>
+          </TabsContent>
 
-            {/* Packing supplies */}
-            <TabsContent value="packing">
-              <div className="space-y-6">
-                <div>
-                  <h3 className="font-display font-semibold text-pub-ink mb-3 text-lg">Add a supply</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {PACKING_PRESETS.filter((p) => !p.custom).map((p) => (
-                      <Button
-                        key={p.type}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => addPackingPreset(p.type, p.cost)}
-                      >
-                        <Plus className="h-3.5 w-3.5 mr-1.5" />
-                        {p.type} ${p.cost}
-                      </Button>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap items-end gap-2">
-                    <div className="flex-1 min-w-[10rem]">
-                      <Label className="text-xs text-pub-muted">Custom name</Label>
-                      <Input
-                        value={packingCustomName}
-                        onChange={(e) => setPackingCustomName(e.target.value)}
-                        placeholder="e.g. Bubble wrap"
-                        className={themeClasses.input}
-                      />
-                    </div>
-                    <div className="w-28">
-                      <Label className="text-xs text-pub-muted">Price</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={packingCustomCost}
-                        onChange={(e) => setPackingCustomCost(e.target.value)}
-                        placeholder="0.00"
-                        className={`${themeClasses.input} font-mono tabular-nums`}
-                      />
-                    </div>
-                    <Button type="button" variant="outline" size="sm" onClick={addPackingCustom}>
+          {/* Packing supplies */}
+          <TabsContent value="packing" id="receipts-panel-packing" aria-labelledby="receipts-tab-packing">
+            <form className="space-y-6">
+              <FormSection title="Add a supply">
+                <div className="flex flex-wrap gap-2">
+                  {PACKING_PRESETS.filter((p) => !p.custom).map((p) => (
+                    <Button
+                      key={p.type}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addPackingPreset(p.type, p.cost)}
+                      className={`h-11 rounded-full border px-4 text-sm font-medium ${themeClasses.button.secondary} ${themeClasses.interactive.focus}`}
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1.5" />
+                      {p.type} ${p.cost}
+                    </Button>
+                  ))}
+                </div>
+                <FieldGrid className="mt-4">
+                  <Field label="Custom item" htmlFor="packing-custom-name" span={7}>
+                    <Input
+                      value={packingCustomName}
+                      onChange={(e) => setPackingCustomName(e.target.value)}
+                      id="packing-custom-name"
+                      placeholder="Bubble wrap"
+                      className={kit.input}
+                    />
+                  </Field>
+                  <Field label="Price ($)" htmlFor="packing-custom-cost" span={3} half>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={packingCustomCost}
+                      onChange={(e) => setPackingCustomCost(e.target.value)}
+                      id="packing-custom-cost"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      className={`${kit.input} ${kit.mono}`}
+                    />
+                  </Field>
+                  <Field span={2} half className="flex items-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addPackingCustom}
+                      className={kit.secondary}
+                    >
                       <Plus className="h-3.5 w-3.5 mr-1.5" />
                       Add
                     </Button>
-                  </div>
-                </div>
-
+                  </Field>
+                </FieldGrid>
+              </FormSection>
+              <FormSection>
+                {packingRows.length === 0 && (
+                  <p className="text-[13px] text-pub-muted">Nothing added yet. Pick a supply above.</p>
+                )}
                 {packingRows.length > 0 && (
                   <div className="space-y-3">
                     {packingRows.map((r) => (
-                      <div key={r.id} className="flex flex-wrap items-center gap-3">
-                        <span className="flex-1 min-w-[8rem] text-sm font-medium text-pub-ink">
-                          {r.name}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => patchPackingRow(r.id, { quantity: Math.max(1, r.quantity - 1) })}
-                            aria-label="Decrease quantity"
-                          >
-                            <Minus className="h-3.5 w-3.5" />
-                          </Button>
-                          <span className="w-6 text-center text-sm text-pub-ink">{r.quantity}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => patchPackingRow(r.id, { quantity: r.quantity + 1 })}
-                            aria-label="Increase quantity"
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                        <label className="flex items-center gap-1.5 text-xs text-pub-muted">
-                          <Checkbox
-                            checked={r.taxable}
-                            onCheckedChange={(v) => patchPackingRow(r.id, { taxable: v === true })}
-                            className={checkboxClass}
-                          />
-                          Tax
-                        </label>
-                        <span className="w-16 text-right text-sm font-mono tabular-nums text-pub-ink">
-                          ${packingLineTotal(r).toFixed(2)}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
-                          onClick={() => removePackingRow(r.id)}
-                          aria-label="Remove"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <ItemCard
+                        key={r.id}
+                        title={r.name}
+                        onRemove={() => removePackingRow(r.id)}
+                        removeLabel={`Remove ${r.name}`}
+                      >
+                        <FieldGrid>
+                          <Field label="Quantity" span={3} half>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className={`h-11 w-11 rounded-lg ${themeClasses.button.ghost} ${themeClasses.interactive.focus}`}
+                                onClick={() => patchPackingRow(r.id, { quantity: Math.max(1, r.quantity - 1) })}
+                                aria-label="Decrease quantity"
+                              >
+                                <Minus className="h-3.5 w-3.5" />
+                              </Button>
+                              <span className="w-6 text-center text-sm font-mono tabular-nums text-pub-ink">
+                                {r.quantity}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className={`h-11 w-11 rounded-lg ${themeClasses.button.ghost} ${themeClasses.interactive.focus}`}
+                                onClick={() => patchPackingRow(r.id, { quantity: r.quantity + 1 })}
+                                aria-label="Increase quantity"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </Field>
+                          <Field label="Tax" htmlFor={`packing-tax-${r.id}`} span={3} half>
+                            <Checkbox
+                              id={`packing-tax-${r.id}`}
+                              checked={r.taxable}
+                              onCheckedChange={(v) => patchPackingRow(r.id, { taxable: v === true })}
+                              className={checkboxClass}
+                            />
+                          </Field>
+                          <Field label="Total" span={3} half>
+                            <span className="w-16 text-right text-sm font-mono tabular-nums text-pub-ink">
+                              ${packingLineTotal(r).toFixed(2)}
+                            </span>
+                          </Field>
+                        </FieldGrid>
+                      </ItemCard>
                     ))}
 
-                    <div className="border-t pt-3 text-sm text-pub-muted">
-                      <div className="flex justify-between">
-                        <span>Subtotal</span>
-                        <span className="font-mono tabular-nums">${packingSubtotal(packingRows).toFixed(2)}</span>
-                      </div>
-                      {aggregatePackingTax(packingRows).map((t) => (
-                        <div key={t.label} className="flex justify-between">
-                          <span>{t.label}</span>
-                          <span className="font-mono tabular-nums">${t.amount.toFixed(2)}</span>
-                        </div>
-                      ))}
-                      <div className="flex justify-between font-semibold text-pub-ink">
-                        <span>Total</span>
-                        <span className="font-mono tabular-nums">
-                          ${round2(
-                            packingSubtotal(packingRows) +
-                              aggregatePackingTax(packingRows).reduce((s, t) => round2(s + t.amount), 0),
-                          ).toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
                   </div>
-                )}
-
+                )}</FormSection>
+              <FormActions
+                summary={packingRows.length > 0 && (
+                  <div className="border-t pt-3 text-sm text-pub-muted">
+                    <div className="flex justify-between">
+                      <span>Subtotal</span>
+                      <span className="font-mono tabular-nums">${packingSubtotal(packingRows).toFixed(2)}</span>
+                    </div>
+                    {aggregatePackingTax(packingRows).map((t) => (
+                      <div key={t.label} className="flex justify-between">
+                        <span>{t.label}</span>
+                        <span className="font-mono tabular-nums">${t.amount.toFixed(2)}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between font-semibold text-pub-ink">
+                      <span>Total</span>
+                      <span className="font-mono tabular-nums">
+                        ${round2(
+                          packingSubtotal(packingRows) +
+                          aggregatePackingTax(packingRows).reduce((s, t) => round2(s + t.amount), 0),
+                        ).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>)}
+              >
                 <Button
                   type="button"
                   disabled={packingRows.length === 0}
                   onClick={addPackingToReceipt}
-                  className={`w-full h-12 font-semibold rounded-full transition-colors disabled:opacity-50 ${themeClasses.button.primary}`}
+                  className={kit.primary}
                 >
                   <Receipt className="h-5 w-5 mr-2" />
                   Add to receipt
                 </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
+              </FormActions>
+            </form>
+          </TabsContent>
+        </Tabs>
       </div>
     </StaffLayout>
   );

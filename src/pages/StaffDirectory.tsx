@@ -1,18 +1,17 @@
+import { useFormClasses, FieldGrid, Field, FormActions } from "@/components/shell/FormKit";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ToolPage } from "@/components/shell/ToolPage";
+import { ToolPage, FilterChips } from "@/components/shell/ToolPage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -391,18 +390,10 @@ const StaffDirectory = () => {
           />
         </div>
         <div className="flex flex-wrap gap-2">
-          {(["all", "admin", "shipping", "courier", "other"] as const).map((c) => (
-            <Button
-              key={c}
-              variant={categoryFilter === c ? "default" : "ghost"}
-              onClick={() => setCategoryFilter(c)}
-              className={`min-h-[44px] capitalize ${
-                categoryFilter === c ? themeClasses.button.primary : themeClasses.button.ghost
-              }`}
-            >
-              {c}
-            </Button>
-          ))}
+          <FilterChips label="Directory categories" value={categoryFilter} onChange={setCategoryFilter}
+            options={["all", "admin", "shipping", "courier", "other"].map((category) => ({
+              value: category, label: category.charAt(0).toUpperCase() + category.slice(1),
+            }))} />
           <Button
             onClick={() => setAdding(true)}
             size="lg"
@@ -643,10 +634,10 @@ const LinkDialog = ({ open, onOpenChange, title, description, initial, onSubmit 
   const { themeClasses } = useTheme();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-pub-paper border-pub-edge text-pub-ink max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg rounded-xl border-pub-edge bg-pub-paper p-5 sm:p-6 max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display font-semibold text-pub-ink">{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogTitle className="font-display text-[19px] font-semibold leading-tight text-pub-ink">{title}</DialogTitle>
+          <DialogDescription className="text-[13px] text-pub-muted">{description}</DialogDescription>
         </DialogHeader>
         <LinkForm
           key={`${open}-${initial.name}-${initial.url}`}
@@ -667,9 +658,10 @@ interface LinkFormProps {
   onCancel: () => void;
 }
 
-const LinkForm = ({ initial, themeInputClass, onSubmit, onCancel }: LinkFormProps) => {
+const LinkForm = ({ initial, onSubmit, onCancel }: LinkFormProps) => {
   const { themeClasses } = useTheme();
-  const { register, handleSubmit, watch, setValue } = useForm<LinkFormValues>({
+  const fc = useFormClasses();
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<LinkFormValues>({
     defaultValues: initial,
   });
   const iconKey = watch("iconKey");
@@ -679,43 +671,40 @@ const LinkForm = ({ initial, themeInputClass, onSubmit, onCancel }: LinkFormProp
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div>
-        <Label htmlFor="name">Title</Label>
+      <FieldGrid>
+      <Field label="Title" htmlFor="name" span={12} required error={errors.name ? "Title is required" : undefined}>
         <Input
           id="name"
           {...register("name", { required: true })}
           placeholder="e.g. UPS"
-          className={themeInputClass}
+          className={fc.input}
         />
-      </div>
-      <div>
-        <Label htmlFor="url">URL</Label>
+      </Field>
+      <Field label="URL" htmlFor="url" span={12} required error={errors.url ? "URL is required" : undefined}>
         <Input
           id="url"
+          inputMode="url"
           {...register("url", { required: true })}
           placeholder="https://example.com/"
-          className={themeInputClass}
+          className={fc.input}
         />
-      </div>
-      <div>
-        <Label htmlFor="description">Description</Label>
+      </Field>
+      <Field label="Description" htmlFor="description" span={12}>
         <Textarea
           id="description"
           rows={2}
           {...register("description")}
           placeholder="Short description shown on the site"
-          className={themeInputClass}
+          className={fc.textarea}
         />
-      </div>
+      </Field>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label>Category</Label>
+        <Field label="Category" span={6}>
           <Select
             value={category}
             onValueChange={(v) => setValue("category", v as Category)}
           >
-            <SelectTrigger className={themeInputClass}>
+            <SelectTrigger className={fc.input}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -725,8 +714,8 @@ const LinkForm = ({ initial, themeInputClass, onSubmit, onCancel }: LinkFormProp
               <SelectItem value="other">Other</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        <div className="flex items-end pb-1">
+        </Field>
+        <Field span={6} className="flex items-end pb-1">
           <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
             <input
               type="checkbox"
@@ -736,12 +725,10 @@ const LinkForm = ({ initial, themeInputClass, onSubmit, onCancel }: LinkFormProp
             />
             Show “Admin” badge
           </label>
-        </div>
-      </div>
+        </Field>
 
-      <div>
-        <Label className="mb-2 block">Icon</Label>
-        <div className="grid grid-cols-6 gap-2">
+      <Field label="Icon" span={12}>
+        <div className="grid grid-cols-6 gap-2 sm:grid-cols-8">
           {ICON_KEYS.map((key) => {
             const { Icon, label } = ICON_OPTIONS[key];
             const selected = iconKey === key;
@@ -752,22 +739,18 @@ const LinkForm = ({ initial, themeInputClass, onSubmit, onCancel }: LinkFormProp
                 onClick={() => setValue("iconKey", key)}
                 title={label}
                 aria-label={label}
-                className={`h-12 w-full rounded-lg border-2 flex items-center justify-center transition-colors ${
-                  selected
-                    ? `${themeClasses.accent.soft} ${themeClasses.accent.border} text-pub-ink`
-                    : "border-pub-edge bg-pub-sunk text-pub-ink hover:bg-pub-paper"
-                }`}
+                aria-pressed={selected}
+                className={`flex h-11 items-center justify-center rounded-lg border ${selected ? themeClasses.ink.fill : "bg-pub-sunk border-pub-edge text-pub-ink"} ${themeClasses.interactive.focus}`}
               >
                 <Icon className="h-5 w-5" />
               </button>
             );
           })}
         </div>
-      </div>
+      </Field>
 
-      <div>
-        <Label className="mb-2 block">Color</Label>
-        <div className="grid grid-cols-8 gap-2">
+      <Field label="Colour" span={12}>
+        <div className="flex flex-wrap gap-2">
           {COLOR_OPTIONS.map((c) => {
             const selected = colorKey === c.key;
             return (
@@ -777,18 +760,16 @@ const LinkForm = ({ initial, themeInputClass, onSubmit, onCancel }: LinkFormProp
                 onClick={() => setValue("colorKey", c.key)}
                 title={c.label}
                 aria-label={c.label}
-                className={`h-10 w-full rounded-lg ${c.swatch} ring-offset-2 transition-colors ${
-                  selected ? "ring-2 ring-offset-background ring-pub-accent" : "opacity-80 hover:opacity-100"
-                }`}
+                aria-pressed={selected}
+                className={`h-9 w-9 rounded-full ${c.swatch} transition-colors ${selected ? "ring-2 ring-offset-2 ring-offset-pub-paper ring-pub-accent" : "opacity-80 hover:opacity-100"} ${themeClasses.interactive.focus}`}
               />
             );
           })}
         </div>
-      </div>
+      </Field>
 
       {/* Live preview so staff can see the site look before saving. */}
-      <div>
-        <Label className="mb-2 block">Preview</Label>
+      <Field label="Preview" span={12}>
         <div className="flex items-center gap-3 p-3 rounded-xl border border-pub-edge">
           <div className="bg-pub-sunk border border-pub-edge p-3 rounded-xl">
             {(() => {
@@ -801,14 +782,15 @@ const LinkForm = ({ initial, themeInputClass, onSubmit, onCancel }: LinkFormProp
             <div className="text-xs text-muted-foreground truncate">{watch("url") || "https://…"}</div>
           </div>
         </div>
-      </div>
+      </Field>
 
-      <DialogFooter>
-        <Button className="rounded-full" type="button" variant="ghost" onClick={onCancel}>
+      </FieldGrid>
+      <FormActions className="mt-2">
+        <Button className={fc.ghost} type="button" variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit" className={`rounded-full ${themeClasses.button.primary}`}>Save</Button>
-      </DialogFooter>
+        <Button type="submit" className={fc.primary}>Save</Button>
+      </FormActions>
     </form>
   );
 };
