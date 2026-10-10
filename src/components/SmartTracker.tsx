@@ -5,6 +5,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { cleanTrackingNumber } from "@/lib/utils";
 import upsLogo from "@/assets/couriers/ups.png";
 import fedexLogo from "@/assets/couriers/fedex.png";
+import fedexDarkLogo from "@/assets/couriers/fedex-dark.png";
 import purolatorLogo from "@/assets/couriers/purolator.png";
 
 interface SmartTrackerProps {
@@ -32,29 +33,34 @@ const SmartTracker = ({ className = "", showHeader = true, variant = "card" }: S
     };
   }, []);
 
-  // Flat brand fills only (no gradients as decoration) - one colour per
-  // courier, used solely as the "you picked this one" highlight.
+  // The logos are transparent and sit straight on the tile. Each courier has
+  // one soft wash in its own logo colours, used solely as the "you picked
+  // this one" highlight, light enough that the logo still reads on top.
   const couriers = [
     {
       id: "ups",
       name: "UPS",
       url: "https://www.ups.com/track?tracknum=",
-      color: "bg-amber-800",
-      logo: upsLogo
+      selected: "border-[#d99a00] bg-[linear-gradient(135deg,rgba(255,181,0,0.34),rgba(120,72,30,0.14))]",
+      logo: upsLogo,
+      logoDark: upsLogo
     },
     {
       id: "fedex",
       name: "FedEx",
       url: "https://www.fedex.com/wtrk/track/?trknbr=",
-      color: "bg-violet-700",
-      logo: fedexLogo
+      selected: "border-[#7a3fc4] bg-[linear-gradient(135deg,rgba(110,50,190,0.28),rgba(255,102,0,0.24))]",
+      logo: fedexLogo,
+      // The purple letters vanish on a dark tile, so dark mode gets white ones.
+      logoDark: fedexDarkLogo
     },
     {
       id: "purolator",
       name: "Purolator",
       url: "https://www.purolator.com/en/shipping/tracker?pin=",
-      color: "bg-blue-700",
-      logo: purolatorLogo
+      selected: "border-[#e0362b] bg-[linear-gradient(135deg,rgba(238,49,36,0.24),rgba(0,82,155,0.24))]",
+      logo: purolatorLogo,
+      logoDark: purolatorLogo
     }
   ];
 
@@ -158,17 +164,15 @@ const SmartTracker = ({ className = "", showHeader = true, variant = "card" }: S
                   aria-label={`Track with ${courier.name}`}
                   className={`${plain ? "pub-courier relative flex min-h-[84px] min-w-0 flex-col items-center justify-center gap-2 rounded-xl border p-2 transition-colors" : "relative flex min-h-[76px] flex-col items-center justify-center gap-2 rounded-lg border p-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"} ${
                     isSelected
-                      ? `${courier.color} border-transparent text-white`
+                      ? `${courier.selected} ${plain ? "bg-pub-counter" : isDarkMode ? "bg-[#1f232c]" : "bg-[#f1efe9]"}`
                       : plain ? "border-pub-edge bg-pub-counter hover:border-pub-ink" : `${themeClasses.card.secondary}`
                   } ${
                     transferringTo && !isSelected ? "opacity-40" : ""
                   }`}
                 >
-                  <div className={`flex h-8 w-full max-w-[76px] items-center justify-center rounded-md p-1 ${
-                    isSelected ? "bg-white/20" : plain ? "bg-white" : "bg-white dark:bg-[#f1efe9]"
-                  }`}>
+                  <div className="flex h-8 w-full max-w-[72px] items-center justify-center">
                     <img
-                      src={courier.logo}
+                      src={isDarkMode ? courier.logoDark : courier.logo}
                       alt=""
                       className="max-h-full max-w-full object-contain"
                       onError={(e) => {
@@ -178,13 +182,13 @@ const SmartTracker = ({ className = "", showHeader = true, variant = "card" }: S
                       }}
                     />
                   </div>
-                  <span className={`text-xs font-semibold ${isSelected ? "text-white" : plain ? "text-pub-ink" : themeClasses.text.primary}`}>
+                  <span className={`text-xs font-semibold ${plain ? "text-pub-ink" : themeClasses.text.primary}`}>
                     {courier.name}
                   </span>
                   {transferringTo && isSelected ? (
-                    <Loader2 className="absolute right-1.5 top-1.5 h-4 w-4 animate-spin text-white" />
+                    <Loader2 className={`absolute right-1.5 top-1.5 h-4 w-4 animate-spin ${plain ? "text-pub-ink" : themeClasses.text.primary}`} />
                   ) : isSelected ? (
-                    <ExternalLink className="absolute right-1.5 top-1.5 h-4 w-4 text-white" />
+                    <ExternalLink className={`absolute right-1.5 top-1.5 h-4 w-4 ${plain ? "text-pub-ink" : themeClasses.text.primary}`} />
                   ) : null}
                 </button>
               );
