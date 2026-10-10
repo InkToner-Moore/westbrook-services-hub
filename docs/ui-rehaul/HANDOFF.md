@@ -27,57 +27,114 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
-## START HERE (written 2026-10-09, the customer page redesign)
+## START HERE (written 2026-10-09, exit of the customer page redesign session)
 
-**Next session is for:** Parsa's notes on the new customer page, if any. Otherwise the
-choices in the section below still stand (studio copy and domain, or AI Mode on staging).
+**Next session is for:** building, and Parsa picks which. Not a numbered plan step.
+Either his notes on the new customer page (he has seen it on staging and has been
+steering it closely), or the older choices in the section below: the studio copy and
+domain, or AI Mode on staging with "order status by name".
 
-**Where things stand (observed 2026-10-09):**
-- Branch `public-redesign`, off `studio-site`. Pushed, and `origin/dev` fast-forwarded to
-  it, so staging has it. **Prod `main` untouched** (`0ffa16c`).
-- Rollback point: the tag `public-pre-redesign` (pushed) is the tree before this work.
-- Gate on the tip: `tsc -p tsconfig.app.json --noEmit` exit 0; `yarn build` built; eslint
-  on the public files and `SmartTracker.tsx` clean; dash scan clean.
-- Checked in a real browser on the local dev server: 320 to 1920 wide with no sideways
-  scroll, light and dark, keyboard focus, reduced motion, the courier redirect (number
-  cleaned), the empty-field errors, the no-match refill state, and the refill tickets
-  with faked results. `/staff/tracking` still renders the old tracker card.
-  **Not checked:** a real refill match, and the page on staging itself.
+**Where things stand (observed 2026-10-09, at exit):**
+- Branch `public-redesign` (off `studio-site`), tip `b82bcbf`. Tree clean, level with
+  its remote. `origin/dev` is at the same commit and its Cloudflare Pages check passed,
+  so staging (`ink-toner-moore.pages.dev`) has it. **Prod `main` untouched** (`0ffa16c`).
+- Open PRs: only **#1 `docs-align-claude-md`** (Sept 1, not this work). Nothing from
+  this session is in a PR; nothing is merged to `main`.
+- Gate as run at exit on the tip: `tsc -p tsconfig.app.json --noEmit` exit 0; `eslint`
+  on `src/pages/PublicHome.tsx src/components/public src/components/SmartTracker.tsx
+  src/lib/storeInfo.ts` exit 0; `yarn build` built; dash scan on the public files and
+  `index.html` clean. `scripts/parser-tests/run.mjs` ran with no failures reported
+  (this session did not touch the parser; `sweep.mjs` was not run).
+- Checked in a real browser on the local dev server, on the commit the tip's `src`
+  matches (`af51256`): 320 to 1920 wide with no sideways scroll, the hero in light and
+  dark, the service links landing below the sticky header, hover, reduced motion.
+  Checked earlier in the session on the same components: keyboard focus, the courier
+  redirect (number cleaned), the empty-field errors, the no-match refill state, the
+  refill tickets with faked results, and that `/staff/tracking` still renders the old
+  tracker card.
+  **Not checked:** a real refill match; the staging page in a browser (only that it
+  serves the new build); the page after the final removal commit, beyond the gate and
+  the fact that `git diff af51256 -- src` is empty.
+- Tags, all pushed: `public-pre-redesign` (the page before this work),
+  `public-redesign-v1` (first redesign: list headline and the first key line),
+  `public-redesign-v2` (name hero with a hairline ending in a small key, no background).
+- No DEV data or rules changed. No secrets written anywhere.
 
 **Built this session, do NOT rebuild:**
-- The customer page at `/` is rebuilt as sections under `src/components/public/`, with
-  its own tokens in `src/styles/public.css` (`pub-*` Tailwind colours, they flip under
-  `.dark` on their own; the new files do not use `themeClasses`). Store facts and the
-  open-now state live in `src/lib/storeInfo.ts`.
+- The customer page at `/` is rebuilt as sections under `src/components/public/`
+  (header, hero, tools, refill status, services, service drawings, hours, location,
+  footer), with its own tokens in `src/styles/public.css` (`pub-*` Tailwind colours,
+  which flip under `.dark` on their own; these files do not use `themeClasses`). Store
+  facts and the open-now state live in `src/lib/storeInfo.ts`.
 - Display type is Bricolage Grotesque (`font-display`), loaded in `index.html`. Body
   stays IBM Plex.
 - The hero is the shop's name set very large in two lines, with the four service
   drawings beside it as links down to each service row. Load moment: a scan bar reveals
   the name, then the four drawings ink in one after another. The rest of the motion
   answers the visitor (service drawings redraw on hover, refill tickets feed out, hours
-  bars grow once).
-- Parsa rejected the first hero on 2026-10-09: the old list headline ("Printing, ink and
-  toner, keys, and shipping.") set large, and a brass rule drawn as a long key that he
-  could not read as a key. That version is the tag `public-redesign-v1`. Do not bring
-  the list headline back.
-- Tried and removed the same day, at Parsa's word. Do not bring these back unless he asks:
-  the brass key line under the hero (three drawings: hairline with a blade, a solid
-  full-width key, a hairline ending in a small key), and a background layer of faint
-  parcels, ink drops and UPS / FedEx / Purolator tags with a moving band above the footer
-  (commit `595aa01`, reverted). The page now has neither: `src` matches commit `af51256`.
-- Parsa's changes the same day: Wednesday closes at 7 PM, and the public email is
-  `contact@inktonermoore.ca` (no MX record on the domain when checked, so it bounces
-  until the mailbox exists; sort that before this reaches prod).
+  bars grow once). Nothing sits between the hero and the tools panel.
+- The tools are one wide panel (tracker left, refill check right); refill results
+  render as ticket stubs. Hours are a week timetable with a bar per day and a "now"
+  marker. The footer is a small name line and the staff login link.
 - `SmartTracker` has `variant="plain"` for the public page. The default `card` variant
   is what staff uses and is unchanged.
-- Copy and facts are the old page's apart from the changes above and the hero line. The hero status is new: it says
-  open or closed right now in Calgary time, where the old line gave today's hours.
+- Parsa's content changes: Wednesday closes at 7 PM; the public email is
+  `contact@inktonermoore.ca`. Other copy and facts are the old page's. The hero status
+  is new: it says open or closed right now in Calgary time.
 
-**Constraints this session found:**
-- The hours bars are full by default and only replay growing in. Do not go back to
-  starting them empty: a missed observer would show the shop closed all week.
-- The open-now status knows nothing about stat holidays or mall closures (same gap the
-  old "Open today" line had).
+**Tried and rejected by Parsa this session. Do not bring any of these back unless he asks:**
+- The old list headline ("Printing, ink and toner, keys, and shipping.") set large as
+  the hero. His word: it sucks.
+- A brass key line under the hero, in every form: a hairline with a ring and an
+  outlined blade (he could not tell what it was), a solid full-width key (`3e7d6d6`,
+  "a dumb one"), a hairline ending in a small key (`45fa76b`), and the first drawing
+  again. He then asked for the line removed altogether.
+- A background layer of faint parcels, ink drops and UPS / FedEx / Purolator tags, with
+  a moving band above the footer (`595aa01`, reverted in `029358d`). He asked for it,
+  saw it, and asked for it reverted.
+- A giant faint shop name in the footer (dropped when the name became the hero).
+The history keeps all of it, so any piece can be looked at or restored by commit.
+
+**Constraints this session found (the older lists below still stand):**
+- The hours bars are full by default and only replay growing in. Do not start them
+  empty: a missed observer would show the shop closed all week.
+- The open-now status knows nothing about stat holidays or mall closures (the old
+  "Open today" line had the same gap, but "Open now" is a stronger claim).
+- `git push` over HTTPS fails on this machine: the global credential helper points at a
+  `.gh-wrapped` path that no longer exists. Per command, outside the sandbox:
+  `git -c credential.https://github.com.helper= -c credential.https://github.com.helper='!gh auth git-credential' push ...`.
+  The permanent fix is on Parsa's system todo list (`sysnote find gh-wrapped`).
+- Codex (the builder) cannot start Vite or a browser in its sandbox, so it never sees
+  what it builds. Every visual change needs a separate browser pass. It also writes
+  very long single lines unless told to match the repo's formatting.
+- Background drawings placed by percentage land under text at some width. If that idea
+  ever returns, check 320, 390, 768, 1024, 1440 and 1920 with screenshots, not by
+  bounding boxes.
+- Parsa judges this page by eye, fast, and reverses quickly. Ship small visual changes
+  to staging one at a time and tag before each, as he asked every time.
+
+**Open questions for Parsa** (answers may arrive mid-session: fold each in as its own
+commit, and never invent one to close a line):
+- `contact@inktonermoore.ca`: the domain had no MX record when checked on 2026-10-09,
+  so mail to it bounces. He owes the mailbox. It must exist before this page reaches
+  prod. Lands in DNS, not the repo.
+- When the redesign goes to prod. Nothing is merged to `main`; that is his call.
+- Whether the hero and page are now where he wants them. His last word was to remove
+  the line and the background, not a verdict on the rest.
+- The carried ones in the sections below still stand (studio copy and domain, the
+  tracker comma fix on prod, parcel tax leaving Canada, a staging test login in
+  keyvault, stat holidays).
+
+**Working rules:** environment and gate as in the project entry and the sections
+below. For the public page the gate is `tsc`, `eslint` on the public files, `yarn
+build`, the dash scan, then a browser pass on the dev server. One commit per change he
+asks for; push the branch and fast-forward `dev` (`git push origin
+public-redesign:dev`) so he can look on his phone. A local dev server may still be
+running on port 8080 from this session; it stops on its own.
+
+**Still placeholder, must not reach a customer:** the public email does not receive
+mail yet. The whole rehaul, this page included, is on staging only. The studio page is
+still `noindex` on a staging host, and `purchase` still has no executor.
 
 ## Earlier (written 2026-10-08, exit of the studio site and two counter fixes session)
 
