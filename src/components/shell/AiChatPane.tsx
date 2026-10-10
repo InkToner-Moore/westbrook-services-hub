@@ -52,7 +52,7 @@ const EXAMPLES = [
 ];
 
 const AiChatPane: React.FC = () => {
-  const { themeClasses, isDarkMode } = useTheme();
+  const { themeClasses } = useTheme();
   const {
     turns,
     busy,
@@ -73,8 +73,6 @@ const AiChatPane: React.FC = () => {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [turns, busy]);
-
-  const ink = isDarkMode ? 'text-indigo-300' : 'text-indigo-700';
 
   // Hover-to-type on a courier pill tracks immediately.
   const handleTrack = async (courier: Courier, trackingNumber: string) => {
@@ -102,18 +100,18 @@ const AiChatPane: React.FC = () => {
   return (
     <div className="mx-auto flex h-full w-full max-w-2xl flex-col px-4 py-5">
       <header className="mb-4 flex items-center justify-between">
-        <div className={`flex items-center gap-2.5 ${themeClasses.text.primary}`}>
-          <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${isDarkMode ? 'bg-indigo-900/40' : 'bg-indigo-50'}`}>
-            <Sparkles className={`h-5 w-5 ${ink}`} />
+        <div className="flex items-center gap-2.5 text-pub-ink">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-pub-edge bg-pub-paper">
+            <Sparkles className="h-5 w-5 text-pub-accent" strokeWidth={1.6} />
           </span>
-          <span className="text-2xl font-semibold tracking-tight">AI Mode</span>
+          <span className="font-display text-xl font-semibold text-pub-ink">AI Mode</span>
         </div>
         <button
           type="button"
           onClick={clear}
           title="Clear"
           aria-label="Clear conversation"
-          className={`flex h-11 w-11 items-center justify-center rounded-xl ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
+          className={`flex h-11 w-11 items-center justify-center rounded-xl text-pub-muted ${themeClasses.interactive.hover}`}
         >
           <Eraser className="h-5 w-5" />
         </button>
@@ -121,27 +119,25 @@ const AiChatPane: React.FC = () => {
 
       <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto pr-1">
         {turns.length === 0 && (
-          <div className="pt-6">
-            <p className={`text-xl font-semibold tracking-tight ${themeClasses.text.primary}`}>
+          <div className="pt-8 sm:pt-14">
+            <p className="font-display font-semibold text-pub-ink"
+              style={{ fontSize: 'clamp(2.1rem, 4.2vw, 3.25rem)', lineHeight: 1.02 }}>
               What can I help with?
             </p>
-            <p className={`mt-2 max-w-md text-[15px] leading-relaxed ${themeClasses.text.secondary}`}>
+            <p className="mt-4 max-w-md text-[16px] leading-relaxed text-pub-muted">
               Say it in plain words. I make receipts, record refills, track
               packages, and keep your notes and inventory in order.
             </p>
-            <div className="mt-5 flex items-start gap-2">
-              <span className={`mt-1.5 text-[13px] ${themeClasses.text.muted}`}>Try</span>
+            <div className="mt-7 flex items-start gap-2">
+              <span className="mt-1.5 text-[13px] text-pub-muted">Try</span>
               <div className="flex flex-wrap gap-1.5">
                 {EXAMPLES.map((ex) => (
                   <button
                     key={ex}
                     type="button"
                     onClick={() => sendUtterance(ex)}
-                    className={`min-h-[44px] rounded-full border px-3.5 py-1.5 text-left text-[14px] transition-colors sm:min-h-0 sm:px-3 sm:text-[13px] ${
-                      isDarkMode
-                        ? 'border-slate-700 text-slate-300 hover:border-indigo-700 hover:bg-indigo-900/20'
-                        : 'border-slate-200 text-slate-600 hover:border-indigo-200 hover:bg-indigo-50'
-                    }`}
+                    className="min-h-[44px] rounded-full border px-3.5 py-1.5 text-left text-[14px] transition-colors sm:min-h-0
+                      sm:px-3 sm:text-[13px] border-pub-edge bg-pub-paper text-pub-ink hover:border-pub-ink"
                   >
                     {ex}
                   </button>
@@ -165,9 +161,8 @@ const AiChatPane: React.FC = () => {
                   // The user's words: a calm filled bubble, clearly theirs.
                   <div className="flex justify-end">
                     <div
-                      className={`max-w-[88%] rounded-2xl rounded-br-md px-4 py-2.5 text-[15px] leading-relaxed ${
-                        isDarkMode ? 'bg-slate-700 text-slate-50' : 'bg-slate-200 text-slate-900'
-                      }`}
+                      className="max-w-[88%] rounded-2xl rounded-br-md px-4 py-2.5 text-[15px] leading-relaxed bg-pub-sunk
+                        text-pub-ink border border-pub-edge"
                     >
                       {turn.text}
                     </div>
@@ -175,7 +170,7 @@ const AiChatPane: React.FC = () => {
                 ) : (
                   // The assistant speaks as plain text; the slip and results live
                   // in the artifact rail, not as another card in the thread.
-                  <div className={`max-w-[92%] text-[15px] leading-relaxed ${themeClasses.text.primary}`}>
+                  <div className="max-w-[92%] text-[15px] leading-relaxed text-pub-ink">
                     {turn.text}
                   </div>
                 ))}
@@ -203,12 +198,8 @@ const AiChatPane: React.FC = () => {
         })}
 
         {busy && (
-          <div className={`flex items-center gap-2 text-[15px] ${themeClasses.text.muted}`} aria-live="polite" aria-label="Working on it">
-            <span className="flex items-center gap-1">
-              <span className={`h-1.5 w-1.5 animate-bounce rounded-full ${ink}`} style={{ animationDelay: '0ms', backgroundColor: 'currentColor' }} />
-              <span className={`h-1.5 w-1.5 animate-bounce rounded-full ${ink}`} style={{ animationDelay: '120ms', backgroundColor: 'currentColor' }} />
-              <span className={`h-1.5 w-1.5 animate-bounce rounded-full ${ink}`} style={{ animationDelay: '240ms', backgroundColor: 'currentColor' }} />
-            </span>
+          <div className="flex items-center gap-2 text-[15px] text-pub-muted" aria-live="polite" aria-label="Working on it">
+            <span className="staff-scan" aria-hidden="true" />
             Reading that
           </div>
         )}

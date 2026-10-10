@@ -101,7 +101,7 @@ const StaffShell: React.FC = () => {
               onClick={() => setLeftCollapsed(false)}
               aria-label="Expand menu"
               title="Expand menu"
-              className={`flex h-9 w-9 items-center justify-center rounded-lg ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
+              className={`flex h-9 w-9 items-center justify-center rounded-lg text-pub-muted ${themeClasses.interactive.hover}`}
             >
               <PanelLeftOpen className="h-4 w-4" />
             </button>
@@ -122,10 +122,10 @@ const StaffShell: React.FC = () => {
               aria-label="Open menu"
               className={`flex h-11 w-11 items-center justify-center rounded-xl ${themeClasses.interactive.hover}`}
             >
-              <Menu className={`h-5 w-5 ${themeClasses.text.secondary}`} />
+              <Menu className="h-5 w-5 text-pub-muted" />
             </button>
-            <span className={`flex items-center gap-1.5 text-sm font-semibold ${themeClasses.text.primary}`}>
-              <Sparkles className="h-4 w-4 text-indigo-500" />
+            <span className="flex items-center gap-1.5 text-sm font-semibold text-pub-ink">
+              <Sparkles className="h-4 w-4 text-pub-accent" />
               Ink, Toner &amp; Moore
             </span>
             {/* With something waiting, the button names it; an icon alone hides a
@@ -146,8 +146,8 @@ const StaffShell: React.FC = () => {
                 aria-label="Open workspace"
                 className={`relative flex h-11 w-11 items-center justify-center rounded-xl ${themeClasses.interactive.hover}`}
               >
-                <PanelRight className={`h-5 w-5 ${themeClasses.text.secondary}`} />
-                {showDot && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-blue-500" />}
+                <PanelRight className="h-5 w-5 text-pub-muted" />
+                {showDot && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-pub-accent" />}
               </button>
             )}
           </div>
@@ -168,7 +168,7 @@ const StaffShell: React.FC = () => {
             tucked away or when there is only a last item to bring back; gone
             when there is nothing at all, so the tool gets the room. */}
         {hasArtifact && !rightCollapsed ? (
-          <aside className={`hidden w-[400px] shrink-0 border-l xl:block ${themeClasses.card.primary}`}>
+          <aside className="hidden w-[400px] shrink-0 border-l xl:block bg-pub-paper border-pub-edge">
             <ArtifactRail onCollapse={() => setRightCollapsed(true)} lastArtifact={lastArtifact} onReopenLast={reopenLast} />
           </aside>
         ) : showDot ? (
@@ -178,10 +178,10 @@ const StaffShell: React.FC = () => {
               onClick={() => (hasArtifact ? setRightCollapsed(false) : reopenLast())}
               aria-label={hasArtifact ? 'Show panel' : 'Show last item'}
               title={hasArtifact ? 'Show panel' : 'Show last item'}
-              className={`relative flex h-9 w-9 items-center justify-center rounded-lg ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
+              className={`relative flex h-9 w-9 items-center justify-center rounded-lg text-pub-muted ${themeClasses.interactive.hover}`}
             >
               <PanelRightOpen className="h-4 w-4" />
-              {hasArtifact && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-blue-500" />}
+              {hasArtifact && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-pub-accent" />}
             </button>
           </aside>
         ) : null}
@@ -193,7 +193,7 @@ const StaffShell: React.FC = () => {
             <div className={`absolute inset-y-0 left-0 w-64 border-r shadow-lg ${themeClasses.header}`}>
               <div className="flex justify-end p-2">
                 <button type="button" onClick={() => setRailOpen(false)} aria-label="Close menu" className={`rounded-lg p-1.5 ${themeClasses.interactive.hover}`}>
-                  <X className={`h-5 w-5 ${themeClasses.text.secondary}`} />
+                  <X className="h-5 w-5 text-pub-muted" />
                 </button>
               </div>
               <TileRail />
@@ -207,12 +207,12 @@ const StaffShell: React.FC = () => {
         {(sheetOpen || hasArtifact) && (
           <div className={`fixed inset-0 z-[80] xl:hidden ${sheetOpen ? '' : 'hidden'}`}>
             <div className="absolute inset-0 bg-black/40" onClick={() => setSheetOpen(false)} />
-            <div className={`absolute inset-x-0 bottom-0 top-16 flex flex-col rounded-t-2xl border-t shadow-lg ${themeClasses.card.primary}`}>
+            <div className="absolute inset-x-0 bottom-0 top-16 flex flex-col rounded-t-2xl border-t shadow-lg bg-pub-paper border-pub-edge">
               <div className="flex justify-end px-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setSheetOpen(false)}
-                  className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 text-sm ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
+                  className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 text-sm text-pub-muted ${themeClasses.interactive.hover}`}
                 >
                   <ChevronDown className="h-4 w-4" />
                   {isChatRoute ? 'Back to chat' : 'Back'}

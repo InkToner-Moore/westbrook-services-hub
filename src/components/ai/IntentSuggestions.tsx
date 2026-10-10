@@ -8,7 +8,6 @@
 // Picking a route re-parses the same utterance under that forced action, so the
 // weak model never has to be right the first time.
 import React, { useState } from 'react';
-import { useTheme } from '@/contexts/ThemeContext';
 import type { AiAction, ReceiptSubtype } from '@/ai/types';
 import { ROUTE_OPTIONS, sameRoute, type RouteOption } from '@/ai/intentOptions';
 
@@ -24,16 +23,12 @@ interface Props {
 }
 
 const IntentSuggestions: React.FC<Props> = ({ onPick, variant, currentAction, currentSubtype, choices }) => {
-  const { themeClasses, isDarkMode } = useTheme();
   const [expanded, setExpanded] = useState(variant === 'card');
 
   const options = (choices ?? ROUTE_OPTIONS).filter((o) => !sameRoute(o, currentAction, currentSubtype));
 
-  const chip = `min-h-[44px] rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-colors sm:min-h-0 sm:px-3 ${
-    isDarkMode
-      ? 'border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700'
-      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-  }`;
+  const chip = `min-h-[44px] rounded-full border px-3.5 py-1.5 text-[13px] font-medium transition-colors sm:min-h-0
+    sm:px-3 border-pub-edge bg-pub-paper text-pub-ink hover:border-pub-ink`;
 
   const grid = (
     <div className="flex flex-wrap gap-1.5">
@@ -47,8 +42,8 @@ const IntentSuggestions: React.FC<Props> = ({ onPick, variant, currentAction, cu
 
   if (variant === 'card') {
     return (
-      <div className={`rounded-2xl border p-4 shadow-sm ${themeClasses.card.primary}`}>
-        <p className={`mb-2.5 text-[15px] ${themeClasses.text.secondary}`}>Pick what you meant and I'll set it up:</p>
+      <div className="rounded-2xl border p-4 shadow-sm bg-pub-paper border-pub-edge">
+        <p className="mb-2.5 text-[15px] text-pub-muted">Pick what you meant and I'll set it up:</p>
         {grid}
       </div>
     );
@@ -61,13 +56,13 @@ const IntentSuggestions: React.FC<Props> = ({ onPick, variant, currentAction, cu
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className={`text-[13px] underline-offset-2 hover:underline ${themeClasses.text.muted}`}
+          className="text-[13px] underline-offset-2 hover:underline text-pub-muted"
         >
           Not right? Change what this is
         </button>
       ) : (
         <div className="space-y-1.5">
-          <p className={`text-[13px] ${themeClasses.text.muted}`}>Change to:</p>
+          <p className="text-[13px] text-pub-muted">Change to:</p>
           {grid}
         </div>
       )}

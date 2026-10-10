@@ -1,8 +1,8 @@
-// The left rail: a wide AI Mode hero across the top, then the eight tool tiles in
-// a two-column grid, then the user chip and the light/dark toggle. A tile floods
-// with its tool's signature colour when active; idle tiles carry that hue only in
-// a soft icon badge. The header hosts a collapse control. See DESIGN-SPEC.md.
-import React from 'react';
+// The left rail: a wide AI Mode hero, seven tools in a two-column grid,
+// then the user chip and light/dark toggle. Active tools use ink; AI Mode
+// uses the accent. Idle icons sit directly on quiet paper surfaces.
+import React, { useEffect, useState } from 'react';
+import { openState } from '@/lib/storeInfo';
 import { NavLink, useLocation } from 'react-router-dom';
 import { PanelLeftClose } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -17,18 +17,18 @@ const HeroTile: React.FC<{ tile: Tile; active: boolean }> = ({ tile, active }) =
       to={tile.route}
       aria-label={tile.label}
       aria-current={active ? 'page' : undefined}
-      className={`col-span-2 flex items-center gap-3 rounded-2xl border px-3 py-3 transition-colors ${themeClasses.interactive.focus} ${
+      className={`col-span-2 flex items-center gap-3 rounded-2xl border px-3 py-3 active:scale-[0.98] transition-[background-color,border-color,color,transform] duration-150 ${themeClasses.interactive.focus} ${
         active
-          ? `${tile.active} shadow-sm`
-          : `${themeClasses.card.primary} ${themeClasses.interactive.hover}`
+          ? tile.active
+          : 'bg-pub-paper border-pub-edge hover:bg-pub-sunk'
       }`}
     >
-      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${active ? 'bg-white/20' : tile.tint}`}>
-        <Icon className={`h-5 w-5 ${active ? 'text-white' : tile.idleIcon}`} />
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+        <Icon strokeWidth={1.6} className={`h-[22px] w-[22px] ${active ? 'text-current' : tile.idleIcon}`} />
       </span>
       <span className="flex flex-col leading-tight">
-        <span className={`text-[14px] font-semibold ${active ? 'text-white' : themeClasses.text.primary}`}>{tile.label}</span>
-        <span className={`text-[11px] ${active ? 'text-white/75' : themeClasses.text.muted}`}>Ask for anything</span>
+        <span className={`text-[12px] font-medium ${active ? 'text-current' : 'text-pub-ink'}`}>{tile.label}</span>
+        <span className={`text-[11px] ${active ? 'text-current opacity-75' : 'text-pub-muted'}`}>Ask for anything</span>
       </span>
     </NavLink>
   );
@@ -41,15 +41,15 @@ const ToolTile: React.FC<{ tile: Tile; active: boolean; wide?: boolean }> = ({ t
   if (!tile.enabled) {
     return (
       <div
-        className={`${wide ? 'col-span-2 ' : ''}flex flex-col items-center justify-center gap-1.5 rounded-2xl border py-3 opacity-70 ${themeClasses.card.secondary}`}
+        className={`${wide ? 'col-span-2 ' : ''}flex flex-col items-center justify-center gap-1.5 rounded-2xl border py-3 opacity-70 bg-pub-sunk border-pub-edge`}
         title={tile.soon ? `${tile.label}, coming soon` : tile.label}
         aria-disabled="true"
       >
-        <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${tile.tint}`}>
-          <Icon className={`h-[18px] w-[18px] ${themeClasses.text.muted}`} />
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl">
+          <Icon strokeWidth={1.6} className="h-[22px] w-[22px] text-pub-muted" />
         </span>
-        <span className={`text-[11px] font-medium ${themeClasses.text.muted}`}>{tile.label}</span>
-        {tile.soon && <span className={`rounded-full px-1.5 text-[9px] font-medium ${themeClasses.card.primary} ${themeClasses.text.muted}`}>Soon</span>}
+        <span className="text-[12px] font-medium text-pub-muted">{tile.label}</span>
+        {tile.soon && <span className="rounded-full px-1.5 text-[9px] font-medium bg-pub-paper border-pub-edge text-pub-muted">Soon</span>}
       </div>
     );
   }
@@ -61,16 +61,16 @@ const ToolTile: React.FC<{ tile: Tile; active: boolean; wide?: boolean }> = ({ t
       aria-current={active ? 'page' : undefined}
       className={`${
         wide ? 'col-span-2 flex-row justify-start gap-3 px-3' : 'flex-col justify-center gap-1.5'
-      } flex items-center rounded-2xl border py-3 transition-colors ${themeClasses.interactive.focus} ${
+      } flex items-center rounded-2xl border ${wide ? 'py-3' : 'py-3.5'} active:scale-[0.98] transition-[background-color,border-color,color,transform] duration-150 ${themeClasses.interactive.focus} ${
         active
-          ? `${tile.active} shadow-sm`
-          : `${themeClasses.card.primary} ${themeClasses.interactive.hover}`
+          ? tile.active
+          : 'bg-pub-paper border-pub-edge hover:bg-pub-sunk'
       }`}
     >
-      <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${active ? 'bg-white/20' : tile.tint}`}>
-        <Icon className={`h-[18px] w-[18px] ${active ? 'text-white' : tile.idleIcon}`} />
+      <span className="flex h-9 w-9 items-center justify-center rounded-xl">
+        <Icon strokeWidth={1.6} className={`h-[22px] w-[22px] ${active ? 'text-current' : tile.idleIcon}`} />
       </span>
-      <span className={`text-[11px] font-medium ${active ? 'text-white' : themeClasses.text.secondary}`}>{tile.label}</span>
+      <span className={`text-[12px] font-medium ${active ? 'text-current' : 'text-pub-ink'}`}>{tile.label}</span>
     </NavLink>
   );
 };
@@ -78,16 +78,32 @@ const ToolTile: React.FC<{ tile: Tile; active: boolean; wide?: boolean }> = ({ t
 const TileRail: React.FC<{ onCollapse?: () => void }> = ({ onCollapse }) => {
   const { themeClasses } = useTheme();
   const { pathname } = useLocation();
+  const [status, setStatus] = useState(() => openState());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setStatus(openState()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const isActive = (route: string) => pathname === route || pathname.startsWith(route + '/');
   const aiActive = isActive('/staff/ai') || pathname === '/staff/dashboard' || pathname === '/staff';
 
   return (
     <div className="flex h-full flex-col gap-3 p-3">
-      <div className="flex items-center justify-between gap-1 px-1.5 pt-0.5">
-        <span className="flex min-w-0 flex-col leading-tight">
-          <span className={`truncate text-[13px] font-semibold ${themeClasses.text.primary}`}>Ink, Toner &amp; Moore</span>
-          <span className={`text-[11px] ${themeClasses.text.muted}`}>Staff Dashboard</span>
+      <div className="flex items-start justify-between gap-1 px-1.5 pt-1.5">
+        <span className="flex min-w-0 flex-col">
+          {/* Two lines, the way the name is set on the customer page. */}
+          <span className="font-display text-[22px] font-semibold leading-[1.02] text-pub-ink">
+            <span className="block">Ink, Toner</span>
+            <span className="block">&amp; Moore</span>
+          </span>
+          <span className="mt-2 flex items-center gap-1.5 text-[12px] text-pub-muted">
+            <span
+              className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.open ? 'bg-pub-open' : 'bg-pub-muted'}`}
+              aria-hidden="true"
+            />
+            <span className="truncate">{status.label}</span>
+          </span>
         </span>
         {onCollapse && (
           <button
@@ -95,7 +111,7 @@ const TileRail: React.FC<{ onCollapse?: () => void }> = ({ onCollapse }) => {
             onClick={onCollapse}
             aria-label="Collapse menu"
             title="Collapse menu"
-            className={`hidden h-7 w-7 items-center justify-center rounded-lg lg:flex ${themeClasses.text.muted} ${themeClasses.interactive.hover}`}
+            className={`hidden h-7 w-7 items-center justify-center rounded-lg lg:flex text-pub-muted ${themeClasses.interactive.hover}`}
           >
             <PanelLeftClose className="h-4 w-4" />
           </button>
@@ -115,7 +131,7 @@ const TileRail: React.FC<{ onCollapse?: () => void }> = ({ onCollapse }) => {
       </nav>
 
       <div className="mt-auto">
-        <div className={`mb-3 h-px ${themeClasses.card.secondary}`} />
+        <div className="mb-3 h-px bg-pub-edge" />
         <UserMenu />
       </div>
     </div>

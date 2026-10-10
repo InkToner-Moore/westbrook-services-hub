@@ -59,8 +59,8 @@ const ArtifactRail: React.FC<ArtifactRailProps> = ({ onCollapse, lastArtifact, o
   return (
     <div className="flex h-full flex-col">
       <header className={`flex items-center gap-2 border-b px-4 py-3 ${themeClasses.header}`}>
-        <PanelRight className={`h-4 w-4 ${themeClasses.text.secondary}`} />
-        <span className={`text-sm font-semibold ${themeClasses.text.primary}`}>
+        <PanelRight className="h-4 w-4 text-pub-muted" />
+        <span className="font-display text-[15px] font-semibold text-pub-ink">
           {hasArtifact ? artifact?.title ?? 'Details' : 'Workspace'}
         </span>
         {canReopen && (
@@ -68,7 +68,7 @@ const ArtifactRail: React.FC<ArtifactRailProps> = ({ onCollapse, lastArtifact, o
             type="button"
             onClick={onReopenLast}
             title="Show the last item"
-            className={`ml-auto inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-2.5 py-1 text-[13px] ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
+            className={`ml-auto inline-flex min-h-[36px] items-center gap-1.5 rounded-lg px-2.5 py-1 text-[13px] text-pub-muted ${themeClasses.interactive.hover}`}
           >
             <History className="h-3.5 w-3.5" />
             Show last
@@ -80,7 +80,7 @@ const ArtifactRail: React.FC<ArtifactRailProps> = ({ onCollapse, lastArtifact, o
             onClick={onCollapse}
             aria-label="Collapse workspace"
             title="Collapse workspace"
-            className={`${canReopen ? '' : 'ml-auto'} hidden h-7 w-7 items-center justify-center rounded-lg xl:flex ${themeClasses.text.muted} ${themeClasses.interactive.hover}`}
+            className={`${canReopen ? '' : 'ml-auto'} hidden h-7 w-7 items-center justify-center rounded-lg xl:flex text-pub-muted ${themeClasses.interactive.hover}`}
           >
             <PanelRightClose className="h-4 w-4" />
           </button>
@@ -96,11 +96,11 @@ const ArtifactRail: React.FC<ArtifactRailProps> = ({ onCollapse, lastArtifact, o
         </>
       ) : (
         <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-          <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-2xl ${themeClasses.card.secondary}`}>
-            <PanelRight className={`h-6 w-6 ${themeClasses.text.muted}`} />
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-pub-sunk border-pub-edge">
+            <PanelRight className="h-6 w-6 text-pub-muted" />
           </div>
-          <p className={`text-sm font-medium ${themeClasses.text.secondary}`}>Nothing to review yet</p>
-          <p className={`mt-1 max-w-[16rem] text-[13px] ${themeClasses.text.muted}`}>
+          <p className="text-sm font-medium text-pub-muted">Nothing to review yet</p>
+          <p className="mt-1 max-w-[16rem] text-[13px] text-pub-muted">
             Receipts, tracking, and anything to confirm will show up here.
           </p>
           {canReopen && (

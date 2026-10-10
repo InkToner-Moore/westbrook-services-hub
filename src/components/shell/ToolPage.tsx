@@ -1,6 +1,6 @@
 // Shared chrome for a tool rendered inside the staff shell, so every tool page
-// reads the same way: one content width, and a title bar whose name, icon and
-// hue come from the tool's own tile (tiles.ts) instead of being retyped per page.
+// reads the same way: one content width, and a title bar whose icon and
+// label come from the tool's own tile (tiles.ts) instead of being retyped per page.
 // SegmentedTabs is the one tab control the tool pages share.
 import React from 'react';
 import type { LucideIcon } from 'lucide-react';
@@ -9,26 +9,25 @@ import { TOOL_TILES } from './tiles';
 
 export type ToolKey = 'tracking' | 'receipts' | 'cartridges' | 'notes' | 'inventory' | 'directory' | 'timesheet';
 
-// The title bar: the tile's icon in its tinted badge, the tile's label, and a
+// The title bar: the tile's icon in a quiet outlined square, its label, and a
 // short line saying what the page is for.
 export const ToolPageHeader: React.FC<{ tool: ToolKey; subtitle?: string; actions?: React.ReactNode }> = ({
   tool,
   subtitle,
   actions,
 }) => {
-  const { themeClasses } = useTheme();
   const tile = TOOL_TILES.find((t) => t.key === tool);
   if (!tile) return null;
   const Icon = tile.icon;
   return (
-    <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-3">
-        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${tile.tint}`}>
-          <Icon className={`h-5 w-5 ${tile.idleIcon}`} />
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-pub-edge bg-pub-paper">
+          <Icon className="h-5 w-5 text-pub-ink" strokeWidth={1.6} />
         </span>
         <div className="min-w-0">
-          <h1 className={`text-xl font-semibold tracking-tight ${themeClasses.text.primary}`}>{tile.label}</h1>
-          {subtitle && <p className={`text-sm ${themeClasses.text.secondary}`}>{subtitle}</p>}
+          <h1 className="font-display text-[28px] font-semibold leading-tight text-pub-ink sm:text-[32px]">{tile.label}</h1>
+          {subtitle && <p className="mt-0.5 text-[15px] text-pub-muted">{subtitle}</p>}
         </div>
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -80,7 +79,7 @@ export function SegmentedTabs<T extends string>({
     <div
       role="tablist"
       aria-label={label}
-      className={`inline-flex max-w-full gap-1 overflow-x-auto rounded-xl border p-1 ${themeClasses.card.secondary} ${className}`}
+      className={`inline-flex max-w-full gap-1 overflow-x-auto rounded-xl border p-1 bg-pub-sunk border-pub-edge ${className}`}
     >
       {options.map((o) => {
         const on = o.value === value;
@@ -94,14 +93,16 @@ export function SegmentedTabs<T extends string>({
             onClick={() => onChange(o.value)}
             className={`flex shrink-0 items-center gap-2 rounded-lg border font-medium transition-colors ${pad} ${themeClasses.interactive.focus} ${
               on
-                ? `${themeClasses.card.primary} ${themeClasses.text.primary} shadow-sm`
-                : `border-transparent ${themeClasses.text.secondary}`
+                ? `bg-pub-paper border-pub-edge text-pub-ink`
+                : `border-transparent text-pub-muted hover:text-pub-ink`
             }`}
           >
             {Icon && <Icon className="h-4 w-4" />}
             {o.label}
             {o.badge ? (
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold text-white">
+              <span
+                className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold ${themeClasses.ink.fill}`}
+              >
                 {o.badge > 99 ? '99+' : o.badge}
               </span>
             ) : null}

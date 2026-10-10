@@ -157,7 +157,6 @@ export function useConfirmationDraft(intent: Intent, specs: FieldSpec[]): Confir
 // off. State is carried by shape (the tick) and by the struck-through row, not
 // colour alone, per the accessibility floor. Kept quiet so the values lead.
 function OmitToggle({ omitted, onToggle, label }: { omitted: boolean; onToggle: () => void; label: string }) {
-  const { themeClasses } = useTheme();
   return (
     <button
       type="button"
@@ -166,10 +165,10 @@ function OmitToggle({ omitted, onToggle, label }: { omitted: boolean; onToggle: 
       aria-label={omitted ? `Include ${label} on the slip` : `Leave ${label} off the slip`}
       title={omitted ? 'Left off. Click to include.' : 'On the slip. Click to leave it off.'}
       onClick={onToggle}
-      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-pub-accent"
     >
       <span
-        className={`flex h-4 w-4 items-center justify-center rounded border border-current ${omitted ? themeClasses.text.muted : themeClasses.text.secondary}`}
+        className={`flex h-4 w-4 items-center justify-center rounded border border-current ${omitted ? 'text-pub-muted' : 'text-pub-accent'}`}
       >
         {!omitted && <Check className="h-3 w-3" strokeWidth={3} />}
       </span>
@@ -180,12 +179,12 @@ function OmitToggle({ omitted, onToggle, label }: { omitted: boolean; onToggle: 
 // A brass "?" on a row that still needs a value. Filled and optional rows carry
 // no marker: an empty optional value already reads "Optional".
 function NeededMarker() {
-  const { isDarkMode } = useTheme();
+  const { themeClasses } = useTheme();
   return (
     <span
       title="Needed"
       className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
-        isDarkMode ? 'bg-amber-800/70 text-amber-200' : 'bg-amber-100 text-amber-800'
+        themeClasses.brass.soft + ' ' + themeClasses.brass.text
       }`}
     >
       ?
@@ -273,7 +272,7 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
         type="button"
         onClick={() => setEditingKey(spec.key)}
         className={`group inline-flex min-h-[44px] items-center gap-1 font-mono text-[15px] tabular-nums xl:min-h-0 ${
-          isEmpty ? themeClasses.text.muted : themeClasses.text.primary
+          isEmpty ? (spec.marker === 'required' ? 'text-pub-accent' : 'text-pub-muted') : 'text-pub-ink'
         }`}
       >
         <span className={isEmpty ? 'font-sans underline decoration-dotted underline-offset-4' : ''}>{display}</span>
@@ -355,7 +354,7 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
         type="button"
         onClick={() => setEditingKey(spec.key)}
         className={`group inline-flex min-h-[44px] items-center gap-1 text-[15px] xl:min-h-0 ${alignFigures ? 'font-mono tabular-nums' : ''} ${
-          isEmpty ? themeClasses.text.muted : themeClasses.text.primary
+          isEmpty ? (spec.marker === 'required' ? 'text-pub-accent' : 'text-pub-muted') : 'text-pub-ink'
         }`}
       >
         <span className={isEmpty ? 'underline decoration-dotted underline-offset-4' : ''}>{display}</span>
@@ -366,13 +365,10 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
 
   const HeaderIcon = ACTION_ICON[intent.action] ?? FileText;
   const heading = routeLabel(intent.action, intent.subtype) ?? 'Check and confirm';
-  // The ink accent (from Ink, Toner & Moore) marks this slip apart from the plain
-  // chat that pointed here. Blue stays the action colour for Confirm.
-  const inkHeader = isDarkMode
-    ? 'bg-indigo-900/25 border-indigo-800/50 text-indigo-100'
-    : 'bg-indigo-50 border-indigo-100 text-indigo-900';
-  const divide = isDarkMode ? 'divide-slate-700/70' : 'divide-slate-100';
-  const rule = isDarkMode ? 'border-[#2a2f3a]' : 'border-[#e4e1d9]';
+  // The slip uses quiet paper, with an accent icon and an ink Confirm button.
+  const inkHeader = 'bg-pub-paper border-pub-edge text-pub-ink';
+  const divide = 'divide-pub-edge';
+  const rule = 'border-pub-edge';
 
   // One total rule at the foot of the ledger, like a real slip: when the slip has
   // a price and a GST toggle, show the tax and the after-GST total (or just the
@@ -389,11 +385,11 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
   const shippingLines = isShipping ? receiptIntentToCartLines(draft.workingIntent) : [];
 
   return (
-    <div className={`overflow-hidden rounded-2xl border ${themeClasses.card.primary}`}>
+    <div className="overflow-hidden rounded-2xl border bg-pub-paper border-pub-edge">
       {/* Slip header: names what is being confirmed. */}
       <div className={`flex items-center gap-2 border-b px-4 py-2.5 ${inkHeader}`}>
-        <HeaderIcon className="h-4 w-4 shrink-0" />
-        <span className="text-[15px] font-semibold tracking-tight">{heading}</span>
+        <HeaderIcon className="h-4 w-4 shrink-0 text-pub-accent" />
+        <span className="font-display text-[15px] font-semibold text-pub-ink">{heading}</span>
       </div>
 
       <div className="px-4 py-3">
@@ -442,7 +438,7 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
                   {/* The "?" means Confirm is waiting on this line, nothing softer. */}
                   {spec.blocking && !isOmitted && isBlank(fv?.value) && <NeededMarker />}
                   <span
-                    className={`text-[15px] ${themeClasses.text.secondary} ${
+                    className={`text-[15px] text-pub-muted ${
                       isOmitted ? 'line-through opacity-50' : ''
                     }`}
                   >
@@ -452,7 +448,7 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
                     <span
                       title={fv?.reason}
                       className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                        isDarkMode ? 'bg-amber-800/60 text-amber-200' : 'bg-amber-100 text-amber-700'
+                        themeClasses.brass.soft + ' ' + themeClasses.brass.text
                       }`}
                     >
                       guessed
@@ -470,12 +466,12 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
         {showTotal && (
           <div className={`mt-1 space-y-1 border-t pt-2.5 ${rule}`}>
             {gstOn && (
-              <div className={`flex items-center justify-between text-[13px] ${themeClasses.text.secondary}`}>
+              <div className="flex items-center justify-between text-[13px] text-pub-muted">
                 <span>{`GST (${GST_RATE * 100}%)`}</span>
                 <span className="font-mono tabular-nums">${totalTax.toFixed(2)}</span>
               </div>
             )}
-            <div className={`flex items-center justify-between text-[15px] font-semibold ${themeClasses.text.primary}`}>
+            <div className="flex items-center justify-between text-[15px] font-semibold text-pub-ink">
               <span>{gstOn ? 'Total (incl. GST)' : 'Total'}</span>
               {gstOn && moneySpec && !omitted.has(moneySpec.key) ? (
                 editingTotal ? (
@@ -518,7 +514,7 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
 
         {isShipping && (
           <div className="mt-3">
-            <p className={`mb-1.5 text-xs font-medium ${themeClasses.text.secondary}`}>Shipment items</p>
+            <p className="mb-1.5 text-xs font-medium text-pub-muted">Shipment items</p>
             <ShipmentItemsEditor
               items={shipmentItems}
               taxEnabled={fields.gst?.value === true}
@@ -529,20 +525,20 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
 
         {Array.isArray(fields.packing?.value) && (fields.packing.value as PackingItem[]).length > 0 && (
           <div className="mt-3">
-            <p className={`mb-1.5 text-xs font-medium ${themeClasses.text.secondary}`}>Packing</p>
-            <ul className={`divide-y rounded-lg border ${divide} ${isDarkMode ? 'border-slate-700' : 'border-slate-200'}`}>
+            <p className="mb-1.5 text-xs font-medium text-pub-muted">Packing</p>
+            <ul className={`divide-y rounded-lg border ${divide} border-pub-edge`}>
               {(fields.packing.value as PackingItem[]).map((p, idx) => (
                 <li key={`${p.name}-${idx}`} className="flex items-center justify-between px-3 py-2 text-[14px]">
                   <span className={themeClasses.text.primary}>{packingLabel(p)}</span>
                   <span className="flex items-center gap-3">
-                    <span className={`font-mono tabular-nums ${themeClasses.text.secondary}`}>${packingLineTotal(p).toFixed(2)}</span>
+                    <span className="font-mono tabular-nums text-pub-muted">${packingLineTotal(p).toFixed(2)}</span>
                     <button
                       type="button"
                       aria-label={`Remove ${packingLabel(p)}`}
                       onClick={() =>
                         setValue('packing', (fields.packing!.value as PackingItem[]).filter((_, i) => i !== idx))
                       }
-                      className={`rounded-full p-1 ${isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-slate-100'}`}
+                      className="rounded-full p-1 hover:bg-pub-sunk"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -558,15 +554,15 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
             is worked out by the same code that builds the receipt. */}
         {shippingLines.length > 0 && (
           <div className={`mt-3 space-y-1 border-t pt-2.5 ${rule}`}>
-            <div className={`flex items-center justify-between text-[13px] ${themeClasses.text.secondary}`}>
+            <div className="flex items-center justify-between text-[13px] text-pub-muted">
               <span>Subtotal</span>
               <span className="font-mono tabular-nums">${cartSubtotal(shippingLines).toFixed(2)}</span>
             </div>
-            <div className={`flex items-center justify-between text-[13px] ${themeClasses.text.secondary}`}>
+            <div className="flex items-center justify-between text-[13px] text-pub-muted">
               <span>Tax</span>
               <span className="font-mono tabular-nums">${cartTaxTotal(shippingLines).toFixed(2)}</span>
             </div>
-            <div className={`flex items-center justify-between text-[15px] font-semibold ${themeClasses.text.primary}`}>
+            <div className="flex items-center justify-between text-[15px] font-semibold text-pub-ink">
               <span>Total</span>
               <span className="font-mono tabular-nums">${cartTotal(shippingLines).toFixed(2)}</span>
             </div>

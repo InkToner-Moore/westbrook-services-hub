@@ -46,7 +46,7 @@ const ArtifactActions: React.FC<ArtifactActionsProps> = ({ kind, data, confirmat
         role="switch"
         aria-checked={on}
         onClick={onClick}
-        className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+        className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-pub-accent ${
           on ? themeClasses.status.success : themeClasses.button.secondary
         }`}
       >
@@ -66,7 +66,7 @@ const ArtifactActions: React.FC<ArtifactActionsProps> = ({ kind, data, confirmat
             )}
           </div>
         )}
-        <p className={`mb-2.5 text-sm ${themeClasses.text.muted}`}>
+        <p className="mb-2.5 text-sm text-pub-muted">
           {canConfirm
             ? 'Ready when you are.'
             : missing.length > 0
@@ -75,7 +75,7 @@ const ArtifactActions: React.FC<ArtifactActionsProps> = ({ kind, data, confirmat
         </p>
         <div className="flex items-center justify-end gap-2">
           {total != null && total > 0 && (
-            <span className={`mr-auto text-[15px] font-semibold ${themeClasses.text.primary}`}>
+            <span className="mr-auto text-[15px] font-semibold text-pub-ink">
               Total <span className="font-mono tabular-nums">${total.toFixed(2)}</span>
             </span>
           )}
@@ -90,7 +90,7 @@ const ArtifactActions: React.FC<ArtifactActionsProps> = ({ kind, data, confirmat
             type="button"
             disabled={!canConfirm || busy}
             onClick={onConfirm}
-            className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium disabled:opacity-40 ${themeClasses.button.primary}`}
+            className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium disabled:opacity-50 ${themeClasses.button.primary}`}
           >
             <Check className="h-4 w-4" />
             Confirm

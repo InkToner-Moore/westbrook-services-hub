@@ -38,7 +38,7 @@ interface ActiveChip extends ChipSpec {
 let chipCounter = 0;
 
 const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disabled, compact }) => {
-  const { themeClasses, isDarkMode } = useTheme();
+  const { themeClasses } = useTheme();
   const [text, setText] = useState('');
   const [chips, setChips] = useState<ActiveChip[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -79,19 +79,17 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
     setChips([]);
   };
 
-  const divider = isDarkMode ? 'border-slate-700' : 'border-slate-200';
+  const divider = 'border-pub-edge';
 
   return (
-    <div className={`rounded-2xl border p-2 shadow-sm ${themeClasses.card.primary}`}>
+    <div className="rounded-2xl border p-2 bg-pub-paper border-pub-edge">
       {/* Primed chips sit right on the input they modify. */}
       {chips.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5 px-1 pt-1">
           {chips.map((chip) => (
             <span
               key={chip.id}
-              className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[13px] font-medium ${
-                isDarkMode ? 'border-slate-600 bg-slate-700 text-slate-100' : chip.tone
-              }`}
+              className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[13px] font-medium ${chip.tone}`}
             >
               {chip.label}
               <button type="button" onClick={() => removeChip(chip.id)} aria-label={`Remove ${chip.label}`}>
@@ -116,14 +114,17 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
           }}
           rows={1}
           placeholder={phone ? 'Tell me what you need' : 'Tell me what you need. For example: refill for Sarah, HP 65, $34'}
-          className={`min-h-[2.75rem] max-h-40 flex-1 resize-none rounded-xl border bg-transparent px-3.5 py-2.5 text-[15px] leading-relaxed outline-none placeholder:overflow-hidden placeholder:text-ellipsis placeholder:whitespace-nowrap ${themeClasses.input}`}
+          className="min-h-[2.75rem] max-h-40 flex-1 resize-none rounded-xl border px-3.5 py-2.5 text-[15px]
+            leading-relaxed outline-none placeholder:overflow-hidden placeholder:text-ellipsis
+            placeholder:whitespace-nowrap border-pub-edge bg-pub-sunk text-pub-ink placeholder:text-pub-muted
+            focus:border-pub-accent focus:ring-pub-accent"
         />
         <button
           type="button"
           onClick={send}
           disabled={disabled || (!text.trim() && chips.length === 0)}
           aria-label="Send"
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors disabled:opacity-40 ${themeClasses.button.primary}`}
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-40 ${themeClasses.ink.fill} hover:bg-pub-accent hover:border-pub-accent`}
         >
           <ArrowUp className="h-5 w-5" />
         </button>
@@ -135,7 +136,7 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
           type="button"
           onClick={toggleShortcuts}
           aria-expanded={shortcutsOpen}
-          className={`inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-[13px] sm:min-h-[32px] ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
+          className={`inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-[13px] sm:min-h-[32px] text-pub-muted ${themeClasses.interactive.hover}`}
         >
           {shortcutsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
           {shortcutsOpen ? 'Hide shortcuts' : 'Shortcuts'}

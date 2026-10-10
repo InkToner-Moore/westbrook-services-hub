@@ -87,12 +87,12 @@ const UserMenu: React.FC = () => {
           aria-haspopup="menu"
           aria-expanded={open}
           aria-label="Account menu"
-          className={`flex min-h-[44px] min-w-0 flex-1 items-center gap-2 rounded-xl border px-2.5 py-2 text-left ${themeClasses.card.primary} ${themeClasses.interactive.hover} ${themeClasses.interactive.focus}`}
+          className={`flex min-h-[44px] min-w-0 flex-1 items-center gap-2 rounded-xl border px-2.5 py-2 text-left bg-pub-paper border-pub-edge ${themeClasses.interactive.hover} ${themeClasses.interactive.focus}`}
         >
-          <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${themeClasses.card.secondary}`}>
-            <User className={`h-4 w-4 ${themeClasses.text.secondary}`} />
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-pub-sunk border-pub-edge">
+            <User className="h-4 w-4 text-pub-muted" />
           </span>
-          <span className={`truncate text-[12px] font-medium ${themeClasses.text.secondary}`}>{email}</span>
+          <span className="truncate text-[12px] font-medium text-pub-muted">{email}</span>
         </button>
         <ThemeToggleButton />
       </div>
@@ -101,13 +101,13 @@ const UserMenu: React.FC = () => {
         <div
           role="menu"
           aria-label="Account"
-          className={`absolute bottom-[calc(100%+8px)] left-0 z-50 w-full min-w-[13rem] rounded-xl border p-1.5 shadow-lg ${themeClasses.card.primary}`}
+          className="absolute bottom-[calc(100%+8px)] left-0 z-50 w-full min-w-[13rem] rounded-xl border p-1.5 shadow-lg bg-pub-paper border-pub-edge"
         >
-          <div className={`px-2.5 py-2 text-[12px] ${themeClasses.text.muted}`}>
+          <div className="px-2.5 py-2 text-[12px] text-pub-muted">
             Signed in as
-            <div className={`truncate text-[13px] font-medium ${themeClasses.text.primary}`}>{email}</div>
+            <div className="truncate text-[13px] font-medium text-pub-ink">{email}</div>
           </div>
-          <div className={`my-1 h-px ${themeClasses.card.secondary}`} />
+          <div className="my-1 h-px bg-pub-sunk border-pub-edge" />
           <button
             ref={firstMenuItemRef}
             type="button"
@@ -116,7 +116,7 @@ const UserMenu: React.FC = () => {
               setSettingsOpen(true);
               setOpen(false);
             }}
-            className={`flex min-h-[44px] w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium ${themeClasses.text.secondary} ${themeClasses.interactive.hover} ${themeClasses.interactive.focus}`}
+            className={`flex min-h-[44px] w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium text-pub-muted ${themeClasses.interactive.hover} ${themeClasses.interactive.focus}`}
           >
             <Settings className="h-4 w-4" />
             Settings
@@ -125,7 +125,7 @@ const UserMenu: React.FC = () => {
             type="button"
             role="menuitem"
             onClick={handleLogout}
-            className={`flex min-h-[44px] w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium ${themeClasses.text.secondary} ${themeClasses.interactive.hover} ${themeClasses.interactive.focus}`}
+            className={`flex min-h-[44px] w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium text-pub-muted ${themeClasses.interactive.hover} ${themeClasses.interactive.focus}`}
           >
             <LogOut className="h-4 w-4" />
             Log out
@@ -142,9 +142,9 @@ const UserMenu: React.FC = () => {
           aria-labelledby="settings-stub-title"
         >
           <div className="absolute inset-0 bg-black/40" onClick={closeSettings} />
-          <div className={`relative w-full max-w-sm rounded-2xl border p-5 shadow-lg ${themeClasses.card.primary}`}>
+          <div className="relative w-full max-w-sm rounded-2xl border p-5 shadow-lg bg-pub-paper border-pub-edge">
             <div className="mb-2 flex items-center justify-between">
-              <h2 id="settings-stub-title" className={`text-lg font-semibold ${themeClasses.text.primary}`}>
+              <h2 id="settings-stub-title" className="text-lg font-semibold text-pub-ink">
                 Settings
               </h2>
               <button
@@ -157,7 +157,7 @@ const UserMenu: React.FC = () => {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <p className={`text-[14px] leading-relaxed ${themeClasses.text.secondary}`}>
+            <p className="text-[14px] leading-relaxed text-pub-muted">
               Settings are on the way. This is where you will set the shop's tax rate, the receipt footer, and which tools show on the rail.
             </p>
           </div>

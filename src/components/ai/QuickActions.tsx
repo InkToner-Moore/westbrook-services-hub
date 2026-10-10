@@ -28,23 +28,21 @@ interface QuickActionsProps {
 }
 
 const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack, onAddPacking }) => {
-  const { themeClasses, isDarkMode } = useTheme();
+  const { themeClasses } = useTheme();
   const [hovered, setHovered] = useState<Courier | null>(null);
   const [entry, setEntry] = useState('');
 
-  const pill = `inline-flex min-h-[44px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-[13px] transition-colors sm:min-h-0 sm:px-2.5 sm:py-1 ${
-    isDarkMode
-      ? 'border-slate-700 text-slate-300 hover:bg-slate-800'
-      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-  }`;
+  const pill = `inline-flex min-h-[44px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3
+    py-1.5 text-[13px] transition-colors sm:min-h-0 sm:px-2.5 sm:py-1 border-pub-edge bg-pub-paper
+    text-pub-ink hover:border-pub-ink`;
   // Fixed-width group labels so the pills on each row start at the same x, and
   // any that wrap line up under the first pill rather than under the label.
-  const groupLabel = `w-12 shrink-0 pt-3 text-[13px] sm:pt-1.5 ${themeClasses.text.secondary}`;
+  const groupLabel = `w-12 shrink-0 pt-3 text-[13px] sm:pt-1.5 text-pub-muted`;
   // Rows wrap, so every choice is on screen: a row that scrolled sideways cut
   // its last pill off at the edge with nothing to say there was more.
   const scrollRow = 'flex min-w-0 flex-wrap items-center gap-1.5';
-  // One quiet dot for every pill. Tool hues belong to the tiles, not to chrome.
-  const dot = `h-1.5 w-1.5 rounded-full ${isDarkMode ? 'bg-slate-500' : 'bg-slate-400'}`;
+  // One quiet dot for every pill. The shortcuts share the same ink colour.
+  const dot = `h-1.5 w-1.5 rounded-full bg-pub-ink`;
 
   return (
     <div className="space-y-1.5">
@@ -67,7 +65,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onAddChip, onTrack, onAddPa
               {t.label}
             </button>
             {hovered === t.courier && (
-              <div className={`absolute bottom-full left-0 z-10 mb-1 w-52 rounded-xl border p-1.5 shadow-lg ${themeClasses.card.primary}`}>
+              <div className="absolute bottom-full left-0 z-10 mb-1 w-52 rounded-xl border p-1.5 shadow-lg bg-pub-paper border-pub-edge">
                 <input
                   autoFocus
                   value={entry}

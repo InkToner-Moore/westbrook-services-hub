@@ -11,7 +11,7 @@ import { useAiMode } from '@/ai/context';
 import { cartTotal } from '@/ai/cart';
 
 const CartPanel: React.FC<{ className?: string }> = ({ className = 'mb-3' }) => {
-  const { themeClasses, isDarkMode } = useTheme();
+  const { themeClasses } = useTheme();
   const { cart, removeCartLine, clearCart, finalizeCart, addResult } = useAiMode();
   const [collapsed, setCollapsed] = useState(true);
 
@@ -25,43 +25,43 @@ const CartPanel: React.FC<{ className?: string }> = ({ className = 'mb-3' }) => 
   };
 
   return (
-    <div className={`overflow-hidden rounded-2xl border ${themeClasses.card.primary} ${className}`}>
+    <div className={`overflow-hidden rounded-2xl border bg-pub-paper border-pub-edge ${className}`}>
       <button
         type="button"
         onClick={() => setCollapsed((v) => !v)}
         aria-expanded={!collapsed}
         className="flex min-h-[44px] w-full items-center justify-between gap-2 px-4 py-2"
       >
-        <span className={`flex items-center gap-2 text-sm font-semibold ${themeClasses.text.primary}`}>
+        <span className="flex items-center gap-2 text-sm font-semibold text-pub-ink">
           <Receipt className="h-4 w-4" />
           Open receipt
-          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${themeClasses.card.accent} ${themeClasses.text.accent}`}>
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${themeClasses.card.accent} text-pub-accent`}>
             {cart.length}
           </span>
         </span>
         <span className="flex items-center gap-2">
-          <span className={`font-mono text-sm tabular-nums ${themeClasses.text.primary}`}>${total.toFixed(2)}</span>
+          <span className="font-mono text-sm tabular-nums text-pub-ink">${total.toFixed(2)}</span>
           {collapsed ? (
-            <ChevronDown className={`h-4 w-4 ${themeClasses.text.secondary}`} />
+            <ChevronDown className="h-4 w-4 text-pub-muted" />
           ) : (
-            <ChevronUp className={`h-4 w-4 ${themeClasses.text.secondary}`} />
+            <ChevronUp className="h-4 w-4 text-pub-muted" />
           )}
         </span>
       </button>
 
       {!collapsed && (
-        <div className={`border-t px-3 py-3 ${isDarkMode ? 'border-slate-700' : 'border-slate-200'}`}>
+        <div className="border-t px-3 py-3 border-pub-edge">
           <ul className="max-h-40 space-y-1 overflow-y-auto">
             {cart.map((line) => (
               <li
                 key={line.id}
                 className={`flex items-start justify-between gap-2 rounded-lg px-2 py-1.5 text-sm ${
-                  isDarkMode ? 'bg-slate-800/50' : 'bg-slate-50'
+                  'bg-pub-sunk'
                 }`}
               >
-                <span className={`whitespace-pre-line ${themeClasses.text.primary}`}>{line.description}</span>
+                <span className="whitespace-pre-line text-pub-ink">{line.description}</span>
                 <span className="flex items-center gap-2 whitespace-nowrap">
-                  <span className={`font-mono tabular-nums ${themeClasses.text.secondary}`}>${(line.price || 0).toFixed(2)}</span>
+                  <span className="font-mono tabular-nums text-pub-muted">${(line.price || 0).toFixed(2)}</span>
                   <button
                     type="button"
                     onClick={() => removeCartLine(line.id)}

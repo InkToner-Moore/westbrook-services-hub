@@ -16,16 +16,16 @@ export interface ChipSpec {
 }
 
 export const ACTION_CHIPS: ChipSpec[] = [
-  { kind: 'receipt', label: 'Receipt', keyword: 'receipt', tone: 'bg-green-100 text-green-800 border-green-300', dot: 'bg-green-500' },
-  { kind: 'refill', label: 'Refill', keyword: 'refill', tone: 'bg-purple-100 text-purple-800 border-purple-300', dot: 'bg-purple-500' },
-  { kind: 'purchase', label: 'Purchase', keyword: 'purchase', tone: 'bg-blue-100 text-blue-800 border-blue-300', dot: 'bg-blue-500' },
-  { kind: 'note', label: 'Note', keyword: 'note', tone: 'bg-amber-100 text-amber-900 border-amber-300', dot: 'bg-amber-500' },
-  { kind: 'inventory', label: 'Inventory', keyword: 'inventory', tone: 'bg-rose-100 text-rose-800 border-rose-300', dot: 'bg-rose-500' },
+  { kind: 'receipt', label: 'Receipt', keyword: 'receipt', tone: 'bg-pub-sunk text-pub-ink border-pub-edge', dot: 'bg-pub-ink' },
+  { kind: 'refill', label: 'Refill', keyword: 'refill', tone: 'bg-pub-sunk text-pub-ink border-pub-edge', dot: 'bg-pub-ink' },
+  { kind: 'purchase', label: 'Purchase', keyword: 'purchase', tone: 'bg-pub-sunk text-pub-ink border-pub-edge', dot: 'bg-pub-ink' },
+  { kind: 'note', label: 'Note', keyword: 'note', tone: 'bg-pub-sunk text-pub-ink border-pub-edge', dot: 'bg-pub-ink' },
+  { kind: 'inventory', label: 'Inventory', keyword: 'inventory', tone: 'bg-pub-sunk text-pub-ink border-pub-edge', dot: 'bg-pub-ink' },
 ];
 
-const TRACK_TONE = 'bg-indigo-100 text-indigo-800 border-indigo-300';
+const TRACK_TONE = 'bg-pub-sunk text-pub-ink border-pub-edge';
 export const TRACK_CHIP_SPECS: Record<string, ChipSpec> = {
-  'track-fedex': { kind: 'track-fedex', label: 'FedEx', keyword: 'fedex', tone: TRACK_TONE, dot: 'bg-indigo-500' },
-  'track-purolator': { kind: 'track-purolator', label: 'Purolator', keyword: 'purolator', tone: TRACK_TONE, dot: 'bg-indigo-500' },
-  'track-ups': { kind: 'track-ups', label: 'UPS', keyword: 'ups', tone: TRACK_TONE, dot: 'bg-indigo-500' },
+  'track-fedex': { kind: 'track-fedex', label: 'FedEx', keyword: 'fedex', tone: TRACK_TONE, dot: 'bg-pub-ink' },
+  'track-purolator': { kind: 'track-purolator', label: 'Purolator', keyword: 'purolator', tone: TRACK_TONE, dot: 'bg-pub-ink' },
+  'track-ups': { kind: 'track-ups', label: 'UPS', keyword: 'ups', tone: TRACK_TONE, dot: 'bg-pub-ink' },
 };

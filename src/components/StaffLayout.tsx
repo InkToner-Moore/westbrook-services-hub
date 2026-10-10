@@ -50,7 +50,7 @@ const StaffLayout = ({
             </span>
           )}
           <div>
-            <h1 className={`text-xl font-semibold tracking-tight ${themeClasses.text.primary}`}>{title}</h1>
+            <h1 className={`font-display text-[28px] font-semibold leading-tight text-pub-ink sm:text-[32px]`}>{title}</h1>
             {subtitle && <p className={`text-sm ${themeClasses.text.secondary}`}>{subtitle}</p>}
           </div>
         </div>
