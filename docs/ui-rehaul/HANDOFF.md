@@ -27,7 +27,109 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
-## START HERE (written 2026-10-09, exit of the customer page redesign session)
+## START HERE (written 2026-10-10, exit of the courier tiles session)
+
+**Next session is for:** the UI/UX rehaul of the staff dashboard, so it matches the
+customer page. Planning first (a short direction Parsa can react to), then building.
+Not a numbered plan step: `PLAN.md` has no completion markers and its waves are long
+built, so do not use it as a progress tracker.
+
+**The brief, in Parsa's words (2026-10-10):** "I think the customer side is good. Next
+session do UI/UX rehaul of staff dashboard to match this side and also become niceee
+without loosing practically, ease of use, or hard to read stuff. But niceee as hell yk
+what im saying. Awwwards type thing but at the end of the day it's a staff dashboard so
+u gotta be careful not to annoy."
+
+How this session reads that (an interpretation, check it with him before building far):
+- The customer page is now the reference for the look: its type (Bricolage Grotesque
+  for display, IBM Plex for body), its `pub-*` palette, its quiet surfaces, and motion
+  that answers the person instead of running on its own.
+- Staff use this all day at the counter. Anything that plays every time, delays a
+  click, moves a control, or lowers contrast is the "annoy" he means. Load moments that
+  are fine once on a customer page are not fine on the fiftieth visit of a shift.
+- Function is fixed: every tool keeps working exactly as it does. The feature
+  preservation and accessibility rules in `DESIGN-SPEC.md` still bind.
+- `DESIGN-SPEC.md` was written for the staff side before the customer page existed.
+  Parts of it (flat fills only, no gradients, its palette) may now be behind what he
+  wants. Where the spec and this brief disagree, ask him; do not quietly pick one.
+- "The customer side is good" closes the open question below about whether the hero
+  and page are where he wants them.
+
+**Where things stand (observed 2026-10-10, at exit):**
+- Branch `public-redesign`, tip is this handoff commit on top of `32b783b` (the last
+  code change). Tree clean, level with its remote. `origin/dev` is at the same tip and
+  the Cloudflare Pages check on `32b783b` completed with success, so staging has the
+  courier tiles. **Prod `main` untouched** (`0ffa16c`).
+- Open PRs: only **#1 `docs-align-claude-md`** (Sept 1, not this work). Nothing from
+  this branch is in a PR; nothing is merged to `main`.
+- Gate as run at exit on `32b783b`: `tsc -p tsconfig.app.json --noEmit` exit 0;
+  `eslint` on `src/pages/PublicHome.tsx src/components/public
+  src/components/SmartTracker.tsx src/lib/storeInfo.ts` exit 0; `yarn build` built;
+  dash scan on `SmartTracker.tsx`, `public.css` and `index.html` clean;
+  `scripts/parser-tests/run.mjs` 30 of 30 pass. `sweep.mjs` was not run (the parser was
+  not touched).
+- Checked in a real browser on the local dev server: the tracker on `/` in light and
+  dark, idle and with each courier picked, at 1280 wide; idle light and FedEx dark at
+  390 wide; `/staff/tracking` with FedEx picked in light and dark.
+  **Not checked:** the staging page in a browser; the page after the last tweak (logo
+  box narrowed from 84 to 72px), beyond the gate.
+- New tag, pushed: `public-pre-courier-logos` (the state before the courier tiles).
+- No DEV data or rules changed. No secrets written anywhere.
+
+**Built this session, do NOT rebuild:**
+- Courier tiles in `SmartTracker` (both variants, so `/` and `/staff/tracking`): the
+  white chip behind each logo is gone and the logos sit on the tile. The PNGs in
+  `src/assets/couriers/` were already transparent; the white was drawn by the code.
+- The picked courier gets a soft diagonal wash and a border in its own logo colours
+  (gold to brown, purple to orange, red to blue) instead of a flat fill. Parsa asked
+  for the gradient by name, so this is a deliberate exception to the spec's flat fills.
+- `fedex-dark.png`: the FedEx logo with white letters, used in dark mode because the
+  purple disappeared on a dark tile. Made with
+  `magick fedex.png -fuzz 30% -fill white -opaque '#2a007c' fedex-dark.png`.
+- `CLAUDE.md` now names the real theme storage key, `staff-theme-v2`.
+
+**Constraints this session found (the older lists below still stand):**
+- The theme lives in `localStorage` under `staff-theme-v2` as a JSON boolean (`true`
+  is dark). To test dark in a browser, set the key and reload; toggling the `dark`
+  class by hand does not update `isDarkMode`, so anything keyed on it stays light.
+- The Playwright screenshot tool refuses paths under `/tmp`; save with
+  `locator.screenshot` or `page.screenshot` and an explicit path. It also writes a
+  `.playwright-mcp/` folder in the repo, which is excluded locally in
+  `.git/info/exclude`, not in `.gitignore`.
+- A courier click redirects after 1.1 seconds. To hold the selected state for a
+  screenshot, abort the courier hosts with `page.route` first.
+- The Purolator wordmark is wide and thin, so it reads smaller than the other two
+  logos in the same box. Parsa was told and has not asked for a change.
+
+**Open questions for Parsa** (answers may arrive mid-session: fold each in as its own
+commit, and never invent one to close a line):
+- The direction for the staff rehaul, before building far: how much of the customer
+  page's type, palette and motion comes across, and whether `DESIGN-SPEC.md` gets
+  rewritten to match. Lands in `DESIGN-SPEC.md`. He owes the verdict; the next session
+  owes him something to look at.
+- Whether the staff rehaul continues on `public-redesign` or starts its own branch off
+  it. The repo rule is one branch per session; this session stayed on
+  `public-redesign` because the change was to the same page.
+- `contact@inktonermoore.ca` still needs a mailbox (no MX record on 2026-10-09). It
+  must exist before the customer page reaches prod. Lands in DNS, not the repo.
+- When the redesign goes to prod. Nothing is merged to `main`; that is his call.
+- The carried ones in the sections below still stand (studio copy and domain, the
+  tracker comma fix on prod, parcel tax leaving Canada, a staging test login in
+  keyvault, stat holidays).
+
+**Working rules:** environment and gate as in the project entry and the sections
+below. For a visual change: `tsc`, `eslint` on the changed files, `yarn build`, the
+dash scan, then a browser pass on the dev server in light and dark. One commit per
+change he asks for; tag before it; push the branch and fast-forward `dev` (`git push
+origin <branch>:dev`) so he can look on his phone. Push needs the credential-helper
+override in the section below. The staff side sits behind a login and staging has no
+test login, so staff screens can only be checked locally with the auth bypass.
+
+**Still placeholder, must not reach a customer:** the public email does not receive
+mail yet. The whole rehaul, the customer page included, is on staging only. The studio
+page is still `noindex` on a staging host, and `purchase` still has no executor.
+
+## Earlier (written 2026-10-09, exit of the customer page redesign session)
 
 **Next session is for:** building, and Parsa picks which. Not a numbered plan step.
 Either his notes on the new customer page (he has seen it on staging and has been
