@@ -699,6 +699,25 @@ const StaffTimesheet = () => {
       : monthStart.toLocaleDateString(undefined, { month: "long", year: "numeric" });
   const rangeShifts = useMemo(() => shiftsInRange(shifts, rangeFrom, rangeTo), [shifts, rangeFrom, rangeTo]);
   const rangeTotal = totalWorkedMinutes(rangeShifts);
+  // The Hours shift list, grouped by week and then by day so each gets its own heading.
+  const rangeWeeks = useMemo(() => {
+    const weeks: { weekKey: string; days: { dayKey: string; shifts: ScheduleShift[] }[] }[] = [];
+    for (const shift of rangeShifts) {
+      const weekKey = toDateKey(startOfWeek(parseDateKey(shift.date)));
+      let week = weeks[weeks.length - 1];
+      if (!week || week.weekKey !== weekKey) {
+        week = { weekKey, days: [] };
+        weeks.push(week);
+      }
+      let day = week.days[week.days.length - 1];
+      if (!day || day.dayKey !== shift.date) {
+        day = { dayKey: shift.date, shifts: [] };
+        week.days.push(day);
+      }
+      day.shifts.push(shift);
+    }
+    return weeks;
+  }, [rangeShifts]);
 
   const step = (dir: 1 | -1) => {
     if (tab === "hours" && hoursRange === "month") {
@@ -887,31 +906,52 @@ const StaffTimesheet = () => {
               </span>
             </div>
 
-            <h3 className="font-display font-semibold text-pub-ink mb-1 mt-6 text-sm">Shifts</h3>
-            <div className={`divide-y ${edgeDivide}`}>
-              {rangeShifts.map((shift) => (
-                <button
-                  key={shift.id}
-                  type="button"
-                  onClick={() => openShift(shift)}
-                  className={`flex w-full items-center justify-between gap-3 px-1 py-2.5 text-left ${themeClasses.interactive.hover} ${themeClasses.interactive.focus}`}
-                >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${hueFor(shift.employeeId).dot}`} />
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-pub-ink">
-                        {shift.employeeName}
-                        <span className="font-normal text-pub-muted">, {formatDayHeading(shift.date)}</span>
-                      </span>
-                      <span className="block truncate text-[13px] text-pub-muted">
-                        <ShiftTimes shift={shift} />
-                      </span>
+            <h3 className="font-display font-semibold text-pub-ink mb-2 mt-6 text-sm">Shifts</h3>
+            <div className="space-y-4">
+              {rangeWeeks.map((week) => (
+                <section key={week.weekKey} aria-label={`Week of ${formatWeekRange(parseDateKey(week.weekKey))}`}>
+                  <div className="flex items-center justify-between gap-3 rounded-lg border bg-pub-sunk border-pub-edge px-3 py-2">
+                    <span className="text-[13px] font-semibold text-pub-ink">
+                      Week of {formatWeekRange(parseDateKey(week.weekKey))}
                     </span>
-                  </span>
-                  <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-pub-ink">
-                    {formatShiftDuration(workedMinutes(shift))}
-                  </span>
-                </button>
+                    <span className="font-mono text-[13px] font-semibold tabular-nums text-pub-ink">
+                      {formatShiftDuration(totalWorkedMinutes(week.days.flatMap((day) => day.shifts)))}
+                    </span>
+                  </div>
+                  <div className={`divide-y ${edgeDivide}`}>
+                    {week.days.map((day) => (
+                      <div key={day.dayKey} className="flex flex-col py-1.5 sm:flex-row sm:gap-4">
+                        <div className="flex w-36 shrink-0 items-center gap-2 px-1 pt-2 sm:items-start sm:pt-3">
+                          <span className="text-[13px] font-semibold text-pub-ink">{formatDayHeading(day.dayKey)}</span>
+                          {day.dayKey === todayKey && <span className={todayPill}>Today</span>}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          {day.shifts.map((shift) => (
+                            <button
+                              key={shift.id}
+                              type="button"
+                              onClick={() => openShift(shift)}
+                              className={`flex w-full items-center justify-between gap-3 rounded-lg px-1 py-2 text-left ${themeClasses.interactive.hover} ${themeClasses.interactive.focus}`}
+                            >
+                              <span className="flex min-w-0 items-center gap-2">
+                                <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${hueFor(shift.employeeId).dot}`} />
+                                <span className="min-w-0">
+                                  <span className="block truncate text-sm font-medium text-pub-ink">{shift.employeeName}</span>
+                                  <span className="block truncate text-[13px] text-pub-muted">
+                                    <ShiftTimes shift={shift} />
+                                  </span>
+                                </span>
+                              </span>
+                              <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-pub-ink">
+                                {formatShiftDuration(workedMinutes(shift))}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
           </>
