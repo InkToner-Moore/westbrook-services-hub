@@ -134,11 +134,11 @@ const DetailField = ({
     (typeof value === 'number' && !Number.isFinite(value));
 
   return (
-    <span className={themeClasses.text.secondary}>
+    <span className="text-pub-muted">
       {label}:{' '}
       <span
         className={`${mono && !isEmpty ? 'font-mono tabular-nums' : ''} ${
-          isEmpty ? themeClasses.text.muted : themeClasses.text.primary
+          isEmpty ? 'text-pub-muted' : 'text-pub-ink'
         }`}
       >
         {isEmpty ? 'Unspecified' : value}
@@ -230,9 +230,9 @@ const ReceiptDialog = ({
           <Receipt className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+      <DialogContent className="bg-pub-paper border-pub-edge text-pub-ink max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Cartridge Refill Receipt</DialogTitle>
+          <DialogTitle className="font-display font-semibold text-pub-ink">Cartridge Refill Receipt</DialogTitle>
           <DialogDescription>
             Confirm the details below. Blank fields are left off the printed receipt.
             Every cartridge needs a price before you can download.
@@ -241,15 +241,15 @@ const ReceiptDialog = ({
         <form onSubmit={downloadAs('4x6')} className="space-y-3">
           <div>
             <Label className="font-medium">Customer name</Label>
-            <Input {...register('customerName')} />
+            <Input {...register('customerName')} className={themeClasses.input} />
           </div>
           <div>
             <Label className="font-medium">Phone number</Label>
-            <Input className="font-mono tabular-nums" {...register('customerPhone')} />
+            <Input className={`${themeClasses.input} font-mono tabular-nums`} {...register('customerPhone')} />
           </div>
           <div>
             <Label className="font-medium">Email (optional)</Label>
-            <Input type="email" {...register('customerEmail')} />
+            <Input type="email" {...register('customerEmail')} className={themeClasses.input} />
           </div>
 
           <CartridgeLineFields
@@ -270,19 +270,20 @@ const ReceiptDialog = ({
 
           <div>
             <Label className="font-medium">Notes</Label>
-            <Textarea rows={2} {...register('notes')} />
+            <Textarea rows={2} {...register('notes')} className={themeClasses.input} />
           </div>
           <DialogFooter className="gap-2 sm:gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={downloadAs('letter')}
+              className={`rounded-full ${themeClasses.button.secondary}`}
             >
               Download Full Page
             </Button>
             <Button
               type="submit"
-              className={`font-semibold rounded-lg transition-colors ${themeClasses.button.primary}`}
+              className={`font-semibold rounded-full transition-colors ${themeClasses.button.primary}`}
             >
               Download 4×6
             </Button>
@@ -320,21 +321,21 @@ const EditOrderForm = ({
     <form onSubmit={handleSubmit(onSave)} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label className={`font-medium ${themeClasses.text.primary}`}>Customer name<RequiredMark /></Label>
+          <Label className="font-medium text-pub-ink">Customer name<RequiredMark /></Label>
           <Input
             {...register('customerName', { required: true })}
             className={`${themeClasses.input}`}
           />
         </div>
         <div>
-          <Label className={`font-medium ${themeClasses.text.primary}`}>Phone number<RequiredMark /></Label>
+          <Label className="font-medium text-pub-ink">Phone number<RequiredMark /></Label>
           <Input
             {...register('customerPhone', { required: true })}
             className={`${themeClasses.input} font-mono tabular-nums`}
           />
         </div>
         <div>
-          <Label className={`font-medium ${themeClasses.text.primary}`}>Email (optional)</Label>
+          <Label className="font-medium text-pub-ink">Email (optional)</Label>
           <Input
             type="email"
             {...register('customerEmail')}
@@ -346,7 +347,7 @@ const EditOrderForm = ({
       <CartridgeLineFields form={form} themeClasses={themeClasses} />
 
       <div>
-        <Label className={`font-medium ${themeClasses.text.primary}`}>Notes</Label>
+        <Label className="font-medium text-pub-ink">Notes</Label>
         <Textarea
           {...register('notes')}
           rows={3}
@@ -356,7 +357,7 @@ const EditOrderForm = ({
       <div className="flex flex-wrap gap-2">
         <Button
           type="submit"
-          className={`font-semibold rounded-lg transition-colors ${themeClasses.button.primary}`}
+          className={`font-semibold rounded-full transition-colors ${themeClasses.button.primary}`}
         >
           Save Changes
         </Button>
@@ -364,7 +365,7 @@ const EditOrderForm = ({
           type="button"
           variant="ghost"
           onClick={onCancel}
-          className={`transition-colors ${themeClasses.button.ghost}`}
+          className={`rounded-full transition-colors ${themeClasses.button.ghost}`}
         >
           Cancel
         </Button>
@@ -600,7 +601,7 @@ const StaffCartridges = () => {
   });
 
   const newOrderButton = (
-    <Button onClick={() => setAdding(true)} className={`min-h-[44px] rounded-lg px-4 font-semibold ${themeClasses.button.primary}`}>
+    <Button onClick={() => setAdding(true)} className={`min-h-[44px] rounded-full px-4 font-semibold ${themeClasses.button.primary}`}>
       <Plus className="h-4 w-4 mr-2" />
       New order
     </Button>
@@ -611,9 +612,9 @@ const StaffCartridges = () => {
           {/* Add New Order Form */}
           {adding && (
             <div>
-              <Card className={themeClasses.card.primary}>
+              <Card className={`shadow-none ${themeClasses.card.primary}`}>
                 <CardHeader>
-                  <CardTitle className={`flex items-center space-x-2 text-lg font-semibold ${themeClasses.text.primary}`}>
+                  <CardTitle className="font-display font-semibold text-pub-ink flex items-center space-x-2 text-lg">
                     <Plus className="h-5 w-5" />
                     <span>New cartridge order</span>
                   </CardTitle>
@@ -622,7 +623,7 @@ const StaffCartridges = () => {
                   <form onSubmit={newOrderForm.handleSubmit(addNewOrder)} className="space-y-4">
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                       <div>
-                        <Label className={`font-medium ${themeClasses.text.primary}`}>Customer name<RequiredMark /></Label>
+                        <Label className="font-medium text-pub-ink">Customer name<RequiredMark /></Label>
                         <Input
                           {...newOrderForm.register('customerName', { required: true })}
                           placeholder="Enter customer name"
@@ -630,7 +631,7 @@ const StaffCartridges = () => {
                         />
                       </div>
                       <div>
-                        <Label className={`font-medium ${themeClasses.text.primary}`}>Phone number<RequiredMark /></Label>
+                        <Label className="font-medium text-pub-ink">Phone number<RequiredMark /></Label>
                         <Input
                           {...newOrderForm.register('customerPhone', { required: true })}
                           placeholder="(403) 555-0123"
@@ -638,7 +639,7 @@ const StaffCartridges = () => {
                         />
                       </div>
                       <div>
-                        <Label className={`font-medium ${themeClasses.text.primary}`}>Email (optional)</Label>
+                        <Label className="font-medium text-pub-ink">Email (optional)</Label>
                         <Input
                           {...newOrderForm.register('customerEmail')}
                           type="email"
@@ -654,7 +655,7 @@ const StaffCartridges = () => {
                     />
   
                     <div>
-                      <Label className={`font-medium ${themeClasses.text.primary}`}>Notes</Label>
+                      <Label className="font-medium text-pub-ink">Notes</Label>
                       <Textarea
                         {...newOrderForm.register('notes')}
                         placeholder="Any special notes or instructions"
@@ -664,10 +665,10 @@ const StaffCartridges = () => {
                     </div>
   
                     <div className="flex gap-2 justify-end">
-                      <Button type="button" variant="ghost" onClick={() => { newOrderForm.reset(); setAdding(false); }} className={`min-h-[44px] ${themeClasses.button.ghost}`}>
+                      <Button type="button" variant="ghost" onClick={() => { newOrderForm.reset(); setAdding(false); }} className={`rounded-full min-h-[44px] ${themeClasses.button.ghost}`}>
                         Cancel
                       </Button>
-                      <Button type="submit" className={`min-h-[44px] font-semibold rounded-lg transition-colors ${themeClasses.button.primary}`}>
+                      <Button type="submit" className={`min-h-[44px] font-semibold rounded-full transition-colors ${themeClasses.button.primary}`}>
                         <Plus className="h-4 w-4 mr-2" />
                         Add order
                       </Button>
@@ -683,7 +684,7 @@ const StaffCartridges = () => {
             {/* Search and Filter */}
             <div className="mb-6 flex flex-col sm:flex-row gap-4">
               <div className="relative flex-1">
-                <Search className={`absolute left-3 top-3 h-4 w-4 ${themeClasses.text.muted}`} />
+                <Search className="absolute left-3 top-3 h-4 w-4 text-pub-muted" />
                 <Input
                   placeholder="Search by customer name, phone, model, or order ID..."
                   value={searchTerm}
@@ -692,7 +693,7 @@ const StaffCartridges = () => {
                 />
               </div>
               <div className="relative">
-                <Filter className={`absolute left-3 top-3 h-4 w-4 ${themeClasses.text.muted}`} />
+                <Filter className="absolute left-3 top-3 h-4 w-4 text-pub-muted" />
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className={`pl-10 w-48 ${themeClasses.input}`}>
                     <SelectValue />
@@ -709,10 +710,10 @@ const StaffCartridges = () => {
 
             {/* Loading State */}
             {loading && (
-              <Card className={themeClasses.card.primary}>
+              <Card className={`shadow-none ${themeClasses.card.primary}`}>
                 <CardContent className="p-12 text-center">
-                  <Loader2 className={`h-12 w-12 mx-auto mb-4 animate-spin ${themeClasses.text.muted}`} />
-                  <p className={`${themeClasses.text.secondary}`}>Loading orders...</p>
+                  <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-pub-muted" />
+                  <p className="text-pub-muted">Loading orders...</p>
                 </CardContent>
               </Card>
             )}
@@ -721,18 +722,18 @@ const StaffCartridges = () => {
             {!loading && (
               <div className="space-y-4">
                 {filteredOrders.map((order) => (
-                  <Card key={order.id} className={themeClasses.card.primary}>
+                  <Card key={order.id} className={`shadow-none ${themeClasses.card.primary}`}>
                     <CardContent className="p-6">
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <div className="flex items-center space-x-3 mb-2">
-                            <h3 className={`text-lg font-semibold ${themeClasses.text.primary}`}>{order.customerName}</h3>
+                            <h3 className="font-display font-semibold text-pub-ink text-lg">{order.customerName}</h3>
                             <Badge variant="outline" className={`${getStatusColor(order.status)} border flex items-center space-x-1`}>
                               {getStatusIcon(order.status)}
                               <span className="capitalize">{order.status.replace('_', ' ')}</span>
                             </Badge>
                           </div>
-                          <p className={`text-sm font-mono tabular-nums ${themeClasses.text.secondary}`}>{order.id}</p>
+                          <p className="text-sm font-mono tabular-nums text-pub-muted">{order.id}</p>
                         </div>
                         <div className="flex space-x-2">
                           <ReceiptDialog order={order} themeClasses={themeClasses} />
@@ -755,9 +756,9 @@ const StaffCartridges = () => {
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </AlertDialogTrigger>
-                            <AlertDialogContent>
+                            <AlertDialogContent className="bg-pub-paper border-pub-edge text-pub-ink">
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Delete this order?</AlertDialogTitle>
+                                <AlertDialogTitle className="font-display font-semibold text-pub-ink">Delete this order?</AlertDialogTitle>
                                 <AlertDialogDescription>
                                   This will permanently delete order {order.id} for {order.customerName}.
                                   This action cannot be undone.
@@ -787,24 +788,24 @@ const StaffCartridges = () => {
                       ) : (
                         <>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-                            <div className={`flex items-center space-x-2 ${themeClasses.text.secondary}`}>
+                            <div className="flex items-center space-x-2 text-pub-muted">
                               <Phone className="h-4 w-4" />
                               <span className="text-sm font-mono tabular-nums">{order.customerPhone}</span>
                             </div>
-                            <div className={`flex items-center space-x-2 ${themeClasses.text.secondary}`}>
+                            <div className="flex items-center space-x-2 text-pub-muted">
                               <Mail className="h-4 w-4" />
-                              <span className={`text-sm ${order.customerEmail ? '' : themeClasses.text.muted}`}>
+                              <span className={`text-sm ${order.customerEmail ? '' : 'text-pub-muted'}`}>
                                 {order.customerEmail || 'Unspecified'}
                               </span>
                             </div>
-                            <div className={`flex items-center space-x-2 ${themeClasses.text.secondary}`}>
+                            <div className="flex items-center space-x-2 text-pub-muted">
                               <Calendar className="h-4 w-4" />
                               <span className="text-sm">Received: {order.dateReceived}</span>
                             </div>
                           </div>
 
-                          <div className={`rounded-xl p-4 mb-4 ${themeClasses.card.secondary}`}>
-                            <h4 className={`font-semibold mb-2 ${themeClasses.text.primary}`}>
+                          <div className="rounded-xl p-4 mb-4 bg-pub-sunk border-pub-edge">
+                            <h4 className="font-display font-semibold text-pub-ink mb-2">
                               {order.cartridges.length > 1
                                 ? `Cartridge Details (${order.cartridges.length})`
                                 : 'Cartridge Details'}
@@ -829,7 +830,7 @@ const StaffCartridges = () => {
                             </div>
 
                             {order.cartridges.length > 1 && (
-                              <div className={`mt-3 pt-3 border-t flex justify-between text-sm font-semibold ${themeClasses.text.primary}`}>
+                              <div className="mt-3 pt-3 border-t flex justify-between text-sm font-semibold text-pub-ink">
                                 <span>Subtotal</span>
                                 <span className="font-mono tabular-nums">${cartridgesSubtotal(order.cartridges).toFixed(2)}</span>
                               </div>
@@ -882,10 +883,10 @@ const StaffCartridges = () => {
                 ))}
 
                 {filteredOrders.length === 0 && (
-                  <Card className={themeClasses.card.primary}>
+                  <Card className={`shadow-none ${themeClasses.card.primary}`}>
                     <CardContent className="p-12 text-center">
-                      <Printer className={`h-12 w-12 mx-auto mb-4 ${themeClasses.text.muted}`} />
-                      <h3 className={`text-lg font-semibold mb-2 ${themeClasses.text.primary}`}>{searchTerm || statusFilter !== 'all' ? 'Nothing matches that search' : 'No orders yet'}</h3>
+                      <Printer className="h-12 w-12 mx-auto mb-4 text-pub-muted" />
+                      <h3 className="font-display font-semibold text-pub-ink text-lg mb-2">{searchTerm || statusFilter !== 'all' ? 'Nothing matches that search' : 'No orders yet'}</h3>
                       {searchTerm || statusFilter !== 'all' ? (
                         <Button variant="ghost" onClick={() => { setSearchTerm(""); setStatusFilter("all"); }} className={`min-h-[44px] ${themeClasses.button.ghost}`}>Clear search</Button>
                       ) : newOrderButton}
@@ -907,7 +908,7 @@ const StaffCartridges = () => {
   }
 
   return (
-    <div className={`min-h-screen ${themeClasses.background}`}>
+    <div className="min-h-screen bg-pub-counter">
       {/* Header */}
       <header className={`sticky top-0 z-50 border-b ${themeClasses.header}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -917,22 +918,22 @@ const StaffCartridges = () => {
                 to="/staff/dashboard"
                 className={`transition-colors mr-4 group ${themeClasses.link}`}
               >
-                <ArrowLeft className="h-6 w-6 group-hover:-translate-x-1 transition-transform inline mr-2" />
+                <ArrowLeft className="h-6 w-6 transition-transform inline mr-2" />
                 Back to Dashboard
               </Link>
-              <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${themeClasses.card.secondary}`}>
-                <Printer className={`h-6 w-6 ${themeClasses.text.secondary}`} />
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-pub-sunk border-pub-edge">
+                <Printer className="h-6 w-6 text-pub-muted" />
               </span>
               <div>
-                <h1 className={`text-xl lg:text-2xl font-semibold tracking-tight ${themeClasses.text.primary}`}>
+                <h1 className="font-display font-semibold text-pub-ink text-xl lg:text-2xl tracking-tight">
                   Customer Cartridge Manager
                 </h1>
-                <p className={`text-xs font-medium ${themeClasses.text.secondary}`}>Staff Portal</p>
+                <p className="text-xs font-medium text-pub-muted">Staff Portal</p>
               </div>
             </div>
 
             <div className="flex items-center space-x-4">
-              <div className={`flex items-center space-x-2 ${themeClasses.text.secondary}`}>
+              <div className="flex items-center space-x-2 text-pub-muted">
                 <User className="h-4 w-4" />
                 <span className="text-sm font-medium">{user?.email}</span>
               </div>
@@ -941,7 +942,7 @@ const StaffCartridges = () => {
                 onClick={handleLogout}
                 variant="ghost"
                 size="sm"
-                className={`rounded-full px-4 py-2 transition-colors ${themeClasses.button.ghost}`}
+                className={`rounded-lg px-4 py-2 transition-colors ${themeClasses.button.ghost}`}
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
@@ -955,10 +956,10 @@ const StaffCartridges = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="mb-12 flex flex-wrap items-center justify-between gap-3">
           <div>
-          <h2 className={`text-2xl sm:text-3xl font-semibold tracking-tight ${themeClasses.text.primary}`}>
+          <h2 className="font-display font-semibold text-pub-ink text-2xl sm:text-3xl tracking-tight">
             Cartridge Refill Management
           </h2>
-          <p className={`mt-2 max-w-2xl mx-auto ${themeClasses.text.secondary}`}>
+          <p className="mt-2 max-w-2xl mx-auto text-pub-muted">
             Track customer cartridge refills from received to pickup
           </p>
           </div>

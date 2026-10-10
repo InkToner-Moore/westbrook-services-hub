@@ -117,27 +117,25 @@ export const KeyBoardMap: React.FC<Props> = ({ board, loading, onSelect, onChang
   const chip = (on: boolean) =>
     `inline-flex min-h-[40px] items-center justify-center rounded-lg border px-3 text-sm font-medium transition-colors ${themeClasses.interactive.focus} ${
       on
-        ? isDarkMode
-          ? 'border-orange-500 bg-orange-500/20 text-orange-200'
-          : 'border-orange-600 bg-orange-600 text-white'
-        : `${themeClasses.card.primary} ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`
+        ? themeClasses.ink.fill
+        : `bg-pub-paper border-pub-edge text-pub-muted ${themeClasses.interactive.hover}`
     }`;
 
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-orange-500" />
-          <span className={`text-lg font-semibold ${themeClasses.text.primary}`}>Key board</span>
+          <MapPin className="h-4 w-4 text-pub-ink" />
+          <span className="font-display text-lg font-semibold text-pub-ink">Key board</span>
         </span>
-        <span className={`text-[13px] ${themeClasses.text.muted}`}>
+        <span className="text-[13px] text-pub-muted">
           {totalKeys} keys, {totalFree} free spots
         </span>
       </div>
 
       {/* Find a key or a slot, across every row. */}
       <div className="relative mb-3">
-        <Search className={`absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 ${themeClasses.text.muted}`} />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-pub-muted" />
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -150,7 +148,7 @@ export const KeyBoardMap: React.FC<Props> = ({ board, loading, onSelect, onChang
             type="button"
             onClick={() => setQuery('')}
             aria-label="Clear search"
-            className={`absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md ${themeClasses.text.muted} ${themeClasses.interactive.hover}`}
+            className={`absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-pub-muted ${themeClasses.interactive.hover}`}
           >
             <X className="h-4 w-4" />
           </button>
@@ -160,7 +158,7 @@ export const KeyBoardMap: React.FC<Props> = ({ board, loading, onSelect, onChang
       {/* Row picker and the keys / free filter. A search overrides the row. */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className={`flex flex-wrap items-center gap-1.5 ${q ? 'opacity-50' : ''}`} role="tablist" aria-label="Board row">
-          <span className={`mr-1 text-[13px] ${themeClasses.text.muted}`}>Row</span>
+          <span className="mr-1 text-[13px] text-pub-muted">Row</span>
           {rows.map((r) => (
             <button
               key={r.row}
@@ -192,27 +190,27 @@ export const KeyBoardMap: React.FC<Props> = ({ board, loading, onSelect, onChang
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-8">
-          <Loader2 className={`h-5 w-5 animate-spin ${themeClasses.text.muted}`} />
-          <span className={`text-sm ${themeClasses.text.secondary}`}>Loading the board...</span>
+          <Loader2 className="h-5 w-5 animate-spin text-pub-muted" />
+          <span className="text-sm text-pub-muted">Loading the board...</span>
         </div>
       ) : rows.length === 0 ? (
-        <p className={`py-6 text-center text-sm ${themeClasses.text.muted}`}>The board is empty.</p>
+        <p className="py-6 text-center text-sm text-pub-muted">The board is empty.</p>
       ) : visible.length === 0 ? (
-        <p className={`py-6 text-center text-sm ${themeClasses.text.muted}`}>
+        <p className="py-6 text-center text-sm text-pub-muted">
           {q ? `Nothing on the board matches "${query.trim()}".` : 'Nothing to show in this row with that filter.'}
         </p>
       ) : (
         <div className="space-y-5">
           {q && (
-            <p className={`text-[13px] ${themeClasses.text.secondary}`}>
+            <p className="text-[13px] text-pub-muted">
               {hitCount} {hitCount === 1 ? 'spot' : 'spots'} across {visible.length} {visible.length === 1 ? 'row' : 'rows'}
             </p>
           )}
           {visible.map((r) => (
             <section key={r.row} aria-label={`Row ${r.row}`}>
               <div className="mb-2 flex items-baseline gap-2">
-                <h3 className={`text-sm font-semibold ${themeClasses.text.primary}`}>Row {r.row}</h3>
-                <span className={`text-[13px] ${themeClasses.text.muted}`}>
+                <h3 className="font-display font-semibold text-pub-ink text-sm">Row {r.row}</h3>
+                <span className="text-[13px] text-pub-muted">
                   {r.keys} keys, {r.free} free
                 </span>
               </div>
@@ -243,7 +241,7 @@ export const KeyBoardMap: React.FC<Props> = ({ board, loading, onSelect, onChang
               </div>
             </section>
           ))}
-          <p className={`flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] ${themeClasses.text.muted}`}>
+          <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-pub-muted">
             <span>Tap a spot to see it, change it or free it.</span>
             <span className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-amber-500" /> needs a look
@@ -325,26 +323,26 @@ const SlotEditor: React.FC<{
     <Dialog open={!!cell} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className={themeClasses.card.primary}>
         <DialogHeader>
-          <DialogTitle className={themeClasses.text.primary}>Spot {cell?.position}</DialogTitle>
+          <DialogTitle className="font-display font-semibold text-pub-ink">Spot {cell?.position}</DialogTitle>
           <DialogDescription>
             {cell?.doc?.status === 'recorded' ? cell.doc.models.join(' / ') : 'Nothing here yet.'}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>
-            <Label className={themeClasses.text.secondary}>Key in this spot</Label>
+            <Label className="text-pub-muted">Key in this spot</Label>
             <Input
               value={models}
               onChange={(e) => setModels(e.target.value)}
               placeholder="e.g. Ilco 01122BE  (use / for equivalents: HR1 / HR1 Brass)"
               className={`mt-1 ${themeClasses.input}`}
             />
-            <p className={`mt-1 text-xs ${themeClasses.text.muted}`}>
+            <p className="mt-1 text-xs text-pub-muted">
               Separate equivalent names with a slash.
             </p>
           </div>
           <div>
-            <Label className={themeClasses.text.secondary}>Notes (optional)</Label>
+            <Label className="text-pub-muted">Notes (optional)</Label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -368,7 +366,7 @@ const SlotEditor: React.FC<{
             type="button"
             onClick={() => save('set')}
             disabled={saving}
-            className="bg-orange-600 hover:bg-orange-700 text-white"
+            className={`rounded-full ${themeClasses.button.primary}`}
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
           </Button>

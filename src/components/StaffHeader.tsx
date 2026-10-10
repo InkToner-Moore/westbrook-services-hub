@@ -17,7 +17,7 @@ const StaffHeader = ({
   title, 
   subtitle = "Staff Portal", 
   icon: Icon,
-  iconColor = "text-blue-600 dark:text-blue-400",
+  iconColor = "text-pub-ink",
   backTo = "/staff/dashboard",
   backLabel = "Back to Dashboard"
 }: StaffHeaderProps) => {
@@ -29,7 +29,7 @@ const StaffHeader = ({
   };
 
   return (
-    <header className={`border-b sticky top-0 z-50 shadow-lg transition-all duration-500 ${themeClasses.header}`}>
+    <header className={`border-b sticky top-0 z-50 transition-colors ${themeClasses.header}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-6">
           <div className="flex items-center space-x-3">
@@ -37,26 +37,26 @@ const StaffHeader = ({
               to={backTo}
               className={`transition-colors mr-4 group ${themeClasses.link}`}
             >
-              <ArrowLeft className="h-6 w-6 group-hover:-translate-x-1 transition-transform inline mr-2" />
+              <ArrowLeft className="h-6 w-6 transition-transform inline mr-2" />
               {backLabel}
             </Link>
             {Icon && (
-              <div className={`flex items-center justify-center p-3 rounded-xl shadow-lg ${themeClasses.card.secondary}`}>
-                <Icon className={`h-8 w-8 drop-shadow-lg ${iconColor}`} />
+              <div className="flex items-center justify-center p-3 rounded-xl bg-pub-sunk border-pub-edge">
+                <Icon className={`h-8 w-8 ${iconColor}`} />
               </div>
             )}
             <div>
-              <h1 className={`text-xl lg:text-2xl font-bold bg-clip-text text-transparent drop-shadow-lg transition-all duration-500 ${themeClasses.gradient.title}`}>
+              <h1 className="font-display font-semibold text-pub-ink text-xl lg:text-2xl transition-colors">
                 {title}
               </h1>
-              <p className={`text-xs font-medium transition-all duration-500 ${themeClasses.text.secondary}`}>
+              <p className="text-xs font-medium transition-colors text-pub-muted">
                 {subtitle}
               </p>
             </div>
           </div>
           
           <div className="flex items-center space-x-4">
-            <div className={`hidden md:flex items-center space-x-2 transition-all duration-500 ${themeClasses.text.secondary}`}>
+            <div className="hidden md:flex items-center space-x-2 transition-colors text-pub-muted">
               <User className="h-4 w-4" />
               <span className="text-sm font-medium">{user?.email}</span>
             </div>
@@ -66,7 +66,7 @@ const StaffHeader = ({
               onClick={toggleTheme}
               variant="ghost"
               size="sm"
-              className={`p-2 rounded-lg transition-all duration-300 hover:scale-105 border ${themeClasses.button.secondary} ${themeClasses.interactive.focus}`}
+              className={`p-2 rounded-lg transition-colors border ${themeClasses.button.secondary} ${themeClasses.interactive.focus}`}
             >
               {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
@@ -75,7 +75,7 @@ const StaffHeader = ({
               onClick={handleLogout}
               variant="ghost"
               size="sm"
-              className={`rounded-lg px-4 py-2 transition-all duration-300 hover:scale-105 border ${themeClasses.button.ghost} ${themeClasses.interactive.focus}`}
+              className={`rounded-lg px-4 py-2 transition-colors border ${themeClasses.button.ghost} ${themeClasses.interactive.focus}`}
             >
               <LogOut className="h-4 w-4 mr-2" />
               Logout

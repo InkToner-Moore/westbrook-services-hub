@@ -148,15 +148,9 @@ const nextCartLineId = () => `sr-${(receiptCartLineId += 1)}`;
 
 const StaffReceipts = () => {
   const { addCartLines } = useAiMode();
-  const { themeClasses, isDarkMode } = useTheme();
-  const tabActive = isDarkMode
-    ? "text-slate-400 data-[state=active]:bg-[#171a21] data-[state=active]:text-slate-100"
-    : "text-slate-600 data-[state=active]:bg-white data-[state=active]:text-slate-900";
-  // The app's dialogs/inputs render against the light shadcn palette, so in dark
-  // mode the default checkbox (dark border, dark fill) nearly vanishes — invert it.
-  const checkboxClass = isDarkMode
-    ? "border-gray-300 data-[state=checked]:bg-white data-[state=checked]:text-slate-900"
-    : "";
+  const { themeClasses } = useTheme();
+  const tabActive = "text-pub-muted data-[state=active]:bg-pub-paper data-[state=active]:text-pub-ink";
+  const checkboxClass = "border-pub-edge data-[state=checked]:bg-pub-ink data-[state=checked]:text-pub-paper";
   const [activeTab, setActiveTab] = useState("shipping");
   const [packingRows, setPackingRows] = useState<(PackingItem & { id: string })[]>([]);
   const [packingCustomName, setPackingCustomName] = useState("");
@@ -395,40 +389,41 @@ const StaffReceipts = () => {
       tool="receipts"
       icon={Receipt}
     >
-      <div className={`border rounded-xl p-4 sm:p-6 ${themeClasses.card.primary}`}>
+      <div className="border rounded-xl p-4 sm:p-6 bg-pub-paper border-pub-edge">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className={`mb-8 inline-flex h-auto max-w-full justify-start gap-1 overflow-x-auto rounded-xl border p-1 ${themeClasses.card.secondary}`}>
+            <TabsList className="mb-8 inline-flex h-auto max-w-full justify-start gap-1 overflow-x-auto rounded-xl border p-1
+              bg-pub-sunk border-pub-edge">
               <TabsTrigger
                 value="shipping"
-                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-sm ${tabActive}`}
+                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-none ${tabActive}`}
               >
                 <Package className="h-4 w-4" />
                 <span>Shipping</span>
               </TabsTrigger>
               <TabsTrigger
                 value="key"
-                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-sm ${tabActive}`}
+                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-none ${tabActive}`}
               >
                 <Key className="h-4 w-4" />
                 <span>Key cutting</span>
               </TabsTrigger>
               <TabsTrigger
                 value="cartridge"
-                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-sm ${tabActive}`}
+                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-none ${tabActive}`}
               >
                 <Printer className="h-4 w-4" />
                 <span>Cartridge refill</span>
               </TabsTrigger>
               <TabsTrigger
                 value="toner"
-                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-sm ${tabActive}`}
+                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-none ${tabActive}`}
               >
                 <Droplets className="h-4 w-4" />
                 <span>Toner sale</span>
               </TabsTrigger>
               <TabsTrigger
                 value="packing"
-                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-sm ${tabActive}`}
+                className={`min-h-[44px] shrink-0 gap-2 rounded-lg px-4 text-sm font-medium data-[state=active]:shadow-none ${tabActive}`}
               >
                 <Box className="h-4 w-4" />
                 <span>Packing</span>
@@ -440,19 +435,19 @@ const StaffReceipts = () => {
               <form onSubmit={shippingForm.handleSubmit(addShippingToReceipt)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <Label htmlFor="receiptNumber" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Receipt Number</Label>
+                    <Label htmlFor="receiptNumber" className="font-medium transition-colors duration-300 text-pub-ink">Receipt number</Label>
                     <div className="flex gap-2">
                       <Input
                         id="receiptNumber"
                         {...shippingForm.register('receiptNumber')}
-                        className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
+                        className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => generateNewReceiptNumber('SH', 'shipping')}
-                        className={`px-3 transition-all duration-300 ${themeClasses.button.ghost}`}
+                        className={`px-3 transition-colors ${themeClasses.button.ghost}`}
                         title="Generate new receipt number"
                       >
                         <RefreshCw className="h-4 w-4" />
@@ -460,37 +455,37 @@ const StaffReceipts = () => {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="date" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Date</Label>
+                    <Label htmlFor="date" className="font-medium transition-colors duration-300 text-pub-ink">Date</Label>
                     <Input
                       id="date"
                       type="date"
                       {...shippingForm.register('date')}
-                      className={`transition-all duration-300 ${themeClasses.input}`}
+                      className={`transition-colors ${themeClasses.input}`}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="customerName" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Name</Label>
+                    <Label htmlFor="customerName" className="font-medium transition-colors duration-300 text-pub-ink">Customer name</Label>
                     <Input
                       id="customerName"
                       {...shippingForm.register('customerName')}
                       placeholder="Enter customer name"
-                      className={`transition-all duration-300 ${themeClasses.input}`}
+                      className={`transition-colors ${themeClasses.input}`}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="customerPhone" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Phone</Label>
+                    <Label htmlFor="customerPhone" className="font-medium transition-colors duration-300 text-pub-ink">Customer phone</Label>
                     <Input
                       id="customerPhone"
                       {...shippingForm.register('customerPhone')}
                       placeholder="(403) 555-0123"
-                      className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
+                      className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
                     />
                   </div>
                 </div>
 
                 <div className="mt-8">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className={`text-lg font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>Shipping items</h3>
+                    <h3 className="font-display font-semibold text-pub-ink text-lg transition-colors duration-300">Shipping items</h3>
                     <Button
                       type="button"
                       variant="ghost"
@@ -509,7 +504,7 @@ const StaffReceipts = () => {
                         };
                         shippingForm.setValue('shippingItems', [...currentItems, newItem]);
                       }}
-                      className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+                      className={`transition-colors ${themeClasses.button.ghost}`}
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add shipping item
@@ -518,9 +513,9 @@ const StaffReceipts = () => {
                   
                   <div className="space-y-8">
                     {shippingForm.watch('shippingItems')?.map((_, itemIndex) => (
-                      <Card key={itemIndex} className={`p-6 ${themeClasses.card.secondary}`}>
+                      <Card key={itemIndex} className="shadow-none p-6 bg-pub-sunk border-pub-edge">
                         <div className="flex justify-between items-center mb-4">
-                          <h4 className={`font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>
+                          <h4 className="font-display font-semibold text-pub-ink transition-colors duration-300">
                             Package {itemIndex + 1}
                           </h4>
                           {shippingForm.watch('shippingItems')?.length > 1 && (
@@ -542,55 +537,55 @@ const StaffReceipts = () => {
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Courier Service</Label>
+                            <Label className="font-medium transition-colors duration-300 text-pub-ink">Courier service</Label>
                             <Input
                               {...shippingForm.register(`shippingItems.${itemIndex}.courier`)}
                               placeholder="e.g., FedEx Priority Overnight, UPS Ground, Purolator Express"
-                              className={`transition-all duration-300 ${themeClasses.input}`}
+                              className={`transition-colors ${themeClasses.input}`}
                             />
                           </div>
                           <div>
-                            <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Tracking Number</Label>
+                            <Label className="font-medium transition-colors duration-300 text-pub-ink">Tracking number</Label>
                             <Input
                               {...shippingForm.register(`shippingItems.${itemIndex}.trackingNumber`)}
                               placeholder="Enter tracking number"
-                              className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
+                              className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
                             />
                           </div>
                           <div>
-                            <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Destination City</Label>
+                            <Label className="font-medium transition-colors duration-300 text-pub-ink">Destination city</Label>
                             <Input
                               {...shippingForm.register(`shippingItems.${itemIndex}.destinationCity`)}
                               placeholder="Enter city"
-                              className={`transition-all duration-300 ${themeClasses.input}`}
+                              className={`transition-colors ${themeClasses.input}`}
                             />
                           </div>
                           <div>
-                            <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Province/State</Label>
+                            <Label className="font-medium transition-colors duration-300 text-pub-ink">Province/state</Label>
                             <Input
                               {...shippingForm.register(`shippingItems.${itemIndex}.destinationProvince`)}
                               placeholder="AB, BC, ON, CA, etc."
                               defaultValue="AB"
-                              className={`transition-all duration-300 ${themeClasses.input}`}
+                              className={`transition-colors ${themeClasses.input}`}
                             />
                           </div>
                           <div>
-                            <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Country</Label>
+                            <Label className="font-medium transition-colors duration-300 text-pub-ink">Country</Label>
                             <Input
                               {...shippingForm.register(`shippingItems.${itemIndex}.destinationCountry`)}
                               placeholder="Canada, USA, etc."
                               defaultValue="Canada"
-                              className={`transition-all duration-300 ${themeClasses.input}`}
+                              className={`transition-colors ${themeClasses.input}`}
                             />
                           </div>
                           <div>
-                            <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Shipping Cost ($)</Label>
+                            <Label className="font-medium transition-colors duration-300 text-pub-ink">Shipping cost ($)</Label>
                             <Input
                               type="number"
                               step="0.01"
                               {...shippingForm.register(`shippingItems.${itemIndex}.shippingCost`, { valueAsNumber: true })}
                               placeholder="0.00"
-                              className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
+                              className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
                             />
                           </div>
                         </div>
@@ -598,7 +593,7 @@ const StaffReceipts = () => {
                         {/* Add-ons section */}
                         <div className="mt-6">
                           <div className="flex justify-between items-center mb-3">
-                            <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Add-ons</Label>
+                            <Label className="font-medium transition-colors duration-300 text-pub-ink">Add-ons</Label>
                             <Button
                               type="button"
                               variant="ghost"
@@ -612,7 +607,7 @@ const StaffReceipts = () => {
                                 };
                                 shippingForm.setValue(`shippingItems.${itemIndex}.addOns`, [...currentAddOns, newAddOn]);
                               }}
-                              className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+                              className={`transition-colors ${themeClasses.button.ghost}`}
                             >
                               <Plus className="h-3 w-3 mr-1" />
                               Add
@@ -623,7 +618,7 @@ const StaffReceipts = () => {
                             {shippingForm.watch(`shippingItems.${itemIndex}.addOns`)?.map((_, addonIndex) => (
                               <div key={addonIndex} className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:items-end">
                                 <div>
-                                  <Label className={`text-sm font-medium ${themeClasses.text.primary}`}>Add-on Type</Label>
+                                  <Label className="text-sm font-medium text-pub-ink">Add-on type</Label>
                                   <Select 
                                     onValueChange={(value) => {
                                       const addon = shippingAddOns.find(a => a.type === value);
@@ -648,7 +643,7 @@ const StaffReceipts = () => {
                                 
                                 {shippingForm.watch(`shippingItems.${itemIndex}.addOns.${addonIndex}.type`) === 'Custom' && (
                                   <div>
-                                    <Label className={`text-sm font-medium ${themeClasses.text.primary}`}>Custom Name</Label>
+                                    <Label className="text-sm font-medium text-pub-ink">Custom name</Label>
                                     <Input
                                       {...shippingForm.register(`shippingItems.${itemIndex}.addOns.${addonIndex}.customName`)}
                                       placeholder="Custom item name"
@@ -659,7 +654,7 @@ const StaffReceipts = () => {
                                 
                                 <div className="flex gap-1">
                                   <div className="flex-1">
-                                    <Label className={`text-sm font-medium ${themeClasses.text.primary}`}>Price ($)</Label>
+                                    <Label className="text-sm font-medium text-pub-ink">Price ($)</Label>
                                     <Input
                                       type="number"
                                       step="0.01"
@@ -684,9 +679,9 @@ const StaffReceipts = () => {
                                 </div>
                                 
                                 {/* Add-on specific taxes */}
-                                <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-600">
+                                <div className="mt-4 pt-3 border-t border-pub-edge">
                                   <div className="flex justify-between items-center mb-2">
-                                    <Label className={`text-sm font-medium ${themeClasses.text.primary}`}>Add-on Taxes</Label>
+                                    <Label className="text-sm font-medium text-pub-ink">Add-on taxes</Label>
                                     <div className="flex gap-2">
                                       <Select onValueChange={(province) => {
                                         const taxes = provincialTaxRates[province as keyof typeof provincialTaxRates] || provincialTaxRates['Alberta'];
@@ -757,7 +752,7 @@ const StaffReceipts = () => {
                         {/* Shipping taxes section */}
                         <div className="mt-6">
                           <div className="flex justify-between items-center mb-3">
-                            <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Shipping Taxes</Label>
+                            <Label className="font-medium transition-colors duration-300 text-pub-ink">Shipping taxes</Label>
                             <div className="flex gap-2">
                               <Select onValueChange={(province) => setProvincialTax(province, 'shipping', itemIndex)}>
                                 <SelectTrigger className={`w-32 h-8 text-sm ${themeClasses.input}`}>
@@ -777,7 +772,7 @@ const StaffReceipts = () => {
                                   const currentTaxes = shippingForm.getValues(`shippingItems.${itemIndex}.taxes`) || [];
                                   shippingForm.setValue(`shippingItems.${itemIndex}.taxes`, [...currentTaxes, { name: '', percentage: 0, amount: 0 }]);
                                 }}
-                                className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+                                className={`transition-colors ${themeClasses.button.ghost}`}
                               >
                                 <Plus className="h-3 w-3 mr-1" />
                                 Add tax
@@ -824,7 +819,7 @@ const StaffReceipts = () => {
 
                 <Button
                   type="submit"
-                  className={`w-full h-12 font-semibold rounded-lg transition-colors ${themeClasses.button.primary}`}
+                  className={`w-full h-12 font-semibold rounded-full transition-colors ${themeClasses.button.primary}`}
                 >
                   <Receipt className="h-5 w-5 mr-2" />
                   Add to receipt
@@ -837,19 +832,19 @@ const StaffReceipts = () => {
               <form onSubmit={keyForm.handleSubmit(addKeyToReceipt)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <Label htmlFor="keyReceiptNumber" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Receipt Number</Label>
+                    <Label htmlFor="keyReceiptNumber" className="font-medium transition-colors duration-300 text-pub-ink">Receipt number</Label>
                     <div className="flex gap-2">
                       <Input
                         id="keyReceiptNumber"
                         {...keyForm.register('receiptNumber')}
-                        className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
+                        className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => generateNewReceiptNumber('KEY', 'key')}
-                        className={`px-3 transition-all duration-300 ${themeClasses.button.ghost}`}
+                        className={`px-3 transition-colors ${themeClasses.button.ghost}`}
                         title="Generate new receipt number"
                       >
                         <RefreshCw className="h-4 w-4" />
@@ -857,64 +852,64 @@ const StaffReceipts = () => {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="keyDate" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Date</Label>
+                    <Label htmlFor="keyDate" className="font-medium transition-colors duration-300 text-pub-ink">Date</Label>
                     <Input
                       id="keyDate"
                       type="date"
                       {...keyForm.register('date')}
-                      className={`transition-all duration-300 ${themeClasses.input}`}
+                      className={`transition-colors ${themeClasses.input}`}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="keyCustomerName" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Name</Label>
+                    <Label htmlFor="keyCustomerName" className="font-medium transition-colors duration-300 text-pub-ink">Customer name</Label>
                     <Input
                       id="keyCustomerName"
                       {...keyForm.register('customerName')}
                       placeholder="Enter customer name"
-                      className={`transition-all duration-300 ${themeClasses.input}`}
+                      className={`transition-colors ${themeClasses.input}`}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="keyCustomerPhone" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Phone</Label>
+                    <Label htmlFor="keyCustomerPhone" className="font-medium transition-colors duration-300 text-pub-ink">Customer phone</Label>
                     <Input
                       id="keyCustomerPhone"
                       {...keyForm.register('customerPhone')}
                       placeholder="(403) 555-0123"
-                      className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
+                      className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
                     />
                   </div>
                 </div>
 
                 <div className="mt-8">
-                  <h3 className={`mb-4 text-lg font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>Key items</h3>
+                  <h3 className="font-display font-semibold text-pub-ink mb-4 text-lg transition-colors duration-300">Key items</h3>
                   <div className="space-y-4">
                     {keyForm.watch('keyItems')?.map((_, index) => (
                       <div key={index} className="grid grid-cols-2 gap-3 items-end sm:grid-cols-4 sm:gap-4">
                         <div>
-                          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Key Model</Label>
+                          <Label className="font-medium transition-colors duration-300 text-pub-ink">Key model</Label>
                           <Input
                             {...keyForm.register(`keyItems.${index}.model`)}
-                            placeholder="House Key, Mailbox, etc."
-                            className={`transition-all duration-300 ${themeClasses.input}`}
+                            placeholder="House key, mailbox, etc."
+                            className={`transition-colors ${themeClasses.input}`}
                           />
                         </div>
                         <div>
-                          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Quantity</Label>
+                          <Label className="font-medium transition-colors duration-300 text-pub-ink">Quantity</Label>
                           <Input
                             type="number"
                             min="1"
                             {...keyForm.register(`keyItems.${index}.quantity`, { valueAsNumber: true })}
-                            className={`transition-all duration-300 ${themeClasses.input}`}
+                            className={`transition-colors ${themeClasses.input}`}
                           />
                         </div>
                         <div>
-                          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Price Each ($)</Label>
+                          <Label className="font-medium transition-colors duration-300 text-pub-ink">Price each ($)</Label>
                           <Input
                             type="number"
                             step="0.01"
                             {...keyForm.register(`keyItems.${index}.priceEach`, { valueAsNumber: true })}
                             placeholder="0.00"
-                            className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
+                            className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
                           />
                         </div>
                         <Button
@@ -939,7 +934,7 @@ const StaffReceipts = () => {
                         const currentItems = keyForm.getValues('keyItems') || [];
                         keyForm.setValue('keyItems', [...currentItems, { model: '', quantity: 1, priceEach: 0, total: 0 }]);
                       }}
-                      className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+                      className={`transition-colors ${themeClasses.button.ghost}`}
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add key item
@@ -949,7 +944,7 @@ const StaffReceipts = () => {
 
                 <div className="mt-8">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className={`text-lg font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>Taxes</h3>
+                    <h3 className="font-display font-semibold text-pub-ink text-lg transition-colors duration-300">Taxes</h3>
                     <div className="flex gap-2">
                       <Select onValueChange={(province) => setProvincialTax(province, 'key')}>
                         <SelectTrigger className={`w-20 h-8 text-sm ${themeClasses.input}`}>
@@ -969,7 +964,7 @@ const StaffReceipts = () => {
                           const currentTaxes = keyForm.getValues('taxes') || [];
                           keyForm.setValue('taxes', [...currentTaxes, { name: '', percentage: 0, amount: 0 }]);
                         }}
-                        className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+                        className={`transition-colors ${themeClasses.button.ghost}`}
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Add tax
@@ -980,21 +975,21 @@ const StaffReceipts = () => {
                     {keyForm.watch('taxes')?.map((_, index) => (
                       <div key={index} className="grid grid-cols-3 gap-4 items-end">
                         <div>
-                          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Tax Name</Label>
+                          <Label className="font-medium transition-colors duration-300 text-pub-ink">Tax name</Label>
                           <Input
                             {...keyForm.register(`taxes.${index}.name`)}
                             placeholder="GST, HST, PST, etc."
-                            className={`transition-all duration-300 ${themeClasses.input}`}
+                            className={`transition-colors ${themeClasses.input}`}
                           />
                         </div>
                         <div>
-                          <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Percentage (%)</Label>
+                          <Label className="font-medium transition-colors duration-300 text-pub-ink">Percentage (%)</Label>
                           <Input
                             type="number"
                             step="0.01"
                             {...keyForm.register(`taxes.${index}.percentage`, { valueAsNumber: true })}
                             placeholder="5.00"
-                            className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
+                            className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
                           />
                         </div>
                         <Button
@@ -1017,7 +1012,7 @@ const StaffReceipts = () => {
 
                 <Button
                   type="submit"
-                  className={`w-full h-12 font-semibold rounded-lg transition-colors ${themeClasses.button.primary}`}
+                  className={`w-full h-12 font-semibold rounded-full transition-colors ${themeClasses.button.primary}`}
                 >
                   <Receipt className="h-5 w-5 mr-2" />
                   Add to receipt
@@ -1030,19 +1025,19 @@ const StaffReceipts = () => {
               <form onSubmit={cartridgeForm.handleSubmit(addCartridgeToReceipt)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <Label htmlFor="crReceiptNumber" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Receipt Number</Label>
+                    <Label htmlFor="crReceiptNumber" className="font-medium transition-colors duration-300 text-pub-ink">Receipt number</Label>
                     <div className="flex gap-2">
                       <Input
                         id="crReceiptNumber"
                         {...cartridgeForm.register('receiptNumber')}
-                        className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
+                        className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => cartridgeForm.setValue('receiptNumber', generateReceiptNumber('CR'))}
-                        className={`px-3 transition-all duration-300 ${themeClasses.button.ghost}`}
+                        className={`px-3 transition-colors ${themeClasses.button.ghost}`}
                         title="Generate new receipt number"
                       >
                         <RefreshCw className="h-4 w-4" />
@@ -1050,20 +1045,20 @@ const StaffReceipts = () => {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="crDate" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Date</Label>
-                    <Input id="crDate" type="date" {...cartridgeForm.register('date')} className={`transition-all duration-300 ${themeClasses.input}`} />
+                    <Label htmlFor="crDate" className="font-medium transition-colors duration-300 text-pub-ink">Date</Label>
+                    <Input id="crDate" type="date" {...cartridgeForm.register('date')} className={`transition-colors ${themeClasses.input}`} />
                   </div>
                   <div>
-                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Name</Label>
-                    <Input {...cartridgeForm.register('customerName')} placeholder="Enter customer name" className={`transition-all duration-300 ${themeClasses.input}`} />
+                    <Label className="font-medium transition-colors duration-300 text-pub-ink">Customer name</Label>
+                    <Input {...cartridgeForm.register('customerName')} placeholder="Enter customer name" className={`transition-colors ${themeClasses.input}`} />
                   </div>
                   <div>
-                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Phone</Label>
-                    <Input {...cartridgeForm.register('customerPhone')} placeholder="(403) 555-0123" className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`} />
+                    <Label className="font-medium transition-colors duration-300 text-pub-ink">Customer phone</Label>
+                    <Input {...cartridgeForm.register('customerPhone')} placeholder="(403) 555-0123" className={`transition-colors ${themeClasses.input} font-mono tabular-nums`} />
                   </div>
                   <div>
-                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Email</Label>
-                    <Input type="email" {...cartridgeForm.register('customerEmail')} placeholder="customer@email.com" className={`transition-all duration-300 ${themeClasses.input}`} />
+                    <Label className="font-medium transition-colors duration-300 text-pub-ink">Email</Label>
+                    <Input type="email" {...cartridgeForm.register('customerEmail')} placeholder="customer@email.com" className={`transition-colors ${themeClasses.input}`} />
                   </div>
                 </div>
 
@@ -1077,7 +1072,8 @@ const StaffReceipts = () => {
                 )}
 
                 <div>
-                  <label className={`flex items-center gap-2 text-sm font-medium cursor-pointer select-none transition-colors duration-300 ${themeClasses.text.primary}`}>
+                  <label className="flex items-center gap-2 text-sm font-medium cursor-pointer select-none transition-colors duration-300
+                    text-pub-ink">
                     <Checkbox checked={cartridgeAddGst} onCheckedChange={(c) => setCartridgeAddGst(c === true)} className={checkboxClass} />
                     Add GST ({(GST_RATE * 100).toFixed(0)}%)
                   </label>
@@ -1087,15 +1083,15 @@ const StaffReceipts = () => {
                 </div>
 
                 <div>
-                  <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Notes</Label>
-                  <Textarea rows={2} {...cartridgeForm.register('notes')} placeholder="Any special notes" className={`transition-all duration-300 ${themeClasses.input}`} />
+                  <Label className="font-medium transition-colors duration-300 text-pub-ink">Notes</Label>
+                  <Textarea rows={2} {...cartridgeForm.register('notes')} placeholder="Any special notes" className={`transition-colors ${themeClasses.input}`} />
                 </div>
 
-                <p className={`text-sm ${themeClasses.text.muted}`}>Blank fields are left off the printed receipt.</p>
+                <p className="text-sm text-pub-muted">Blank fields are left off the printed receipt.</p>
 
                 <Button
                   type="submit"
-                  className={`w-full h-12 font-semibold rounded-lg transition-colors ${themeClasses.button.primary}`}
+                  className={`w-full h-12 font-semibold rounded-full transition-colors ${themeClasses.button.primary}`}
                 >
                   <Receipt className="h-5 w-5 mr-2" />
                   Add to receipt
@@ -1108,19 +1104,19 @@ const StaffReceipts = () => {
               <form onSubmit={tonerForm.handleSubmit(addTonerToReceipt)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <Label htmlFor="tonReceiptNumber" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Receipt Number</Label>
+                    <Label htmlFor="tonReceiptNumber" className="font-medium transition-colors duration-300 text-pub-ink">Receipt number</Label>
                     <div className="flex gap-2">
                       <Input
                         id="tonReceiptNumber"
                         {...tonerForm.register('receiptNumber')}
-                        className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
+                        className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => tonerForm.setValue('receiptNumber', generateReceiptNumber('TON'))}
-                        className={`px-3 transition-all duration-300 ${themeClasses.button.ghost}`}
+                        className={`px-3 transition-colors ${themeClasses.button.ghost}`}
                         title="Generate new receipt number"
                       >
                         <RefreshCw className="h-4 w-4" />
@@ -1128,29 +1124,29 @@ const StaffReceipts = () => {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="tonDate" className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Date</Label>
-                    <Input id="tonDate" type="date" {...tonerForm.register('date')} className={`transition-all duration-300 ${themeClasses.input}`} />
+                    <Label htmlFor="tonDate" className="font-medium transition-colors duration-300 text-pub-ink">Date</Label>
+                    <Input id="tonDate" type="date" {...tonerForm.register('date')} className={`transition-colors ${themeClasses.input}`} />
                   </div>
                   <div>
-                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Name</Label>
-                    <Input {...tonerForm.register('customerName')} placeholder="Optional" className={`transition-all duration-300 ${themeClasses.input}`} />
+                    <Label className="font-medium transition-colors duration-300 text-pub-ink">Customer name</Label>
+                    <Input {...tonerForm.register('customerName')} placeholder="Optional" className={`transition-colors ${themeClasses.input}`} />
                   </div>
                   <div>
-                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Customer Phone</Label>
-                    <Input {...tonerForm.register('customerPhone')} placeholder="Optional" className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`} />
+                    <Label className="font-medium transition-colors duration-300 text-pub-ink">Customer phone</Label>
+                    <Input {...tonerForm.register('customerPhone')} placeholder="Optional" className={`transition-colors ${themeClasses.input} font-mono tabular-nums`} />
                   </div>
                 </div>
 
-                {/* Toners — one line per toner sold, so a single sale can cover several. */}
+                {/* Toners , one line per toner sold, so a single sale can cover several. */}
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Toners</Label>
+                    <Label className="font-medium transition-colors duration-300 text-pub-ink">Toners</Label>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => tonerLines.append(emptyTonerLine())}
-                      className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+                      className={`transition-colors ${themeClasses.button.ghost}`}
                     >
                       <Plus className="h-4 w-4 mr-1" />
                       Add toner
@@ -1160,17 +1156,17 @@ const StaffReceipts = () => {
                   {tonerLines.fields.map((field, index) => (
                     <div key={field.id} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
                       <div>
-                        <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>
+                        <Label className="font-medium transition-colors duration-300 text-pub-ink">
                           Model <span className="text-red-500">*</span>
                         </Label>
                         <Input
                           {...tonerForm.register(`toners.${index}.model`, { required: 'Model is required' })}
                           placeholder="e.g. HP 26A, Brother TN660"
-                          className={`transition-all duration-300 ${themeClasses.input}`}
+                          className={`transition-colors ${themeClasses.input}`}
                         />
                       </div>
                       <div>
-                        <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>
+                        <Label className="font-medium transition-colors duration-300 text-pub-ink">
                           Price ($) <span className="text-red-500">*</span>
                         </Label>
                         <Input
@@ -1181,7 +1177,7 @@ const StaffReceipts = () => {
                             valueAsNumber: true,
                             validate: (v) => (isFilledNumber(v) && v >= 0) || 'A valid price is required',
                           })}
-                          className={`transition-all duration-300 ${themeClasses.input} font-mono tabular-nums`}
+                          className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
                         />
                       </div>
                       {tonerLines.fields.length > 1 && (
@@ -1205,7 +1201,7 @@ const StaffReceipts = () => {
 
                   {/* Only worth showing once there's more than one line to add up. */}
                   {tonerLines.fields.length > 1 && (
-                    <div className={`flex justify-between text-sm font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>
+                    <div className="flex justify-between text-sm font-semibold transition-colors duration-300 text-pub-ink">
                       <span>Subtotal</span>
                       <span className="font-mono tabular-nums">${tonerSubtotal.toFixed(2)}</span>
                     </div>
@@ -1213,7 +1209,8 @@ const StaffReceipts = () => {
                 </div>
 
                 <div>
-                  <label className={`flex items-center gap-2 text-sm font-medium cursor-pointer select-none transition-colors duration-300 ${themeClasses.text.primary}`}>
+                  <label className="flex items-center gap-2 text-sm font-medium cursor-pointer select-none transition-colors duration-300
+                    text-pub-ink">
                     <Checkbox checked={tonerAddGst} onCheckedChange={(c) => setTonerAddGst(c === true)} className={checkboxClass} />
                     Add GST ({(GST_RATE * 100).toFixed(0)}%)
                   </label>
@@ -1222,11 +1219,11 @@ const StaffReceipts = () => {
                   )}
                 </div>
 
-                <p className={`text-sm ${themeClasses.text.muted}`}>Blank fields are left off the printed receipt.</p>
+                <p className="text-sm text-pub-muted">Blank fields are left off the printed receipt.</p>
 
                 <Button
                   type="submit"
-                  className={`w-full h-12 font-semibold rounded-lg transition-colors ${themeClasses.button.primary}`}
+                  className={`w-full h-12 font-semibold rounded-full transition-colors ${themeClasses.button.primary}`}
                 >
                   <Receipt className="h-5 w-5 mr-2" />
                   Add to receipt
@@ -1238,7 +1235,7 @@ const StaffReceipts = () => {
             <TabsContent value="packing">
               <div className="space-y-6">
                 <div>
-                  <h3 className={`mb-3 text-lg font-semibold ${themeClasses.text.primary}`}>Add a supply</h3>
+                  <h3 className="font-display font-semibold text-pub-ink mb-3 text-lg">Add a supply</h3>
                   <div className="flex flex-wrap gap-2">
                     {PACKING_PRESETS.filter((p) => !p.custom).map((p) => (
                       <Button
@@ -1256,7 +1253,7 @@ const StaffReceipts = () => {
 
                   <div className="mt-4 flex flex-wrap items-end gap-2">
                     <div className="flex-1 min-w-[10rem]">
-                      <Label className={`text-xs ${themeClasses.text.secondary}`}>Custom name</Label>
+                      <Label className="text-xs text-pub-muted">Custom name</Label>
                       <Input
                         value={packingCustomName}
                         onChange={(e) => setPackingCustomName(e.target.value)}
@@ -1265,7 +1262,7 @@ const StaffReceipts = () => {
                       />
                     </div>
                     <div className="w-28">
-                      <Label className={`text-xs ${themeClasses.text.secondary}`}>Price</Label>
+                      <Label className="text-xs text-pub-muted">Price</Label>
                       <Input
                         type="number"
                         min="0"
@@ -1273,7 +1270,7 @@ const StaffReceipts = () => {
                         value={packingCustomCost}
                         onChange={(e) => setPackingCustomCost(e.target.value)}
                         placeholder="0.00"
-                        className={themeClasses.input}
+                        className={`${themeClasses.input} font-mono tabular-nums`}
                       />
                     </div>
                     <Button type="button" variant="outline" size="sm" onClick={addPackingCustom}>
@@ -1287,7 +1284,7 @@ const StaffReceipts = () => {
                   <div className="space-y-3">
                     {packingRows.map((r) => (
                       <div key={r.id} className="flex flex-wrap items-center gap-3">
-                        <span className={`flex-1 min-w-[8rem] text-sm font-medium ${themeClasses.text.primary}`}>
+                        <span className="flex-1 min-w-[8rem] text-sm font-medium text-pub-ink">
                           {r.name}
                         </span>
                         <div className="flex items-center gap-1">
@@ -1301,7 +1298,7 @@ const StaffReceipts = () => {
                           >
                             <Minus className="h-3.5 w-3.5" />
                           </Button>
-                          <span className={`w-6 text-center text-sm ${themeClasses.text.primary}`}>{r.quantity}</span>
+                          <span className="w-6 text-center text-sm text-pub-ink">{r.quantity}</span>
                           <Button
                             type="button"
                             variant="ghost"
@@ -1313,7 +1310,7 @@ const StaffReceipts = () => {
                             <Plus className="h-3.5 w-3.5" />
                           </Button>
                         </div>
-                        <label className={`flex items-center gap-1.5 text-xs ${themeClasses.text.secondary}`}>
+                        <label className="flex items-center gap-1.5 text-xs text-pub-muted">
                           <Checkbox
                             checked={r.taxable}
                             onCheckedChange={(v) => patchPackingRow(r.id, { taxable: v === true })}
@@ -1321,7 +1318,7 @@ const StaffReceipts = () => {
                           />
                           Tax
                         </label>
-                        <span className={`w-16 text-right text-sm font-mono tabular-nums ${themeClasses.text.primary}`}>
+                        <span className="w-16 text-right text-sm font-mono tabular-nums text-pub-ink">
                           ${packingLineTotal(r).toFixed(2)}
                         </span>
                         <Button
@@ -1337,7 +1334,7 @@ const StaffReceipts = () => {
                       </div>
                     ))}
 
-                    <div className={`border-t pt-3 text-sm ${themeClasses.text.secondary}`}>
+                    <div className="border-t pt-3 text-sm text-pub-muted">
                       <div className="flex justify-between">
                         <span>Subtotal</span>
                         <span className="font-mono tabular-nums">${packingSubtotal(packingRows).toFixed(2)}</span>
@@ -1348,7 +1345,7 @@ const StaffReceipts = () => {
                           <span className="font-mono tabular-nums">${t.amount.toFixed(2)}</span>
                         </div>
                       ))}
-                      <div className={`flex justify-between font-semibold ${themeClasses.text.primary}`}>
+                      <div className="flex justify-between font-semibold text-pub-ink">
                         <span>Total</span>
                         <span className="font-mono tabular-nums">
                           ${round2(
@@ -1365,7 +1362,7 @@ const StaffReceipts = () => {
                   type="button"
                   disabled={packingRows.length === 0}
                   onClick={addPackingToReceipt}
-                  className={`w-full h-12 font-semibold rounded-lg transition-colors disabled:opacity-50 ${themeClasses.button.primary}`}
+                  className={`w-full h-12 font-semibold rounded-full transition-colors disabled:opacity-50 ${themeClasses.button.primary}`}
                 >
                   <Receipt className="h-5 w-5 mr-2" />
                   Add to receipt

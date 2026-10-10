@@ -91,7 +91,7 @@ const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(({
           htmlFor={inputId}
           className={cn(
             'font-medium transition-colors',
-            themeClasses.text.primary,
+            'text-pub-ink',
             required && "after:content-['*'] after:ml-1 after:text-red-500"
           )}
         >
@@ -104,7 +104,7 @@ const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(({
           ref={ref}
           id={inputId}
           className={cn(
-            'transition-all duration-200',
+            'transition-colors',
             themeClasses.input,
             hasError && 'border-red-500 focus:border-red-500 focus:ring-red-500/20',
             isSuccess && 'border-green-500 focus:border-green-500 focus:ring-green-500/20',
@@ -124,7 +124,7 @@ const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(({
         {showValidationIcon && (
           <div className="absolute inset-y-0 right-0 flex items-center pr-3">
             {isValidating && (
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" />
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-pub-accent border-t-transparent" />
             )}
             {!isValidating && hasError && (
               <AlertCircle className="h-4 w-4 text-red-500" />
@@ -152,7 +152,7 @@ const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(({
       {hint && !displayError && (
         <p 
           id={`${inputId}-hint`}
-          className={cn('text-sm', themeClasses.text.muted)}
+          className={cn('text-sm', 'text-pub-muted')}
         >
           {hint}
         </p>

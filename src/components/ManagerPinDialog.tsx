@@ -79,9 +79,9 @@ const ManagerPinDialog = ({ open, onOpenChange, mode, requireCurrent, onSubmit }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="bg-pub-paper border-pub-edge text-pub-ink sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="font-display font-semibold text-pub-ink flex items-center gap-2">
             <ShieldCheck className="h-5 w-5" />
             {setting ? (requireCurrent ? "Change the manager PIN" : "Set the manager PIN") : "Manager sign in"}
           </DialogTitle>
@@ -95,7 +95,7 @@ const ManagerPinDialog = ({ open, onOpenChange, mode, requireCurrent, onSubmit }
         <form onSubmit={handleSubmit} className="space-y-4">
           {setting && requireCurrent && (
             <div className="space-y-1.5">
-              <Label htmlFor="manager-pin-current" className={themeClasses.text.secondary}>
+              <Label htmlFor="manager-pin-current" className="text-pub-muted">
                 Current PIN
               </Label>
               <Input
@@ -111,7 +111,7 @@ const ManagerPinDialog = ({ open, onOpenChange, mode, requireCurrent, onSubmit }
             </div>
           )}
           <div className="space-y-1.5">
-            <Label htmlFor="manager-pin" className={themeClasses.text.secondary}>
+            <Label htmlFor="manager-pin" className="text-pub-muted">
               {setting ? "New PIN" : "PIN"}
             </Label>
             <Input
@@ -129,7 +129,7 @@ const ManagerPinDialog = ({ open, onOpenChange, mode, requireCurrent, onSubmit }
 
           {setting && (
             <div className="space-y-1.5">
-              <Label htmlFor="manager-pin-confirm" className={themeClasses.text.secondary}>
+              <Label htmlFor="manager-pin-confirm" className="text-pub-muted">
                 Confirm PIN
               </Label>
               <Input
@@ -156,14 +156,14 @@ const ManagerPinDialog = ({ open, onOpenChange, mode, requireCurrent, onSubmit }
               type="button"
               variant="ghost"
               onClick={() => onOpenChange(false)}
-              className={`min-h-[44px] rounded-lg ${themeClasses.button.ghost}`}
+              className={`min-h-[44px] rounded-full ${themeClasses.button.ghost}`}
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={busy}
-              className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.primary}`}
+              className={`min-h-[44px] rounded-full font-semibold ${themeClasses.button.primary}`}
             >
               {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {setting ? "Save PIN" : "Unlock"}

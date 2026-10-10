@@ -211,7 +211,7 @@ const StaffNotes = () => {
   };
 
   const newNoteButton = (
-    <Button onClick={() => { cancelEditing(); setAdding(true); }} className={`min-h-[44px] rounded-lg px-4 font-semibold ${themeClasses.button.primary}`}>
+    <Button onClick={() => { cancelEditing(); setAdding(true); }} className={`min-h-[44px] rounded-full px-4 font-semibold ${themeClasses.button.primary}`}>
       <Plus className="h-4 w-4 mr-2" />
       New note
     </Button>
@@ -229,14 +229,14 @@ const StaffNotes = () => {
         </div>
       )}
 
-      <div className={`rounded-xl border p-4 sm:p-6 ${themeClasses.card.primary}`}>
+      <div className="rounded-xl border p-4 sm:p-6 bg-pub-paper border-pub-edge">
         <div className="flex flex-col gap-6">
           {/* Add/Edit Note Form */}
           {adding && (
             <div>
-              <Card className={`${themeClasses.card.secondary} rounded-xl shadow-none`}>
+              <Card className="bg-pub-sunk border-pub-edge rounded-xl shadow-none">
                 <CardHeader>
-                  <CardTitle className={`flex items-center gap-2 text-lg font-semibold ${themeClasses.text.primary}`}>
+                  <CardTitle className="font-display font-semibold text-pub-ink flex items-center gap-2 text-lg">
                     <Plus className="h-5 w-5" />
                     <span>{editingNote ? 'Edit note' : 'Add new note'}</span>
                   </CardTitle>
@@ -253,7 +253,7 @@ const StaffNotes = () => {
                   <FormErrorSummary errors={noteValidation.errors} />
 
                   <div>
-                    <Label className={`font-medium ${themeClasses.text.primary}`}>Title</Label>
+                    <Label className="font-medium text-pub-ink">Title</Label>
                     <ValidatedInput
                       {...noteForm.register('title')}
                       placeholder="Enter note title..."
@@ -263,7 +263,7 @@ const StaffNotes = () => {
                   </div>
 
                   <div>
-                    <Label className={`font-medium ${themeClasses.text.primary}`}>Category</Label>
+                    <Label className="font-medium text-pub-ink">Category</Label>
                     <select
                       {...noteForm.register('category')}
                       className={`min-h-[44px] w-full rounded-lg border px-3 text-sm ${themeClasses.input}`}
@@ -277,7 +277,7 @@ const StaffNotes = () => {
                   </div>
 
                   <div>
-                    <Label className={`font-medium ${themeClasses.text.primary}`}>Content</Label>
+                    <Label className="font-medium text-pub-ink">Content</Label>
                     <ValidatedTextarea
                       {...noteForm.register('content')}
                       placeholder="Enter note content..."
@@ -287,10 +287,10 @@ const StaffNotes = () => {
                   </div>
 
                   <div className="flex gap-2 justify-end">
-                    <Button type="button" variant="ghost" onClick={cancelEditing} className={`min-h-[44px] ${themeClasses.button.ghost}`}>
+                    <Button type="button" variant="ghost" onClick={cancelEditing} className={`rounded-full min-h-[44px] ${themeClasses.button.ghost}`}>
                       Cancel
                     </Button>
-                    <Button type="submit" size="lg" className={`min-h-[44px] font-semibold ${themeClasses.button.primary}`}>
+                    <Button type="submit" size="lg" className={`rounded-full min-h-[44px] font-semibold ${themeClasses.button.primary}`}>
                       {editingNote ? 'Update note' : 'Add note'}
                     </Button>
                   </div>
@@ -306,7 +306,7 @@ const StaffNotes = () => {
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
               <div className="flex-1">
                 <div className="relative">
-                  <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${themeClasses.text.muted}`} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-pub-muted" />
                   <Input
                     placeholder="Search notes..."
                     value={searchQuery}
@@ -333,10 +333,10 @@ const StaffNotes = () => {
 
             {/* Loading State */}
             {loading && (
-              <Card className={`rounded-xl ${themeClasses.card.primary}`}>
+              <Card className="shadow-none rounded-xl bg-pub-paper border-pub-edge">
                 <CardContent className="p-12 text-center">
-                  <Loader2 className={`h-10 w-10 mx-auto mb-4 animate-spin ${themeClasses.text.muted}`} />
-                  <p className={themeClasses.text.secondary}>Loading notes...</p>
+                  <Loader2 className="h-10 w-10 mx-auto mb-4 animate-spin text-pub-muted" />
+                  <p className="text-pub-muted">Loading notes...</p>
                 </CardContent>
               </Card>
             )}
@@ -345,11 +345,11 @@ const StaffNotes = () => {
             {!loading && (
               <div className="space-y-4 max-h-[600px] overflow-y-auto">
                 {filteredNotes.map((note) => (
-                  <Card key={note.id} className={`rounded-xl ${themeClasses.card.primary}`}>
+                  <Card key={note.id} className="shadow-none rounded-xl bg-pub-paper border-pub-edge">
                     <CardContent className="p-6">
                       <div className="flex justify-between items-start mb-3 gap-3">
                         <div className="flex-1 min-w-0">
-                          <h3 className={`text-lg font-semibold mb-2 ${themeClasses.text.primary}`}>
+                          <h3 className="font-display font-semibold text-pub-ink text-lg mb-2">
                             {note.title}
                           </h3>
                           <div className="flex flex-wrap items-center gap-3 mb-3">
@@ -357,7 +357,7 @@ const StaffNotes = () => {
                               <Tag className="h-3 w-3 mr-1" />
                               {note.category}
                             </Badge>
-                            <div className={`flex items-center text-sm ${themeClasses.text.muted}`}>
+                            <div className="flex items-center text-sm text-pub-muted">
                               <Clock className="h-3 w-3 mr-1" />
                               {new Date(note.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                             </div>
@@ -380,9 +380,9 @@ const StaffNotes = () => {
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </AlertDialogTrigger>
-                            <AlertDialogContent>
+                            <AlertDialogContent className="bg-pub-paper border-pub-edge text-pub-ink">
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Delete this note?</AlertDialogTitle>
+                                <AlertDialogTitle className="font-display font-semibold text-pub-ink">Delete this note?</AlertDialogTitle>
                                 <AlertDialogDescription>This removes the note for everyone. It can't be undone.</AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -394,12 +394,12 @@ const StaffNotes = () => {
                         </div>
                       </div>
 
-                      <p className={`leading-relaxed ${themeClasses.text.secondary}`}>
+                      <p className="leading-relaxed text-pub-muted">
                         {note.content}
                       </p>
 
                       {note.updatedAt !== note.createdAt && (
-                        <div className={`mt-4 pt-3 border-t text-xs ${themeClasses.text.muted}`}>
+                        <div className="mt-4 pt-3 border-t text-xs text-pub-muted">
                           <span>Updated: {new Date(note.updatedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                         </div>
                       )}
@@ -408,10 +408,10 @@ const StaffNotes = () => {
                 ))}
 
                 {filteredNotes.length === 0 && (
-                  <Card className={`rounded-xl border-dashed ${themeClasses.card.primary}`}>
+                  <Card className="shadow-none rounded-xl border-dashed bg-pub-paper border-pub-edge">
                     <CardContent className="p-12 text-center">
-                      <FileText className={`h-14 w-14 mx-auto mb-4 ${themeClasses.text.muted}`} />
-                      <h3 className={`text-lg font-semibold mb-2 ${themeClasses.text.primary}`}>
+                      <FileText className="h-14 w-14 mx-auto mb-4 text-pub-muted" />
+                      <h3 className="font-display font-semibold text-pub-ink text-lg mb-2">
                         {searchQuery || selectedCategory !== "all" ? "Nothing matches that search" : "No notes yet"}
                       </h3>
                       {searchQuery || selectedCategory !== "all" ? (
@@ -433,9 +433,9 @@ const StaffNotes = () => {
   }
 
   return (
-    <StaffLayout title="Staff Notes" subtitle="Keep track of important information and reminders" icon={StickyNote} iconColor={themeClasses.text.secondary}>
+    <StaffLayout title="Staff Notes" subtitle="Keep track of important information and reminders" icon={StickyNote} iconColor={'text-pub-muted'}>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h2 className={`text-xl font-semibold ${themeClasses.text.primary}`}>Staff notes</h2>
+        <h2 className="font-display font-semibold text-pub-ink text-xl">Staff notes</h2>
         {!adding && newNoteButton}
       </div>
       {content}

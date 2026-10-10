@@ -250,9 +250,9 @@ function VisualSchedule({
   const hours: number[] = [];
   for (let h = winStart; h <= winEnd; h += 60) hours.push(h);
 
-  const edge = isDarkMode ? "border-[#2a2f3a]" : "border-[#e4e1d9]";
-  const todayCol = isDarkMode ? "bg-blue-500/[0.06]" : "bg-blue-50/70";
-  const todayBadge = isDarkMode ? "bg-blue-500 text-white" : "bg-blue-600 text-white";
+  const edge = "border-pub-edge";
+  const todayCol = themeClasses.accent.soft;
+  const todayBadge = themeClasses.ink.fill;
 
   const hourText = (min: number) => {
     const h24 = Math.floor(min / 60);
@@ -270,10 +270,10 @@ function VisualSchedule({
             const isToday = dayKey === todayKey;
             return (
               <div key={dayKey} className={`flex min-w-[92px] flex-1 items-center justify-center gap-1.5 border-l px-1 py-2 ${edge}`}>
-                <span className={`text-[13px] font-medium ${isToday ? themeClasses.text.accent : themeClasses.text.secondary}`}>
+                <span className={`text-[13px] font-medium ${isToday ? themeClasses.text.accent : 'text-pub-muted'}`}>
                   {d.toLocaleDateString(undefined, { weekday: "short" })}
                 </span>
-                <span className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-sm font-semibold ${isToday ? todayBadge : themeClasses.text.primary}`}>
+                <span className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-sm font-semibold ${isToday ? todayBadge : 'text-pub-ink'}`}>
                   {d.getDate()}
                 </span>
                 {isManager && (
@@ -298,7 +298,7 @@ function VisualSchedule({
           <div className="relative w-12 shrink-0" style={{ height: gridHeight }}>
             {hours.map((min) => (
               <div key={min} className="absolute right-1.5 flex justify-end" style={{ top: (min - winStart) * pxPerMin - 7 }}>
-                <span className={`text-[10px] font-mono tabular-nums ${themeClasses.text.muted}`}>{hourText(min)}</span>
+                <span className="text-[10px] font-mono tabular-nums text-pub-muted">{hourText(min)}</span>
               </div>
             ))}
           </div>
@@ -342,7 +342,7 @@ function VisualSchedule({
                       type="button"
                       title={title}
                       onClick={() => onOpenShift(p.shift)}
-                      className={`absolute z-10 flex flex-col items-stretch justify-start overflow-hidden rounded-md border px-1.5 py-1 text-left transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${block}`}
+                      className={`absolute z-10 flex flex-col items-stretch justify-start overflow-hidden rounded-md border px-1.5 py-1 text-left transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-pub-accent ${block}`}
                       style={{
                         top: (p.start - winStart) * pxPerMin,
                         height,
@@ -368,7 +368,7 @@ function VisualSchedule({
 
           {weekShifts.length === 0 && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <div className={`rounded-lg border px-4 py-3 text-center text-sm ${themeClasses.card.secondary} ${themeClasses.text.secondary}`}>
+              <div className="rounded-lg border px-4 py-3 text-center text-sm bg-pub-sunk border-pub-edge text-pub-muted">
                 No shifts this week.
                 {isManager ? " Use a day's plus button to add one." : ""}
               </div>
@@ -405,8 +405,8 @@ function HoursBars({
     .map(([id, v]) => ({ id, ...v }))
     .sort((a, b) => b.worked - a.worked);
   const max = Math.max(1, ...rows.map((r) => Math.max(r.worked, r.planned)));
-  const track = isDarkMode ? "bg-[#1f232c]" : "bg-[#f1efe9]";
-  const plannedMark = isDarkMode ? "border-slate-500" : "border-slate-400";
+  const track = "bg-pub-sunk";
+  const plannedMark = "border-pub-muted";
 
   return (
     <div className="space-y-3">
@@ -416,8 +416,8 @@ function HoursBars({
         return (
           <div key={r.id} className="flex items-center gap-3">
             <div className="w-28 shrink-0">
-              <div className={`truncate text-sm font-medium ${themeClasses.text.primary}`}>{r.name}</div>
-              <div className={`text-[11px] ${themeClasses.text.muted}`}>
+              <div className="truncate text-sm font-medium text-pub-ink">{r.name}</div>
+              <div className="text-[11px] text-pub-muted">
                 {r.count} {r.count === 1 ? "shift" : "shifts"}
               </div>
             </div>
@@ -431,9 +431,9 @@ function HoursBars({
                 />
               )}
             </div>
-            <div className={`w-28 shrink-0 text-right font-mono text-sm tabular-nums ${themeClasses.text.primary}`}>
+            <div className="w-28 shrink-0 text-right font-mono text-sm tabular-nums text-pub-ink">
               {formatShiftDuration(r.worked)}
-              <div className={`text-[11px] ${themeClasses.text.muted}`}>{formatHoursDecimal(r.worked)} h</div>
+              <div className="text-[11px] text-pub-muted">{formatHoursDecimal(r.worked)} h</div>
             </div>
           </div>
         );
@@ -716,15 +716,15 @@ const StaffTimesheet = () => {
     downloadCsv(`hours-${rangeFrom}-to-${rangeTo}.csv`, shiftsToCsv(rangeShifts));
   };
 
-  const edgeBorder = isDarkMode ? "border-[#2a2f3a]" : "border-[#e4e1d9]";
-  const edgeDivide = isDarkMode ? "divide-[#2a2f3a]" : "divide-[#e4e1d9]";
-  const slateBadge = isDarkMode ? "bg-slate-500/20 text-slate-200" : "bg-slate-200 text-slate-700";
+  const edgeBorder = "border-pub-edge";
+  const edgeDivide = "divide-pub-edge";
+  const slateBadge = "bg-pub-sunk text-pub-muted";
   const todayPill = `rounded-full border px-2 py-0.5 text-[11px] font-medium ${themeClasses.status.info}`;
 
   const loadingBlock = (
     <div className="flex flex-col items-center py-10 text-center">
-      <Loader2 className={`mb-3 h-8 w-8 animate-spin ${themeClasses.text.muted}`} />
-      <p className={`text-sm ${themeClasses.text.secondary}`}>Loading...</p>
+      <Loader2 className="mb-3 h-8 w-8 animate-spin text-pub-muted" />
+      <p className="text-sm text-pub-muted">Loading...</p>
     </div>
   );
 
@@ -734,7 +734,7 @@ const StaffTimesheet = () => {
       <Button variant="ghost" size="sm" aria-label="Previous" onClick={() => step(-1)} className={`min-h-[44px] ${themeClasses.button.ghost}`}>
         <ChevronLeft className="h-5 w-5" />
       </Button>
-      <span className={`min-w-[9.5rem] text-center text-sm font-semibold tabular-nums ${themeClasses.text.primary}`}>{label}</span>
+      <span className="min-w-[9.5rem] text-center text-sm font-semibold tabular-nums text-pub-ink">{label}</span>
       <Button variant="ghost" size="sm" aria-label="Next" onClick={() => step(1)} className={`min-h-[44px] ${themeClasses.button.ghost}`}>
         <ChevronRight className="h-5 w-5" />
       </Button>
@@ -747,7 +747,7 @@ const StaffTimesheet = () => {
   );
 
   const scheduleContent = (
-    <div className={`rounded-xl border ${themeClasses.card.primary}`}>
+    <div className="rounded-xl border bg-pub-paper border-pub-edge">
       <div className={`flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2 ${edgeBorder}`}>
         {rangeNav(formatWeekRange(weekStart))}
         <div className="flex flex-wrap items-center gap-2">
@@ -762,7 +762,7 @@ const StaffTimesheet = () => {
             ]}
           />
           {isManager && (
-            <Button onClick={() => openAddShift()} className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.primary}`}>
+            <Button onClick={() => openAddShift()} className={`min-h-[44px] rounded-full font-semibold ${themeClasses.button.primary}`}>
               <Plus className="mr-2 h-4 w-4" />
               Add shift
             </Button>
@@ -792,11 +792,11 @@ const StaffTimesheet = () => {
               return (
                 <div key={dayKey} className="flex flex-col gap-1 py-2.5 sm:flex-row sm:gap-4">
                   <div className="flex w-36 shrink-0 items-center gap-2 sm:items-start sm:pt-2">
-                    <span className={`text-sm font-semibold ${themeClasses.text.primary}`}>{formatDayHeading(dayKey)}</span>
+                    <span className="text-sm font-semibold text-pub-ink">{formatDayHeading(dayKey)}</span>
                     {dayKey === todayKey && <span className={todayPill}>Today</span>}
                   </div>
                   <div className="min-w-0 flex-1">
-                    {dayShifts.length === 0 && <p className={`py-2 text-[13px] ${themeClasses.text.muted}`}>No one scheduled</p>}
+                    {dayShifts.length === 0 && <p className="py-2 text-[13px] text-pub-muted">No one scheduled</p>}
                     {dayShifts.map((shift) => (
                       <button
                         key={shift.id}
@@ -807,14 +807,14 @@ const StaffTimesheet = () => {
                         <span className="flex min-w-0 items-center gap-2">
                           <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${hueFor(shift.employeeId).dot}`} />
                           <span className="min-w-0">
-                            <span className={`block truncate text-sm font-medium ${themeClasses.text.primary}`}>{shift.employeeName}</span>
-                            <span className={`block truncate text-[13px] ${themeClasses.text.secondary}`}>
+                            <span className="block truncate text-sm font-medium text-pub-ink">{shift.employeeName}</span>
+                            <span className="block truncate text-[13px] text-pub-muted">
                               <ShiftTimes shift={shift} />
-                              {shift.note ? <span className={themeClasses.text.muted}>, {shift.note}</span> : null}
+                              {shift.note ? <span className="text-pub-muted">, {shift.note}</span> : null}
                             </span>
                           </span>
                         </span>
-                        <span className={`shrink-0 font-mono text-sm tabular-nums ${themeClasses.text.primary}`}>
+                        <span className="shrink-0 font-mono text-sm tabular-nums text-pub-ink">
                           {formatShiftDuration(workedMinutes(shift))}
                         </span>
                       </button>
@@ -823,7 +823,7 @@ const StaffTimesheet = () => {
                       <button
                         type="button"
                         onClick={() => openAddShift(dayKey)}
-                        className={`mt-0.5 inline-flex min-h-[36px] items-center gap-1 rounded-lg px-2 text-[13px] ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
+                        className={`mt-0.5 inline-flex min-h-[36px] items-center gap-1 rounded-lg px-2 text-[13px] text-pub-muted ${themeClasses.interactive.hover}`}
                       >
                         <Plus className="h-3.5 w-3.5" />
                         Add shift
@@ -837,7 +837,7 @@ const StaffTimesheet = () => {
         )}
       </div>
 
-      <p className={`border-t px-4 py-2.5 text-[13px] ${edgeBorder} ${themeClasses.text.muted}`}>
+      <p className={`border-t px-4 py-2.5 text-[13px] ${edgeBorder} text-pub-muted`}>
         {isManager
           ? "Tap a shift to change it. Staff can log their actual times and breaks even when this is locked."
           : "Tap a shift to log the actual start, end or a break. Adding or moving shifts needs a manager."}
@@ -846,7 +846,7 @@ const StaffTimesheet = () => {
   );
 
   const hoursContent = (
-    <div className={`rounded-xl border ${themeClasses.card.primary}`}>
+    <div className="rounded-xl border bg-pub-paper border-pub-edge">
       <div className={`flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2 ${edgeBorder}`}>
         {rangeNav(rangeLabel)}
         <div className="flex flex-wrap items-center gap-2">
@@ -860,7 +860,7 @@ const StaffTimesheet = () => {
               { value: "month", label: "Month" },
             ]}
           />
-          <Button onClick={exportCsv} className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.secondary}`}>
+          <Button onClick={exportCsv} className={`min-h-[44px] rounded-full font-semibold ${themeClasses.button.secondary}`}>
             <Download className="mr-2 h-4 w-4" />
             Export CSV
           </Button>
@@ -872,22 +872,22 @@ const StaffTimesheet = () => {
           loadingBlock
         ) : rangeShifts.length === 0 ? (
           <div className="flex flex-col items-center py-10 text-center">
-            <Clock className={`mb-3 h-8 w-8 ${themeClasses.text.muted}`} />
-            <h3 className={`mb-1 text-base font-semibold ${themeClasses.text.primary}`}>No shifts in this range</h3>
-            <p className={`text-sm ${themeClasses.text.secondary}`}>Hours are counted from the schedule.</p>
+            <Clock className="mb-3 h-8 w-8 text-pub-muted" />
+            <h3 className="font-display font-semibold text-pub-ink mb-1 text-base">No shifts in this range</h3>
+            <p className="text-sm text-pub-muted">Hours are counted from the schedule.</p>
           </div>
         ) : (
           <>
             <HoursBars shifts={rangeShifts} themeClasses={themeClasses} isDarkMode={isDarkMode} />
             <div className={`mt-3 flex items-center justify-between border-t pt-3 ${edgeBorder}`}>
-              <span className={`text-sm font-semibold ${themeClasses.text.primary}`}>Total</span>
-              <span className={`font-mono text-sm font-semibold tabular-nums ${themeClasses.text.primary}`}>
+              <span className="text-sm font-semibold text-pub-ink">Total</span>
+              <span className="font-mono text-sm font-semibold tabular-nums text-pub-ink">
                 {formatShiftDuration(rangeTotal)}
-                <span className={`ml-2 text-[13px] font-normal ${themeClasses.text.muted}`}>{formatHoursDecimal(rangeTotal)} h</span>
+                <span className="ml-2 text-[13px] font-normal text-pub-muted">{formatHoursDecimal(rangeTotal)} h</span>
               </span>
             </div>
 
-            <h3 className={`mb-1 mt-6 text-sm font-semibold ${themeClasses.text.primary}`}>Shifts</h3>
+            <h3 className="font-display font-semibold text-pub-ink mb-1 mt-6 text-sm">Shifts</h3>
             <div className={`divide-y ${edgeDivide}`}>
               {rangeShifts.map((shift) => (
                 <button
@@ -899,16 +899,16 @@ const StaffTimesheet = () => {
                   <span className="flex min-w-0 items-center gap-2">
                     <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${hueFor(shift.employeeId).dot}`} />
                     <span className="min-w-0">
-                      <span className={`block truncate text-sm font-medium ${themeClasses.text.primary}`}>
+                      <span className="block truncate text-sm font-medium text-pub-ink">
                         {shift.employeeName}
-                        <span className={`font-normal ${themeClasses.text.secondary}`}>, {formatDayHeading(shift.date)}</span>
+                        <span className="font-normal text-pub-muted">, {formatDayHeading(shift.date)}</span>
                       </span>
-                      <span className={`block truncate text-[13px] ${themeClasses.text.secondary}`}>
+                      <span className="block truncate text-[13px] text-pub-muted">
                         <ShiftTimes shift={shift} />
                       </span>
                     </span>
                   </span>
-                  <span className={`shrink-0 font-mono text-sm font-semibold tabular-nums ${themeClasses.text.primary}`}>
+                  <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-pub-ink">
                     {formatShiftDuration(workedMinutes(shift))}
                   </span>
                 </button>
@@ -921,7 +921,7 @@ const StaffTimesheet = () => {
   );
 
   const teamContent = (
-    <div className={`rounded-xl border ${themeClasses.card.primary}`}>
+    <div className="rounded-xl border bg-pub-paper border-pub-edge">
       <div className="p-4">
         <form onSubmit={newEmployeeForm.handleSubmit(addEmployee)} className="mb-4 flex flex-col gap-3 sm:flex-row">
           <div className="flex-1">
@@ -932,7 +932,7 @@ const StaffTimesheet = () => {
               className={`min-h-[44px] ${themeClasses.input}`}
             />
           </div>
-          <Button type="submit" className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.primary}`}>
+          <Button type="submit" className={`min-h-[44px] rounded-full font-semibold ${themeClasses.button.primary}`}>
             <UserPlus className="mr-2 h-4 w-4" />
             Add employee
           </Button>
@@ -942,9 +942,9 @@ const StaffTimesheet = () => {
           loadingBlock
         ) : activeEmployees.length === 0 ? (
           <div className="flex flex-col items-center py-8 text-center">
-            <Users className={`mb-3 h-8 w-8 ${themeClasses.text.muted}`} />
-            <h3 className={`mb-1 text-base font-semibold ${themeClasses.text.primary}`}>No one on the team yet</h3>
-            <p className={`text-sm ${themeClasses.text.secondary}`}>Add someone above so they can be scheduled.</p>
+            <Users className="mb-3 h-8 w-8 text-pub-muted" />
+            <h3 className="font-display font-semibold text-pub-ink mb-1 text-base">No one on the team yet</h3>
+            <p className="text-sm text-pub-muted">Add someone above so they can be scheduled.</p>
           </div>
         ) : (
           <div className={`divide-y ${edgeDivide}`}>
@@ -954,7 +954,7 @@ const StaffTimesheet = () => {
                   <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${slateBadge}`}>
                     <User className="h-5 w-5" />
                   </span>
-                  <span className={`truncate font-medium ${themeClasses.text.primary}`}>{employee.name}</span>
+                  <span className="truncate font-medium text-pub-ink">{employee.name}</span>
                   <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${hueFor(employee.id).dot}`} title="Colour on the schedule" />
                 </div>
                 <AlertDialog>
@@ -963,9 +963,9 @@ const StaffTimesheet = () => {
                       <UserMinus className="h-4 w-4" />
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent>
+                  <AlertDialogContent className="bg-pub-paper border-pub-edge text-pub-ink">
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Remove {employee.name}?</AlertDialogTitle>
+                      <AlertDialogTitle className="font-display font-semibold text-pub-ink">Remove {employee.name}?</AlertDialogTitle>
                       <AlertDialogDescription>
                         They come off the list for new shifts. Their past shifts and hours are kept, and you can bring them back any time.
                       </AlertDialogDescription>
@@ -985,10 +985,10 @@ const StaffTimesheet = () => {
 
         {inactiveEmployees.length > 0 && (
           <div className={`mt-4 border-t pt-3 ${edgeBorder}`}>
-            <h3 className={`mb-1 text-[13px] font-semibold ${themeClasses.text.secondary}`}>No longer on the team</h3>
+            <h3 className="font-display font-semibold text-pub-ink mb-1 text-[13px]">No longer on the team</h3>
             {inactiveEmployees.map((employee) => (
               <div key={employee.id} className="flex items-center justify-between gap-3 py-1">
-                <span className={`truncate text-sm ${themeClasses.text.muted}`}>{employee.name}</span>
+                <span className="truncate text-sm text-pub-muted">{employee.name}</span>
                 <Button variant="ghost" onClick={() => setEmployeeActive(employee, true)} className={`min-h-[44px] rounded-lg text-sm ${themeClasses.button.ghost}`}>
                   <RotateCcw className="mr-2 h-4 w-4" />
                   Bring back
@@ -1037,9 +1037,9 @@ const StaffTimesheet = () => {
 
   const shiftDialog = (
     <Dialog open={shiftDialogOpen} onOpenChange={setShiftDialogOpen}>
-      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-md">
+      <DialogContent className="bg-pub-paper border-pub-edge text-pub-ink max-h-[92vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="font-display font-semibold text-pub-ink flex items-center gap-2">
             {editingShift ? <PencilLine className="h-5 w-5" /> : <CalendarPlus className="h-5 w-5" />}
             {!editingShift ? "Add a shift" : isManager ? "Edit shift" : "Log actual times"}
           </DialogTitle>
@@ -1056,7 +1056,7 @@ const StaffTimesheet = () => {
           {planning && (
             <>
               <div className="space-y-1.5">
-                <Label htmlFor="shift-employee" className={themeClasses.text.secondary}>
+                <Label htmlFor="shift-employee" className="text-pub-muted">
                   Employee
                 </Label>
                 <select
@@ -1078,7 +1078,7 @@ const StaffTimesheet = () => {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="shift-date" className={themeClasses.text.secondary}>
+                <Label htmlFor="shift-date" className="text-pub-muted">
                   Day
                 </Label>
                 <Input
@@ -1092,7 +1092,7 @@ const StaffTimesheet = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="shift-start" className={themeClasses.text.secondary}>
+                  <Label htmlFor="shift-start" className="text-pub-muted">
                     Start
                   </Label>
                   <Input
@@ -1104,7 +1104,7 @@ const StaffTimesheet = () => {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="shift-end" className={themeClasses.text.secondary}>
+                  <Label htmlFor="shift-end" className="text-pub-muted">
                     End
                   </Label>
                   <Input
@@ -1118,7 +1118,7 @@ const StaffTimesheet = () => {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="shift-note" className={themeClasses.text.secondary}>
+                <Label htmlFor="shift-note" className="text-pub-muted">
                   Note (optional)
                 </Label>
                 <Input
@@ -1133,14 +1133,14 @@ const StaffTimesheet = () => {
           )}
 
           {editingShift && (
-            <div className={`space-y-3 rounded-lg border p-3 ${themeClasses.card.secondary}`}>
+            <div className="space-y-3 rounded-lg border p-3 bg-pub-sunk border-pub-edge">
               <div>
-                <p className={`text-sm font-semibold ${themeClasses.text.primary}`}>What actually happened</p>
-                <p className={`text-[13px] ${themeClasses.text.muted}`}>Optional. Fill in only what was different from the plan.</p>
+                <p className="font-display text-sm font-semibold text-pub-ink">What actually happened</p>
+                <p className="text-[13px] text-pub-muted">Optional. Fill in only what was different from the plan.</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="shift-actual-start" className={themeClasses.text.secondary}>
+                  <Label htmlFor="shift-actual-start" className="text-pub-muted">
                     Started at
                   </Label>
                   <Input
@@ -1152,7 +1152,7 @@ const StaffTimesheet = () => {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="shift-actual-end" className={themeClasses.text.secondary}>
+                  <Label htmlFor="shift-actual-end" className="text-pub-muted">
                     Left at
                   </Label>
                   <Input
@@ -1165,7 +1165,7 @@ const StaffTimesheet = () => {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="shift-break" className={themeClasses.text.secondary}>
+                <Label htmlFor="shift-break" className="text-pub-muted">
                   Break (minutes)
                 </Label>
                 <Input
@@ -1182,10 +1182,10 @@ const StaffTimesheet = () => {
                 />
               </div>
               <div className={`flex items-center justify-between gap-3 border-t pt-2 text-sm ${edgeBorder}`}>
-                <span className={themeClasses.text.secondary}>
+                <span className="text-pub-muted">
                   <ShiftTimes shift={preview} />
                 </span>
-                <span className={`shrink-0 font-mono font-semibold tabular-nums ${themeClasses.text.primary}`}>
+                <span className="shrink-0 font-mono font-semibold tabular-nums text-pub-ink">
                   {formatShiftDuration(workedMinutes(preview))}
                 </span>
               </div>
@@ -1193,7 +1193,7 @@ const StaffTimesheet = () => {
                 <button
                   type="button"
                   onClick={() => setShiftForm((f) => ({ ...f, actualStart: "", actualEnd: "", breakMinutes: "" }))}
-                  className={`inline-flex min-h-[36px] items-center gap-1.5 text-[13px] underline-offset-2 hover:underline ${themeClasses.text.secondary}`}
+                  className="inline-flex min-h-[36px] items-center gap-1.5 text-[13px] underline-offset-2 hover:underline text-pub-muted"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   Back to the planned times
@@ -1212,9 +1212,9 @@ const StaffTimesheet = () => {
                   Delete
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent>
+              <AlertDialogContent className="bg-pub-paper border-pub-edge text-pub-ink">
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Remove this shift?</AlertDialogTitle>
+                  <AlertDialogTitle className="font-display font-semibold text-pub-ink">Remove this shift?</AlertDialogTitle>
                   <AlertDialogDescription>
                     This removes {editingShift.employeeName}'s shift on {formatDayHeading(editingShift.date)},{" "}
                     {formatTime12(editingShift.start)} to {formatTime12(editingShift.end)}.
@@ -1235,10 +1235,10 @@ const StaffTimesheet = () => {
               </AlertDialogContent>
             </AlertDialog>
           )}
-          <Button type="button" variant="ghost" onClick={() => setShiftDialogOpen(false)} className={`min-h-[44px] rounded-lg ${themeClasses.button.ghost}`}>
+          <Button type="button" variant="ghost" onClick={() => setShiftDialogOpen(false)} className={`min-h-[44px] rounded-full ${themeClasses.button.ghost}`}>
             Cancel
           </Button>
-          <Button type="button" onClick={saveShift} disabled={savingShift} className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.primary}`}>
+          <Button type="button" onClick={saveShift} disabled={savingShift} className={`min-h-[44px] rounded-full font-semibold ${themeClasses.button.primary}`}>
             {savingShift && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {editingShift ? "Save" : "Add shift"}
           </Button>
@@ -1253,7 +1253,7 @@ const StaffTimesheet = () => {
       title="Timesheet"
       subtitle="The schedule, the hours, and the team"
       icon={Clock}
-      iconColor="text-slate-600"
+      iconColor="text-pub-ink"
       backTo="/staff/ai"
       backLabel="Back"
     >

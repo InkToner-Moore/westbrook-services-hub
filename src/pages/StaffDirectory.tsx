@@ -93,19 +93,17 @@ const ICON_OPTIONS = {
 type IconKey = keyof typeof ICON_OPTIONS;
 const ICON_KEYS = Object.keys(ICON_OPTIONS) as IconKey[];
 
-// Color gradients as literal class strings so Tailwind keeps them in the build.
-const COLOR_OPTIONS: { key: string; label: string; gradient: string }[] = [
-  { key: "blue", label: "Blue", gradient: "from-blue-500 to-blue-600" },
-  { key: "purple", label: "Purple", gradient: "from-purple-500 to-purple-600" },
-  { key: "green", label: "Green", gradient: "from-green-500 to-green-600" },
-  { key: "amber", label: "Amber", gradient: "from-yellow-600 to-amber-600" },
-  { key: "red", label: "Red", gradient: "from-red-500 to-red-600" },
-  { key: "cyan", label: "Cyan", gradient: "from-cyan-500 to-blue-600" },
-  { key: "rose", label: "Rose", gradient: "from-rose-500 to-pink-600" },
-  { key: "emerald", label: "Emerald", gradient: "from-emerald-500 to-green-600" },
+// Flat color swatches retain the stored color choices.
+const COLOR_OPTIONS: { key: string; label: string; swatch: string }[] = [
+  { key: "blue", label: "Blue", swatch: "bg-blue-500" },
+  { key: "purple", label: "Purple", swatch: "bg-purple-500" },
+  { key: "green", label: "Green", swatch: "bg-green-500" },
+  { key: "amber", label: "Amber", swatch: "bg-amber-600" },
+  { key: "red", label: "Red", swatch: "bg-red-500" },
+  { key: "cyan", label: "Cyan", swatch: "bg-cyan-500" },
+  { key: "rose", label: "Rose", swatch: "bg-rose-500" },
+  { key: "emerald", label: "Emerald", swatch: "bg-emerald-500" },
 ];
-const gradientFor = (colorKey: string) =>
-  COLOR_OPTIONS.find((c) => c.key === colorKey)?.gradient ?? COLOR_OPTIONS[0].gradient;
 
 interface DirectoryLink {
   id: string;
@@ -384,7 +382,7 @@ const StaffDirectory = () => {
       {/* Search, filter, and add */}
       <div className="mb-6 flex flex-col lg:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${themeClasses.text.muted}`} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-pub-muted" />
           <Input
             placeholder="Search websites..."
             value={searchTerm}
@@ -408,10 +406,10 @@ const StaffDirectory = () => {
           <Button
             onClick={() => setAdding(true)}
             size="lg"
-            className={`font-semibold ${themeClasses.button.primary}`}
+            className={`rounded-full font-semibold ${themeClasses.button.primary}`}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add tile
+            Add site
           </Button>
         </div>
       </div>
@@ -419,7 +417,7 @@ const StaffDirectory = () => {
       {/* Loading state */}
       {loading && (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className={`h-8 w-8 animate-spin ${themeClasses.text.secondary}`} />
+          <Loader2 className="h-8 w-8 animate-spin text-pub-muted" />
         </div>
       )}
 
@@ -431,13 +429,13 @@ const StaffDirectory = () => {
             return (
               <Card
                 key={link.id}
-                className={`rounded-xl cursor-pointer group ${themeClasses.card.primary}`}
+                className="shadow-none rounded-xl cursor-pointer group bg-pub-paper border-pub-edge"
                 onClick={() => window.open(link.url, "_blank")}
               >
                 <CardHeader className="pb-4">
                   <div className="flex items-center justify-between mb-3">
-                    <div className={`bg-gradient-to-r ${gradientFor(link.colorKey)} p-3 rounded-xl`}>
-                      <Icon className="h-6 w-6 text-white" />
+                    <div className="bg-pub-sunk border border-pub-edge p-3 rounded-xl">
+                      <Icon className="h-6 w-6 text-pub-ink" />
                     </div>
                     <div className="flex items-center gap-1">
                       {link.isAdmin && (
@@ -470,22 +468,24 @@ const StaffDirectory = () => {
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                      <ExternalLink className={`h-4 w-4 ${themeClasses.text.secondary}`} />
+                      <ExternalLink className="h-4 w-4 text-pub-muted" />
                     </div>
                   </div>
-                  <CardTitle className={`text-lg font-semibold ${themeClasses.text.primary}`}>
+                  <CardTitle className="font-display font-semibold text-pub-ink text-lg">
                     {link.name}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <p className={`text-sm mb-3 ${themeClasses.text.secondary}`}>
+                  <p className="text-sm mb-3 text-pub-muted">
                     {link.description}
                   </p>
                   <div className="flex items-center justify-between gap-2">
-                    <Badge variant="outline" className={`${getCategoryBadge(link.category)} border text-xs capitalize`}>
-                      {link.category}
-                    </Badge>
-                    <div className={`text-xs font-mono truncate max-w-32 ${themeClasses.text.muted}`}>
+                    {!link.isAdmin && (
+                      <Badge variant="outline" className={`${getCategoryBadge(link.category)} border text-xs capitalize`}>
+                        {link.category}
+                      </Badge>
+                    )}
+                    <div className="ml-auto text-xs font-mono truncate max-w-32 text-pub-muted">
                       {link.url.replace("https://", "").replace("http://", "").replace("www.", "")}
                     </div>
                   </div>
@@ -498,9 +498,9 @@ const StaffDirectory = () => {
 
       {!loading && filteredLinks.length === 0 && (
         <div className="text-center py-12">
-          <Globe className={`h-14 w-14 mx-auto mb-4 opacity-50 ${themeClasses.text.muted}`} />
-          <h3 className={`text-lg font-semibold mb-2 ${themeClasses.text.primary}`}>No websites found</h3>
-          <p className={themeClasses.text.secondary}>Try adjusting your search terms or filter</p>
+          <Globe className="h-14 w-14 mx-auto mb-4 opacity-50 text-pub-muted" />
+          <h3 className="font-display font-semibold text-pub-ink text-lg mb-2">No websites found</h3>
+          <p className="text-pub-muted">Try adjusting your search terms or filter</p>
         </div>
       )}
     </>
@@ -518,7 +518,7 @@ const StaffDirectory = () => {
         </ToolPage>
       ) : (
         // Standalone (deep-linked) full page.
-        <div className={`min-h-screen ${themeClasses.background}`}>
+        <div className="min-h-screen bg-pub-counter">
           <header className={`sticky top-0 z-50 border-b ${themeClasses.header}`}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex justify-between items-center py-6">
@@ -527,22 +527,22 @@ const StaffDirectory = () => {
                     to="/staff/dashboard"
                     className={`mr-4 group ${themeClasses.link}`}
                   >
-                    <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform inline mr-2" />
+                    <ArrowLeft className="h-5 w-5 transition-transform inline mr-2" />
                     Back to Dashboard
                   </Link>
-                  <div className="bg-cyan-600 p-3 rounded-xl">
-                    <Globe className="h-7 w-7 text-white" />
+                  <div className="bg-pub-sunk border border-pub-edge p-3 rounded-xl">
+                    <Globe className="h-7 w-7 text-pub-ink" />
                   </div>
                   <div>
-                    <h1 className={`text-xl lg:text-2xl font-semibold tracking-tight ${themeClasses.text.primary}`}>
+                    <h1 className="font-display font-semibold text-pub-ink text-xl lg:text-2xl tracking-tight">
                       Website Directory
                     </h1>
-                    <p className={`text-xs font-medium ${themeClasses.text.secondary}`}>Staff Portal</p>
+                    <p className="text-xs font-medium text-pub-muted">Staff Portal</p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-4">
-                  <div className={`hidden md:flex items-center gap-2 ${themeClasses.text.secondary}`}>
+                  <div className="hidden md:flex items-center gap-2 text-pub-muted">
                     <User className="h-4 w-4" />
                     <span className="text-sm font-medium">{user?.email}</span>
                   </div>
@@ -563,10 +563,10 @@ const StaffDirectory = () => {
 
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             <div className="mb-8">
-              <h2 className={`text-2xl sm:text-3xl font-semibold tracking-tight ${themeClasses.text.primary}`}>
+              <h2 className="font-display font-semibold text-pub-ink text-2xl sm:text-3xl tracking-tight">
                 Quick Access Directory
               </h2>
-              <p className={`mt-1 ${themeClasses.text.secondary}`}>
+              <p className="mt-1 text-pub-muted">
                 Fast access to commonly used shipping and courier websites
               </p>
             </div>
@@ -579,8 +579,8 @@ const StaffDirectory = () => {
       <LinkDialog
         open={adding}
         onOpenChange={(v) => setAdding(v)}
-        title="Add directory tile"
-        description="Add a new website tile to the directory."
+        title="Add site"
+        description="Add a new site to the directory."
         initial={blankForm}
         onSubmit={saveNew}
       />
@@ -589,8 +589,8 @@ const StaffDirectory = () => {
       <LinkDialog
         open={editing !== null}
         onOpenChange={(v) => !v && setEditing(null)}
-        title="Edit directory tile"
-        description="Update the title, link, icon, or color for this tile."
+        title="Edit directory site"
+        description="Update the title, link, icon, or color for this site."
         initial={
           editing
             ? {
@@ -609,9 +609,9 @@ const StaffDirectory = () => {
 
       {/* Delete confirmation */}
       <AlertDialog open={pendingDelete !== null} onOpenChange={(v) => !v && setPendingDelete(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-pub-paper border-pub-edge text-pub-ink">
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove this tile?</AlertDialogTitle>
+            <AlertDialogTitle className="font-display font-semibold text-pub-ink">Remove this site?</AlertDialogTitle>
             <AlertDialogDescription>
               {pendingDelete?.name} will be moved to the archived collection and removed from the
               directory.
@@ -643,9 +643,9 @@ const LinkDialog = ({ open, onOpenChange, title, description, initial, onSubmit 
   const { themeClasses } = useTheme();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-pub-paper border-pub-edge text-pub-ink max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle className="font-display font-semibold text-pub-ink">{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <LinkForm
@@ -668,6 +668,7 @@ interface LinkFormProps {
 }
 
 const LinkForm = ({ initial, themeInputClass, onSubmit, onCancel }: LinkFormProps) => {
+  const { themeClasses } = useTheme();
   const { register, handleSubmit, watch, setValue } = useForm<LinkFormValues>({
     defaultValues: initial,
   });
@@ -702,7 +703,7 @@ const LinkForm = ({ initial, themeInputClass, onSubmit, onCancel }: LinkFormProp
           id="description"
           rows={2}
           {...register("description")}
-          placeholder="Short description shown on the tile"
+          placeholder="Short description shown on the site"
           className={themeInputClass}
         />
       </div>
@@ -751,10 +752,10 @@ const LinkForm = ({ initial, themeInputClass, onSubmit, onCancel }: LinkFormProp
                 onClick={() => setValue("iconKey", key)}
                 title={label}
                 aria-label={label}
-                className={`h-12 w-full rounded-lg border-2 flex items-center justify-center transition-all ${
+                className={`h-12 w-full rounded-lg border-2 flex items-center justify-center transition-colors ${
                   selected
-                    ? "border-blue-500 bg-blue-500/10"
-                    : "border-transparent bg-slate-500/10 hover:bg-slate-500/20"
+                    ? `${themeClasses.accent.soft} ${themeClasses.accent.border} text-pub-ink`
+                    : "border-pub-edge bg-pub-sunk text-pub-ink hover:bg-pub-paper"
                 }`}
               >
                 <Icon className="h-5 w-5" />
@@ -776,8 +777,8 @@ const LinkForm = ({ initial, themeInputClass, onSubmit, onCancel }: LinkFormProp
                 onClick={() => setValue("colorKey", c.key)}
                 title={c.label}
                 aria-label={c.label}
-                className={`h-10 w-full rounded-lg bg-gradient-to-r ${c.gradient} ring-offset-2 transition-all ${
-                  selected ? "ring-2 ring-offset-background ring-blue-400 scale-105" : "opacity-80 hover:opacity-100"
+                className={`h-10 w-full rounded-lg ${c.swatch} ring-offset-2 transition-colors ${
+                  selected ? "ring-2 ring-offset-background ring-pub-accent" : "opacity-80 hover:opacity-100"
                 }`}
               />
             );
@@ -785,14 +786,14 @@ const LinkForm = ({ initial, themeInputClass, onSubmit, onCancel }: LinkFormProp
         </div>
       </div>
 
-      {/* Live preview so staff can see the tile look before saving. */}
+      {/* Live preview so staff can see the site look before saving. */}
       <div>
         <Label className="mb-2 block">Preview</Label>
-        <div className="flex items-center gap-3 p-3 rounded-xl border border-slate-500/20">
-          <div className={`bg-gradient-to-r ${gradientFor(colorKey)} p-3 rounded-xl shadow-lg`}>
+        <div className="flex items-center gap-3 p-3 rounded-xl border border-pub-edge">
+          <div className="bg-pub-sunk border border-pub-edge p-3 rounded-xl">
             {(() => {
               const { Icon } = ICON_OPTIONS[iconKey] ?? ICON_OPTIONS.link;
-              return <Icon className="h-5 w-5 text-white" />;
+              return <Icon className="h-5 w-5 text-pub-ink" />;
             })()}
           </div>
           <div className="min-w-0">
@@ -803,10 +804,10 @@ const LinkForm = ({ initial, themeInputClass, onSubmit, onCancel }: LinkFormProp
       </div>
 
       <DialogFooter>
-        <Button type="button" variant="ghost" onClick={onCancel}>
+        <Button className="rounded-full" type="button" variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit">Save</Button>
+        <Button type="submit" className={`rounded-full ${themeClasses.button.primary}`}>Save</Button>
       </DialogFooter>
     </form>
   );

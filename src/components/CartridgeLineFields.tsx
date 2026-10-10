@@ -13,7 +13,7 @@ import {
 } from "@/lib/cartridges";
 
 interface CartridgeLineFieldsProps {
-  // Any form with a `cartridges: CartridgeLine[]` field — the order forms in the
+  // Any form with a `cartridges: CartridgeLine[]` field , the order forms in the
   // cartridge manager and the receipt form both qualify.
   form: UseFormReturn<any>;
   themeClasses: any;
@@ -28,7 +28,7 @@ const RequiredMark = () => (
   <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>
 );
 
-// Repeatable brand/model/type/price block — one per cartridge on an order or receipt.
+// Repeatable brand/model/type/price block , one per cartridge on an order or receipt.
 const CartridgeLineFields = ({
   form,
   themeClasses,
@@ -42,7 +42,7 @@ const CartridgeLineFields = ({
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>
+        <Label className="font-medium transition-colors duration-300 text-pub-ink">
           Cartridges
         </Label>
         <Button
@@ -50,7 +50,7 @@ const CartridgeLineFields = ({
           variant="ghost"
           size="sm"
           onClick={() => append(emptyCartridgeLine())}
-          className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+          className={`transition-colors ${themeClasses.button.ghost}`}
         >
           <Plus className="h-4 w-4 mr-1" />
           Add cartridge
@@ -60,10 +60,10 @@ const CartridgeLineFields = ({
       {fields.map((field, index) => (
         <div
           key={field.id}
-          className={`rounded-xl border p-4 space-y-3 transition-all duration-300 ${themeClasses.card.secondary}`}
+          className="rounded-xl border p-4 space-y-3 transition-colors bg-pub-sunk border-pub-edge"
         >
           <div className="flex justify-between items-center">
-            <span className={`text-sm font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>
+            <span className="font-display text-sm font-semibold transition-colors text-pub-ink">
               Cartridge {index + 1}
             </span>
             {fields.length > 1 && (
@@ -72,7 +72,7 @@ const CartridgeLineFields = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => remove(index)}
-                className={`transition-all duration-300 ${themeClasses.button.danger}`}
+                className={`transition-colors ${themeClasses.button.danger}`}
                 title="Remove this cartridge"
               >
                 <Trash2 className="h-4 w-4" />
@@ -82,12 +82,12 @@ const CartridgeLineFields = ({
 
           <div className={`grid grid-cols-1 gap-3 ${compact ? '' : 'md:grid-cols-2'}`}>
             <div>
-              <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Brand</Label>
+              <Label className="font-medium transition-colors duration-300 text-pub-ink">Brand</Label>
               <Select
                 value={watch(`cartridges.${index}.brand`) || undefined}
                 onValueChange={(value) => setValue(`cartridges.${index}.brand`, value)}
               >
-                <SelectTrigger className={`transition-all duration-300 ${themeClasses.input}`}>
+                <SelectTrigger className={`transition-colors ${themeClasses.input}`}>
                   <SelectValue placeholder="Select brand" />
                 </SelectTrigger>
                 <SelectContent>
@@ -99,12 +99,12 @@ const CartridgeLineFields = ({
             </div>
 
             <div>
-              <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>Type</Label>
+              <Label className="font-medium transition-colors duration-300 text-pub-ink">Type</Label>
               <Select
                 value={watch(`cartridges.${index}.type`) || undefined}
                 onValueChange={(value) => setValue(`cartridges.${index}.type`, value)}
               >
-                <SelectTrigger className={`transition-all duration-300 ${themeClasses.input}`}>
+                <SelectTrigger className={`transition-colors ${themeClasses.input}`}>
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -116,18 +116,18 @@ const CartridgeLineFields = ({
             </div>
 
             <div>
-              <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>
+              <Label className="font-medium transition-colors duration-300 text-pub-ink">
                 Model<RequiredMark />
               </Label>
               <Input
                 {...register(`cartridges.${index}.model`, { required: 'Model is required' })}
                 placeholder="e.g. HP 564XL, Canon PG-245"
-                className={`transition-all duration-300 ${themeClasses.input}`}
+                className={`transition-colors ${themeClasses.input}`}
               />
             </div>
 
             <div>
-              <Label className={`font-medium transition-colors duration-300 ${themeClasses.text.primary}`}>
+              <Label className="font-medium transition-colors duration-300 text-pub-ink">
                 Price ($){requirePrice && <RequiredMark />}
               </Label>
               <Input
@@ -141,7 +141,7 @@ const CartridgeLineFields = ({
                     (isFilledNumber(value) && value >= 0) ||
                     'A valid price is required',
                 })}
-                className={`transition-all duration-300 ${themeClasses.input}`}
+                className={`transition-colors ${themeClasses.input} font-mono tabular-nums`}
               />
             </div>
           </div>
@@ -150,9 +150,9 @@ const CartridgeLineFields = ({
 
       {/* Only worth showing once there's more than one line to add up. */}
       {fields.length > 1 && (
-        <div className={`flex justify-between text-sm font-semibold transition-colors duration-300 ${themeClasses.text.primary}`}>
+        <div className="flex justify-between text-sm font-semibold transition-colors duration-300 text-pub-ink">
           <span>Subtotal</span>
-          <span>${subtotal.toFixed(2)}</span>
+          <span className="font-mono tabular-nums">${subtotal.toFixed(2)}</span>
         </div>
       )}
     </div>

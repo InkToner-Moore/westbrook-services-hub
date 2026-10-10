@@ -167,7 +167,7 @@ const getRefillIconStyle = (label: string) => {
 
 const StaffInventory = () => {
   const { user, logout } = useAuth();
-  const { themeClasses, isDarkMode } = useTheme();
+  const { themeClasses } = useTheme();
   const { inShell } = useShell();
   const [keys, setKeys] = useState<KeyInventoryItem[]>([]);
   const [refills, setRefills] = useState<RefillItem[]>([]);
@@ -286,9 +286,7 @@ const StaffInventory = () => {
   };
 
 
-  const priceBadgeClass = isDarkMode
-    ? "bg-blue-500/20 text-blue-200 border-blue-400/50"
-    : "bg-blue-100 text-blue-800 border-blue-300";
+  const priceBadgeClass = `${themeClasses.accent.soft} ${themeClasses.accent.border} text-pub-ink`;
 
   const addKey = async ({ model, price }: { model: string; price: string }) => {
     const trimmed = model.trim();
@@ -442,16 +440,14 @@ const StaffInventory = () => {
 
   // The shared tab look (same as SegmentedTabs on the other tool pages): the
   // active tab lifts onto the card surface instead of flooding with colour.
-  const tabTrigger = `min-h-[44px] shrink-0 gap-2 rounded-lg px-2 sm:px-4 text-sm font-medium data-[state=active]:shadow-sm ${
-    isDarkMode
-      ? "data-[state=active]:bg-[#171a21] data-[state=active]:text-[#f3f4f6]"
-      : "data-[state=active]:bg-white data-[state=active]:text-[#1a1d23]"
-  }`;
+  const tabTrigger = "min-h-[44px] shrink-0 gap-2 rounded-lg px-2 sm:px-4 text-sm font-medium " +
+    "text-pub-muted data-[state=active]:bg-pub-paper data-[state=active]:text-pub-ink";
 
   const content = (
-    <div className={`border rounded-xl p-4 sm:p-6 ${themeClasses.card.primary}`}>
+    <div className="border rounded-xl p-4 sm:p-6 bg-pub-paper border-pub-edge">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className={`mb-6 inline-flex h-auto max-w-full justify-start gap-1 overflow-x-auto rounded-xl border p-1 ${themeClasses.card.secondary}`}>
+            <TabsList className="mb-6 inline-flex h-auto max-w-full justify-start gap-1 overflow-x-auto rounded-xl border p-1
+              bg-pub-sunk border-pub-edge">
               <TabsTrigger value="keys" className={tabTrigger}>
                 <Key className="hidden h-4 w-4 sm:inline" />
                 <span>Keys</span>
@@ -468,7 +464,8 @@ const StaffInventory = () => {
                 <ClipboardCheck className="hidden h-4 w-4 sm:inline" />
                 <span>Review</span>
                 {reviews.some((r) => r.severity === "warn") && (
-                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold text-white">
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px]
+                    font-semibold text-white">
                     {reviewWarningCount > 99 ? "99+" : reviewWarningCount}
                   </span>
                 )}
@@ -490,25 +487,25 @@ const StaffInventory = () => {
 
             <TabsContent value="keys">
               {addingKey && (
-                <Card className={`mb-6 shadow-none ${themeClasses.card.secondary}`}>
+                <Card className="mb-6 shadow-none bg-pub-sunk border-pub-edge">
                   <CardHeader className="pb-3">
-                    <CardTitle className={`text-lg font-semibold ${themeClasses.text.primary}`}>Add a key</CardTitle>
+                    <CardTitle className="font-display font-semibold text-pub-ink text-lg">Add a key</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={newKeyForm.handleSubmit(addKey)} className="space-y-4">
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div className="space-y-1">
-                          <Label htmlFor="new-key-model" className={`font-medium ${themeClasses.text.primary}`}>Key</Label>
+                          <Label htmlFor="new-key-model" className="font-medium text-pub-ink">Key</Label>
                           <Input id="new-key-model" {...newKeyForm.register("model", { required: true })} placeholder="e.g. KW1, SC1, Mailbox 1646" className={`min-h-[44px] ${themeClasses.input}`} />
                         </div>
                         <div className="space-y-1">
-                          <Label htmlFor="new-key-price" className={`font-medium ${themeClasses.text.primary}`}>Price before tax</Label>
+                          <Label htmlFor="new-key-price" className="font-medium text-pub-ink">Price before tax</Label>
                           <Input id="new-key-price" {...newKeyForm.register("price")} inputMode="decimal" placeholder="0.00" className={`min-h-[44px] ${themeClasses.input}`} />
                         </div>
                       </div>
                       <div className="flex gap-2 justify-end">
-                        <Button type="button" variant="ghost" onClick={() => { newKeyForm.reset(); setAddingKey(false); }} className={`min-h-[44px] ${themeClasses.button.ghost}`}>Cancel</Button>
-                        <Button type="submit" className={`min-h-[44px] rounded-lg px-4 font-semibold ${themeClasses.button.primary}`}>Add key</Button>
+                        <Button type="button" variant="ghost" onClick={() => { newKeyForm.reset(); setAddingKey(false); }} className={`rounded-full min-h-[44px] ${themeClasses.button.ghost}`}>Cancel</Button>
+                        <Button type="submit" className={`min-h-[44px] rounded-full px-4 font-semibold ${themeClasses.button.primary}`}>Add key</Button>
                       </div>
                     </form>
                   </CardContent>
@@ -518,26 +515,26 @@ const StaffInventory = () => {
               {/* Search and add controls */}
               <div className="mb-4 flex flex-col gap-3 sm:flex-row">
                 <div className="relative flex-1">
-                  <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-300 text-pub-muted" />
                   <Input
                     placeholder="Search keys by model..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className={`min-h-[44px] pl-10 pr-10 transition-all duration-300 ${themeClasses.input}`}
+                    className={`min-h-[44px] pl-10 pr-10 transition-colors ${themeClasses.input}`}
                   />
                   {searchTerm && (
                     <button
                       type="button"
                       onClick={() => setSearchTerm("")}
                       aria-label="Clear search"
-                      className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors duration-300 ${themeClasses.text.muted} hover:${themeClasses.text.primary}`}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors duration-300 text-pub-muted hover:text-pub-ink"
                     >
                       <X className="h-4 w-4" />
                     </button>
                   )}
                 </div>
                 {!addingKey && (
-                  <Button type="button" onClick={() => setAddingKey(true)} className={`min-h-[44px] w-full rounded-lg px-4 font-semibold sm:w-auto ${themeClasses.button.primary}`}>
+                  <Button type="button" onClick={() => setAddingKey(true)} className={`min-h-[44px] w-full rounded-full px-4 font-semibold sm:w-auto ${themeClasses.button.primary}`}>
                     <Plus className="mr-2 h-4 w-4" />Add key
                   </Button>
                 )}
@@ -545,41 +542,41 @@ const StaffInventory = () => {
 
               {/* Result count when searching, so staff know if there's more to scroll. */}
               {!loading && keys.length > 0 && searchTerm && (
-                <p className={`text-sm mb-3 transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                <p className="text-sm mb-3 transition-colors duration-300 text-pub-muted">
                   {filteredKeys.length} of {keys.length} {keys.length === 1 ? "key" : "keys"} match "{searchTerm}"
                 </p>
               )}
 
               {/* List */}
               {loading ? (
-                <Card className={themeClasses.card.primary}>
+                <Card className={`shadow-none ${themeClasses.card.primary}`}>
                   <CardContent className="p-12 text-center">
-                    <Loader2 className={`h-12 w-12 mx-auto mb-4 animate-spin transition-colors duration-300 ${themeClasses.text.muted}`} />
-                    <p className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>Loading inventory...</p>
+                    <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin transition-colors duration-300 text-pub-muted" />
+                    <p className="transition-colors duration-300 text-pub-muted">Loading inventory...</p>
                   </CardContent>
                 </Card>
               ) : keys.length === 0 ? (
-                <Card className={themeClasses.card.primary}>
+                <Card className={`shadow-none ${themeClasses.card.primary}`}>
                   <CardContent className="p-12 text-center">
-                    <Key className={`h-12 w-12 mx-auto mb-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
-                    <h3 className={`text-xl font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>No keys yet</h3>
-                    <p className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                    <Key className="h-12 w-12 mx-auto mb-4 transition-colors duration-300 text-pub-muted" />
+                    <h3 className="font-display font-semibold text-pub-ink text-xl mb-2 transition-colors duration-300">No keys yet</h3>
+                    <p className="transition-colors duration-300 text-pub-muted">
                       Add your first key model above to start tracking stock.
                     </p>
                   </CardContent>
                 </Card>
               ) : filteredKeys.length === 0 ? (
-                <Card className={themeClasses.card.primary}>
+                <Card className={`shadow-none ${themeClasses.card.primary}`}>
                   <CardContent className="p-12 text-center">
-                    <Search className={`h-12 w-12 mx-auto mb-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
-                    <h3 className={`text-xl font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>No matches</h3>
-                    <p className={`mb-4 transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                    <Search className="h-12 w-12 mx-auto mb-4 transition-colors duration-300 text-pub-muted" />
+                    <h3 className="font-display font-semibold text-pub-ink text-xl mb-2 transition-colors duration-300">No matches</h3>
+                    <p className="mb-4 transition-colors duration-300 text-pub-muted">
                       No keys match "{searchTerm}". Try a different search term.
                     </p>
                     <Button
                       variant="ghost"
                       onClick={() => setSearchTerm("")}
-                      className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+                      className={`transition-colors ${themeClasses.button.ghost}`}
                     >
                       Clear search
                     </Button>
@@ -594,24 +591,25 @@ const StaffInventory = () => {
                       boardLocationFor(item.model, locationIndex) ??
                       (item.cutCode && item.cutCode.trim() ? item.cutCode.trim() : null);
                     return (
-                    <Card key={item.id} className={`shadow-none transition-all duration-300 ${themeClasses.card.secondary}`}>
+                    <Card key={item.id} className="shadow-none transition-colors bg-pub-sunk border-pub-edge">
                       <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3 min-w-0 sm:flex-1">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-500/10">
-                            <Icon className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-pub-sunk border border-pub-edge">
+                            <Icon className="h-4 w-4 text-pub-ink" />
                           </div>
                           <div className="min-w-0">
-                            <p className={`font-semibold truncate transition-colors duration-300 ${themeClasses.text.primary} ${item.inStock ? "" : "opacity-60"}`}>
+                            <p className={`font-semibold truncate transition-colors duration-300 text-pub-ink ${item.inStock ? "" : "opacity-60"}`}>
                               {item.model}
                             </p>
                             {item.notes ? (
-                              <p className={`text-xs truncate transition-colors duration-300 ${themeClasses.text.muted}`}>
+                              <p className="text-xs truncate transition-colors duration-300 text-pub-muted">
                                 {item.notes}
                               </p>
                             ) : null}
                             {location ? (
-                              <p className={`mt-0.5 flex items-center gap-1 text-xs font-mono tabular-nums transition-colors duration-300 ${themeClasses.text.secondary}`}>
-                                <MapPin className="h-3 w-3 shrink-0 text-orange-500" />
+                              <p className="mt-0.5 flex items-center gap-1 text-xs font-mono tabular-nums transition-colors duration-300
+                                text-pub-muted">
+                                <MapPin className="h-3 w-3 shrink-0 text-pub-ink" />
                                 {location}
                               </p>
                             ) : null}
@@ -624,10 +622,10 @@ const StaffInventory = () => {
                               {priceText}
                             </Badge>
                           ) : (
-                            <span className={`text-xs transition-colors duration-300 ${themeClasses.text.muted}`}>No price</span>
+                            <span className="text-xs transition-colors duration-300 text-pub-muted">No price</span>
                           )}
 
-                          <label className={`ml-auto flex shrink-0 items-center gap-2 text-sm cursor-pointer select-none ${item.inStock ? themeClasses.text.secondary : "text-red-600 dark:text-red-400 font-medium"}`}>
+                          <label className={`ml-auto flex shrink-0 items-center gap-2 text-sm cursor-pointer select-none ${item.inStock ? 'text-pub-muted' : "text-red-600 dark:text-red-400 font-medium"}`}>
                             <Switch
                               aria-label={`In stock: ${item.model}`}
                               checked={item.inStock}
@@ -647,9 +645,9 @@ const StaffInventory = () => {
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </AlertDialogTrigger>
-                            <AlertDialogContent>
+                            <AlertDialogContent className="bg-pub-paper border-pub-edge text-pub-ink">
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Delete this key?</AlertDialogTitle>
+                                <AlertDialogTitle className="font-display font-semibold text-pub-ink">Delete this key?</AlertDialogTitle>
                                 <AlertDialogDescription>
                                   This will remove "{item.model}" from the active inventory.
                                   A copy is kept in deleted inventory so it can be recovered if needed.
@@ -677,37 +675,37 @@ const StaffInventory = () => {
 
             <TabsContent value="refills">
               {addingRefill && (
-                <Card className={`mb-6 shadow-none ${themeClasses.card.secondary}`}>
+                <Card className="mb-6 shadow-none bg-pub-sunk border-pub-edge">
                   <CardHeader className="pb-3">
-                    <CardTitle className={`text-lg font-semibold ${themeClasses.text.primary}`}>Add a refill</CardTitle>
+                    <CardTitle className="font-display font-semibold text-pub-ink text-lg">Add a refill</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={newRefillForm.handleSubmit(addRefill)} className="space-y-4">
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-6">
                         <div className="space-y-1 sm:col-span-3">
-                          <Label htmlFor="new-refill-brand" className={`font-medium ${themeClasses.text.primary}`}>Brand</Label>
+                          <Label htmlFor="new-refill-brand" className="font-medium text-pub-ink">Brand</Label>
                           <Input id="new-refill-brand" {...newRefillForm.register("brand")} placeholder="e.g. HP" className={`min-h-[44px] ${themeClasses.input}`} />
                         </div>
                         <div className="space-y-1 sm:col-span-3">
-                          <Label htmlFor="new-refill-cartridge" className={`font-medium ${themeClasses.text.primary}`}>Cartridge</Label>
+                          <Label htmlFor="new-refill-cartridge" className="font-medium text-pub-ink">Cartridge</Label>
                           <Input id="new-refill-cartridge" {...newRefillForm.register("cartridge", { required: true })} placeholder="e.g. 65XL" className={`min-h-[44px] ${themeClasses.input}`} />
                         </div>
                         <div className="space-y-1 sm:col-span-2">
-                          <Label htmlFor="new-refill-priceBlack" className={`font-medium ${themeClasses.text.primary}`}>Black price</Label>
+                          <Label htmlFor="new-refill-priceBlack" className="font-medium text-pub-ink">Black price</Label>
                           <Input id="new-refill-priceBlack" {...newRefillForm.register("priceBlack")} inputMode="decimal" placeholder="0.00" className={`min-h-[44px] ${themeClasses.input}`} />
                         </div>
                         <div className="space-y-1 sm:col-span-2">
-                          <Label htmlFor="new-refill-priceColour" className={`font-medium ${themeClasses.text.primary}`}>Colour price</Label>
+                          <Label htmlFor="new-refill-priceColour" className="font-medium text-pub-ink">Colour price</Label>
                           <Input id="new-refill-priceColour" {...newRefillForm.register("priceColour")} inputMode="decimal" placeholder="0.00" className={`min-h-[44px] ${themeClasses.input}`} />
                         </div>
                         <div className="space-y-1 sm:col-span-2">
-                          <Label htmlFor="new-refill-priceXl" className={`font-medium ${themeClasses.text.primary}`}>XL price</Label>
+                          <Label htmlFor="new-refill-priceXl" className="font-medium text-pub-ink">XL price</Label>
                           <Input id="new-refill-priceXl" {...newRefillForm.register("priceXl")} inputMode="decimal" placeholder="0.00" className={`min-h-[44px] ${themeClasses.input}`} />
                         </div>
                       </div>
                       <div className="flex gap-2 justify-end">
-                        <Button type="button" variant="ghost" onClick={() => { newRefillForm.reset(); setAddingRefill(false); }} className={`min-h-[44px] ${themeClasses.button.ghost}`}>Cancel</Button>
-                        <Button type="submit" className={`min-h-[44px] rounded-lg px-4 font-semibold ${themeClasses.button.primary}`}>Add refill</Button>
+                        <Button type="button" variant="ghost" onClick={() => { newRefillForm.reset(); setAddingRefill(false); }} className={`rounded-full min-h-[44px] ${themeClasses.button.ghost}`}>Cancel</Button>
+                        <Button type="submit" className={`min-h-[44px] rounded-full px-4 font-semibold ${themeClasses.button.primary}`}>Add refill</Button>
                       </div>
                     </form>
                   </CardContent>
@@ -717,67 +715,67 @@ const StaffInventory = () => {
               {/* Search bar */}
               <div className="mb-4 flex flex-col gap-3 sm:flex-row">
                 <div className="relative flex-1">
-                  <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-300 text-pub-muted" />
                   <Input
                     placeholder="Search refills by brand or cartridge..."
                     value={refillSearch}
                     onChange={(e) => setRefillSearch(e.target.value)}
-                    className={`min-h-[44px] pl-10 pr-10 transition-all duration-300 ${themeClasses.input}`}
+                    className={`min-h-[44px] pl-10 pr-10 transition-colors ${themeClasses.input}`}
                   />
                   {refillSearch && (
                     <button
                       type="button"
                       onClick={() => setRefillSearch("")}
                       aria-label="Clear search"
-                      className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors duration-300 ${themeClasses.text.muted} hover:${themeClasses.text.primary}`}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors duration-300 text-pub-muted hover:text-pub-ink"
                     >
                       <X className="h-4 w-4" />
                     </button>
                   )}
                 </div>
                 {!addingRefill && (
-                  <Button type="button" onClick={() => setAddingRefill(true)} className={`min-h-[44px] w-full rounded-lg px-4 font-semibold sm:w-auto ${themeClasses.button.primary}`}>
+                  <Button type="button" onClick={() => setAddingRefill(true)} className={`min-h-[44px] w-full rounded-full px-4 font-semibold sm:w-auto ${themeClasses.button.primary}`}>
                     <Plus className="mr-2 h-4 w-4" />Add refill
                   </Button>
                 )}
               </div>
 
               {!refillsLoading && refills.length > 0 && refillSearch && (
-                <p className={`text-sm mb-3 transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                <p className="text-sm mb-3 transition-colors duration-300 text-pub-muted">
                   {filteredRefills.length} of {refills.length} {refills.length === 1 ? "refill" : "refills"} match "{refillSearch}"
                 </p>
               )}
 
               {/* List */}
               {refillsLoading ? (
-                <Card className={themeClasses.card.primary}>
+                <Card className={`shadow-none ${themeClasses.card.primary}`}>
                   <CardContent className="p-12 text-center">
-                    <Loader2 className={`h-12 w-12 mx-auto mb-4 animate-spin transition-colors duration-300 ${themeClasses.text.muted}`} />
-                    <p className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>Loading refills...</p>
+                    <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin transition-colors duration-300 text-pub-muted" />
+                    <p className="transition-colors duration-300 text-pub-muted">Loading refills...</p>
                   </CardContent>
                 </Card>
               ) : refills.length === 0 ? (
-                <Card className={themeClasses.card.primary}>
+                <Card className={`shadow-none ${themeClasses.card.primary}`}>
                   <CardContent className="p-12 text-center">
-                    <Droplets className={`h-12 w-12 mx-auto mb-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
-                    <h3 className={`text-xl font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>No refills yet</h3>
-                    <p className={`transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                    <Droplets className="h-12 w-12 mx-auto mb-4 transition-colors duration-300 text-pub-muted" />
+                    <h3 className="font-display font-semibold text-pub-ink text-xl mb-2 transition-colors duration-300">No refills yet</h3>
+                    <p className="transition-colors duration-300 text-pub-muted">
                       Add a cartridge above to start the refill price list.
                     </p>
                   </CardContent>
                 </Card>
               ) : filteredRefills.length === 0 ? (
-                <Card className={themeClasses.card.primary}>
+                <Card className={`shadow-none ${themeClasses.card.primary}`}>
                   <CardContent className="p-12 text-center">
-                    <Search className={`h-12 w-12 mx-auto mb-4 transition-colors duration-300 ${themeClasses.text.muted}`} />
-                    <h3 className={`text-xl font-semibold mb-2 transition-colors duration-300 ${themeClasses.text.primary}`}>No matches</h3>
-                    <p className={`mb-4 transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                    <Search className="h-12 w-12 mx-auto mb-4 transition-colors duration-300 text-pub-muted" />
+                    <h3 className="font-display font-semibold text-pub-ink text-xl mb-2 transition-colors duration-300">No matches</h3>
+                    <p className="mb-4 transition-colors duration-300 text-pub-muted">
                       No refills match "{refillSearch}". Try a different search term.
                     </p>
                     <Button
                       variant="ghost"
                       onClick={() => setRefillSearch("")}
-                      className={`transition-all duration-300 ${themeClasses.button.ghost}`}
+                      className={`transition-colors ${themeClasses.button.ghost}`}
                     >
                       Clear search
                     </Button>
@@ -789,14 +787,14 @@ const StaffInventory = () => {
                     const { Icon } = getRefillIconStyle(`${item.brand} ${item.cartridge}`);
                     const parts = refillPriceParts(item);
                     return (
-                      <Card key={item.id} className={`shadow-none transition-all duration-300 ${themeClasses.card.secondary}`}>
+                      <Card key={item.id} className="shadow-none transition-colors bg-pub-sunk border-pub-edge">
                         <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex items-center gap-3 min-w-0 sm:flex-1">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-500/10">
-                              <Icon className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-pub-sunk border border-pub-edge">
+                              <Icon className="h-4 w-4 text-pub-ink" />
                             </div>
                             <div className="min-w-0">
-                              <p className={`font-semibold truncate transition-colors duration-300 ${themeClasses.text.primary} ${item.inStock ? "" : "opacity-60"}`}>
+                              <p className={`font-semibold truncate transition-colors duration-300 text-pub-ink ${item.inStock ? "" : "opacity-60"}`}>
                                 {item.brand ? `${item.brand} ` : ""}{item.cartridge}
                               </p>
 
@@ -805,18 +803,18 @@ const StaffInventory = () => {
 
                           <div className="flex w-full items-center gap-2 sm:w-auto sm:gap-4">
                               {parts.length > 0 ? (
-                                <p className={`min-w-0 flex-1 truncate text-xs font-mono tabular-nums transition-colors duration-300 ${themeClasses.text.secondary}`}>
+                                <p className="min-w-0 flex-1 truncate text-xs font-mono tabular-nums transition-colors duration-300 text-pub-muted">
                                   {parts.join("   ")}
                                 </p>
                               ) : item.priceNote ? (
-                                <p className={`min-w-0 flex-1 truncate text-xs transition-colors duration-300 ${themeClasses.text.muted}`}>
+                                <p className="min-w-0 flex-1 truncate text-xs transition-colors duration-300 text-pub-muted">
                                   {item.priceNote}
                                 </p>
                               ) : (
-                                <p className={`min-w-0 flex-1 truncate text-xs transition-colors duration-300 ${themeClasses.text.muted}`}>No price</p>
+                                <p className="min-w-0 flex-1 truncate text-xs transition-colors duration-300 text-pub-muted">No price</p>
                               )}
 
-                            <label className={`ml-auto flex shrink-0 items-center gap-2 text-sm cursor-pointer select-none ${item.inStock ? themeClasses.text.secondary : "text-red-600 dark:text-red-400 font-medium"}`}>
+                            <label className={`ml-auto flex shrink-0 items-center gap-2 text-sm cursor-pointer select-none ${item.inStock ? 'text-pub-muted' : "text-red-600 dark:text-red-400 font-medium"}`}>
                               <Switch
                                 aria-label={`In stock: ${item.brand} ${item.cartridge}`}
                               checked={item.inStock}
@@ -836,9 +834,9 @@ const StaffInventory = () => {
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </AlertDialogTrigger>
-                              <AlertDialogContent>
+                              <AlertDialogContent className="bg-pub-paper border-pub-edge text-pub-ink">
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete this refill?</AlertDialogTitle>
+                                  <AlertDialogTitle className="font-display font-semibold text-pub-ink">Delete this refill?</AlertDialogTitle>
                                   <AlertDialogDescription>
                                     This will remove "{item.brand} {item.cartridge}" from the active list.
                                     A copy is kept in deleted inventory so it can be recovered if needed.
@@ -866,24 +864,24 @@ const StaffInventory = () => {
 
             <TabsContent value="review">
               <div className="mb-4">
-                <h3 className={`text-lg font-semibold ${themeClasses.text.primary}`}>Things to look at</h3>
-                <p className={`text-sm ${themeClasses.text.secondary}`}>
+                <h3 className="font-display font-semibold text-pub-ink text-lg">Things to look at</h3>
+                <p className="text-sm text-pub-muted">
                   Checks that run by themselves across the key board and the price list. Fix one and it drops off this list.
                 </p>
               </div>
               {boardLoading || loading ? (
-                <Card className={themeClasses.card.primary}>
+                <Card className={`shadow-none ${themeClasses.card.primary}`}>
                   <CardContent className="p-12 text-center">
-                    <Loader2 className={`h-10 w-10 mx-auto mb-3 animate-spin ${themeClasses.text.muted}`} />
-                    <p className={themeClasses.text.secondary}>Running the checks...</p>
+                    <Loader2 className="h-10 w-10 mx-auto mb-3 animate-spin text-pub-muted" />
+                    <p className="text-pub-muted">Running the checks...</p>
                   </CardContent>
                 </Card>
               ) : reviews.length === 0 ? (
-                <Card className={themeClasses.card.primary}>
+                <Card className={`shadow-none ${themeClasses.card.primary}`}>
                   <CardContent className="p-12 text-center">
                     <CheckCircle2 className="h-10 w-10 mx-auto mb-3 text-green-500" />
-                    <h4 className={`text-lg font-semibold mb-1 ${themeClasses.text.primary}`}>All clear</h4>
-                    <p className={themeClasses.text.secondary}>Nothing on the board needs attention right now.</p>
+                    <h4 className="font-display font-semibold text-pub-ink text-lg mb-1">All clear</h4>
+                    <p className="text-pub-muted">Nothing on the board needs attention right now.</p>
                   </CardContent>
                 </Card>
               ) : (
@@ -900,20 +898,20 @@ const StaffInventory = () => {
                   {selectedReviews.slice(0, shownReviews).map((alert, i) => {
                     const meta = REVIEW_META[alert.kind];
                     return (
-                      <Card key={`${alert.kind}-${i}`} className={`shadow-sm ${themeClasses.card.secondary}`}>
+                      <Card key={`${alert.kind}-${i}`} className="shadow-none bg-pub-sunk border-pub-edge">
                         <CardContent className="flex items-start gap-3 p-4">
                           <div className={`mt-0.5 rounded-lg p-1.5 shrink-0 ${meta.tint}`}>
                             <meta.Icon className="h-4 w-4" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className={`font-semibold ${themeClasses.text.primary}`}>{alert.title}</p>
-                            <p className={`text-sm ${themeClasses.text.secondary}`}>{alert.detail}</p>
+                            <p className="font-semibold text-pub-ink">{alert.title}</p>
+                            <p className="text-sm text-pub-muted">{alert.detail}</p>
                             {alert.positions.length > 0 && (
                               <div className="mt-2 flex flex-wrap gap-1.5">
                                 {alert.positions.map((pos) => (
                                   <span
                                     key={pos}
-                                    className={`rounded border px-1.5 py-0.5 text-[11px] font-mono ${themeClasses.card.primary} ${themeClasses.text.muted}`}
+                                    className="rounded border px-1.5 py-0.5 text-[11px] font-mono bg-pub-paper border-pub-edge text-pub-muted"
                                   >
                                     {pos}
                                   </span>
@@ -940,7 +938,7 @@ const StaffInventory = () => {
                       </Card>
                     );
                   })}
-                  <p className={`pt-2 text-sm ${themeClasses.text.muted}`}>Showing {Math.min(shownReviews, selectedReviews.length)} of {selectedReviews.length}</p>
+                  <p className="pt-2 text-sm text-pub-muted">Showing {Math.min(shownReviews, selectedReviews.length)} of {selectedReviews.length}</p>
                   {shownReviews < selectedReviews.length && (
                     <Button variant="ghost" onClick={() => setShownReviews((count) => count + 25)} className={`min-h-[44px] ${themeClasses.button.ghost}`}>Show 25 more</Button>
                   )}
@@ -960,7 +958,7 @@ const StaffInventory = () => {
   }
 
   return (
-    <div className={`min-h-screen ${themeClasses.background}`}>
+    <div className="min-h-screen bg-pub-counter">
       {/* Header */}
       <header className={`sticky top-0 z-50 border-b transition-colors duration-300 ${themeClasses.header}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -970,22 +968,22 @@ const StaffInventory = () => {
                 to="/staff/dashboard"
                 className={`transition-colors mr-4 group ${themeClasses.link}`}
               >
-                <ArrowLeft className="h-6 w-6 group-hover:-translate-x-1 transition-transform inline mr-2" />
+                <ArrowLeft className="h-6 w-6 transition-transform inline mr-2" />
                 Back to dashboard
               </Link>
-              <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${themeClasses.card.secondary}`}>
-                <Boxes className={`h-6 w-6 ${themeClasses.text.secondary}`} />
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-pub-sunk border-pub-edge">
+                <Boxes className="h-6 w-6 text-pub-muted" />
               </span>
               <div>
-                <h1 className={`text-xl lg:text-2xl font-semibold tracking-tight ${themeClasses.text.primary}`}>
+                <h1 className="font-display font-semibold text-pub-ink text-xl lg:text-2xl tracking-tight">
                   Inventory
                 </h1>
-                <p className={`text-xs font-medium transition-colors duration-300 ${themeClasses.text.secondary}`}>Staff portal</p>
+                <p className="text-xs font-medium transition-colors duration-300 text-pub-muted">Staff portal</p>
               </div>
             </div>
 
             <div className="flex items-center space-x-4">
-              <div className={`flex items-center space-x-2 transition-colors duration-300 ${themeClasses.text.secondary}`}>
+              <div className="flex items-center space-x-2 transition-colors duration-300 text-pub-muted">
                 <User className="h-4 w-4" />
                 <span className="text-sm font-medium">{user?.email}</span>
               </div>
@@ -1007,10 +1005,10 @@ const StaffInventory = () => {
       {/* Main Content */}
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-12">
-          <h2 className={`text-2xl sm:text-3xl font-semibold tracking-tight ${themeClasses.text.primary}`}>
+          <h2 className="font-display font-semibold text-pub-ink text-2xl sm:text-3xl tracking-tight">
             Inventory
           </h2>
-          <p className={`mt-2 max-w-2xl mx-auto ${themeClasses.text.secondary}`}>
+          <p className="mt-2 max-w-2xl mx-auto text-pub-muted">
             Keys and refill prices, in stock at a glance.
           </p>
         </div>

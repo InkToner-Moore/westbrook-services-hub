@@ -98,7 +98,7 @@ const ValidatedTextarea = forwardRef<HTMLTextAreaElement, ValidatedTextareaProps
             htmlFor={inputId}
             className={cn(
               'font-medium transition-colors',
-              themeClasses.text.primary,
+              'text-pub-ink',
               required && "after:content-['*'] after:ml-1 after:text-red-500"
             )}
           >
@@ -108,7 +108,7 @@ const ValidatedTextarea = forwardRef<HTMLTextAreaElement, ValidatedTextareaProps
           {showCharacterCount && maxLength && (
             <span className={cn(
               'text-sm transition-colors',
-              currentLength > maxLength ? 'text-red-500' : themeClasses.text.muted
+              currentLength > maxLength ? 'text-red-500' : 'text-pub-muted'
             )}>
               {currentLength}/{maxLength}
             </span>
@@ -123,7 +123,7 @@ const ValidatedTextarea = forwardRef<HTMLTextAreaElement, ValidatedTextareaProps
           value={value}
           maxLength={maxLength}
           className={cn(
-            'transition-all duration-200',
+            'transition-colors',
             themeClasses.input,
             hasError && 'border-red-500 focus:border-red-500 focus:ring-red-500/20',
             isSuccess && 'border-green-500 focus:border-green-500 focus:ring-green-500/20',
@@ -143,7 +143,7 @@ const ValidatedTextarea = forwardRef<HTMLTextAreaElement, ValidatedTextareaProps
         {showValidationIcon && (
           <div className="absolute top-3 right-3">
             {isValidating && (
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" />
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-pub-accent border-t-transparent" />
             )}
             {!isValidating && hasError && (
               <AlertCircle className="h-4 w-4 text-red-500" />
@@ -171,7 +171,7 @@ const ValidatedTextarea = forwardRef<HTMLTextAreaElement, ValidatedTextareaProps
       {hint && !displayError && (
         <p 
           id={`${inputId}-hint`}
-          className={cn('text-sm', themeClasses.text.muted)}
+          className={cn('text-sm', 'text-pub-muted')}
         >
           {hint}
         </p>

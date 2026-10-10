@@ -9,7 +9,7 @@ const StaffTracking = () => {
       subtitle="Enter the tracking number, then choose the courier"
       tool="tracking"
       icon={Package}
-      iconColor="text-blue-600 dark:text-blue-400"
+      iconColor="text-pub-ink"
     >
       {/* The shell's tool title bar already names Tracking (blue hue), so the
           tracker card drops its own header here to avoid a doubled title. */}

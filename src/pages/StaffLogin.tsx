@@ -42,40 +42,34 @@ const StaffLogin = () => {
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 transition-all duration-500 ${themeClasses.background}`}>
-      {/* Background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className={`absolute -top-40 -right-40 w-80 h-80 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse transition-all duration-500 ${themeClasses.backgroundFloating.purple}`}></div>
-        <div className={`absolute -bottom-40 -left-40 w-80 h-80 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-1000 transition-all duration-500 ${themeClasses.backgroundFloating.blue}`}></div>
-        <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse delay-500 transition-all duration-500 ${themeClasses.backgroundFloating.indigo}`}></div>
-      </div>
-
+    <div className="min-h-screen flex items-center justify-center p-4 transition-colors bg-pub-counter">
       <div className="relative z-10 w-full max-w-md">
         {/* Back to public site link */}
         <Link 
           to="/" 
-          className={`inline-flex items-center space-x-2 transition-colors mb-6 group ${themeClasses.text.secondary} hover:${themeClasses.text.primary}`}
+          className="inline-flex items-center space-x-2 transition-colors mb-6 group text-pub-muted hover:text-pub-ink"
         >
-          <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+          <ArrowLeft className="h-4 w-4 transition-transform" />
           <span>Back to public site</span>
         </Link>
 
-        <Card className={`backdrop-blur-xl shadow-2xl transition-all duration-500 ${themeClasses.card.primary}`}>
+        <Card className="bg-pub-paper border border-pub-edge rounded-2xl shadow-none">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
-              <div className="bg-gradient-to-br from-blue-400 to-indigo-600 p-4 rounded-xl shadow-2xl">
-                <Printer className="h-8 w-8 text-white" />
+              <div className="bg-pub-sunk border border-pub-edge p-4 rounded-xl">
+                <Printer className="h-8 w-8 text-pub-ink" />
               </div>
             </div>
-            <CardTitle className={`text-2xl font-bold transition-all duration-500 ${themeClasses.text.primary}`}>Staff Portal</CardTitle>
-            <CardDescription className={`transition-all duration-500 ${themeClasses.text.secondary}`}>
+            <p className="font-display text-4xl font-semibold text-pub-ink">Ink, Toner &amp; Moore</p>
+            <CardTitle className="font-display text-2xl font-semibold text-pub-ink">Staff Portal</CardTitle>
+            <CardDescription className="transition-colors text-pub-muted">
               Sign in to access the staff dashboard
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email" className={`font-medium transition-all duration-500 ${themeClasses.text.primary}`}>Email</Label>
+                <Label htmlFor="email" className="font-medium transition-colors text-pub-ink">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -83,12 +77,12 @@ const StaffLogin = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
                   required
-                  className={`h-12 transition-all duration-500 ${themeClasses.input}`}
+                  className={`h-12 transition-colors ${themeClasses.input}`}
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="password" className={`font-medium transition-all duration-500 ${themeClasses.text.primary}`}>Password</Label>
+                <Label htmlFor="password" className="font-medium transition-colors text-pub-ink">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -97,14 +91,14 @@ const StaffLogin = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
                     required
-                    className={`h-12 pr-12 transition-all duration-500 ${themeClasses.input}`}
+                    className={`h-12 pr-12 transition-colors ${themeClasses.input}`}
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowPassword(!showPassword)}
-                    className={`absolute right-1 top-1 h-10 w-10 transition-all duration-300 ${themeClasses.button.ghost} ${themeClasses.interactive.focus}`}
+                    className={`absolute right-1 top-1 h-10 w-10 transition-colors ${themeClasses.button.ghost} ${themeClasses.interactive.focus}`}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
@@ -114,14 +108,14 @@ const StaffLogin = () => {
               <Button
                 type="submit"
                 disabled={loading}
-                className={`w-full h-12 font-bold rounded-xl shadow-2xl transition-all duration-300 hover:scale-105 ${themeClasses.button.primary} ${themeClasses.interactive.focus}`}
+                className={`w-full h-12 min-h-[48px] font-semibold rounded-full transition-colors ${themeClasses.button.primary} ${themeClasses.interactive.focus}`}
               >
                 {loading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
 
             <div className="mt-6 text-center">
-              <p className={`text-sm transition-all duration-500 ${themeClasses.text.secondary}`}>
+              <p className="text-sm transition-colors text-pub-muted">
                 Need help accessing your account? Contact the manager.
               </p>
             </div>
