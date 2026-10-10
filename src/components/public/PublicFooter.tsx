@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { STUDIO_URL } from "@/lib/storeInfo";
 
 const PublicFooter = () => {
   return (
@@ -9,9 +10,14 @@ const PublicFooter = () => {
             <p className="font-display font-medium text-xl text-pub-ink">Ink, Toner &amp; Moore</p>
             <p>Westbrook Mall, Calgary. Open 7 days a week.</p>
           </div>
-          <Link to="/staff" className="pub-link inline-flex min-h-11 items-center self-start">
-            Staff login
-          </Link>
+          <div className="flex flex-wrap items-center gap-x-6 self-start">
+            <a href={STUDIO_URL} className="pub-link inline-flex min-h-11 items-center">
+              Websites for small businesses
+            </a>
+            <Link to="/staff" className="pub-link inline-flex min-h-11 items-center">
+              Staff login
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

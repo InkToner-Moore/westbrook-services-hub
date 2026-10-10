@@ -1,6 +1,9 @@
 export const PHONE_DISPLAY = "(403) 686-2835";
 export const PHONE_HREF = "tel:4036862835";
 export const EMAIL = "contact@inktonermoore.ca";
+// The studio (websites for small businesses) is a separate site. This is its staging
+// address; switch it to https://studio.inktonermoore.ca when that domain is live.
+export const STUDIO_URL = "https://studio.ink-toner-moore.pages.dev";
 export const MAPS_URL = "https://www.google.com/maps/search/?api=1&query=Westbrook+Mall+Calgary";
 // One entry per JS weekday, starting with Sunday. Hours use the 24-hour clock.
 export const WEEK = [
