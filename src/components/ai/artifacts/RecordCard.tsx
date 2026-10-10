@@ -38,13 +38,11 @@ import type {
 
 const money = (n: number) => `$${n.toFixed(2)}`;
 
-// Edge/divider colours matching the DESIGN-SPEC `edge` token, chosen by theme the
-// way the surrounding files do (isDarkMode from useTheme).
+// Shared edge and divider colours follow the palette in either theme.
 const useEdges = () => {
-  const { isDarkMode } = useTheme();
   return {
-    divide: isDarkMode ? 'divide-[#2a2f3a]' : 'divide-[#e4e1d9]',
-    edge: isDarkMode ? 'border-[#2a2f3a]' : 'border-[#e4e1d9]',
+    divide: 'divide-pub-edge',
+    edge: 'border-pub-edge',
   };
 };
 
@@ -97,12 +95,11 @@ const Row: React.FC<{ label: string; children: React.ReactNode; mono?: boolean }
   children,
   mono,
 }) => {
-  const { themeClasses } = useTheme();
   return (
     <div className="flex items-start justify-between gap-3 py-2">
-      <span className={`text-[13px] ${themeClasses.text.secondary}`}>{label}</span>
+      <span className="text-[13px] text-pub-muted">{label}</span>
       <span
-        className={`text-right text-sm ${themeClasses.text.primary} ${
+        className={`text-right text-sm text-pub-ink ${
           mono ? 'font-mono tabular-nums' : ''
         }`}
       >
@@ -118,21 +115,18 @@ const CardShell: React.FC<{
   subtitle?: string;
   children: React.ReactNode;
 }> = ({ icon, title, subtitle, children }) => {
-  const { themeClasses, isDarkMode } = useTheme();
   const { edge } = useEdges();
-  const badge = isDarkMode
-    ? 'bg-violet-500/15 text-violet-300'
-    : 'bg-violet-100 text-violet-700';
+  const badge = 'bg-pub-sunk text-pub-accent';
   return (
-    <div className={`rounded-xl border ${themeClasses.card.primary}`}>
-      <div className={`flex items-center gap-3 border-b px-4 py-3 ${edge}`}>
+    <div className="rounded-xl border bg-pub-paper border-pub-edge">
+      <div className={`flex items-center gap-3 border-b bg-pub-paper px-4 py-3 ${edge}`}>
         <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${badge}`}>
           {icon}
         </span>
         <div className="min-w-0">
-          <div className={`text-sm font-semibold ${themeClasses.text.primary}`}>{title}</div>
+          <div className="font-display text-sm font-semibold text-pub-ink">{title}</div>
           {subtitle && (
-            <div className={`text-[13px] ${themeClasses.text.secondary}`}>{subtitle}</div>
+            <div className="text-[13px] text-pub-muted">{subtitle}</div>
           )}
         </div>
       </div>
@@ -143,20 +137,19 @@ const CardShell: React.FC<{
 
 // The cartridge lines with a subtotal rule. Handles the no-price case.
 const CartridgeLines: React.FC<{ order: RefillOrderView }> = ({ order }) => {
-  const { themeClasses } = useTheme();
   const { divide, edge } = useEdges();
   return (
     <div className="mt-3">
-      <div className={`mb-1 text-[13px] font-medium ${themeClasses.text.secondary}`}>
+      <div className="mb-1 text-[13px] font-medium text-pub-muted">
         {order.cartridges.length === 1 ? 'Cartridge' : 'Cartridges'}
       </div>
       <div className={`divide-y ${divide}`}>
         {order.cartridges.map((c, i) => (
           <div key={i} className="flex items-start justify-between gap-3 py-2">
-            <span className={`text-sm ${themeClasses.text.primary}`}>
+            <span className="text-sm text-pub-ink">
               {describeCartridge(c) || 'Cartridge'}
             </span>
-            <span className={`text-sm font-mono tabular-nums ${themeClasses.text.primary}`}>
+            <span className="text-sm font-mono tabular-nums text-pub-ink">
               {isFilledNumber(c.price) ? money(c.price) : '--'}
             </span>
           </div>
@@ -164,13 +157,13 @@ const CartridgeLines: React.FC<{ order: RefillOrderView }> = ({ order }) => {
       </div>
       {order.hasPrice ? (
         <div className={`mt-1 flex items-center justify-between border-t pt-2 ${edge}`}>
-          <span className={`text-sm font-semibold ${themeClasses.text.primary}`}>Total</span>
-          <span className={`text-base font-mono font-semibold tabular-nums ${themeClasses.text.primary}`}>
+          <span className="text-sm font-semibold text-pub-ink">Total</span>
+          <span className="text-base font-mono font-semibold tabular-nums text-pub-ink">
             {money(order.subtotal)}
           </span>
         </div>
       ) : (
-        <p className={`mt-2 text-[13px] ${themeClasses.text.muted}`}>
+        <p className="mt-2 text-[13px] text-pub-muted">
           No price on this record. The 4x6 label is still available.
         </p>
       )}
@@ -183,7 +176,6 @@ const OrderSlip: React.FC<{ order: RefillOrderView; banner?: React.ReactNode }> 
   order,
   banner,
 }) => {
-  const { themeClasses } = useTheme();
   const { divide } = useEdges();
   return (
     <>
@@ -210,7 +202,7 @@ const OrderSlip: React.FC<{ order: RefillOrderView; banner?: React.ReactNode }> 
         {order.notes && <Row label="Notes">{order.notes}</Row>}
       </div>
       <CartridgeLines order={order} />
-      <p className={`mt-3 text-[13px] ${themeClasses.text.muted}`}>
+      <p className="mt-3 text-[13px] text-pub-muted">
         Tear off the 4x6 label and stick it on the cartridge.
       </p>
     </>
@@ -251,7 +243,6 @@ const ViewBody: React.FC<{ order: RefillOrderView }> = ({ order }) => (
 );
 
 const StatusBody: React.FC<{ d: Extract<RefillArtifactData, { state: 'status' }> }> = ({ d }) => {
-  const { themeClasses } = useTheme();
   const { divide } = useEdges();
   return (
     <CardShell
@@ -264,7 +255,7 @@ const StatusBody: React.FC<{ d: Extract<RefillArtifactData, { state: 'status' }>
           status={d.before}
           label={d.beforeLabel}
         />
-        <ArrowRight className={`h-4 w-4 ${themeClasses.text.muted}`} />
+        <ArrowRight className="h-4 w-4 text-pub-muted" />
         <StatusPill status={d.after} label={d.afterLabel} />
       </div>
       <div className={`divide-y ${divide}`}>
@@ -287,19 +278,18 @@ const StatusBody: React.FC<{ d: Extract<RefillArtifactData, { state: 'status' }>
 };
 
 const ListBody: React.FC<{ d: Extract<RefillArtifactData, { state: 'list' }> }> = ({ d }) => {
-  const { themeClasses } = useTheme();
   const { divide } = useEdges();
   if (d.orders.length === 0) {
     return (
       <CardShell icon={<Droplets className="h-5 w-5" />} title="Refill records">
         <div className="flex flex-col items-center py-8 text-center">
           <span
-            className={`mb-3 flex h-12 w-12 items-center justify-center rounded-2xl ${themeClasses.card.secondary}`}
+            className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-pub-sunk border-pub-edge"
           >
-            <Inbox className={`h-6 w-6 ${themeClasses.text.muted}`} />
+            <Inbox className="h-6 w-6 text-pub-muted" />
           </span>
-          <p className={`text-sm font-medium ${themeClasses.text.secondary}`}>No refill records yet</p>
-          <p className={`mt-1 text-[13px] ${themeClasses.text.muted}`}>
+          <p className="text-sm font-medium text-pub-muted">No refill records yet</p>
+          <p className="mt-1 text-[13px] text-pub-muted">
             Log one from AI Mode or the Cartridges page.
           </p>
         </div>
@@ -316,10 +306,10 @@ const ListBody: React.FC<{ d: Extract<RefillArtifactData, { state: 'list' }> }> 
         {d.orders.map((o) => (
           <div key={o.id} className="flex items-center justify-between gap-3 py-2.5">
             <div className="min-w-0">
-              <div className={`truncate text-sm ${themeClasses.text.primary}`}>
+              <div className="truncate text-sm text-pub-ink">
                 {o.customerName || 'Unknown customer'}
               </div>
-              <div className={`truncate text-[13px] ${themeClasses.text.secondary}`}>
+              <div className="truncate text-[13px] text-pub-muted">
                 <span className="font-mono tabular-nums">{o.id}</span>
                 {o.cartridges[0] ? ` - ${describeCartridge(o.cartridges[0])}` : ''}
               </div>
@@ -333,22 +323,21 @@ const ListBody: React.FC<{ d: Extract<RefillArtifactData, { state: 'list' }> }> 
 };
 
 const NotFoundBody: React.FC<{ orderId: string }> = ({ orderId }) => {
-  const { themeClasses } = useTheme();
   return (
     <CardShell icon={<SearchX className="h-5 w-5" />} title="Refill not found">
       <div className="flex flex-col items-center py-8 text-center">
         <span
-          className={`mb-3 flex h-12 w-12 items-center justify-center rounded-2xl ${themeClasses.card.secondary}`}
+          className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-pub-sunk border-pub-edge"
         >
-          <SearchX className={`h-6 w-6 ${themeClasses.text.muted}`} />
+          <SearchX className="h-6 w-6 text-pub-muted" />
         </span>
-        <p className={`text-sm font-medium ${themeClasses.text.secondary}`}>
+        <p className="text-sm font-medium text-pub-muted">
           No record for{' '}
-          <span className={`font-mono tabular-nums ${themeClasses.text.primary}`}>
+          <span className="font-mono tabular-nums text-pub-ink">
             {orderId || 'that id'}
           </span>
         </p>
-        <p className={`mt-1 text-[13px] ${themeClasses.text.muted}`}>
+        <p className="mt-1 text-[13px] text-pub-muted">
           Check the order ID and try again, like ORD-AB12CD.
         </p>
       </div>
@@ -388,11 +377,11 @@ const RecordFoot: React.FC<{ data: unknown }> = ({ data }) => {
   if (!order) return null;
   const opts = labelOpts(order);
   return (
-    <div className={`flex flex-wrap items-center gap-2 border-t px-4 py-3 ${themeClasses.header}`}>
+    <div className="flex flex-wrap items-center gap-2 border-t px-4 py-3 bg-pub-paper border-pub-edge">
       <button
         type="button"
         onClick={() => downloadReceipt(opts, '4x6')}
-        className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${themeClasses.button.secondary}`}
+        className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-3.5 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-pub-accent ${themeClasses.button.secondary}`}
       >
         <Download className="h-4 w-4" />
         4x6 label
@@ -400,7 +389,7 @@ const RecordFoot: React.FC<{ data: unknown }> = ({ data }) => {
       <button
         type="button"
         onClick={() => printReceipt(opts, '4x6')}
-        className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${themeClasses.button.primary}`}
+        className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-pub-accent ${themeClasses.button.primary}`}
       >
         <Printer className="h-4 w-4" />
         Print label

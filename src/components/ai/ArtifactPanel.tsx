@@ -25,22 +25,21 @@ const ReceiptArtifact: React.FC<{ opts: SimpleReceiptOptions }> = ({ opts }) => 
 };
 
 const TrackingArtifact: React.FC<{ card: TrackingCard }> = ({ card }) => {
-  const { themeClasses } = useTheme();
   return (
-    <div className={`rounded-2xl border p-5 ${themeClasses.card.secondary}`}>
+    <div className="rounded-2xl border p-5 bg-pub-paper border-pub-edge">
       <div className="flex items-center gap-2">
-        <Package className={`h-5 w-5 ${themeClasses.text.accent}`} />
-        <span className={`text-sm font-semibold ${themeClasses.text.primary}`}>
+        <Package className="h-5 w-5 text-pub-accent" />
+        <span className="font-display text-sm font-semibold text-pub-ink">
           {card.courier ?? 'Unknown carrier'}
         </span>
       </div>
-      <p className={`mt-3 font-mono text-lg tabular-nums ${themeClasses.text.primary}`}>{card.trackingNumber}</p>
+      <p className="mt-3 font-mono text-lg tabular-nums text-pub-ink">{card.trackingNumber}</p>
       {!card.url && (
-        <p className={`mt-3 text-sm ${themeClasses.text.muted}`}>
+        <p className="mt-3 text-sm text-pub-muted">
           Tell me the carrier and I will open its tracking page.
         </p>
       )}
-      <p className={`mt-4 text-xs ${themeClasses.text.muted}`}>
+      <p className="mt-4 text-xs text-pub-muted">
         Live in-app status is coming soon. Open on {card.courier ?? 'the carrier'} below for now.
       </p>
     </div>
@@ -61,14 +60,14 @@ const STATUS_TEXT: Record<string, string> = {
 const OrderListArtifact: React.FC<{ orders: CartridgeOrder[] }> = ({ orders }) => {
   const { themeClasses } = useTheme();
   if (!orders.length) {
-    return <p className={`text-sm ${themeClasses.text.muted}`}>No orders yet.</p>;
+    return <p className="text-sm text-pub-muted">No orders yet.</p>;
   }
   return (
     <ul className="space-y-2">
       {orders.map((o) => (
-        <li key={o.id} className={`rounded-xl border p-3 ${themeClasses.card.secondary}`}>
+        <li key={o.id} className="rounded-xl border p-3 bg-pub-sunk border-pub-edge">
           <div className="flex items-center justify-between gap-2">
-            <span className={`font-mono text-xs ${themeClasses.text.muted}`}>{o.id}</span>
+            <span className="font-mono tabular-nums text-xs text-pub-muted">{o.id}</span>
             <span
               className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                 themeClasses.status[STATUS_TONE[o.status] ?? 'info']
@@ -77,8 +76,8 @@ const OrderListArtifact: React.FC<{ orders: CartridgeOrder[] }> = ({ orders }) =
               {STATUS_TEXT[o.status] ?? o.status}
             </span>
           </div>
-          <p className={`mt-1 text-sm font-medium ${themeClasses.text.primary}`}>{o.customerName}</p>
-          <p className={`text-xs ${themeClasses.text.secondary}`}>
+          <p className="mt-1 text-sm font-medium text-pub-ink">{o.customerName}</p>
+          <p className="text-xs text-pub-muted">
             {o.cartridges.map((c) => describeCartridge(c)).join(', ')}
           </p>
         </li>
@@ -93,7 +92,6 @@ const OrderListArtifact: React.FC<{ orders: CartridgeOrder[] }> = ({ orders }) =
 // entirely by the rail (ConfirmationCheck + its draft state) and never reaches
 // here.
 const ArtifactPanel: React.FC = () => {
-  const { themeClasses } = useTheme();
   const { artifact } = useAiMode();
   if (!artifact || artifact.kind === 'none') return null;
   return (
@@ -106,7 +104,7 @@ const ArtifactPanel: React.FC = () => {
         <OrderListArtifact orders={(artifact.data as { orders: CartridgeOrder[] }).orders} />
       )}
       {artifact.kind !== 'receipt' && artifact.kind !== 'tracking' && artifact.kind !== 'list' && (
-        <p className={`text-sm ${themeClasses.text.muted}`}>Nothing to show yet.</p>
+        <p className="text-sm text-pub-muted">Nothing to show yet.</p>
       )}
     </div>
   );

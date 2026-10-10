@@ -34,7 +34,7 @@ const STATUS_LABEL: Record<TransactionStatus, string> = {
 };
 
 const PaymentBody: React.FC<{ data: unknown }> = ({ data }) => {
-  const { themeClasses, isDarkMode } = useTheme();
+  const { themeClasses } = useTheme();
   const d = data as PaymentArtifactData | undefined;
   const tx = d?.transaction;
 
@@ -44,10 +44,10 @@ const PaymentBody: React.FC<{ data: unknown }> = ({ data }) => {
 
   if (!tx) {
     return (
-      <div className={`overflow-hidden rounded-2xl border ${themeClasses.card.primary}`}>
+      <div className="overflow-hidden rounded-2xl border bg-pub-paper border-pub-edge">
         <div className="px-4 py-8 text-center">
-          <CreditCard className={`mx-auto mb-3 h-9 w-9 ${themeClasses.text.muted}`} />
-          <p className={`text-[15px] font-medium ${themeClasses.text.primary}`}>No payment to show</p>
+          <CreditCard className="mx-auto mb-3 h-9 w-9 text-pub-muted" />
+          <p className="text-[15px] font-medium text-pub-ink">No payment to show</p>
         </div>
       </div>
     );
@@ -66,30 +66,24 @@ const PaymentBody: React.FC<{ data: unknown }> = ({ data }) => {
     }
   };
 
-  // Header hue by status, carried by icon + text as well as colour.
-  const header =
-    status === 'approved'
-      ? isDarkMode
-        ? 'bg-emerald-900/25 border-emerald-800/50 text-emerald-100'
-        : 'bg-emerald-50 border-emerald-100 text-emerald-900'
-      : status === 'declined'
-        ? isDarkMode
-          ? 'bg-rose-900/25 border-rose-800/50 text-rose-100'
-          : 'bg-rose-50 border-rose-100 text-rose-900'
-        : isDarkMode
-          ? 'bg-indigo-900/25 border-indigo-800/50 text-indigo-100'
-          : 'bg-indigo-50 border-indigo-100 text-indigo-900';
+  // Status colour stays on the label while the header uses paper.
+  const header = 'bg-pub-paper border-pub-edge';
+  const statusTone = status === 'approved'
+    ? themeClasses.status.success
+    : status === 'declined'
+      ? themeClasses.status.error
+      : `${themeClasses.accent.soft} ${themeClasses.accent.border} text-pub-accent`;
 
   const StatusIcon = status === 'approved' ? Check : status === 'declined' ? X : Clock;
-  const divide = isDarkMode ? 'divide-slate-700/70' : 'divide-slate-100';
-  const border = isDarkMode ? 'border-slate-700/70' : 'border-slate-100';
+  const divide = 'divide-pub-edge';
+  const border = 'border-pub-edge';
 
   return (
-    <div className={`overflow-hidden rounded-2xl border ${themeClasses.card.primary}`}>
+    <div className="overflow-hidden rounded-2xl border bg-pub-paper border-pub-edge">
       <div className={`flex items-center gap-2 border-b px-4 py-2.5 ${header}`}>
-        <CreditCard className="h-4 w-4 shrink-0" />
-        <span className="text-[15px] font-semibold tracking-tight">Card payment</span>
-        <span className="ml-auto inline-flex items-center gap-1 text-[13px] font-medium">
+        <CreditCard className="h-4 w-4 shrink-0 text-pub-accent" />
+        <span className="font-display text-[15px] font-semibold tracking-tight text-pub-ink">Card payment</span>
+        <span className={`ml-auto inline-flex items-center gap-1 text-[13px] font-medium ${statusTone}`}>
           <StatusIcon className="h-3.5 w-3.5 shrink-0" />
           {STATUS_LABEL[status]}
         </span>
@@ -98,8 +92,8 @@ const PaymentBody: React.FC<{ data: unknown }> = ({ data }) => {
       <div className="px-4 py-3">
         {/* The amount is the hero, in mono like a real receipt total. */}
         <div className="flex items-baseline justify-between gap-3">
-          <span className={`text-[13px] ${themeClasses.text.secondary}`}>Amount</span>
-          <span className={`font-mono text-2xl font-semibold tabular-nums ${themeClasses.text.primary}`}>
+          <span className="text-[13px] text-pub-muted">Amount</span>
+          <span className="font-mono text-2xl font-semibold tabular-nums text-pub-ink">
             ${tx.amount.toFixed(2)}
           </span>
         </div>
@@ -107,29 +101,29 @@ const PaymentBody: React.FC<{ data: unknown }> = ({ data }) => {
         <ul className={`mt-4 divide-y border-t ${divide} ${border}`}>
           {tx.customerName && (
             <li className="flex items-center justify-between gap-3 py-2">
-              <span className={`text-[13px] ${themeClasses.text.secondary}`}>Customer</span>
-              <span className={`text-[15px] ${themeClasses.text.primary}`}>{tx.customerName}</span>
+              <span className="text-[13px] text-pub-muted">Customer</span>
+              <span className="text-[15px] text-pub-ink">{tx.customerName}</span>
             </li>
           )}
           <li className="flex items-center justify-between gap-3 py-2">
-            <span className={`text-[13px] ${themeClasses.text.secondary}`}>Method</span>
-            <span className={`text-[15px] ${themeClasses.text.primary}`}>Card (terminal)</span>
+            <span className="text-[13px] text-pub-muted">Method</span>
+            <span className="text-[15px] text-pub-ink">Card (terminal)</span>
           </li>
           <li className="flex items-center justify-between gap-3 py-2">
-            <span className={`text-[13px] ${themeClasses.text.secondary}`}>Recorded</span>
-            <span className={`font-mono text-[13px] tabular-nums ${themeClasses.text.primary}`}>
+            <span className="text-[13px] text-pub-muted">Recorded</span>
+            <span className="font-mono text-[13px] tabular-nums text-pub-ink">
               {prettyWhen(tx.createdAt)}
             </span>
           </li>
           <li className="flex items-center justify-between gap-3 py-2">
-            <span className={`text-[13px] ${themeClasses.text.secondary}`}>Reference</span>
-            <span className={`font-mono text-[13px] tabular-nums ${themeClasses.text.secondary}`}>{tx.id}</span>
+            <span className="text-[13px] text-pub-muted">Reference</span>
+            <span className="font-mono text-[13px] tabular-nums text-pub-muted">{tx.id}</span>
           </li>
         </ul>
 
         {/* Device send is stubbed until the Moneris backend exists, so the counter
             marks the real result after running the physical terminal. */}
-        <p className={`mt-3 text-[13px] ${themeClasses.text.secondary}`}>
+        <p className="mt-3 text-[13px] text-pub-muted">
           Run the card on the terminal, then mark the result. This is saved for reconciliation with Moneris.
         </p>
 
@@ -139,7 +133,7 @@ const PaymentBody: React.FC<{ data: unknown }> = ({ data }) => {
               type="button"
               onClick={() => mark('approved')}
               disabled={saving !== null}
-              className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-[15px] font-medium text-white outline-none hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-60"
+              className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-[15px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-pub-accent disabled:opacity-60 ${themeClasses.button.primary}`}
             >
               <Check className="h-4 w-4" />
               {saving === 'approved' ? 'Saving...' : 'Mark approved'}
@@ -148,7 +142,7 @@ const PaymentBody: React.FC<{ data: unknown }> = ({ data }) => {
               type="button"
               onClick={() => mark('declined')}
               disabled={saving !== null}
-              className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 text-[15px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-60 ${border} text-rose-600 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-900/20`}
+              className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-full border px-3 text-[15px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-pub-accent disabled:opacity-60 ${border} text-rose-600 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-900/20`}
             >
               <X className="h-4 w-4" />
               {saving === 'declined' ? 'Saving...' : 'Mark declined'}
@@ -158,7 +152,7 @@ const PaymentBody: React.FC<{ data: unknown }> = ({ data }) => {
           <button
             type="button"
             onClick={() => setStatus('recorded')}
-            className={`mt-3 text-[13px] underline-offset-2 hover:underline ${themeClasses.text.secondary}`}
+            className="mt-3 text-[13px] underline-offset-2 hover:underline text-pub-accent"
           >
             Change result
           </button>

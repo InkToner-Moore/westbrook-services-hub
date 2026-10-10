@@ -52,13 +52,11 @@ const NoteBody: React.FC<{ data: unknown }> = ({ data }) => {
 
   // Notes signature colour: amber (DESIGN-SPEC). Header carries text + icon, not
   // colour alone.
-  const amberHeader = isDarkMode
-    ? 'bg-amber-900/25 border-amber-800/50 text-amber-100'
-    : 'bg-amber-50 border-amber-100 text-amber-900';
+  const amberHeader = 'bg-pub-paper border-pub-edge';
   const categoryPill = isDarkMode
     ? 'bg-amber-800/50 text-amber-100 border-amber-700'
     : 'bg-amber-100 text-amber-800 border-amber-300';
-  const divide = isDarkMode ? 'divide-slate-700/70' : 'divide-slate-100';
+  const divide = 'divide-pub-edge';
 
   const hasContent = !!d && d.saved && !!d.content?.trim();
 
@@ -66,15 +64,15 @@ const NoteBody: React.FC<{ data: unknown }> = ({ data }) => {
   // opened before a save landed).
   if (!hasContent) {
     return (
-      <div className={`overflow-hidden rounded-2xl border ${themeClasses.card.primary}`}>
+      <div className="overflow-hidden rounded-2xl border bg-pub-paper border-pub-edge">
         <div className={`flex items-center gap-2 border-b px-4 py-2.5 ${amberHeader}`}>
-          <StickyNote className="h-4 w-4 shrink-0" />
-          <span className="text-[15px] font-semibold tracking-tight">Note</span>
+          <StickyNote className="h-4 w-4 shrink-0 text-pub-accent" />
+          <span className="font-display text-[15px] font-semibold tracking-tight text-pub-ink">Note</span>
         </div>
         <div className="px-4 py-8 text-center">
-          <StickyNote className={`mx-auto mb-3 h-9 w-9 ${themeClasses.text.muted}`} />
-          <p className={`text-[15px] font-medium ${themeClasses.text.primary}`}>Nothing saved yet</p>
-          <p className={`mt-1 text-[13px] ${themeClasses.text.secondary}`}>
+          <StickyNote className="mx-auto mb-3 h-9 w-9 text-pub-muted" />
+          <p className="text-[15px] font-medium text-pub-ink">Nothing saved yet</p>
+          <p className="mt-1 text-[13px] text-pub-muted">
             Type a note and it will be saved here.
           </p>
         </div>
@@ -83,11 +81,11 @@ const NoteBody: React.FC<{ data: unknown }> = ({ data }) => {
   }
 
   return (
-    <div className={`overflow-hidden rounded-2xl border ${themeClasses.card.primary}`}>
+    <div className="overflow-hidden rounded-2xl border bg-pub-paper border-pub-edge">
       {/* Slip header: names the tool, category sits on the right as a pill. */}
       <div className={`flex items-center gap-2 border-b px-4 py-2.5 ${amberHeader}`}>
-        <StickyNote className="h-4 w-4 shrink-0" />
-        <span className="text-[15px] font-semibold tracking-tight">Note</span>
+        <StickyNote className="h-4 w-4 shrink-0 text-pub-accent" />
+        <span className="font-display text-[15px] font-semibold tracking-tight text-pub-ink">Note</span>
         <span
           className={`ml-auto rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${categoryPill}`}
         >
@@ -98,27 +96,27 @@ const NoteBody: React.FC<{ data: unknown }> = ({ data }) => {
       <div className="px-4 py-3">
         {/* The note itself is the hero. Preserve line breaks as typed. */}
         <p
-          className={`whitespace-pre-wrap break-words text-[15px] leading-relaxed ${themeClasses.text.primary}`}
+          className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-pub-ink"
         >
           {d.content}
         </p>
 
         {/* Slip data: category, when, and the reference id. IDs and the time are
             set in mono like a real slip. */}
-        <ul className={`mt-4 divide-y border-t ${divide} ${isDarkMode ? 'border-slate-700/70' : 'border-slate-100'}`}>
+        <ul className={`mt-4 divide-y border-t ${divide} ${'border-pub-edge'}`}>
           <li className="flex items-center justify-between gap-3 py-2">
-            <span className={`text-[13px] ${themeClasses.text.secondary}`}>Category</span>
-            <span className={`text-[15px] ${themeClasses.text.primary}`}>{prettyCategory(d.category)}</span>
+            <span className="text-[13px] text-pub-muted">Category</span>
+            <span className="text-[15px] text-pub-ink">{prettyCategory(d.category)}</span>
           </li>
           <li className="flex items-center justify-between gap-3 py-2">
-            <span className={`text-[13px] ${themeClasses.text.secondary}`}>Saved</span>
-            <span className={`font-mono text-[13px] tabular-nums ${themeClasses.text.primary}`}>
+            <span className="text-[13px] text-pub-muted">Saved</span>
+            <span className="font-mono text-[13px] tabular-nums text-pub-ink">
               {prettyWhen(d.createdAt)}
             </span>
           </li>
           <li className="flex items-center justify-between gap-3 py-2">
-            <span className={`text-[13px] ${themeClasses.text.secondary}`}>Reference</span>
-            <span className={`font-mono text-[13px] tabular-nums ${themeClasses.text.secondary}`}>{d.id}</span>
+            <span className="text-[13px] text-pub-muted">Reference</span>
+            <span className="font-mono text-[13px] tabular-nums text-pub-muted">{d.id}</span>
           </li>
         </ul>
 

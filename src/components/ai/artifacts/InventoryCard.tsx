@@ -113,22 +113,18 @@ const StockBadge: React.FC<{ inStock: boolean }> = ({ inStock }) => {
 };
 
 const useHues = () => {
-  const { isDarkMode } = useTheme();
+  const { themeClasses } = useTheme();
   return {
-    orangeHeader: isDarkMode
-      ? 'bg-orange-900/25 border-orange-800/50 text-orange-100'
-      : 'bg-orange-50 border-orange-100 text-orange-900',
-    divide: isDarkMode ? 'divide-slate-700/70' : 'divide-slate-100',
-    priceChip: isDarkMode
-      ? 'bg-blue-500/20 text-blue-200 border-blue-400/50'
-      : 'bg-blue-100 text-blue-800 border-blue-300',
-    borderColor: isDarkMode ? 'border-slate-700/70' : 'border-slate-100',
+    orangeHeader: 'bg-pub-paper border-pub-edge text-pub-muted',
+    divide: 'divide-pub-edge',
+    priceChip: `${themeClasses.accent.soft} ${themeClasses.accent.border} text-pub-ink`,
+    borderColor: 'border-pub-edge',
   };
 };
 
 // --- edit forms --------------------------------------------------------------
 const btn = (base: string) =>
-  `inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${base}`;
+  `inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-pub-accent ${base}`;
 
 const KeyEditForm: React.FC<{
   item: KeyResult;
@@ -164,7 +160,7 @@ const KeyEditForm: React.FC<{
   return (
     <div className="mt-2 space-y-2.5">
       <label className="flex items-center justify-between gap-3">
-        <span className={`text-[13px] ${themeClasses.text.secondary}`}>In stock</span>
+        <span className="text-[13px] text-pub-muted">In stock</span>
         <button
           type="button"
           role="switch"
@@ -176,22 +172,22 @@ const KeyEditForm: React.FC<{
         </button>
       </label>
       <label className="block">
-        <span className={`mb-1 block text-[13px] ${themeClasses.text.secondary}`}>Price (before tax)</span>
+        <span className="mb-1 block text-[13px] text-pub-muted">Price (before tax)</span>
         <input
           inputMode="decimal"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
           placeholder="e.g. 4.99"
-          className={`min-h-[44px] w-full rounded-lg border px-3 py-2 text-[15px] tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${themeClasses.input}`}
+          className={`min-h-[44px] w-full rounded-lg border px-3 py-2 font-mono text-[15px] tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-pub-accent ${themeClasses.input}`}
         />
       </label>
       <label className="block">
-        <span className={`mb-1 block text-[13px] ${themeClasses.text.secondary}`}>Location / cut code</span>
+        <span className="mb-1 block text-[13px] text-pub-muted">Location / cut code</span>
         <input
           value={cutCode}
           onChange={(e) => setCutCode(e.target.value)}
           placeholder="e.g. KW1"
-          className={`min-h-[44px] w-full rounded-lg border px-3 py-2 text-[15px] outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${themeClasses.input}`}
+          className={`min-h-[44px] w-full rounded-lg border px-3 py-2 text-[15px] outline-none focus-visible:ring-2 focus-visible:ring-pub-accent ${themeClasses.input}`}
         />
       </label>
       <div className="flex items-center justify-end gap-2">
@@ -247,12 +243,12 @@ const RefillEditForm: React.FC<{
 
   const priceInput = (label: string, value: string, set: (v: string) => void) => (
     <label className="block">
-      <span className={`mb-1 block text-[13px] ${themeClasses.text.secondary}`}>{label}</span>
+      <span className="mb-1 block text-[13px] text-pub-muted">{label}</span>
       <input
         inputMode="decimal"
         value={value}
         onChange={(e) => set(e.target.value)}
-        className={`min-h-[44px] w-full rounded-lg border px-3 py-2 text-[15px] tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${themeClasses.input}`}
+        className={`min-h-[44px] w-full rounded-lg border px-3 py-2 font-mono text-[15px] tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-pub-accent ${themeClasses.input}`}
       />
     </label>
   );
@@ -260,7 +256,7 @@ const RefillEditForm: React.FC<{
   return (
     <div className="mt-2 space-y-2.5">
       <label className="flex items-center justify-between gap-3">
-        <span className={`text-[13px] ${themeClasses.text.secondary}`}>In stock</span>
+        <span className="text-[13px] text-pub-muted">In stock</span>
         <button
           type="button"
           role="switch"
@@ -312,10 +308,10 @@ const KeyReferencePanel: React.FC<{ reference?: KeyReference | null }> = ({ refe
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex w-full items-center gap-1.5 rounded-lg px-2 py-1 text-[13px] ${themeClasses.button.ghost}`}
+        className={`inline-flex w-full items-center gap-1.5 rounded-lg px-2 py-1 text-[13px] ${themeClasses.interactive.hover} text-pub-accent`}
       >
         <Info className="h-3.5 w-3.5 shrink-0" />
-        <span className={`truncate ${themeClasses.text.secondary}`}>
+        <span className="truncate text-pub-muted">
           Key reference{ref.keyway ? ` · ${ref.keyway}` : ''}
         </span>
         {ref.confidence ? (
@@ -337,7 +333,7 @@ const KeyReferencePanel: React.FC<{ reference?: KeyReference | null }> = ({ refe
       </button>
 
       {open ? (
-        <div className={`mt-1.5 space-y-2 rounded-xl border px-3 py-2.5 text-[13px] ${themeClasses.card.secondary}`}>
+        <div className="mt-1.5 space-y-2 rounded-xl border px-3 py-2.5 text-[13px] bg-pub-sunk border-pub-edge">
           {ref.fits ? (
             <p className={themeClasses.text.secondary}>
               <span className={themeClasses.text.muted}>Fits: </span>
@@ -347,12 +343,12 @@ const KeyReferencePanel: React.FC<{ reference?: KeyReference | null }> = ({ refe
 
           {equivalents.length ? (
             <div>
-              <p className={`mb-1 ${themeClasses.text.muted}`}>Cuts as (equivalents)</p>
+              <p className="mb-1 text-pub-muted">Cuts as (equivalents)</p>
               <div className="flex flex-wrap gap-1.5">
                 {equivalents.map((e, i) => (
                   <span
                     key={`${e.brand}-${e.ref}-${i}`}
-                    className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 font-mono text-[12px] ${themeClasses.card.primary}`}
+                    className="inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 font-mono text-[12px] bg-pub-paper border-pub-edge"
                     title={e.source || undefined}
                   >
                     <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${confidenceDot(e.confidence)}`} />
@@ -380,7 +376,7 @@ const KeyReferencePanel: React.FC<{ reference?: KeyReference | null }> = ({ refe
           ) : null}
 
           {ref.needsReview ? (
-            <p className={`text-[12px] italic ${themeClasses.text.muted}`}>
+            <p className="text-[12px] italic text-pub-muted">
               The research passes disagreed or only one identified this blank. Confirm before cutting.
             </p>
           ) : null}
@@ -401,19 +397,19 @@ const KeyRow: React.FC<{ item: KeyResult; onSaved: (next: KeyResult) => void }> 
     <li className="py-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <KeyRound className={`h-4 w-4 shrink-0 ${themeClasses.text.secondary}`} />
+          <KeyRound className="h-4 w-4 shrink-0 text-pub-muted" />
           <div className="min-w-0">
-            <p className={`truncate text-[15px] font-medium ${themeClasses.text.primary}`}>{item.model}</p>
+            <p className="truncate text-[15px] font-medium text-pub-ink">{item.model}</p>
             {item.notes ? (
-              <p className={`truncate text-[13px] ${themeClasses.text.muted}`}>{item.notes}</p>
+              <p className="truncate text-[13px] text-pub-muted">{item.notes}</p>
             ) : null}
           </div>
         </div>
         <div className="flex items-center gap-2">
           {price ? (
-            <span className={`font-mono text-[15px] font-semibold tabular-nums ${themeClasses.text.primary}`}>{price}</span>
+            <span className="font-mono text-[15px] font-semibold tabular-nums text-pub-ink">{price}</span>
           ) : (
-            <span className={`text-[13px] ${themeClasses.text.muted}`}>No price</span>
+            <span className="text-[13px] text-pub-muted">No price</span>
           )}
           <StockBadge inStock={item.inStock} />
         </div>
@@ -421,17 +417,17 @@ const KeyRow: React.FC<{ item: KeyResult; onSaved: (next: KeyResult) => void }> 
 
       {/* Location slot: reads the future cut-code map / any staff-set code. */}
       <div className="mt-1.5 flex items-center gap-1.5 pl-6">
-        <MapPin className={`h-3.5 w-3.5 shrink-0 ${themeClasses.text.muted}`} />
+        <MapPin className="h-3.5 w-3.5 shrink-0 text-pub-muted" />
         {location ? (
-          <span className={`font-mono text-[13px] tabular-nums ${themeClasses.text.secondary}`}>{location}</span>
+          <span className="font-mono text-[13px] tabular-nums text-pub-muted">{location}</span>
         ) : (
-          <span className={`text-[13px] italic ${themeClasses.text.muted}`}>Location coming soon</span>
+          <span className="text-[13px] italic text-pub-muted">Location coming soon</span>
         )}
         {!editing && (
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className={`ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[13px] ${themeClasses.button.ghost}`}
+            className={`ml-auto inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[13px] ${themeClasses.interactive.hover} text-pub-accent`}
           >
             <Pencil className="h-3.5 w-3.5" /> Edit
           </button>
@@ -468,17 +464,17 @@ const RefillRow: React.FC<{ item: RefillResult; onSaved: (next: RefillResult) =>
     <li className="py-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <Droplets className={`h-4 w-4 shrink-0 ${themeClasses.text.secondary}`} />
+          <Droplets className="h-4 w-4 shrink-0 text-pub-muted" />
           <div className="min-w-0">
-            <p className={`truncate text-[15px] font-medium ${themeClasses.text.primary}`}>{name}</p>
+            <p className="truncate text-[15px] font-medium text-pub-ink">{name}</p>
             {parts.length > 0 ? (
-              <p className={`truncate font-mono text-[13px] tabular-nums ${themeClasses.text.secondary}`}>
+              <p className="truncate font-mono text-[13px] tabular-nums text-pub-muted">
                 {parts.join('   ')}
               </p>
             ) : item.priceNote ? (
-              <p className={`truncate text-[13px] ${themeClasses.text.muted}`}>{item.priceNote}</p>
+              <p className="truncate text-[13px] text-pub-muted">{item.priceNote}</p>
             ) : (
-              <p className={`text-[13px] ${themeClasses.text.muted}`}>No price</p>
+              <p className="text-[13px] text-pub-muted">No price</p>
             )}
           </div>
         </div>
@@ -488,7 +484,7 @@ const RefillRow: React.FC<{ item: RefillResult; onSaved: (next: RefillResult) =>
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[13px] ${themeClasses.button.ghost}`}
+              className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[13px] ${themeClasses.interactive.hover} text-pub-accent`}
             >
               <Pencil className="h-3.5 w-3.5" /> Edit
             </button>
@@ -512,7 +508,6 @@ const RefillRow: React.FC<{ item: RefillResult; onSaved: (next: RefillResult) =>
 
 // --- lookup card -------------------------------------------------------------
 const LookupCard: React.FC<{ data: InventoryLookupData }> = ({ data }) => {
-  const { themeClasses } = useTheme();
   const { orangeHeader, divide } = useHues();
   // Local, editable copy so an inline save reflects immediately in the card.
   const [keys, setKeys] = useState<KeyResult[]>(data.keys ?? []);
@@ -528,8 +523,8 @@ const LookupCard: React.FC<{ data: InventoryLookupData }> = ({ data }) => {
 
   const header = (
     <div className={`flex items-center gap-2 border-b px-4 py-2.5 ${orangeHeader}`}>
-      <Boxes className="h-4 w-4 shrink-0" />
-      <span className="text-[15px] font-semibold tracking-tight">Inventory</span>
+      <Boxes className="h-4 w-4 shrink-0 text-pub-accent" />
+      <span className="font-display text-[15px] font-semibold tracking-tight text-pub-ink">Inventory</span>
       {query ? <span className="ml-auto truncate text-[13px] opacity-80">"{query}"</span> : null}
     </div>
   );
@@ -537,12 +532,12 @@ const LookupCard: React.FC<{ data: InventoryLookupData }> = ({ data }) => {
   // Empty query: the lookup ran with nothing to search on.
   if (!query.trim()) {
     return (
-      <div className={`overflow-hidden rounded-2xl border ${themeClasses.card.primary}`}>
+      <div className="overflow-hidden rounded-2xl border bg-pub-paper border-pub-edge">
         {header}
         <div className="px-4 py-8 text-center">
-          <Search className={`mx-auto mb-3 h-9 w-9 ${themeClasses.text.muted}`} />
-          <p className={`text-[15px] font-medium ${themeClasses.text.primary}`}>What should I look up?</p>
-          <p className={`mt-1 text-[13px] ${themeClasses.text.secondary}`}>
+          <Search className="mx-auto mb-3 h-9 w-9 text-pub-muted" />
+          <p className="text-[15px] font-medium text-pub-ink">What should I look up?</p>
+          <p className="mt-1 text-[13px] text-pub-muted">
             Ask for a key blank or a cartridge to see stock, price, and location.
           </p>
         </div>
@@ -553,12 +548,12 @@ const LookupCard: React.FC<{ data: InventoryLookupData }> = ({ data }) => {
   // No match for a real query.
   if (total === 0) {
     return (
-      <div className={`overflow-hidden rounded-2xl border ${themeClasses.card.primary}`}>
+      <div className="overflow-hidden rounded-2xl border bg-pub-paper border-pub-edge">
         {header}
         <div className="px-4 py-8 text-center">
-          <Search className={`mx-auto mb-3 h-9 w-9 ${themeClasses.text.muted}`} />
-          <p className={`text-[15px] font-medium ${themeClasses.text.primary}`}>No match for "{query}"</p>
-          <p className={`mt-1 text-[13px] ${themeClasses.text.secondary}`}>
+          <Search className="mx-auto mb-3 h-9 w-9 text-pub-muted" />
+          <p className="text-[15px] font-medium text-pub-ink">No match for "{query}"</p>
+          <p className="mt-1 text-[13px] text-pub-muted">
             Nothing in the key or refill inventory matched. Try a different name.
           </p>
         </div>
@@ -567,16 +562,16 @@ const LookupCard: React.FC<{ data: InventoryLookupData }> = ({ data }) => {
   }
 
   return (
-    <div className={`overflow-hidden rounded-2xl border ${themeClasses.card.primary}`}>
+    <div className="overflow-hidden rounded-2xl border bg-pub-paper border-pub-edge">
       {header}
       <div className="px-4 py-2">
-        <p className={`py-1 text-[13px] ${themeClasses.text.secondary}`}>
+        <p className="py-1 text-[13px] text-pub-muted">
           {total} {total === 1 ? 'match' : 'matches'}
         </p>
 
         {keys.length > 0 && (
           <>
-            <p className={`pt-1 text-[13px] font-semibold ${themeClasses.text.secondary}`}>Keys</p>
+            <p className="pt-1 text-[13px] font-semibold text-pub-muted">Keys</p>
             <ul className={`divide-y ${divide}`}>
               {keys.map((k) => (
                 <KeyRow
@@ -591,7 +586,7 @@ const LookupCard: React.FC<{ data: InventoryLookupData }> = ({ data }) => {
 
         {refills.length > 0 && (
           <>
-            <p className={`pt-3 text-[13px] font-semibold ${themeClasses.text.secondary}`}>Refills</p>
+            <p className="pt-3 text-[13px] font-semibold text-pub-muted">Refills</p>
             <ul className={`divide-y ${divide}`}>
               {refills.map((r) => (
                 <RefillRow
@@ -621,37 +616,37 @@ const SavedCard: React.FC<{ data: InventorySavedData }> = ({ data }) => {
   const location = keyLocation(item);
 
   return (
-    <div className={`overflow-hidden rounded-2xl border ${themeClasses.card.primary}`}>
+    <div className="overflow-hidden rounded-2xl border bg-pub-paper border-pub-edge">
       <div className={`flex items-center gap-2 border-b px-4 py-2.5 ${orangeHeader}`}>
-        <Boxes className="h-4 w-4 shrink-0" />
-        <span className="text-[15px] font-semibold tracking-tight">Inventory</span>
+        <Boxes className="h-4 w-4 shrink-0 text-pub-accent" />
+        <span className="font-display text-[15px] font-semibold tracking-tight text-pub-ink">Inventory</span>
         <span className="ml-auto text-[13px] opacity-80">Key added</span>
       </div>
       <div className="px-4 py-3">
         <div className="flex items-center gap-2">
-          <KeyRound className={`h-5 w-5 shrink-0 ${themeClasses.text.secondary}`} />
-          <p className={`text-[17px] font-semibold ${themeClasses.text.primary}`}>{item.model}</p>
+          <KeyRound className="h-5 w-5 shrink-0 text-pub-muted" />
+          <p className="text-[17px] font-semibold text-pub-ink">{item.model}</p>
         </div>
 
         <ul className={`mt-3 divide-y border-t ${divide} ${borderColor}`}>
           <li className="flex items-center justify-between gap-3 py-2">
-            <span className={`text-[13px] ${themeClasses.text.secondary}`}>Stock</span>
+            <span className="text-[13px] text-pub-muted">Stock</span>
             <StockBadge inStock={item.inStock} />
           </li>
           <li className="flex items-center justify-between gap-3 py-2">
-            <span className={`text-[13px] ${themeClasses.text.secondary}`}>Price</span>
+            <span className="text-[13px] text-pub-muted">Price</span>
             {price ? (
-              <span className={`font-mono text-[15px] font-semibold tabular-nums ${themeClasses.text.primary}`}>{price}</span>
+              <span className="font-mono text-[15px] font-semibold tabular-nums text-pub-ink">{price}</span>
             ) : (
-              <span className={`text-[13px] ${themeClasses.text.muted}`}>No price</span>
+              <span className="text-[13px] text-pub-muted">No price</span>
             )}
           </li>
           <li className="flex items-center justify-between gap-3 py-2">
-            <span className={`text-[13px] ${themeClasses.text.secondary}`}>Location</span>
+            <span className="text-[13px] text-pub-muted">Location</span>
             {location ? (
-              <span className={`font-mono text-[13px] tabular-nums ${themeClasses.text.secondary}`}>{location}</span>
+              <span className="font-mono text-[13px] tabular-nums text-pub-muted">{location}</span>
             ) : (
-              <span className={`text-[13px] italic ${themeClasses.text.muted}`}>Location coming soon</span>
+              <span className="text-[13px] italic text-pub-muted">Location coming soon</span>
             )}
           </li>
         </ul>
@@ -665,7 +660,7 @@ const SavedCard: React.FC<{ data: InventorySavedData }> = ({ data }) => {
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[13px] ${themeClasses.button.ghost}`}
+              className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[13px] ${themeClasses.interactive.hover} text-pub-accent`}
             >
               <Pencil className="h-3.5 w-3.5" /> Edit
             </button>
@@ -686,15 +681,14 @@ const SavedCard: React.FC<{ data: InventorySavedData }> = ({ data }) => {
 };
 
 const InventoryBody: React.FC<{ data: unknown }> = ({ data }) => {
-  const { themeClasses } = useTheme();
   const d = data as InventoryArtifactData | undefined;
 
   if (!d) {
     return (
-      <div className={`overflow-hidden rounded-2xl border ${themeClasses.card.primary}`}>
+      <div className="overflow-hidden rounded-2xl border bg-pub-paper border-pub-edge">
         <div className="px-4 py-8 text-center">
-          <Boxes className={`mx-auto mb-3 h-9 w-9 ${themeClasses.text.muted}`} />
-          <p className={`text-[15px] font-medium ${themeClasses.text.primary}`}>Nothing to show yet</p>
+          <Boxes className="mx-auto mb-3 h-9 w-9 text-pub-muted" />
+          <p className="text-[15px] font-medium text-pub-ink">Nothing to show yet</p>
         </div>
       </div>
     );

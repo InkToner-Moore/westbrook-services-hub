@@ -28,7 +28,7 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
   readOnly,
   onChange,
 }) => {
-  const { themeClasses, isDarkMode } = useTheme();
+  const { themeClasses } = useTheme();
 
   const update = (index: number, patch: Partial<ShipmentItem>) => {
     onChange(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
@@ -37,7 +37,7 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
   const removeItem = (index: number) => onChange(items.filter((_, i) => i !== index));
 
   const fieldClass = `min-h-[44px] w-full rounded-lg border px-2.5 py-1 text-[15px] outline-none xl:min-h-[34px] xl:px-2 xl:text-sm ${themeClasses.input}`;
-  const labelClass = `mb-0.5 block text-xs font-medium ${themeClasses.text.secondary}`;
+  const labelClass = `mb-0.5 block text-xs font-medium text-pub-muted`;
 
   return (
     <div className="space-y-2">
@@ -45,9 +45,9 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
         const taxLines = itemTaxLines(item);
         const taxTotal = taxEnabled ? itemTaxTotal(item) : 0;
         return (
-          <div key={index} className={`rounded-xl border p-2.5 ${themeClasses.card.secondary}`}>
+          <div key={index} className="rounded-xl border p-2.5 bg-pub-sunk border-pub-edge">
             <div className="mb-2 flex items-center justify-between">
-              <span className={`text-xs font-semibold ${themeClasses.text.secondary}`}>
+              <span className="text-xs font-semibold text-pub-muted">
                 Item {index + 1}
               </span>
               {!readOnly && items.length > 1 && (
@@ -56,7 +56,7 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
                   onClick={() => removeItem(index)}
                   title="Remove item"
                   aria-label={`Remove item ${index + 1}`}
-                  className={`flex h-11 w-11 items-center justify-center rounded-lg xl:h-7 xl:w-7 ${themeClasses.text.secondary} ${themeClasses.interactive.hover}`}
+                  className={`flex h-11 w-11 items-center justify-center rounded-lg xl:h-7 xl:w-7 text-pub-muted ${themeClasses.interactive.hover}`}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -78,7 +78,7 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
               <div className="col-span-2">
                 <label className={labelClass}>Tracking number</label>
                 <input
-                  className={fieldClass}
+                  className={`${fieldClass} font-mono tabular-nums`}
                   disabled={readOnly}
                   value={item.trackingNumber}
                   onChange={(e) => update(index, { trackingNumber: e.target.value })}
@@ -126,7 +126,7 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
               <div>
                 <label className={labelClass}>Shipping cost</label>
                 <input
-                  className={fieldClass}
+                  className={`${fieldClass} font-mono tabular-nums`}
                   disabled={readOnly}
                   inputMode="decimal"
                   value={item.cost == null ? '' : String(item.cost)}
@@ -186,9 +186,7 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
         <button
           type="button"
           onClick={addItem}
-          className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl border border-dashed px-3 py-1.5 text-sm xl:min-h-[36px] ${
-            isDarkMode ? 'border-slate-600 text-gray-300' : 'border-slate-300 text-slate-600'
-          } ${themeClasses.interactive.hover}`}
+          className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-dashed px-3 py-1.5 text-sm xl:min-h-[36px] border-pub-edge text-pub-accent ${themeClasses.interactive.hover}`}
         >
           <Plus className="h-4 w-4" />
           Add another item

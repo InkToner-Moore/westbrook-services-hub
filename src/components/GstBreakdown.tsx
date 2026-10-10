@@ -7,10 +7,10 @@ const GstBreakdown = ({ price }: { price: number }) => {
   const pct = (GST_RATE * 100).toFixed(0);
 
   return (
-    <div className="mt-2 rounded-md border bg-muted/40 px-3 py-2 text-sm space-y-0.5">
-      <div className="flex justify-between"><span>Subtotal</span><span>${price.toFixed(2)}</span></div>
-      <div className="flex justify-between"><span>GST ({pct}%)</span><span>${gst.toFixed(2)}</span></div>
-      <div className="flex justify-between font-semibold"><span>Total</span><span>${total.toFixed(2)}</span></div>
+    <div className="mt-2 rounded-md border border-pub-edge bg-pub-sunk text-pub-muted px-3 py-2 text-sm space-y-0.5">
+      <div className="flex justify-between"><span>Subtotal</span><span className="font-mono tabular-nums">${price.toFixed(2)}</span></div>
+      <div className="flex justify-between"><span>GST ({pct}%)</span><span className="font-mono tabular-nums">${gst.toFixed(2)}</span></div>
+      <div className="flex justify-between font-semibold text-pub-ink"><span>Total</span><span className="font-mono tabular-nums">${total.toFixed(2)}</span></div>
     </div>
   );
 };
