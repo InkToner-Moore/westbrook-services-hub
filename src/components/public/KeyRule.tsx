@@ -1,28 +1,27 @@
+// A hairline under the hero that ends in a small key, as if the key hangs off
+// the end of the line. Decorative only.
 const KeyRule = () => {
   return (
-    <div className="pub-key text-pub-brass mt-14 sm:mt-20" aria-hidden="true">
+    <div aria-hidden="true" className="pub-key">
+      <span className="pub-key-line" />
       <svg
-        className="pub-key-head"
-        viewBox="0 0 76 64"
-        fill="currentColor"
+        viewBox="0 0 128 44"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="pub-key-art"
       >
-        {/* One outer contour joins the bow, blade and collar without overlap holes. */}
+        <circle cx="20" cy="22" r="17" />
+        <circle cx="13" cy="22" r="4.5" />
         <path
-          fillRule="evenodd"
-          d="M61.393877 26A30 30 0 1 0 61.393877 38H63V42Q63 43 64 43H68Q69 43 69 42V38H76V26H69V22Q69 21 68 21H64Q63 21 63 22V26ZM30.5 32A7.5 7.5 0 1 0 15.5 32A7.5 7.5 0 1 0 30.5 32Z"
+          d={
+            "M35.9 16 H110 L124 23 L117 30 H108 L104 25 L100 30 H94 L90 23 L86 30 " +
+            "H78 L75 26 H70 L67 30 H60 L56 24 L52 30 H35"
+          }
         />
-      </svg>
-      <div className="pub-key-blade">
-        <div className="pub-key-bar" />
-        <div className="pub-key-groove" />
-        <div className="pub-key-teeth" />
-      </div>
-      <svg
-        className="pub-key-tip"
-        viewBox="0 0 40 64"
-        fill="currentColor"
-      >
-        <path d="M0 26H18L38 33L27 44H0Z" />
+        <path d="M44 20.5 H106" strokeOpacity="0.45" />
       </svg>
     </div>
   );
