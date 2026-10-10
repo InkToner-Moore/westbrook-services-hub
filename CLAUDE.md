@@ -156,7 +156,7 @@ production — production builds set `VITE_NODE_ENV=production` and no bypass fl
 ## Theme
 
 Custom system, not `next-themes` at runtime. `ThemeContext` holds `isDarkMode`
-(persisted in `localStorage` under `staff-theme`, **default light**), toggles the
+(persisted in `localStorage` under `staff-theme-v2`, **default light**), toggles the
 `.dark` class and `color-scheme` on the root, and exposes a `themeClasses` bag of
 Tailwind strings. Staff components style off `themeClasses.*` rather than raw
 `dark:` variants in many places — match the surrounding file's approach when you
