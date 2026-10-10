@@ -1,3 +1,4 @@
+import Backdrop from "./Backdrop";
 import { useEffect, useRef, useState } from "react";
 import { calgaryNow, openState, WEEK, formatHour } from "@/lib/storeInfo";
 
@@ -33,10 +34,16 @@ const Hours = () => {
     <section
       ref={ref}
       className={
-        `pub-hours border-t border-pub-edge py-16 sm:py-24 grid lg:grid-cols-12 gap-8 lg:gap-12 ` +
+        `pub-layer-section pub-hours border-t border-pub-edge py-16 sm:py-24 grid lg:grid-cols-12 gap-8 lg:gap-12 ` +
         (visible ? "pub-hours-visible" : "")
       }
     >
+      <Backdrop
+        items={[
+          { kind: "tag-purolator", size: 190, top: "60%", left: "1%", rotate: -6, speed: 0.05, hideBelow: "lg" },
+          { kind: "drop", size: 200, bottom: "-70px", right: "-150px", rotate: -10, speed: -0.04 },
+        ]}
+      />
       <div className="lg:col-span-4">
         <h2 className="pub-section-title font-display font-medium">Hours</h2>
         <p className="mt-5 flex items-start gap-2 text-base font-medium">

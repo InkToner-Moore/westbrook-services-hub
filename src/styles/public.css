@@ -274,21 +274,6 @@
   animation: pub-key-insert 1100ms cubic-bezier(0.2, 0.7, 0.1, 1) 1300ms both;
 }
 
-.public-site .pub-key-line {
-  flex: 1;
-  min-width: 0;
-  height: 1.5px;
-  background: currentColor;
-}
-
-/* The line meets the key's head at the left edge of the drawing, 3 units in. */
-.public-site .pub-key-art {
-  width: 84px;
-  height: 29px;
-  flex-shrink: 0;
-  margin-left: -2px;
-}
-
 /* Match the space below the key to its margin above without changing the tools. */
 .public-site section:has(> .pub-key) + section {
   padding-top: 3.5rem;
@@ -376,12 +361,6 @@
 }
 
 @media (min-width: 640px) {
-  .public-site .pub-key-art {
-    width: 128px;
-    height: 44px;
-    margin-left: -3px;
-  }
-
   .public-site section:has(> .pub-key) + section {
     padding-top: 5rem;
   }
@@ -580,4 +559,169 @@
 
 .public-site .pub-courier > span {
   font-size: 0.875rem;
+}
+
+/* Absolute artwork leaves the section grids and their spacing intact. */
+.public-site {
+  overflow-x: clip;
+}
+
+.public-site .pub-layer-section {
+  position: relative;
+  isolation: isolate;
+}
+
+.public-site .pub-layer-section > :not(.pub-backdrop) {
+  position: relative;
+  z-index: 1;
+}
+
+.public-site .pub-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.public-site .pub-backdrop-item {
+  position: absolute;
+  color: var(--pub-ink);
+  opacity: 0.085;
+  transform: translate3d(0, calc(var(--pub-scroll, 0) * var(--speed) * 1px), 0);
+  will-change: transform;
+}
+
+.public-site .pub-backdrop-tag {
+  opacity: 0.11;
+}
+
+.dark .public-site .pub-backdrop-item {
+  opacity: 0.11;
+}
+
+.dark .public-site .pub-backdrop-tag {
+  opacity: 0.14;
+}
+
+.public-site .pub-backdrop-float {
+  --pub-art-scale: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: rotate(var(--rot)) scale(var(--pub-art-scale));
+  animation: pub-backdrop-float 13s ease-in-out infinite alternate;
+}
+
+.public-site .pub-backdrop-art {
+  overflow: visible;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.public-site .pub-conveyor {
+  position: relative;
+  height: 112px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Each half includes its trailing gap, so -50% meets the next copy exactly. */
+.public-site .pub-conveyor-track {
+  display: flex;
+  width: max-content;
+  height: 100%;
+  color: var(--pub-ink);
+  opacity: 0.22;
+  animation: pub-conveyor 80s linear infinite;
+}
+
+.dark .public-site .pub-conveyor-track {
+  opacity: 0.28;
+}
+
+.public-site .pub-conveyor-half {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 72px;
+  padding-right: 72px;
+}
+
+.public-site .pub-conveyor-art {
+  overflow: visible;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+}
+
+.public-site .pub-conveyor-tag {
+  width: 112px;
+}
+
+.public-site .pub-conveyor-baseline {
+  position: absolute;
+  inset-inline: 0;
+  top: 78%;
+  border-top: 1.5px dashed var(--pub-edge);
+}
+
+@keyframes pub-backdrop-float {
+  from {
+    transform: translate3d(0, 0, 0) rotate(var(--rot)) scale(var(--pub-art-scale));
+  }
+
+  to {
+    transform: translate3d(0, -14px, 0) rotate(calc(var(--rot) + 2.5deg)) scale(var(--pub-art-scale));
+  }
+}
+
+@keyframes pub-conveyor {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+@media (max-width: 639px) {
+  .public-site .pub-backdrop-float {
+    --pub-art-scale: 0.62;
+  }
+
+  .public-site .pub-backdrop-hide-sm {
+    display: none;
+  }
+
+  .public-site .pub-conveyor {
+    height: 84px;
+  }
+
+  .public-site .pub-conveyor-half {
+    gap: 48px;
+    padding-right: 48px;
+  }
+
+  .public-site .pub-conveyor-art {
+    width: 42px;
+    height: 42px;
+  }
+
+  .public-site .pub-conveyor-tag {
+    width: 84px;
+  }
+}
+
+@media (max-width: 767px) {
+  .public-site .pub-backdrop-hide-md {
+    display: none;
+  }
+}
+
+@media (max-width: 1023px) {
+  .public-site .pub-backdrop-hide-lg {
+    display: none;
+  }
 }
