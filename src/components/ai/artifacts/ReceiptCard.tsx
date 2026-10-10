@@ -1,3 +1,4 @@
+import { SegmentedTabs } from "@/components/shell/ToolPage";
 // The receipt artifact card (kind 'receipt'). The slip is the hero: a paper
 // counter slip rendered as HTML (not the PDF iframe, which comes up blank under a
 // headless browser), previewable as a full sheet OR a 4x6 label, with money and
@@ -173,32 +174,12 @@ const Slip: React.FC<{ opts: SimpleReceiptOptions; size: ReceiptSize }> = ({ opt
   );
 };
 
-const SegmentedToggle: React.FC<{ size: ReceiptSize; onChange: (s: ReceiptSize) => void }> = ({ size, onChange }) => {
-  const { themeClasses } = useTheme();
-  const opt = (value: ReceiptSize, Icon: typeof FileText, label: string) => {
-    const active = size === value;
-    return (
-      <button
-        type="button"
-        role="tab"
-        aria-selected={active}
-        onClick={() => onChange(value)}
-        className={`inline-flex min-h-[36px] flex-1 items-center justify-center gap-1.5 rounded-lg border border-transparent px-3 py-1.5 text-[13px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-pub-accent ${
-          active ? `${themeClasses.accent.soft} ${themeClasses.accent.border} text-pub-ink` : `text-pub-muted ${themeClasses.interactive.hover}`
-        }`}
-      >
-        <Icon className="h-4 w-4" />
-        {label}
-      </button>
-    );
-  };
-  return (
-    <div className="flex gap-1 rounded-xl border p-1 bg-pub-sunk border-pub-edge">
-      {opt('letter', FileText, 'Full sheet')}
-      {opt('4x6', Tag, '4x6 label')}
-    </div>
-  );
-};
+const SegmentedToggle: React.FC<{ size: ReceiptSize; onChange: (s: ReceiptSize) => void }> = ({ size, onChange }) => (
+  <SegmentedTabs<ReceiptSize> size="sm" label="Receipt size" value={size} onChange={onChange} options={[
+    { value: 'letter', label: 'Full sheet', icon: FileText },
+    { value: '4x6', label: '4x6 label', icon: Tag },
+  ]} />
+);
 
 const EmptyState: React.FC = () => {
   return (
@@ -265,9 +246,7 @@ const ReceiptFoot: React.FC<{ data: unknown }> = ({ data }) => {
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-full px-3 py-2 text-[13px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-pub-accent ${
-        variant === 'primary' ? themeClasses.button.primary : themeClasses.button.secondary
-      }`}
+      className={`inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-full px-3 py-2 text-[13px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-pub-accent ${ variant === 'primary' ? themeClasses.button.primary : themeClasses.button.secondary }`}
     >
       <Icon className="h-4 w-4" />
       {label}

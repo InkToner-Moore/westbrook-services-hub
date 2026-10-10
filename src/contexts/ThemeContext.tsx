@@ -90,6 +90,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       : 'bg-white/90 border-[#e4e1d9] backdrop-blur-xl',
 
     text: {
+      danger: isDarkMode ? 'text-red-300' : 'text-red-700',
       primary: isDarkMode ? 'text-[#eceef6]' : 'text-[#15173a]',
       secondary: isDarkMode ? 'text-[#a3a8bd]' : 'text-[#5b5f76]',
       // The quietest text still has to pass AA on paper and on graphite.

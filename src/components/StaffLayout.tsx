@@ -13,6 +13,8 @@ interface StaffLayoutProps {
   backTo?: string;
   backLabel?: string;
   tool?: ToolKey;
+  tabs?: ReactNode;
+  actions?: ReactNode;
 }
 
 const StaffLayout = ({
@@ -24,6 +26,8 @@ const StaffLayout = ({
   backTo,
   backLabel,
   tool,
+  tabs,
+  actions,
 }: StaffLayoutProps) => {
   const { themeClasses } = useTheme();
   const { inShell } = useShell();
@@ -33,7 +37,7 @@ const StaffLayout = ({
   // no back button. A thin title bar keeps the tool legible in the center pane.
   if (inShell && tool) {
     return (
-      <ToolPage tool={tool} subtitle={subtitle}>
+      <ToolPage tool={tool} subtitle={subtitle} tabs={tabs} actions={actions}>
         {children}
       </ToolPage>
     );
@@ -54,6 +58,8 @@ const StaffLayout = ({
             {subtitle && <p className={`text-sm ${themeClasses.text.secondary}`}>{subtitle}</p>}
           </div>
         </div>
+        {actions && <div className="mb-5 flex flex-wrap gap-2">{actions}</div>}
+        {tabs && <div className="mb-5">{tabs}</div>}
         {children}
       </div>
     );
@@ -71,6 +77,8 @@ const StaffLayout = ({
         backLabel={backLabel}
       />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {actions && <div className="mb-5 flex flex-wrap gap-2">{actions}</div>}
+        {tabs && <div className="mb-5">{tabs}</div>}
         {children}
       </main>
     </div>
