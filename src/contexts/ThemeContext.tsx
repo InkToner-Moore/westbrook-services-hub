@@ -40,15 +40,36 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     setIsDarkMode(!isDarkMode);
   };
 
-  // The counter/paper palette (see docs/ui-rehaul/DESIGN-SPEC.md). Both themes
-  // share one warm-neutral spine so a light/dark toggle only changes value, never
-  // layout. Light is warm paper on a paper-grey counter; dark is graphite. Ink
-  // (indigo) is the brand + AI signature; blue is the action colour; brass (amber)
-  // is the single warm accent. Borders + a step in surface value carry hierarchy;
-  // heavy shadows are gone.
+  // The shop palette is shared with the customer page: warm paper in light,
+  // graphite in dark. Ink navy is the brand and the primary button; indigo is
+  // the accent for links and focus. Brass is the single warm accent.
   const themeClasses = {
+    // Display face for page titles and the few big lines; body stays Plex.
+    display: 'font-display font-semibold',
+    // The single brand fill: ink on paper in light, paper-light on graphite in dark.
+    ink: {
+      fill: isDarkMode
+        ? 'bg-[#eceef6] text-[#0e1014] border-[#eceef6]'
+        : 'bg-[#15173a] text-white border-[#15173a]',
+      soft: isDarkMode ? 'bg-[#1f232c]' : 'bg-[#f1efe9]',
+      text: isDarkMode ? 'text-[#eceef6]' : 'text-[#15173a]',
+    },
+    accent: {
+      fill: isDarkMode
+        ? 'bg-[#8f9bff] text-[#0e1014] border-[#8f9bff]'
+        : 'bg-[#2f3ad1] text-white border-[#2f3ad1]',
+      soft: isDarkMode ? 'bg-[#1b1f33]' : 'bg-[#eef0fd]',
+      text: isDarkMode ? 'text-[#8f9bff]' : 'text-[#2f3ad1]',
+      border: isDarkMode ? 'border-[#3a4290]' : 'border-[#c9cdf5]',
+    },
+    brass: {
+      text: isDarkMode ? 'text-[#d9a84a]' : 'text-[#8a5f12]',
+      soft: isDarkMode ? 'bg-[#2a2212]' : 'bg-[#faf3e3]',
+    },
+    edge: isDarkMode ? 'border-[#2a2f3a]' : 'border-[#e4e1d9]',
+
     background: isDarkMode
-      ? 'bg-[#0f1115]'
+      ? 'bg-[#0e1014]'
       : 'bg-[#f6f5f2]',
 
     // Two former Lovable tells are neutralised here, at the token, so they vanish
@@ -69,18 +90,18 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       : 'bg-white/90 border-[#e4e1d9] backdrop-blur-xl',
 
     text: {
-      primary: isDarkMode ? 'text-[#f3f4f6]' : 'text-[#1a1d23]',
-      secondary: isDarkMode ? 'text-[#9aa4b2]' : 'text-[#5b6270]',
+      primary: isDarkMode ? 'text-[#eceef6]' : 'text-[#15173a]',
+      secondary: isDarkMode ? 'text-[#a3a8bd]' : 'text-[#5b5f76]',
       // The quietest text still has to pass AA on paper and on graphite.
-      muted: isDarkMode ? 'text-[#8b95a5]' : 'text-[#666d7a]',
-      accent: isDarkMode ? 'text-blue-400' : 'text-blue-700',
-      inverted: isDarkMode ? 'text-[#1a1d23]' : 'text-white',
+      muted: isDarkMode ? 'text-[#8b90a6]' : 'text-[#676b82]',
+      accent: isDarkMode ? 'text-[#8f9bff]' : 'text-[#2f3ad1]',
+      inverted: isDarkMode ? 'text-[#0e1014]' : 'text-white',
     },
 
     gradient: {
       // Solid, not a gradient (see note above): renders solid graphite through
       // the existing `bg-clip-text text-transparent` at each call site.
-      title: isDarkMode ? 'bg-[#f3f4f6]' : 'bg-[#1a1d23]',
+      title: isDarkMode ? 'bg-[#eceef6]' : 'bg-[#15173a]',
     },
 
     card: {
@@ -91,20 +112,20 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
         ? 'bg-[#1f232c] border-[#2a2f3a]'
         : 'bg-[#f1efe9] border-[#e4e1d9]',
       accent: isDarkMode
-        ? 'bg-[#171a21] border-blue-700'
-        : 'bg-blue-50 border-blue-200',
+        ? 'bg-[#1b1f33] border-[#3a4290]'
+        : 'bg-[#eef0fd] border-[#c9cdf5]',
     },
 
     button: {
       primary: isDarkMode
-        ? 'bg-blue-500 hover:bg-blue-400 text-white border-blue-500 shadow-sm'
-        : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600 shadow-sm',
+        ? 'bg-[#eceef6] hover:bg-[#8f9bff] text-[#0e1014] border-[#eceef6]'
+        : 'bg-[#15173a] hover:bg-[#2f3ad1] text-white border-[#15173a]',
       secondary: isDarkMode
-        ? 'bg-[#1f232c] hover:bg-[#262b35] text-[#f3f4f6] border-[#2a2f3a]'
-        : 'bg-[#f1efe9] hover:bg-[#e9e6df] text-[#1a1d23] border-[#e4e1d9]',
+        ? 'bg-[#1f232c] hover:bg-[#262b35] text-[#eceef6] border-[#2a2f3a]'
+        : 'bg-[#f1efe9] hover:bg-[#e9e6df] text-[#15173a] border-[#e4e1d9]',
       ghost: isDarkMode
-        ? 'bg-transparent hover:bg-[#1f232c] text-[#9aa4b2] border-transparent'
-        : 'bg-transparent hover:bg-[#f1efe9] text-[#5b6270] border-transparent',
+        ? 'bg-transparent hover:bg-[#1f232c] text-[#a3a8bd] border-transparent'
+        : 'bg-transparent hover:bg-[#f1efe9] text-[#5b5f76] border-transparent',
       danger: isDarkMode
         ? 'bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-sm'
         : 'bg-red-600 hover:bg-red-700 text-white border-red-600 shadow-sm',
@@ -114,24 +135,30 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     },
 
     input: isDarkMode
-      ? 'bg-[#1f232c] border-[#2a2f3a] text-[#f3f4f6] placeholder:text-[#8b95a5] focus:border-blue-400 focus:ring-blue-400/30'
-      : 'bg-[#f1efe9] border-[#e4e1d9] text-[#1a1d23] placeholder:text-[#666d7a] focus:border-blue-500 focus:ring-blue-500/30',
+      ? 'bg-[#1f232c] border-[#2a2f3a] text-[#eceef6] ' +
+        'placeholder:text-[#8b90a6] focus:border-[#8f9bff] focus:ring-[#8f9bff]/30'
+      : 'bg-[#f1efe9] border-[#e4e1d9] text-[#15173a] ' +
+        'placeholder:text-[#676b82] focus:border-[#2f3ad1] focus:ring-[#2f3ad1]/30',
 
     link: isDarkMode
-      ? 'text-blue-400 hover:text-blue-300'
-      : 'text-blue-700 hover:text-blue-800',
+      ? 'text-[#8f9bff] hover:text-[#b4bcff]'
+      : 'text-[#2f3ad1] hover:text-[#15173a]',
 
     status: {
       success: isDarkMode ? 'bg-emerald-900/50 text-emerald-200 border-emerald-700' : 'bg-emerald-50 text-emerald-800 border-emerald-300',
       warning: isDarkMode ? 'bg-amber-900/50 text-amber-200 border-amber-700' : 'bg-amber-50 text-amber-900 border-amber-300',
       error: isDarkMode ? 'bg-red-900/50 text-red-200 border-red-700' : 'bg-red-50 text-red-800 border-red-300',
-      info: isDarkMode ? 'bg-blue-900/50 text-blue-200 border-blue-700' : 'bg-blue-50 text-blue-800 border-blue-300',
+      info: isDarkMode
+        ? 'bg-[#1b1f33] text-[#c5cbff] border-[#3a4290]'
+        : 'bg-[#eef0fd] text-[#232ba3] border-[#c9cdf5]',
     },
 
     interactive: {
       hover: isDarkMode ? 'hover:bg-[#1f232c]' : 'hover:bg-[#f1efe9]',
       active: isDarkMode ? 'active:bg-[#262b35]' : 'active:bg-[#e9e6df]',
-      focus: isDarkMode ? 'focus:ring-2 focus:ring-blue-400/50 focus:outline-none' : 'focus:ring-2 focus:ring-blue-500/50 focus:outline-none',
+      focus: isDarkMode
+        ? 'focus-visible:ring-2 focus-visible:ring-[#8f9bff] focus-visible:outline-none'
+        : 'focus-visible:ring-2 focus-visible:ring-[#2f3ad1] focus-visible:outline-none',
     },
   };
 

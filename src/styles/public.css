@@ -1,32 +1,9 @@
 .public-site {
-  --pub-counter: #f6f5f2;
-  --pub-paper: #ffffff;
-  --pub-sunk: #f1efe9;
-  --pub-edge: #e4e1d9;
-  --pub-ink: #15173a;
-  --pub-muted: #5b5f76;
-  --pub-accent: #2f3ad1;
-  --pub-brass: #a8741a;
-  --pub-open: #1f7a4d;
-  --pub-error: #b42318;
   background: var(--pub-counter);
   color: var(--pub-ink);
   font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   font-size: 17px;
   line-height: 1.55;
-}
-
-.dark .public-site {
-  --pub-counter: #0e1014;
-  --pub-paper: #171a21;
-  --pub-sunk: #1f232c;
-  --pub-edge: #2a2f3a;
-  --pub-ink: #eceef6;
-  --pub-muted: #a3a8bd;
-  --pub-accent: #8f9bff;
-  --pub-brass: #d9a84a;
-  --pub-open: #5ad08f;
-  --pub-error: #ff9b8e;
 }
 
 .public-site .pub-container {
@@ -223,20 +200,20 @@
 }
 
 .public-site .pub-hero-service {
-  --pub-delay: 700ms;
+  --service-delay: 700ms;
   text-decoration: none;
 }
 
 .public-site .pub-hero-services li:nth-child(2) .pub-hero-service {
-  --pub-delay: 840ms;
+  --service-delay: 840ms;
 }
 
 .public-site .pub-hero-services li:nth-child(3) .pub-hero-service {
-  --pub-delay: 980ms;
+  --service-delay: 980ms;
 }
 
 .public-site .pub-hero-services li:nth-child(4) .pub-hero-service {
-  --pub-delay: 1120ms;
+  --service-delay: 1120ms;
 }
 
 .public-site .pub-hero-service-art {
@@ -259,11 +236,11 @@
 }
 
 .public-site .pub-hero-service .pub-draw {
-  animation: pub-draw 900ms cubic-bezier(0.2, 0.7, 0.1, 1) var(--pub-delay) both;
+  animation: pub-draw 900ms cubic-bezier(0.2, 0.7, 0.1, 1) var(--service-delay) both;
 }
 
 .public-site .pub-hero-service > span {
-  animation: pub-fade 400ms var(--pub-delay) both;
+  animation: pub-fade 400ms var(--service-delay) both;
 }
 
 .public-site .pub-service {

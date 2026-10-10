@@ -6,9 +6,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Shared design tokens. shadcn colors use HSL; the shop palette uses hex. */
 
 /* These variables back every shadcn/Radix primitive (Select menus, dialogs,
    toasts, badges). They are kept in step with the Tailwind classes in
@@ -16,37 +14,47 @@ All colors MUST be HSL.
    ThemeContext toggles the `.dark` class on <html> to switch between them. */
 @layer base {
   :root {
-    /* White, not the slate page tint: shadcn's DialogContent/Input/SelectTrigger
-       are built on `bg-background`, so tinting it would make a dialog the same
-       shade as the `card.secondary` panels sitting inside it. The page tint
-       comes from themeClasses.background instead. */
+    /* The shop palette, shared by the customer page (pub-* classes) and the staff theme. */
+    --pub-counter: #f6f5f2;
+    --pub-paper: #ffffff;
+    --pub-sunk: #f1efe9;
+    --pub-edge: #e4e1d9;
+    --pub-ink: #15173a;
+    --pub-muted: #5b5f76;
+    --pub-accent: #2f3ad1;
+    --pub-brass: #a8741a;
+    --pub-open: #1f7a4d;
+    --pub-error: #b42318;
+
+    /* Paper surfaces sit above the warm counter page tint supplied by
+       themeClasses.background, with ink navy for text and primary actions. */
     --background: 0 0% 100%;
-    --foreground: 222.2 47.4% 11.2%;
+    --foreground: 237 47% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 47.4% 11.2%;
+    --card-foreground: 237 47% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 47.4% 11.2%;
+    --popover-foreground: 237 47% 15%;
 
-    --primary: 221.2 83.2% 53.3%;
+    --primary: 237 47% 15%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 45 22% 93%;
+    --secondary-foreground: 237 47% 15%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 40%;
+    --muted: 45 22% 93%;
+    --muted-foreground: 231 13% 41%;
 
-    --accent: 210 40% 94%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 45 22% 93%;
+    --accent-foreground: 237 47% 15%;
 
     --destructive: 0 72.2% 50.6%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 26% 84%;
-    --input: 214.3 26% 84%;
-    --ring: 221.2 83.2% 53.3%;
+    --border: 44 17% 87%;
+    --input: 44 17% 87%;
+    --ring: 236 64% 50%;
 
     --radius: 0.5rem;
 
@@ -68,35 +76,47 @@ All colors MUST be HSL.
   }
 
   .dark {
-    /* slate-900 page, slate-800 surfaces, slate-700 lines — the same ladder
-       ThemeContext uses for cards, so popovers don't read as a foreign layer. */
-    --background: 222.2 47.4% 11.2%;
-    --foreground: 210 40% 98%;
+    /* The shop palette, shared by the customer page (pub-* classes) and the staff theme. */
+    --pub-counter: #0e1014;
+    --pub-paper: #171a21;
+    --pub-sunk: #1f232c;
+    --pub-edge: #2a2f3a;
+    --pub-ink: #eceef6;
+    --pub-muted: #a3a8bd;
+    --pub-accent: #8f9bff;
+    --pub-brass: #d9a84a;
+    --pub-open: #5ad08f;
+    --pub-error: #ff9b8e;
 
-    --card: 217.2 32.6% 17.5%;
-    --card-foreground: 210 40% 98%;
+    /* Graphite uses a counter, paper, sunk, and edge ladder shared with the
+       customer page, keeping portal surfaces in the same palette. */
+    --background: 222 18% 11%;
+    --foreground: 228 36% 95%;
 
-    --popover: 217.2 32.6% 17.5%;
-    --popover-foreground: 210 40% 98%;
+    --card: 222 18% 11%;
+    --card-foreground: 228 36% 95%;
 
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 0 0% 100%;
+    --popover: 222 17% 15%;
+    --popover-foreground: 228 36% 95%;
 
-    --secondary: 215 25% 27%;
-    --secondary-foreground: 210 40% 98%;
+    --primary: 228 36% 95%;
+    --primary-foreground: 220 18% 7%;
 
-    --muted: 215 25% 27%;
-    --muted-foreground: 215 20.2% 70%;
+    --secondary: 220 16% 18%;
+    --secondary-foreground: 228 36% 95%;
 
-    --accent: 215 25% 27%;
-    --accent-foreground: 210 40% 98%;
+    --muted: 220 16% 18%;
+    --muted-foreground: 228 16% 69%;
+
+    --accent: 220 16% 18%;
+    --accent-foreground: 228 36% 95%;
 
     --destructive: 0 72.2% 50.6%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 215 19% 35%;
-    --input: 215 19% 35%;
-    --ring: 217.2 91.2% 59.8%;
+    --border: 221 16% 20%;
+    --input: 221 16% 20%;
+    --ring: 234 100% 78%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -117,5 +137,53 @@ All colors MUST be HSL.
     @apply bg-background text-foreground font-sans;
     font-feature-settings: 'cv05' 1, 'ss01' 1;
     -webkit-font-smoothing: antialiased;
+  }
+
+  /* Display type is set a little tight, as on the customer page. */
+  .font-display {
+    letter-spacing: -0.02em;
+    font-optical-sizing: auto;
+  }
+}
+
+/* The "reading" line in the chat: a bar that scans, like the copier on the customer page. */
+.staff-scan {
+  position: relative;
+  display: inline-block;
+  width: 56px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--pub-edge);
+}
+
+.staff-scan::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  border-radius: inherit;
+  background: var(--pub-accent);
+  animation: staff-scan 850ms cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+@keyframes staff-scan {
+  from {
+    transform: translateX(-20%);
+  }
+  to {
+    transform: translateX(170%);
+  }
+}
+
+/* Motion answers an action. Anyone who asks for less gets none. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
