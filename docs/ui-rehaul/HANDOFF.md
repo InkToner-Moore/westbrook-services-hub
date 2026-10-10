@@ -59,20 +59,12 @@ choices in the section below still stand (studio copy and domain, or AI Mode on 
 - Parsa rejected the first hero on 2026-10-09: the old list headline ("Printing, ink and
   toner, keys, and shipping.") set large, and a brass rule drawn as a long key that he
   could not read as a key. That version is the tag `public-redesign-v1`. Do not bring
-  the list headline back. The line itself went three rounds: a solid full-width brass key
-  (`3e7d6d6`, he called it dumb), a hairline ending in a small key (`45fa76b`, his pick
-  from three options), then he asked for the very first drawing back. `KeyRule.tsx` is
-  now that first drawing: ring at the left, hairline, outlined blade at the right. Leave
-  it alone unless he asks.
-- A background layer, asked for by Parsa ("boxes, FedEx, UPS, Purolator, ink, subtly"):
-  `Backdrop.tsx` puts faint outline drawings behind each section (parcels, drops, a
-  cartridge, a key, and shipping tags reading UPS, FedEx, Purolator as plain text, not
-  logos). They float slowly and shift a little on scroll (`--pub-scroll`, set by one
-  scroll listener in `PublicHome.tsx`). `Conveyor.tsx` is the band above the footer
-  where the same drawings glide past. Item positions live in each section file; they
-  were placed by hand to stay clear of text from 320 to 1920 wide, so re-check with
-  screenshots after moving any. The tag `public-redesign-v2` is the page before this
-  layer. He has not seen the background yet.
+  the list headline back.
+- Tried and removed the same day, at Parsa's word. Do not bring these back unless he asks:
+  the brass key line under the hero (three drawings: hairline with a blade, a solid
+  full-width key, a hairline ending in a small key), and a background layer of faint
+  parcels, ink drops and UPS / FedEx / Purolator tags with a moving band above the footer
+  (commit `595aa01`, reverted). The page now has neither: `src` matches commit `af51256`.
 - Parsa's changes the same day: Wednesday closes at 7 PM, and the public email is
   `contact@inktonermoore.ca` (no MX record on the domain when checked, so it bounces
   until the mailbox exists; sort that before this reaches prod).
