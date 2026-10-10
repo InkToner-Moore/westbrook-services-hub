@@ -27,7 +27,59 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
-## START HERE (written 2026-10-10, exit of the staff rehaul session)
+## START HERE (written 2026-10-10, exit of the forms and tabs session)
+
+**Next session is for:** Parsa's notes on the forms and tabs once he has looked at
+staging. He asked for "do them all" on judgement and has not seen the result yet. Not a
+numbered plan step.
+
+**Where things stand (observed 2026-10-10, at exit):**
+- Branch `staff-forms-tabs` (off `staff-rehaul`), two code commits (`4c0a4bf` the kit
+  and tabs, `0db32ff` the rollout) plus this handoff commit. Tag `staff-pre-forms-tabs`
+  is the state before. **Prod `main` untouched.** Check `git status` and `origin/dev`
+  for whether it reached staging; this section was written before the push.
+- Gate on the final tree: `tsc -p tsconfig.app.json --noEmit` exit 0; `yarn build`
+  built; eslint on every changed file shows only the seven old `no-explicit-any`
+  errors (`StaffCartridges.tsx`, `CartridgeLineFields.tsx`, `ThemeContext.tsx`);
+  `scripts/parser-tests/run.mjs` 30 of 30; dash scan clean. `sweep.mjs` not run
+  (`src/ai` was not touched).
+- Checked in a real browser on the local dev server with the auth bypass: every form
+  below at 1440 and 390 wide in light, four of them in dark; no page scrolls sideways
+  at 390; arrow keys move between tabs. Codex read the whole diff for behaviour
+  changes; its two real findings are fixed (see below).
+- **Not checked:** the Timesheet shift dialog in a browser (it needs a manager PIN,
+  which needs Firestore); the login page; anything with real rows; staging; print.
+
+**Built this session, do NOT rebuild:**
+- `src/components/shell/FormKit.tsx`: `FormSection`, `FieldGrid` (12 columns from
+  `sm`, 2 on a phone), `Field` (label, `required`, `optional`, `hint`, `error`, `span`,
+  `half`), `ItemCard`, `AddRowButton`, `FormActions`, and `useFormClasses()` for the
+  44px input, textarea, mono and button classes. Every staff form is laid out with it.
+- `SegmentedTabs` (`shell/ToolPage.tsx`) is the one tab control: ink fill on the active
+  tab, equal columns with icon over a short label on a phone (`shortLabel`), arrow
+  keys, and `idBase` to tie tabs to panels. Page-level tabs go in `ToolPage`'s `tabs`
+  slot under the title, not inside the card. `FilterChips` is for filters (Directory
+  categories, Inventory review kinds).
+- Rolled out to: the five Receipts forms, Cartridges new order and its receipt dialog,
+  Notes (category is now a shadcn Select through RHF `Controller`), Inventory add key
+  and add refill, the Directory site dialog, the Timesheet shift dialog and team add
+  row, the manager PIN dialog, login, and the parcel cards on the slip.
+- Two behaviour changes, both on purpose: Enter saves the shift dialog (it is a form
+  now, with `noValidate` so a 12 minute break still saves), and Directory and
+  Cartridges show the reason under the field when a submit is refused.
+
+**Constraints this session found:**
+- Wrapping a dialog in a `<form>` turns on the browser's own checks (`step`, `min`).
+  Add `noValidate` when the handler already validates.
+- `TabsContent` still comes from Radix on Receipts and Inventory; its `id` and
+  `aria-labelledby` are set by hand to match `SegmentedTabs`' `idBase`.
+- The Gemini helper cuts off a long report; ask it for under 900 words.
+
+**Still open on the staff side:** the list in the section below, minus the Receipts tab
+strip overflow (fixed). Key receipt lines mark model and price as needed although only
+one complete line is required.
+
+## Earlier (written 2026-10-10, exit of the staff rehaul session)
 
 **Next session is for:** building. A UI/UX pass on every form and every tab control on
 the staff side. Not a numbered plan step (`PLAN.md` has no completion markers).
