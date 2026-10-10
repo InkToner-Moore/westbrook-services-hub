@@ -1,27 +1,36 @@
-// A hairline under the hero that ends in a small key, as if the key hangs off
-// the end of the line. Decorative only.
 const KeyRule = () => {
   return (
-    <div aria-hidden="true" className="pub-key">
-      <span className="pub-key-line" />
+    <div aria-hidden="true" className="pub-key h-10">
       <svg
-        viewBox="0 0 128 44"
+        width="40"
+        height="40"
+        viewBox="0 0 40 40"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="pub-key-art"
+        className="shrink-0"
       >
-        <circle cx="20" cy="22" r="17" />
-        <circle cx="13" cy="22" r="4.5" />
+        <circle cx="20" cy="20" r="15" />
+        <circle cx="20" cy="20" r="4" />
+      </svg>
+      <span className="-ml-[5px] flex-1 border-t-[1.5px] border-current" />
+      <svg
+        width="200"
+        height="40"
+        viewBox="0 0 200 40"
+        className="h-[26px] w-[130px] shrink-0 min-[420px]:h-10 min-[420px]:w-[200px]"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      >
         <path
           d={
-            "M35.9 16 H110 L124 23 L117 30 H108 L104 25 L100 30 H94 L90 23 L86 30 " +
-            "H78 L75 26 H70 L67 30 H60 L56 24 L52 30 H35"
+            "M0 20 H14 L22 12 H174 L194 20 L186 28 H170 L163 21 L156 28 H146 L141 24 " +
+            "H132 L127 28 H115 L108 19 L101 28 H90 L85 25 H76 L71 28 H58 L51 21 L44 28 H22 L14 20 Z"
           }
         />
-        <path d="M44 20.5 H106" strokeOpacity="0.45" />
+        <path d="M30 16 H168" strokeOpacity="0.5" />
       </svg>
     </div>
   );
