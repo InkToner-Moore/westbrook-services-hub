@@ -1,4 +1,3 @@
-import Backdrop from "./Backdrop";
 import { useEffect, useState } from "react";
 import { Phone } from "lucide-react";
 import { openState, PHONE_HREF, MAPS_URL } from "@/lib/storeInfo";
@@ -22,14 +21,7 @@ const Hero = () => {
   }, []);
 
   return (
-    <section className="pub-layer-section pt-12 sm:pt-20">
-      <Backdrop
-        items={[
-          { kind: "drop", size: 320, top: "52%", right: "-170px", rotate: 14, speed: 0.05, hideBelow: "lg" },
-          { kind: "parcel", size: 150, top: "6%", left: "52%", rotate: -9, speed: -0.04, hideBelow: "md" },
-          { kind: "tag-ups", size: 170, bottom: "18%", left: "60%", rotate: -7, speed: 0.07, hideBelow: "lg" },
-        ]}
-      />
+    <section className="pt-12 sm:pt-20">
       <p className="pub-hero-status flex items-center gap-2 text-base font-medium">
         <span className={`h-2 w-2 rounded-full ${status.open ? "bg-pub-open" : "bg-pub-muted"}`} />
         {status.label}

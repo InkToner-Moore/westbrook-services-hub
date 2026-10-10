@@ -1,4 +1,3 @@
-import Backdrop from "./Backdrop";
 import ServiceArt from "./ServiceArt";
 
 const services = [
@@ -22,13 +21,7 @@ const services = [
 
 const Services = () => {
   return (
-    <section className="pub-layer-section pb-16 sm:pb-24">
-      <Backdrop
-        items={[
-          { kind: "key", size: 210, top: "48%", left: "19%", rotate: -18, speed: 0.04, hideBelow: "lg" },
-          { kind: "cartridge", size: 170, top: "-46px", right: "24%", rotate: 8, speed: -0.03, hideBelow: "sm" },
-        ]}
-      />
+    <section className="pb-16 sm:pb-24">
       <h2 className="pub-section-title font-display font-medium">What we do</h2>
       <ul className="mt-8">
         {services.map((service) => (

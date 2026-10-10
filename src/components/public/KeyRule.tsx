@@ -1,6 +1,6 @@
 const KeyRule = () => {
   return (
-    <div aria-hidden="true" className="pub-key relative z-[1] mt-14 h-10 sm:mt-20">
+    <div aria-hidden="true" className="pub-key h-10">
       <svg
         width="40"
         height="40"

@@ -1,16 +1,9 @@
-import Backdrop from "./Backdrop";
 import SmartTracker from "@/components/SmartTracker";
 import RefillStatus from "./RefillStatus";
 
 const CounterTools = () => {
   return (
-    <section aria-label="Self-serve tools" className="pub-layer-section py-16 sm:py-24">
-      <Backdrop
-        items={[
-          { kind: "tag-fedex", size: 190, bottom: "-50px", right: "7%", rotate: 8, speed: 0.03 },
-          { kind: "parcel", size: 210, top: "34%", right: "-118px", rotate: 11, speed: -0.05, hideBelow: "sm" },
-        ]}
-      />
+    <section aria-label="Self-serve tools" className="py-16 sm:py-24">
       <div
         className={
           "grid lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-pub-edge rounded-2xl" +
