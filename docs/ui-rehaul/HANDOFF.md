@@ -29,6 +29,20 @@ together; there is no separate customer repo and staff repo.
 
 ## START HERE (written 2026-10-11, exit of the phone audit and settings session)
 
+**Update 2026-10-11, the carried fixes session** (branch `carried-fixes`, off
+`phone-audit-fixes`, pushed and fast-forwarded to `dev`). Done from the "Not done" list
+below: item 1 (a typed follow-up with "also", "add", "plus", "too" or a leading "and"
+adds to the shift days; without a cue it replaces them, and now keeps every typed day),
+item 5 (the theme read is guarded), and from item 4: Packing's first input (295px on a
+phone, chips moved under the custom row), XL price full width, the drawer email wraps to
+two lines (on the desktop rail too), the empty Timesheet pill stays in view, Escape closes
+the drawer, and "canada post keys" falls back to the mailbox kind when no stocked key's
+reference mentions canada post. "do you have <kind> keys" now reads as a stock question
+offline. Gate at exit: tsc 0, build built, `run.mjs` 46 of 46, `sweep.mjs` 588 of 595
+with 0 missed and the same 7 known gaps. The layout items were measured in a browser at
+390 and 1440 in light only; Escape, the theme guard and the manager wording of the
+Timesheet pill were not tried in a browser. Items 2 and 3 are still open.
+
 **Next session is for:** building, from Parsa's notes after he tries this session's work
 on staging and on his phone. If he brings none, the open items under "Not done" below.
 Not a numbered plan step (`PLAN.md` has no completion markers).
