@@ -27,6 +27,27 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
+## Phone audit fixes (written 2026-10-11, branch `phone-audit-fixes` off `phone-polish`)
+
+The ten ranked items under "Not done" in the next section are dealt with. Do not redo them.
+- Done and checked in a browser at 390 wide on the local dev server: forms start higher
+  (first field at 242 to 265px on Receipts, Cartridges and Notes, 312 on the two
+  Inventory forms; was 330 to 470), fields are full width on a phone unless `half`,
+  add-row buttons, delete icons, filter chips, board filters and the tax preset select
+  are 44px, the empty band above taxes is gone on the key and refill receipts (at every
+  width), search placeholders are short, the Notes add form is white, tab, tile and
+  shortcut labels are 1px larger, the open-now line wraps, and the Timesheet calendar
+  scrolls sideways inside itself with the hour rail pinned.
+- Item 8 (slip fields under the Confirm bar) needed no change: the bar is a flex sibling
+  of the scrolling body, so nothing sits under it. A padding fix was tried and removed
+  because it only added 112px of empty space.
+- Not checked: a real phone, staging in a browser, the board row buttons (the local
+  board is empty), dark mode for these changes.
+- Left as seen: Receipts Packing starts with its supply chips, so its first input is at
+  459px; XL price sits alone on a half row on Inventory add refill; the account email
+  in the drawer truncates; the "No shifts this week" pill clips at the right edge of the
+  calendar until scrolled.
+
 ## START HERE (written 2026-10-10, exit of the phone polish session)
 
 **Next session is for:** building. First the phone audit fixes listed under "Not done"
