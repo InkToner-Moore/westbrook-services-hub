@@ -27,7 +27,165 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
-## START HERE (written 2026-10-10, exit of the forms and tabs session)
+## START HERE (written 2026-10-10, exit of the phone polish session)
+
+**Next session is for:** building. First the phone audit fixes listed under "Not done"
+below (the findings are already ranked, nothing to re-investigate), then Parsa's notes
+from trying this session's work on his phone. Not a numbered plan step (`PLAN.md` has no
+completion markers).
+
+**Where things stand (observed 2026-10-10, at exit):**
+- Branch `phone-polish` (off `staff-forms-tabs`), 13 code commits plus this handoff.
+  Tree clean, level with its remote. `origin/dev` is fast-forwarded to it and the
+  Cloudflare Pages check on `46bbe3b` completed with success, so staging has all of it.
+  **Prod `main` untouched** (`0ffa16c`). Tag `pre-phone-polish` (pushed) is the state
+  before this session.
+- Open PRs: only **#1 `docs-align-claude-md`** (Sept 1, not this work). Nothing from
+  this branch is in a PR; nothing is merged to `main`.
+- Gate as run at exit: `tsc -p tsconfig.app.json --noEmit` exit 0; `yarn build` built;
+  eslint on every file changed since `staff-forms-tabs` 0 errors, 4 react-refresh
+  warnings; `scripts/parser-tests/run.mjs` 36 of 36; `sweep.mjs` 551 of 558, 0 missed,
+  the same 7 known gaps; dash scan on the changed files clean.
+- Checked in a real browser on the local dev server with the auth bypass, at 360 and
+  390 wide: the customer hero (labels above the fold, three pills on one row, the
+  anchors, the phone number, the key drawing), the staff shell (document does not
+  scroll, drawer foot visible down to 560 tall, 16px chat box, one-row workspace
+  header), Settings (every section, hidden tiles, dark), the manager controls in the
+  chat, the new shortcuts on desktop and phone in light and dark, and the device lock
+  through 14 scenarios with Chrome's virtual authenticator (enable, lock on a fresh
+  session, failed and hung prompts, password fallback, repair, turn off, idle re-lock,
+  the route-escape case, and that `/` gets no manifest or app tags).
+- **Not checked:** anything on a real phone (the keyboard and browser-bar fixes cannot
+  be reproduced on desktop; Parsa has to try them); install on Android or iOS; a real
+  fingerprint or Face ID; anything on staging beyond the build passing; Directory
+  colours and Arrange with real tiles, and the stock lookup against real inventory and
+  `keyReference` rows (local Firestore rejects reads); a real manager PIN (locally the
+  dialog shows the first-time "Set the manager PIN" form and the worker is not
+  reachable); print output.
+- No DEV data or rules changed. No secrets written anywhere.
+
+**Built this session, do NOT rebuild:**
+- Customer page: phone hero padding, the key drawing's shaft end (`ServiceArt.tsx`),
+  three pills in the hero (`#parcel-tracker`, `#refill-status` anchors in
+  `CounterTools.tsx`; short labels under `sm`), and the Find us phone number is no
+  longer mono (the mono space read as two spaces).
+- Shell on a phone (`StaffShell.tsx`, `index.css`, `index.html`): the shell height is
+  `--staff-vh`, set from `visualViewport` (times `scale`, so pinch zoom does not shrink
+  it); `html.staff-shell-active` locks the document from scrolling; html and body are
+  painted `--pub-counter`; the viewport meta has `interactive-widget=resizes-content`;
+  `<main>` is `overflow-hidden` on the chat route. The drawer's close button is passed
+  into `TileRail` as `onClose` and sits beside the shop name; the rail's tiles scroll
+  and the user menu is pinned at the foot. `ArtifactRail` takes `onBack` / `backLabel`
+  for the phone sheet.
+- `FormKit` inputs and the composer are 16px under `md` / `sm` so iOS does not zoom.
+- Directory: `CHIP_COLORS` (a literal table) draws the saved `colorKey`; "Arrange" mode
+  holds move earlier / later, edit and delete, and normal tiles are plain links. Order
+  is the `order` field, renumbered 10, 20, 30 on the first move. Admin cards keep the
+  single Admin badge.
+- Settings is a page at `/staff/settings` (`StaffSettings.tsx`, not a rail tile):
+  Appearance, This device (install, fingerprint lock), AI Mode (shortcuts default),
+  Tools on the rail (`useHiddenTiles`, localStorage `shell-hidden-tiles`, display only,
+  never a route guard), Manager, Shop details (read-only), Account.
+- Manager sign-in from the chat: a lock button in the chat header, the whole-message
+  words `manager`, `manager sign in`, `manager login`, `unlock`, `sign in as manager`
+  and `lock`, `manager off`, `lock manager` (`chatWords.ts`), and the "Schedule locked"
+  card re-runs the refused intent after the PIN is accepted
+  (`promptUnlock({ onUnlocked })`). `ManagerPinDialog` now lives in `components/shell/`.
+  The server check is unchanged.
+- Shortcuts (`QuickActions.tsx`, `quickActionSpecs.ts`): one group of ten icon chips.
+  Ship inserts `ship`, Keys `key cutting`, Refill `refill`, Sale `receipt`, Note
+  `note`, Stock `where is`; Open orders and Who is in send straight away; Track and
+  Packing are toggles that open a second row. Purchase is no longer offered (it has no
+  executor). Adding packing holds the row open (`holdOpen` in `Composer.tsx`).
+- Parser: a `1Z` token of 8 to 20 characters with 6 digits is a UPS number; on a
+  shipping line the longest leftover code that is not the phone, price or order id is
+  the tracking number; a two-word name after receipt / ship / refill and before a city
+  or phone is the customer.
+- Stock questions: vehicle makes (`extract.ts`), a cleaned query, `rankInventory` and
+  the empty message in `lib/keyReference.ts` (pure, tested in `run.mjs`), references
+  loaded once per session before ranking. A make beside "key" is a stock question only
+  in question shape; a line with a price, count, code, sale verb or "for" stays a sale.
+- Install: `public/staff.webmanifest` (scope `/staff`, start `/staff/ai`), icons in
+  `public/icons/`, tags added only while a staff page is mounted
+  (`useStaffAppMeta.ts`), `installPrompt.ts`. No service worker, on purpose.
+- Device lock: `lib/deviceLock.ts` and `DeviceLockGate.tsx` (inside `ProtectedRoute`,
+  outside the manager and AI providers, which now wrap only the shell). Opt-in, keyed
+  on uid, record in localStorage `staff-device-lock`. It is a device check over the
+  saved Firebase session, not a server-verified sign-in; the file says so.
+
+**Not done, carry into the next session (phone audit, from 52 screenshots at 390 wide
+in `.playwright-mcp/audit/`, ranked):**
+1. The Timesheet calendar shows Sunday to Tuesday and clips the rest. Open on List on a
+   phone, keep Calendar reachable.
+2. First field starts 330 to 470px down on the Receipts forms, Cartridges new order,
+   Notes add, Inventory add key and add refill. Tighten the page header, card heading
+   and section gaps on a phone (`ToolPage.tsx`, `FormKit.tsx`: one fix, many screens).
+3. Paired fields about 130px wide; a select reads "Select…". Selects and descriptive
+   fields full width under `sm`, pairs only for short numbers.
+4. "Add cartridge", "Add shipping item", "Add tax", row delete icons, Directory
+   category chips and the Inventory board filters are 36 to 40px tall. Make them 44.
+5. An empty band between two dividers above taxes on the refill and key receipts.
+6. Search placeholders clipped on Inventory board and refills; shorten them.
+7. The open-now line in the drawer truncates; allow two lines.
+8. The slip's last fields sit under the Confirm bar until scrolled; add bottom padding.
+9. Tab, tile and "Shortcuts" labels are small for older staff; a modest bump.
+10. The Notes add form uses a tinted surface where the other add forms are white.
+The Directory add dialog was flagged as cut off but its second capture shows Save and
+Cancel after scrolling, so it only needs a look, not a rebuild.
+
+**Constraints this session found (the older lists below still stand):**
+- A builder report can pass its own tests and still break neighbours. The first stock
+  lookup fix turned key sales that name a make into stock questions; only comparing
+  fresh lines against `HEAD` caught it. After any parser change, run sale lines and
+  question lines of your own through `sweep.mjs "line"` before and after.
+- Run the parser scripts one at a time; their temp bundle names collide in parallel.
+- The Directory tints are literal Tailwind classes with `dark:` variants on purpose
+  (they are data colours, like the category badges). Never build them by interpolation.
+- Editing `src/ai/context.tsx` or the providers under a running dev server throws
+  `useAiMode must be used within an AiModeProvider` until a full reload. It is an HMR
+  artefact, not a bug; reload before judging a browser check.
+- Chrome's virtual authenticator works for the lock through Playwright:
+  `page.context().newCDPSession(page)`, `WebAuthn.enable`,
+  `WebAuthn.addVirtualAuthenticator` (ctap2, internal, user verification). Keep the
+  session on `page`, not `globalThis`.
+- Helpers saving screenshots must be told the folder; one wrote PNGs into the repo root.
+- The lock's `rpId` is the hostname, so a lock set up on `ink-toner-moore.pages.dev`
+  does not carry to `inktonermoore.ca`. The password still gets in, and Settings can
+  set it up again after a password sign-in.
+
+**Open questions for Parsa** (answers may arrive mid-session: fold each in as its own
+commit, and never invent one to close a line):
+- His verdict from a real phone on: typing in AI Mode, the white gap, the hidden user
+  menu, install, and the fingerprint lock. Lands in `StaffShell.tsx` and the lock files.
+- Whether the device lock is enough or he wants a real passkey sign-in. That needs a
+  Firebase service-account key on the worker, which he owes. Lands in `proxy/` and
+  `lib/deviceLock.ts`.
+- Whether shop-wide settings (tax rate, receipt footer) should be editable. Needs a
+  `settings` document and an auth-gated rule he adds in the Firebase console.
+- Whether the per-kind counts on the Inventory review chips should go too (only the
+  tab's count was removed).
+- Whether "do you have ..." should be a stock cue in the offline parser (today it falls
+  to the model).
+- Carried from the section below: his verdict on the forms and tabs, which shift list
+  he meant, the studio link's wording, the key line markers, the Hours totals, the
+  `contact@inktonermoore.ca` mailbox, when the redesign goes to prod, the studio copy
+  and domain, the tracker comma fix on prod, parcel tax leaving Canada, a staging test
+  login in keyvault, stat holidays.
+
+**Working rules:** environment and gate as in the project entry and the sections
+below. Before every commit: `tsc`, eslint on the changed files, `yarn build`, the dash
+scan, and for anything under `src/ai` both parser scripts. A misread line goes into
+`corpus.mjs` first. For a visual change, a browser pass on the dev server at 390 wide.
+One commit per change he asks for; push the branch and fast-forward `dev`
+(`git push origin <branch>:dev`). Push needs the credential-helper override in the
+sections below.
+
+**Still placeholder, must not reach a customer:** unchanged from the section below
+(`STUDIO_URL` on its staging host, the public email with no mailbox, the whole rehaul
+on staging only, `purchase` with no executor). New: the install manifest and the device
+lock are staging only and untried on a real device.
+
+## Earlier (written 2026-10-10, exit of the forms and tabs session)
 
 **Next session is for:** building, from Parsa's notes on the forms, tabs and the
 grouped shift list once he has looked at staging. He asked for the forms and tabs on

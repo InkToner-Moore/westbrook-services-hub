@@ -88,6 +88,7 @@ src/
     StaffLogin.tsx     Firebase email/password login
     StaffTracking.tsx  StaffReceipts.tsx  StaffCartridges.tsx  StaffDirectory.tsx
     StaffNotes.tsx     StaffInventory.tsx StaffTimesheet.tsx
+    StaffSettings.tsx  per-device settings, manager sign-in, install, device lock
     NotFound.tsx
   components/
     shell/             the 3-pane staff shell: StaffShell (frame + responsive),
@@ -112,6 +113,8 @@ src/
     orderStatus.ts     public order-status mirror (schema + name normalizing)
     storeInfo.ts       public store facts: phone, email, weekly hours, open-now state
     timesheet.ts       the employees (team) model
+    deviceLock.ts      opt-in fingerprint lock over the saved session (device check only)
+    installPrompt.ts   install state for the staff app (manifest: public/staff.webmanifest)
     schedule.ts        scheduleShifts model: planned shifts, actual times, break, hours math
     shiftParse.ts      free-text shift parser ("4-9", "oct 8, 9", "30 min break")
     cartridges.ts simpleReceipt.ts utils.ts
