@@ -4,9 +4,10 @@
 import React, { useEffect, useState } from 'react';
 import { openState } from '@/lib/storeInfo';
 import { NavLink, useLocation } from 'react-router-dom';
-import { PanelLeftClose } from 'lucide-react';
+import { PanelLeftClose, X } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { AI_TILE, TOOL_TILES, type Tile } from './tiles';
+import { useHiddenTiles } from '@/hooks/useHiddenTiles';
 import UserMenu from './UserMenu';
 
 const HeroTile: React.FC<{ tile: Tile; active: boolean }> = ({ tile, active }) => {
@@ -75,9 +76,11 @@ const ToolTile: React.FC<{ tile: Tile; active: boolean; wide?: boolean }> = ({ t
   );
 };
 
-const TileRail: React.FC<{ onCollapse?: () => void }> = ({ onCollapse }) => {
+// onCollapse folds the desktop rail; onClose shuts the phone drawer. Both sit beside the name.
+const TileRail: React.FC<{ onCollapse?: () => void; onClose?: () => void }> = ({ onCollapse, onClose }) => {
   const { themeClasses } = useTheme();
   const { pathname } = useLocation();
+  const { hiddenTiles } = useHiddenTiles();
   const [status, setStatus] = useState(() => openState());
 
   useEffect(() => {
@@ -86,6 +89,7 @@ const TileRail: React.FC<{ onCollapse?: () => void }> = ({ onCollapse }) => {
   }, []);
 
   const isActive = (route: string) => pathname === route || pathname.startsWith(route + '/');
+  const visibleTiles = TOOL_TILES.filter((tile) => !hiddenTiles.includes(tile.key) || isActive(tile.route));
   const aiActive = isActive('/staff/ai') || pathname === '/staff/dashboard' || pathname === '/staff';
 
   return (
@@ -105,6 +109,16 @@ const TileRail: React.FC<{ onCollapse?: () => void }> = ({ onCollapse }) => {
             <span className="truncate">{status.label}</span>
           </span>
         </span>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close menu"
+            className={`-mr-1 -mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-pub-muted ${themeClasses.interactive.hover}`}
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
         {onCollapse && (
           <button
             type="button"
@@ -120,12 +134,12 @@ const TileRail: React.FC<{ onCollapse?: () => void }> = ({ onCollapse }) => {
 
       <nav aria-label="Staff tools" className="grid min-h-0 flex-1 grid-cols-2 content-start gap-2 overflow-y-auto">
         <HeroTile tile={AI_TILE} active={aiActive} />
-        {TOOL_TILES.map((tile, i) => (
+        {visibleTiles.map((tile, i) => (
           <ToolTile
             key={tile.key}
             tile={tile}
             active={tile.enabled && isActive(tile.route)}
-            wide={TOOL_TILES.length % 2 === 1 && i === TOOL_TILES.length - 1}
+            wide={visibleTiles.length % 2 === 1 && i === visibleTiles.length - 1}
           />
         ))}
       </nav>

@@ -12,7 +12,9 @@
 // The tool hue is slate (DESIGN-SPEC tool signature colours). Times, durations and
 // ids are mono/tabular like a real slip. The summary state offers a CSV export of
 // the shown shifts in its foot. Registered via `export function register(reg)`.
-import React from 'react';
+import React, { useRef, useState } from 'react';
+import { useAiMode } from '@/ai/context';
+import { getExecutor } from '@/ai/actions';
 import { CalendarCheck, CalendarDays, Check, Download, Info, Lock, PencilLine, SearchX, UserPlus } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useManagerMode } from '@/contexts/ManagerModeContext';
@@ -187,26 +189,45 @@ const ShiftAdjustedBody: React.FC<{ d: Extract<TimesheetArtifactData, { state: '
   );
 };
 
-const LockedBody: React.FC = () => {
+const LockedBody: React.FC<{ d: Extract<TimesheetArtifactData, { state: 'locked' }> }> = ({ d }) => {
+  const { addResult, addAssistantTurn } = useAiMode();
+  const [busy, setBusy] = useState(false);
+  const retrying = useRef(false);
+  const retry = async () => {
+    if (retrying.current) return;
+    retrying.current = true;
+    setBusy(true);
+    try {
+      const executor = getExecutor(d.intent.action);
+      if (executor) addResult(await executor(d.intent));
+    } catch {
+      addAssistantTurn('Something went wrong finishing that. Please try again.');
+    } finally {
+      retrying.current = false;
+      setBusy(false);
+    }
+  };
   const { themeClasses } = useTheme();
   const { isManager, promptUnlock } = useManagerMode();
   return (
     <CardShell icon={<Lock className="h-5 w-5" />} title={isManager ? 'Schedule unlocked' : 'Schedule locked'}>
       <p className="text-sm text-pub-muted">
         {isManager
-          ? 'You are signed in as manager. Send the shift again and I will add it.'
+          ? 'You are signed in as manager. Add the shifts when you are ready.'
           : 'Adding shifts needs a manager. Anyone can still log the actual start, end or a break on a shift that is already planned.'}
       </p>
-      {!isManager && (
-        <button
-          type="button"
-          onClick={promptUnlock}
-          className={`mt-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-pub-accent ${themeClasses.button.primary}`}
-        >
-          <Lock className="h-4 w-4" />
-          Manager sign in
-        </button>
-      )}
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => {
+          if (isManager) void retry();
+          else promptUnlock({ reason: 'to add shifts', onUnlocked: () => { void retry(); } });
+        }}
+        className={`mt-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-pub-accent ${themeClasses.button.primary}`}
+      >
+        <Lock className="h-4 w-4" />
+        {busy ? 'Adding shifts' : isManager ? 'Add shifts' : 'Manager sign in'}
+      </button>
     </CardShell>
   );
 };
@@ -313,7 +334,7 @@ const TimesheetBody: React.FC<{ data: unknown }> = ({ data }) => {
     case 'shift_adjusted':
       return <ShiftAdjustedBody d={d} />;
     case 'locked':
-      return <LockedBody />;
+      return <LockedBody d={d} />;
     case 'notice':
       return <NoticeBody d={d} />;
     case 'employee_added':

@@ -11,6 +11,7 @@ import StaffTracking from "./pages/StaffTracking";
 import StaffReceipts from "./pages/StaffReceipts";
 import StaffCartridges from "./pages/StaffCartridges";
 import StaffDirectory from "./pages/StaffDirectory";
+import StaffSettings from "./pages/StaffSettings";
 import StaffNotes from "./pages/StaffNotes";
 import StaffInventory from "./pages/StaffInventory";
 import StaffTimesheet from "./pages/StaffTimesheet";
@@ -62,6 +63,7 @@ const AppRoutes = () => {
           <Route path="receipts" element={<StaffReceipts />} />
           <Route path="cartridges" element={<StaffCartridges />} />
           <Route path="directory" element={<StaffDirectory />} />
+          <Route path="settings" element={<StaffSettings />} />
           <Route path="notes" element={<StaffNotes />} />
           <Route path="inventory" element={<StaffInventory />} />
           <Route path="timesheet" element={<StaffTimesheet />} />

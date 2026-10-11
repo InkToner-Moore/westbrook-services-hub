@@ -1058,7 +1058,7 @@ const StaffTimesheet = () => {
       </Button>
     </div>
   ) : (
-    <Button onClick={promptUnlock} className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.secondary}`}>
+    <Button onClick={() => promptUnlock()} className={`min-h-[44px] rounded-lg font-semibold ${themeClasses.button.secondary}`}>
       <Lock className="mr-2 h-4 w-4" />
       Manager sign in
     </Button>

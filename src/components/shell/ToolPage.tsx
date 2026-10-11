@@ -3,11 +3,11 @@
 // label come from the tool's own tile (tiles.ts) instead of being retyped per page.
 // SegmentedTabs is the one tab control the tool pages share.
 import React from 'react';
-import type { LucideIcon } from 'lucide-react';
+import { Settings, type LucideIcon } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { TOOL_TILES } from './tiles';
 
-export type ToolKey = 'tracking' | 'receipts' | 'cartridges' | 'notes' | 'inventory' | 'directory' | 'timesheet';
+export type ToolKey = 'tracking' | 'receipts' | 'cartridges' | 'notes' | 'inventory' | 'directory' | 'timesheet' | 'settings';
 
 // The title bar: the tile's icon in a quiet outlined square, its label, and a
 // short line saying what the page is for.
@@ -17,7 +17,7 @@ export const ToolPageHeader: React.FC<{ tool: ToolKey; subtitle?: string; action
   actions,
   compact = false,
 }) => {
-  const tile = TOOL_TILES.find((t) => t.key === tool);
+  const tile = tool === 'settings' ? { label: 'Settings', icon: Settings } : TOOL_TILES.find((t) => t.key === tool);
   if (!tile) return null;
   const Icon = tile.icon;
   return (

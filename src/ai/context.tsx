@@ -17,6 +17,7 @@ import { applyFollowUp, isFollowUp } from './followup';
 import { resolveKeyPrices } from './keys';
 import { getFieldSpecs, missingRequired } from './fieldSpecs';
 import { isItemComplete, toShipmentItems } from './shipping';
+import { useManagerMode } from '@/contexts/ManagerModeContext';
 import { classifyChatWord, HELP_TEXT } from './chatWords';
 import { describeChange } from './describeChange';
 import { getExecutor, isImmediate } from './actions';
@@ -192,6 +193,7 @@ interface AiModeContextValue {
 const AiModeContext = createContext<AiModeContextValue | undefined>(undefined);
 
 export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { promptUnlock, lock } = useManagerMode();
   const { pathname } = useLocation();
   const activeTab = TAB_NAMES[pathname];
   const [turns, setTurns] = useState<ChatTurn[]>([]);
@@ -388,6 +390,16 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         // A yes, a never mind, a hello: not a task, so it never reaches the parser.
         const word = classifyChatWord(trimmed);
+        if (word === 'managerUnlock') {
+          promptUnlock();
+          addAssistantTurn('Enter the PIN to sign in as manager.');
+          return;
+        }
+        if (word === 'managerLock') {
+          await lock();
+          addAssistantTurn('Manager mode locked.');
+          return;
+        }
         if (word === 'confirm' && openSlip && draft) {
           const blockers = blockersOf(draft);
           if (blockers.length > 0) addAssistantTurn(`Not yet. The slip still needs ${blockers.join(' and ')}.`);
@@ -476,7 +488,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setBusy(false);
       }
     },
-    [activeTab, addUserTurn, runNonConfirmable, presentConfirmable, setQueue, artifact, patchTurn, addAssistantTurn],
+    [promptUnlock, lock, activeTab, addUserTurn, runNonConfirmable, presentConfirmable, setQueue, artifact, patchTurn, addAssistantTurn],
   );
 
   // The user corrected a route (from the rail's slip or a "did you mean" card).

@@ -1,12 +1,11 @@
 // The user chip at the foot of the tile rail. Click it to reveal the signed-in
-// email, a Settings button (opens a stub overlay - the real settings panel is not
-// built), and Logout. The light/dark toggle sits alongside. Click-to-open (not
+// email, Settings, and Logout. The light/dark toggle sits alongside. Click-to-open (not
 // hover-only): Escape closes either layer, focus moves to the opened surface and
 // back to its trigger on close, and the account menu closes on an outside click.
 // See DESIGN-SPEC.md.
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, LogOut, Settings, X } from 'lucide-react';
+import { User, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
 import { toast } from '@/hooks/use-toast';
@@ -17,12 +16,10 @@ const UserMenu: React.FC = () => {
   const { themeClasses } = useTheme();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const firstMenuItemRef = useRef<HTMLButtonElement>(null);
-  const settingsCloseRef = useRef<HTMLButtonElement>(null);
 
   const email = user?.email ?? 'Signed in';
 
@@ -52,22 +49,6 @@ const UserMenu: React.FC = () => {
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [open]);
-
-  const closeSettings = () => {
-    setSettingsOpen(false);
-    triggerRef.current?.focus();
-  };
-
-  // Escape closes the settings stub; opening it focuses its close button.
-  useEffect(() => {
-    if (!settingsOpen) return;
-    settingsCloseRef.current?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeSettings();
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [settingsOpen]);
 
   const handleLogout = async () => {
     const result = await logout();
@@ -113,7 +94,7 @@ const UserMenu: React.FC = () => {
             type="button"
             role="menuitem"
             onClick={() => {
-              setSettingsOpen(true);
+              navigate('/staff/settings');
               setOpen(false);
             }}
             className={`flex min-h-[44px] w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium text-pub-muted ${themeClasses.interactive.hover} ${themeClasses.interactive.focus}`}
@@ -133,36 +114,7 @@ const UserMenu: React.FC = () => {
         </div>
       )}
 
-      {/* Settings overlay stub (the real panel is not built yet). */}
-      {settingsOpen && (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="settings-stub-title"
-        >
-          <div className="absolute inset-0 bg-black/40" onClick={closeSettings} />
-          <div className="relative w-full max-w-sm rounded-2xl border p-5 shadow-lg bg-pub-paper border-pub-edge">
-            <div className="mb-2 flex items-center justify-between">
-              <h2 id="settings-stub-title" className="text-lg font-semibold text-pub-ink">
-                Settings
-              </h2>
-              <button
-                ref={settingsCloseRef}
-                type="button"
-                onClick={closeSettings}
-                aria-label="Close settings"
-                className={`rounded-lg p-1.5 ${themeClasses.interactive.hover} ${themeClasses.interactive.focus}`}
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <p className="text-[14px] leading-relaxed text-pub-muted">
-              Settings are on the way. This is where you will set the shop's tax rate, the receipt footer, and which tools show on the rail.
-            </p>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };

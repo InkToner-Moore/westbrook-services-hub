@@ -22,13 +22,15 @@ import { isValidPin } from "@/lib/managerAuth";
 interface ManagerPinDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onUnlocked?: () => void;
+  reason?: string;
   mode: "unlock" | "set";
   // In 'set' mode, whether a current PIN must be entered (changing an existing PIN).
   requireCurrent?: boolean;
   onSubmit: (pin: string, currentPin?: string) => Promise<{ ok: boolean; error?: string }>;
 }
 
-const ManagerPinDialog = ({ open, onOpenChange, mode, requireCurrent, onSubmit }: ManagerPinDialogProps) => {
+const ManagerPinDialog = ({ open, onOpenChange, mode, requireCurrent, onSubmit, onUnlocked, reason }: ManagerPinDialogProps) => {
   const { themeClasses } = useTheme();
   const fc = useFormClasses();
   const [pin, setPin] = useState("");
@@ -71,6 +73,7 @@ const ManagerPinDialog = ({ open, onOpenChange, mode, requireCurrent, onSubmit }
     const result = await onSubmit(pin, setting && requireCurrent ? current : undefined);
     if (result.ok) {
       onOpenChange(false);
+      onUnlocked?.();
     } else {
       setError(result.error || "That did not work. Try again.");
       setBusy(false);
@@ -88,7 +91,7 @@ const ManagerPinDialog = ({ open, onOpenChange, mode, requireCurrent, onSubmit }
           <DialogDescription className="text-[13px] text-pub-muted">
             {setting
               ? "Use a PIN of 4 to 8 digits. Anyone who knows it can edit the schedule and manager settings."
-              : "Enter the manager PIN to make changes."}
+              : reason ? `Enter the manager PIN ${reason}.` : "Enter the manager PIN to make changes."}
           </DialogDescription>
         </DialogHeader>
 

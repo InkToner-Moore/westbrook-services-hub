@@ -3,9 +3,9 @@
 // message only, so a real line that happens to contain "no" or "ok" ("no tax",
 // "ok make it 25") is never caught here. Checked before the parser, which would
 // otherwise answer each of these with the pick-what-you-meant list.
-export type ChatWord = 'confirm' | 'cancel' | 'greeting' | 'thanks' | 'help';
+export type ChatWord = 'confirm' | 'cancel' | 'greeting' | 'thanks' | 'help' | 'managerUnlock' | 'managerLock';
 
-const WORDS: Record<ChatWord, RegExp> = {
+const WORDS: Record<Exclude<ChatWord, 'managerUnlock' | 'managerLock'>, RegExp> = {
   confirm:
     /^(?:y|ya|yes|yep|yup|yeah|ok|okay|k|kk|sure|confirm|confirmed|correct|right|good|go|go ahead|do it|done|save|save it|add it|thats it|that is it|thats right|that is right|looks good|looks right|all good|perfect)$/,
   cancel:
@@ -26,9 +26,12 @@ const normalize = (text: string) =>
     .trim();
 
 export function classifyChatWord(text: string): ChatWord | null {
+  const exact = text.trim().toLowerCase();
+  if (/^(?:manager|manager sign in|manager login|unlock|sign in as manager)$/.test(exact)) return 'managerUnlock';
+  if (/^(?:lock|manager off|lock manager)$/.test(exact)) return 'managerLock';
   const t = normalize(text);
   if (!t || t.length > 24) return null;
-  for (const kind of Object.keys(WORDS) as ChatWord[]) {
+  for (const kind of Object.keys(WORDS) as (keyof typeof WORDS)[]) {
     if (WORDS[kind].test(t)) return kind;
   }
   return null;

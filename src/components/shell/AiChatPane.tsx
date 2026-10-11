@@ -6,7 +6,9 @@
 // over) puts the details on the right and just points there. The open receipt
 // shows as a compact strip above the composer.
 import React, { useEffect, useRef } from 'react';
-import { Eraser, PanelRight, Sparkles } from 'lucide-react';
+import { Eraser, Lock, LockOpen, PanelRight, Sparkles } from 'lucide-react';
+import { useManagerMode } from '@/contexts/ManagerModeContext';
+import { toast } from '@/hooks/use-toast';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAiMode } from '@/ai/context';
 import { getFieldSpecs } from '@/ai/fieldSpecs';
@@ -52,6 +54,7 @@ const EXAMPLES = [
 ];
 
 const AiChatPane: React.FC = () => {
+  const { isManager, promptUnlock, lock } = useManagerMode();
   const { themeClasses } = useTheme();
   const {
     turns,
@@ -114,15 +117,28 @@ const AiChatPane: React.FC = () => {
           </span>
           <span className="font-display text-xl font-semibold text-pub-ink">AI Mode</span>
         </div>
-        <button
-          type="button"
-          onClick={clear}
-          title="Clear"
-          aria-label="Clear conversation"
-          className={`flex h-11 w-11 items-center justify-center rounded-xl text-pub-muted ${themeClasses.interactive.hover}`}
-        >
-          <Eraser className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button type="button"
+            aria-label={isManager ? 'Manager on, lock manager mode' : 'Manager sign in'}
+            onClick={async () => {
+              if (!isManager) { promptUnlock(); return; }
+              await lock();
+              toast({ title: 'Manager mode locked' });
+            }}
+            className={`flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-xl px-2 text-sm text-pub-muted ${themeClasses.interactive.hover} ${themeClasses.interactive.focus}`}>
+            {isManager ? <LockOpen className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+            <span className="hidden sm:inline">{isManager ? 'Manager on' : 'Manager'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={clear}
+            title="Clear"
+            aria-label="Clear conversation"
+            className={`flex h-11 w-11 items-center justify-center rounded-xl text-pub-muted ${themeClasses.interactive.hover}`}
+          >
+            <Eraser className="h-5 w-5" />
+          </button>
+        </div>
       </header>
 
       <div

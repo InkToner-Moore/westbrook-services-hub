@@ -68,9 +68,9 @@ export interface SimpleReceiptOptions {
   hidePrice?: boolean;
 }
 
-const STORE_NAME = 'Ink, Toner & Moore';
-const STORE_ADDRESS = ['1200 37 Street SW, Unit 3b', 'Calgary, AB T3C 1S2', '(403) 686-2835'];
-const THANK_YOU = 'Thank you for choosing Ink, Toner & Moore at Westbrook Mall.';
+export const STORE_NAME = 'Ink, Toner & Moore';
+export const STORE_ADDRESS = ['1200 37 Street SW, Unit 3b', 'Calgary, AB T3C 1S2', '(403) 686-2835'];
+export const THANK_YOU = 'Thank you for choosing Ink, Toner & Moore at Westbrook Mall.';
 
 // The file name a saved receipt gets, matching the historical scheme.
 export const receiptFileName = (fileNameBase: string, size: ReceiptSize) =>

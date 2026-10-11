@@ -5,7 +5,7 @@
 // enforce. See lib/managerAuth.ts and proxy/src/manager.js.
 //
 //   const { isManager, promptUnlock } = useManagerMode();
-//   {isManager ? <EditControls/> : <Button onClick={promptUnlock}>Manager sign in</Button>}
+//   {isManager ? <EditControls/> : <Button onClick={() => promptUnlock()}>Manager sign in</Button>}
 //
 // Manager mode stays on until Lock or logout (the claim rides the session). In the
 // local dev bypass (no real Firebase auth) it degrades to a local toggle so the UI
@@ -20,7 +20,7 @@ import React, {
   type ReactNode,
 } from "react";
 import { auth } from "@/lib/firebase";
-import ManagerPinDialog from "@/components/ManagerPinDialog";
+import ManagerPinDialog from "@/components/shell/ManagerPinDialog";
 import {
   noteManagerUnlocked,
   currentUserIsManager,
@@ -36,9 +36,9 @@ interface ManagerModeContextValue {
   isManager: boolean;
   pinIsSet: boolean;
   loading: boolean;
-  promptUnlock: () => void;
+  promptUnlock: (options?: { onUnlocked?: () => void; reason?: string }) => void;
   promptChangePin: () => void;
-  lock: () => void;
+  lock: () => Promise<void>;
 }
 
 const ManagerModeContext = createContext<ManagerModeContextValue | undefined>(undefined);
@@ -52,6 +52,8 @@ export const ManagerModeProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [isManager, setIsManager] = useState(false);
   const [pinIsSet, setPinIsSet] = useState(false);
   const [loading, setLoading] = useState(true);
+  const unlockCallback = React.useRef<(() => void) | undefined>();
+  const [reason, setReason] = useState<string>();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"unlock" | "set">("unlock");
 
@@ -86,22 +88,28 @@ export const ManagerModeProvider: React.FC<{ children: ReactNode }> = ({ childre
     noteManagerUnlocked(isManager);
   }, [isManager]);
 
-  const promptUnlock = useCallback(() => {
+  const promptUnlock = useCallback((options?: { onUnlocked?: () => void; reason?: string }) => {
+    unlockCallback.current = options?.onUnlocked;
+    setReason(options?.reason);
     setDialogMode(pinIsSet ? "unlock" : "set");
     setDialogOpen(true);
   }, [pinIsSet]);
 
   const promptChangePin = useCallback(() => {
+    unlockCallback.current = undefined;
+    setReason(undefined);
     setDialogMode("set");
     setDialogOpen(true);
   }, []);
 
   const lock = useCallback(async () => {
     if (DEV_BYPASS) {
+      noteManagerUnlocked(false);
       setIsManager(false);
       return;
     }
     await lockManagerSession();
+    noteManagerUnlocked(false);
     setIsManager(await currentUserIsManager());
   }, []);
 
@@ -110,6 +118,7 @@ export const ManagerModeProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Dev bypass: accept locally so the flow is demoable without a backend.
       if (DEV_BYPASS) {
         if (dialogMode === "set") setPinIsSet(true);
+        noteManagerUnlocked(true);
         setIsManager(true);
         return { ok: true };
       }
@@ -129,7 +138,9 @@ export const ManagerModeProvider: React.FC<{ children: ReactNode }> = ({ childre
         await refreshPinStatus();
         // First-time set: go straight into manager mode with the new PIN.
         const unlock = await unlockManagerSession(pin);
-        if (unlock.ok) setIsManager(true);
+        if (!unlock.ok) return { ok: false, error: "Could not unlock. Try again." };
+        noteManagerUnlocked(true);
+        setIsManager(true);
         toast({ title: "Manager PIN saved", description: "Manager mode is on." });
         return { ok: true };
       }
@@ -145,6 +156,7 @@ export const ManagerModeProvider: React.FC<{ children: ReactNode }> = ({ childre
               : "Could not unlock. Try again.";
         return { ok: false, error: msg };
       }
+      noteManagerUnlocked(true);
       setIsManager(true);
       return { ok: true };
     },
@@ -162,6 +174,12 @@ export const ManagerModeProvider: React.FC<{ children: ReactNode }> = ({ childre
       <ManagerPinDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
+        reason={reason}
+        onUnlocked={() => {
+          const callback = unlockCallback.current;
+          unlockCallback.current = undefined;
+          callback?.();
+        }}
         mode={dialogMode}
         requireCurrent={dialogMode === "set" && pinIsSet}
         onSubmit={handleSubmit}

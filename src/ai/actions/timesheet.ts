@@ -48,7 +48,7 @@ export type TimesheetArtifactData =
   | { state: 'shift_adjusted'; shift: ScheduleShift }
   | { state: 'employee_added'; employee: Employee; existed: boolean }
   | { state: 'summary'; title: string; subtitle?: string; shifts: ScheduleShift[]; showDay: boolean }
-  | { state: 'locked'; what: string }
+  | { state: 'locked'; what: string; intent: Intent }
   | { state: 'notice'; title: string; body: string }
   | { state: 'not_found'; query: string; hint: string };
 
@@ -119,7 +119,7 @@ async function addShifts(intent: Intent): Promise<ActionResult> {
   if (!managerUnlocked()) {
     return {
       message: 'The schedule is locked. A manager needs to sign in before shifts can be added. You can still log actual times or a break on an existing shift.',
-      artifact: card('Schedule locked', { state: 'locked', what: 'add shifts' }),
+      artifact: card('Schedule locked', { state: 'locked', what: 'add shifts', intent }),
     };
   }
   const name = str(intent, 'employeeName');
