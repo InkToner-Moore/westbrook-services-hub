@@ -27,55 +27,80 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
-## Phone audit fixes (written 2026-10-11, branch `phone-audit-fixes` off `phone-polish`)
+## START HERE (written 2026-10-11, exit of the phone audit and settings session)
 
-The ten ranked items under "Not done" in the next section are dealt with. Do not redo them.
-- Done and checked in a browser at 390 wide on the local dev server: forms start higher
-  (first field at 242 to 265px on Receipts, Cartridges and Notes, 312 on the two
-  Inventory forms; was 330 to 470), fields are full width on a phone unless `half`,
-  add-row buttons, delete icons, filter chips, board filters and the tax preset select
-  are 44px, the empty band above taxes is gone on the key and refill receipts (at every
-  width), search placeholders are short, the Notes add form is white, tab, tile and
-  shortcut labels are 1px larger, the open-now line wraps, and the Timesheet calendar
-  scrolls sideways inside itself with the hour rail pinned.
-- Item 8 (slip fields under the Confirm bar) needed no change: the bar is a flex sibling
-  of the scrolling body, so nothing sits under it. A padding fix was tried and removed
-  because it only added 112px of empty space.
-- Not checked: a real phone, staging in a browser, the board row buttons (the local
-  board is empty), dark mode for these changes.
-- Left as seen: Receipts Packing starts with its supply chips, so its first input is at
-  459px; XL price sits alone on a half row on Inventory add refill; the account email
-  in the drawer truncates; the "No shifts this week" pill clips at the right edge of the
-  calendar until scrolled.
+**Next session is for:** building, from Parsa's notes after he tries this session's work
+on staging and on his phone. If he brings none, the open items under "Not done" below.
+Not a numbered plan step (`PLAN.md` has no completion markers).
 
-## Settings fixes and editable shop details (written 2026-10-11, same branch)
+**Codex is out of usage for the whole of the next session** (Parsa, 2026-10-11). Send
+builder work to `builder-claude` and reviews to `codex-claude` from the start; do not
+spend a call finding out.
 
-- Settings: switches are normal size in label-left rows, "Tools on the rail" is a row of
-  toggle chips, the phone is no longer mono. Checked in a browser at 390 wide, light and dark.
-- Shop details are editable by a signed-in manager: `lib/shopSettings.ts` is a small store
-  (defaults, a localStorage cache `shop-settings-cache`, Firestore `settings/shop`). The
-  customer page, the rail's open-now line, the receipt PDF and the receipt card read it.
-  GST and the shop name stay fixed. Hours are whole hours and every day is open.
-- **Waiting on Parsa:** the `settings/shop` rule (in `docs/ENVIRONMENTS.md`) must be added
-  in the Firebase console for DEV, and for prod before this reaches `main`. Until then
-  reads fall back to the built-in values and Save shows a "could not save" line.
-- Checked locally: the edit form, its validation, the failed-save path, Cancel, and that
-  the customer page shows cached values (phone, email, hours). Not checked: a real save
-  or a real read, since local Firestore refuses both.
+**Where things stand (observed 2026-10-11, at exit):**
+- Branch `phone-audit-fixes` (off `phone-polish`), 8 code and test commits plus handoff
+  commits. Tree clean, level with its remote. `origin/dev` is fast-forwarded to it and
+  the Cloudflare Pages check on `73c51f7` (the last commit before this handoff, same
+  `src`) completed with success, so staging has all of it. **Prod `main` untouched**
+  (`0ffa16c`).
+- Open PRs: only **#1 `docs-align-claude-md`** (Sept 1, not this work). Nothing from
+  this branch is in a PR; nothing is merged to `main`.
+- Gate as run at exit: `tsc -p tsconfig.app.json --noEmit` exit 0; `yarn build` built;
+  eslint on every `src` and `scripts` file changed since `phone-polish` shows 6 errors,
+  all the old `no-explicit-any` ones (four in `StaffCartridges.tsx`, two in
+  `CartridgeLineFields.tsx`), and 4 react-refresh warnings; `scripts/parser-tests/run.mjs`
+  45 of 45; `sweep.mjs` 571 of 578, 0 missed, the same 7 known gaps; dash scan on the
+  branch's added lines clean.
+- **DEV rules changed, by Parsa:** he says the `settings/shop` rule (text in
+  `docs/ENVIRONMENTS.md`) is now in the DEV Firebase project. Not seen or tested by an
+  agent. Prod does not have it. No DEV data changed. No secrets written anywhere.
+- Checked in a real browser on the local dev server with the auth bypass: the phone
+  audit fixes at 390 wide in light (and 1440 for Receipts, Notes, Timesheet, AI);
+  Settings at 390 in light and dark, including the shop details form, its validation,
+  the failed save and Cancel; the customer page reading a cached phone, email and hours
+  at 1280; the shift slip calendar at 390 and 1440, light and dark; the routing of the
+  vague stock questions.
+- **Not checked:** anything on a real phone; anything on staging beyond the build
+  passing; a real save or read of `settings/shop` (now possible on staging, since the
+  rule is said to be in); the stock replies against real inventory and `keyReference`
+  rows; the Inventory board row buttons (the local board is empty); dark mode for the
+  phone audit fixes; print output and a receipt PDF built from saved shop details.
 
-## Shift calendar, vague stock questions, key board audit (written 2026-10-11, same branch)
-
-- The shift slips' Day(s) and Day rows are a calendar (`components/ai/DayPicker.tsx`, pure
-  helpers in `dayPickerValue.ts`, field kind `days`, `multiple` on the add-shift spec). The
-  stored value is ISO local dates, which `parseDays` reads. Checked in a browser at 390 and
-  1440, light and dark. Known gap: a typed "also oct 22" replaces the picked days, it does
-  not add to them (the follow-up path did that before the calendar too).
+**Built this session, do NOT rebuild:**
+- Phone audit, the ten ranked items from the section below: forms start higher (first
+  field at 242 to 265px on Receipts, Cartridges and Notes, 312 on the two Inventory
+  forms; was 330 to 470), a `Field` is full width on a phone unless `half`, add-row
+  buttons, delete icons, filter chips, board filters and the tax preset select are 44px,
+  the empty band above taxes is gone on the key and refill receipts (at every width),
+  search placeholders are short, the Notes add form is white, tab, tile and shortcut
+  labels are 1px larger, the open-now line wraps, and the Timesheet calendar scrolls
+  sideways inside itself with the hour rail pinned (it already opened on List on a phone).
+- Audit item 8 needed no change: the slip's Confirm bar is a flex sibling of the
+  scrolling body, so nothing sits under it. A padding fix was tried and removed (it only
+  added 112px of empty space). Do not add it again.
+- Settings: switches are normal size in label-left rows (the old ones had `h-11` on the
+  Switch, which made a 44px blob), "Tools on the rail" is one row of toggle chips, the
+  phone number is in the body face.
+- Shop details are editable by a signed-in manager. `lib/shopSettings.ts` is a small
+  store: built-in defaults, a localStorage cache (`shop-settings-cache`), one Firestore
+  document `settings/shop` (phone, email, week, addressLines, thankYou, updatedAt; all
+  public facts, nothing else may go in it). `useShopSettings()` in components,
+  `getShopSettings()` elsewhere. The customer page, the rail's open-now line, the receipt
+  PDF (`simpleReceipt.ts`) and `ReceiptCard.tsx` read it. `PHONE_DISPLAY`, `PHONE_HREF`,
+  `EMAIL`, `WEEK`, `STORE_ADDRESS` and `THANK_YOU` no longer exist. GST and the shop name
+  stay fixed on purpose. Hours are whole hours and every day is open.
+- The customer Hours chart scales its bars from the week's earliest opening to its latest
+  closing (10 to 9 with today's hours, so it looks as before).
+- Shift slips: the Day(s) and Day rows are a calendar (`components/ai/DayPicker.tsx`,
+  pure helpers in `dayPickerValue.ts`, field kind `days`, `multiple` on the add-shift
+  spec). The stored value is ISO local dates, which `parseDays` already reads.
 - Stock questions by kind: `extractKeyKind` in `extract.ts` maps everyday words (mailbox,
   padlock, house, car, cabinet, office) to the reference `category`; `rankInventory` also
   matches reference text (fits, system, keyway), so "master lock keys" and "schlage keys"
-  work. Replies name the count and up to six codes; a bare "keys" gives counts by kind.
-  Make and code questions keep their old order. Routing checked locally; the replies were
-  not seen with real rows (local Firestore refuses reads), so try them on staging.
+  work. Replies give the count and up to six codes (`inventoryKeysMessage`); a bare
+  "keys" gives counts by kind (`inventoryKeysSummary`). Make and code questions keep
+  their old order. A kind beside "key" is a stock question only with no number, price or
+  sale word, so "2 mailbox keys 5.99" stays a sale.
 - Key board audit (Codex, read-only, over `scripts/keyBoardSeed.json` and the vetted
   reference; spot-checked against the seed). Nothing was changed: the board lives in
   Firestore and each fix needs a look at the physical key. 154 of the board's codes have
@@ -96,7 +121,71 @@ The ten ranked items under "Not done" in the next section are dealt with. Do not
   - 76 codes hang in more than one place (for example KW1 at J57, J71, J72); some of that
     is colour variants.
 
-## START HERE (written 2026-10-10, exit of the phone polish session)
+**Not done, carry into the next session:**
+1. A typed "also oct 22" on a shift slip replaces the picked days; it should add to
+   them (`src/ai/followup.ts` or wherever a follow-up sets `days`). Tapping works.
+2. Try a real shop details save on staging, then a receipt, to see the saved address and
+   thank-you line on the PDF. Add the rule to prod before any of this reaches `main`.
+3. The key board suspects above: nothing was changed. Each needs Parsa or staff to look
+   at the key; fixes go in through the Inventory board (Firestore), not the seed file.
+4. Left as seen from the phone pass: Receipts Packing starts with its supply chips, so
+   its first input is at 459px; XL price sits alone on a half row on Inventory add
+   refill; the account email in the drawer truncates; the "No shifts this week" pill
+   clips at the calendar's right edge until scrolled; Escape does not close the phone
+   drawer; "Canada post key" keeps "canada post" as a required word, so it finds nothing
+   unless a reference mentions it.
+5. `ThemeContext.tsx` parses `staff-theme-v2` without a guard, so a hand-edited value
+   throws on load. Seen by a helper, not looked into.
+
+**Constraints this session found (the older lists below still stand):**
+- A helper that reports ENGINE_LIMIT may still have written files. Codex said "nothing
+  was done" on the day picker and had in fact written all of it. Run `git status` before
+  resending a task, or the twin builds on top of half a change.
+- Codex makes unasked changes inside an asked one: it rescaled the customer Hours chart
+  to 24 hours, removed `half` from action fields (stranding delete buttons on their own
+  row), reordered make results, and expressed "remove the empty band" as phone-only.
+  Read every diff for things the spec did not ask for.
+- The phone audit's wording was not always the real problem: "fields sit under the
+  Confirm bar" was ordinary scrolling, and "the calendar clips" was a grid that already
+  scrolled. Measure in a browser before fixing an audit line.
+- `rankInventory` builds one `order` array per row; every row in one sort must use the
+  same shape, or the comparison is meaningless.
+- A background dev server is stopped at its time limit and can also die sooner. Check
+  port 8080 before every browser pass.
+- Locally the manager dialog offers "Set the manager PIN" (4 to 8 digits); any PIN turns
+  manager mode on for that page load, and it is lost on reload.
+- The Playwright helper can write a bad value to `staff-theme-v2` and blank the page.
+  Tell it the exact values (`true` or `false`).
+
+**Open questions for Parsa** (answers may arrive mid-session: fold each in as its own
+commit, and never invent one to close a line):
+- Answered 2026-10-11: shop details should be editable by a manager. Built.
+- His verdict on this session's work once he has tried it: the form spacing on a phone,
+  the rail chips, the shop details form, the shift calendar, the stock replies.
+- Whether hours need half hours or a closed day. Lands in `lib/shopSettings.ts`,
+  `storeInfo.ts` (`openState`), `Hours.tsx` and the Settings form.
+- Whether typed "also <day>" should add to the picked days (item 1 above).
+- Which key board suspects are real. Lands in the DEV `keyBoard` collection.
+- Still open from the section below: his real-phone verdict on typing in AI Mode, the
+  white gap, the user menu, install and the fingerprint lock; device lock or a real
+  passkey; the per-kind counts on the Inventory review chips; "do you have" as a stock
+  cue offline; and the carried list there.
+
+**Working rules:** environment and gate as in the project entry and the sections below.
+Before every commit: `tsc`, eslint on the changed files, `yarn build`, the dash scan,
+and for anything under `src/ai` or `lib/keyReference.ts` both parser scripts, one at a
+time. A misread line goes into `corpus.mjs` first. For a visual change, a browser pass
+on the dev server at 390 wide. One commit per change he asks for; push the branch and
+fast-forward `dev` (`git push origin <branch>:dev`). Push needs the credential-helper
+override in the sections below.
+
+**Still placeholder, must not reach a customer:** unchanged from the sections below
+(`STUDIO_URL` on its staging host, the public email with no mailbox, the whole rehaul on
+staging only, `purchase` with no executor, the install manifest and device lock untried
+on a real device). New: prod has no `settings/shop` rule, so on prod the shop details
+would show the built-in values and refuse a save.
+
+## Earlier (written 2026-10-10, exit of the phone polish session)
 
 **Next session is for:** building. First the phone audit fixes listed under "Not done"
 below (the findings are already ranked, nothing to re-investigate), then Parsa's notes
