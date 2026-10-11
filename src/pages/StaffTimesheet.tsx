@@ -258,12 +258,14 @@ function VisualSchedule({
     return `${h24 % 12 === 0 ? 12 : h24 % 12} ${h24 >= 12 ? "PM" : "AM"}`;
   };
 
+  const hourRail = 'sticky left-0 z-20 w-12 shrink-0 bg-pub-paper sm:z-auto sm:bg-transparent';
+
   return (
-    <div className="overflow-x-auto">
+    <div className="w-full max-w-full overflow-x-auto [contain:inline-size] sm:[contain:none]">
       <div className="min-w-[720px]">
         {/* Day headers */}
         <div className="flex">
-          <div className="w-12 shrink-0" />
+          <div className={`${hourRail} sm:static`} />
           {weekKeys.map((dayKey) => {
             const d = parseDateKey(dayKey);
             const isToday = dayKey === todayKey;
@@ -294,7 +296,7 @@ function VisualSchedule({
         {/* Grid body */}
         <div className="relative flex">
           {/* Hour rail */}
-          <div className="relative w-12 shrink-0" style={{ height: gridHeight }}>
+          <div className={`${hourRail} sm:relative`} style={{ height: gridHeight }}>
             {hours.map((min) => (
               <div key={min} className="absolute right-1.5 flex justify-end" style={{ top: (min - winStart) * pxPerMin - 7 }}>
                 <span className="text-[10px] font-mono tabular-nums text-pub-muted">{hourText(min)}</span>
