@@ -19,8 +19,13 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     // is a one-time hard reset that drops every browser's old saved preference,
     // so everyone lands on the light default once. A later toggle persists under
     // the new key as usual.
-    const saved = localStorage.getItem('staff-theme-v2');
-    return saved !== null ? JSON.parse(saved) : false;
+    // A hand-edited or corrupt value falls back to light instead of throwing.
+    try {
+      const saved = JSON.parse(localStorage.getItem('staff-theme-v2'));
+      return typeof saved === 'boolean' ? saved : false;
+    } catch {
+      return false;
+    }
   });
 
   useEffect(() => {
