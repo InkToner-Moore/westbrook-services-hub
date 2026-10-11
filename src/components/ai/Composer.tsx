@@ -46,7 +46,9 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
   // once a chat is going, unless the clerk has chosen one way or the other.
   const [phone] = useState(isPhone);
   const [shortcutsChoice, setShortcutsChoice] = useState<boolean | null>(readShortcuts);
-  const shortcutsOpen = shortcutsChoice ?? (!compact && !phone);
+  // Adding packing starts the chat, which would fold the row mid-task. Hold it open.
+  const [holdOpen, setHoldOpen] = useState(false);
+  const shortcutsOpen = shortcutsChoice ?? (holdOpen || (!compact && !phone));
   const toggleShortcuts = () => {
     const next = !shortcutsOpen;
     setShortcutsChoice(next);
@@ -71,7 +73,10 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
 
   const send = () => {
     const typed = text.trim();
-    const keywords = chips.map((c) => c.keyword).join(' ');
+    // A second shipping prefix hides a leading customer name from the parser.
+    const keywords = chips
+      .filter((c) => !(c.kind === 'ship' && /^ship(?:ping)?\b/i.test(typed)))
+      .map((c) => c.keyword).join(' ');
     const full = `${keywords} ${typed}`.trim();
     if (!full || disabled) return;
     onSend(full);
@@ -143,7 +148,11 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
         </button>
         {shortcutsOpen && (
           <div className="pb-1 pt-1">
-            <QuickActions onAddChip={addChip} onTrack={onTrack} onAddPacking={onAddPacking} />
+            <QuickActions
+              onAddChip={addChip} onTrack={onTrack}
+              onAddPacking={(preset) => { setHoldOpen(true); onAddPacking(preset); }}
+              onSend={onSend} disabled={disabled}
+            />
           </div>
         )}
       </div>
