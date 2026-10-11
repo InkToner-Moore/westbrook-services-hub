@@ -22,7 +22,7 @@ import { PHONE_DISPLAY, EMAIL, WEEK, formatHour } from '@/lib/storeInfo';
 import { GST_RATE, STORE_NAME, STORE_ADDRESS, THANK_YOU } from '@/lib/simpleReceipt';
 
 const StaffSettings = () => {
-  const { isDarkMode, toggleTheme } = useTheme();
+  const { isDarkMode, toggleTheme, themeClasses } = useTheme();
   const { isManager, promptUnlock, lock } = useManagerMode();
   const { user, logout } = useAuth();
   const { inShell } = useShell();
@@ -119,12 +119,23 @@ const StaffSettings = () => {
                 : 'Open your browser menu and choose Install app or Add to Home screen.'}</p>
             )}
           </Field>
-          <Field label="Unlock with fingerprint or Face ID" htmlFor="settings-device-lock" span={12}
-            hint="Asks for your fingerprint or face when the app opens on this device. Your password still works.">
-            {(lockAvailable || !lockEnabled) && (
-              <Switch id="settings-device-lock" className="h-11" checked={lockEnabled}
-                disabled={!lockAvailable || lockBusy} onCheckedChange={(value) => void changeDeviceLock(value)} />
-            )}
+          <div className="col-span-2 sm:col-span-12">
+            <div className="flex min-h-11 items-center gap-3">
+              <label htmlFor="settings-device-lock" className="min-w-0 flex-1">
+                <span className="block text-[13px] font-medium leading-5 text-pub-ink">
+                  Unlock with fingerprint or Face ID
+                </span>
+                <span className="mt-1.5 block text-[13px] text-pub-muted">
+                  Asks for your fingerprint or face when the app opens on this device.
+                  {' '}Your password still works.
+                </span>
+              </label>
+              {(lockAvailable || !lockEnabled) && (
+                <Switch id="settings-device-lock" checked={lockEnabled}
+                  disabled={!lockAvailable || lockBusy}
+                  onCheckedChange={(value) => void changeDeviceLock(value)} />
+              )}
+            </div>
             {lockAvailable && lockEnabled && passwordUnlocked && (
               <button type="button" disabled={lockBusy}
                 className="block min-h-11 text-left text-sm text-pub-muted underline underline-offset-4"
@@ -146,36 +157,52 @@ const StaffSettings = () => {
               </p>
             ))}
             {lockMessage && <p role="status" className="mt-1.5 text-[13px] text-pub-muted">{lockMessage}</p>}
-          </Field>
+          </div>
         </FieldGrid>
       </FormSection>
       <FormSection title="AI Mode">
         <FieldGrid>
-          <Field htmlFor="settings-shortcuts" label="Show shortcuts when the chat opens" span={12}
-            hint="Off keeps them behind the Shortcuts button.">
-            <Switch id="settings-shortcuts" className="h-11" checked={shortcuts ?? !phone}
+          <div className="col-span-2 flex min-h-11 items-center gap-3 sm:col-span-12">
+            <label htmlFor="settings-shortcuts" className="min-w-0 flex-1">
+              <span className="block text-[13px] font-medium leading-5 text-pub-ink">
+                Show shortcuts when the chat opens
+              </span>
+              <span className="mt-1.5 block text-[13px] text-pub-muted">
+                Off keeps them behind the Shortcuts button.
+              </span>
+            </label>
+            <Switch id="settings-shortcuts" checked={shortcuts ?? !phone}
               onCheckedChange={(value) => {
                 setShortcuts(value);
-                try { localStorage.setItem('ai-shortcuts-open', value ? '1' : '0'); } catch { /* Keep the local choice. */ }
+                try {
+                  localStorage.setItem('ai-shortcuts-open', value ? '1' : '0');
+                } catch { /* Keep the local choice. */ }
               }} />
-          </Field>
+          </div>
         </FieldGrid>
       </FormSection>
       <FormSection title="Tools on the rail"
-        description="Hidden tools still open from AI Mode or a link. This only changes this device.">
-        <FieldGrid>
+        description={'Tap a tool to hide or show it. Hidden tools still open from AI Mode or a link. '
+          + 'This only changes this device.'}>
+        <div className="flex flex-wrap gap-2">
           {TOOL_TILES.map((tile) => {
             const Icon = tile.icon;
+            const visible = !hiddenTiles.includes(tile.key);
+            const color = visible ? themeClasses.ink.fill :
+              'bg-pub-paper border-pub-edge text-pub-muted hover:text-pub-ink';
+            const chip = 'inline-flex min-h-11 sm:min-h-[40px] items-center gap-1.5 '
+              + 'rounded-full border px-3.5 text-sm font-medium transition-colors';
             return (
-              <Field key={tile.key} htmlFor={`settings-tile-${tile.key}`}
-                label={<span className="flex items-center gap-2"><Icon className="h-4 w-4" />{tile.label}</span>}>
-                <Switch id={`settings-tile-${tile.key}`} className="h-11"
-                  checked={!hiddenTiles.includes(tile.key)}
-                  onCheckedChange={(visible) => setVisible(tile.key, visible)} />
-              </Field>
+              <button key={tile.key} type="button" aria-pressed={visible}
+                aria-label={`${tile.label}, ${visible ? 'shown on the rail' : 'hidden'}`}
+                onClick={() => setVisible(tile.key, !visible)}
+                className={`${chip} ${themeClasses.interactive.focus} ${color}`}>
+                <Icon className="h-4 w-4" />
+                <span className={visible ? undefined : 'line-through'}>{tile.label}</span>
+              </button>
             );
           })}
-        </FieldGrid>
+        </div>
       </FormSection>
       <FormSection title="Manager" description="Needed to add, change or delete shifts.">
         <p className="mb-3 text-sm">{isManager ? 'Signed in as manager' : 'Locked'}</p>
@@ -187,7 +214,7 @@ const StaffSettings = () => {
       </FormSection>
       <FormSection title="Shop details" description="These are built into the app and cannot be changed here yet.">
         <FieldGrid>
-          <Field label="Phone"><p className={fc.mono}>{PHONE_DISPLAY}</p></Field>
+          <Field label="Phone"><p className="tabular-nums">{PHONE_DISPLAY}</p></Field>
           <Field label="Email"><p className="break-all">{EMAIL}</p></Field>
           <Field label="Weekly hours" span={12}>
             <dl className="max-w-sm space-y-2">
