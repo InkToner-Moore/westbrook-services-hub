@@ -11,6 +11,14 @@ export function formatPickedDays(days: string[]): string {
   return [...new Set(days)].sort().join(', ');
 }
 
+// A typed follow-up that adds days ("also oct 22") keeps the days already on the
+// slip. The result keeps the format the slip already had: picker keys stay keys,
+// typed text stays readable. With keep false the typed days replace them instead.
+export function mergeDays(existing: string, typed: string, keep = true, ref: Date = new Date()): string {
+  const days = [...new Set([...(keep ? parseDays(existing, ref) : []), ...parseDays(typed, ref)])].sort();
+  return /\d{4}-\d{2}-\d{2}/.test(existing) ? formatPickedDays(days) : describeDays(days);
+}
+
 export function pickDay(days: string[], day: string, multiple: boolean): string {
   if (!multiple) return day;
   const next = days.includes(day) ? days.filter((key) => key !== day) : [...days, day];

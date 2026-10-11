@@ -33,11 +33,14 @@ import {
 } from './extract';
 import { emptyShipmentItem, isItemComplete, toShipmentItems } from './shipping';
 import { getFieldSpecs, missingRequired } from './fieldSpecs';
-import { parseClockTime } from '@/lib/shiftParse';
+import { parseClockTime, parseDays, parseTimeRange } from '@/lib/shiftParse';
 import { formatTime12, parseHhmm } from '@/lib/schedule';
+import { mergeDays } from '@/components/ai/dayPickerValue';
 import type { PackingItem } from '@/lib/packing';
 
 const ADD_ITEM = /\b(add|and|another|second|third|also|plus|one more)\b/i;
+// Words that make typed days join the days already on the slip.
+const ADD_DAYS = /\b(add|also|plus|too|as well)\b|^\s*and\b/i;
 // The free-text fields. A follow-up never rewrites one from its own leftover
 // words ("make it 40" is not an item called "make it"); it only fills one that is
 // still empty when the message is a bare answer.
@@ -124,6 +127,13 @@ export function applyFollowUp(active: Intent, text: string): Intent {
           else items.push(item);
         }
         next.fields[key] = explicit(items);
+      } else if (key === 'days' && active.fields.days?.value
+          && getFieldSpecs(active)?.find((s) => s.key === 'days')?.multiple) {
+        // The reread keeps only the first day; read them all, minus any times.
+        const typed = parseTimeRange(text)?.rest ?? text;
+        if (parseDays(typed).length) {
+          next.fields[key] = explicit(mergeDays(String(active.fields.days.value), typed, ADD_DAYS.test(text)));
+        }
       } else next.fields[key] = value;
       changed = true;
     }

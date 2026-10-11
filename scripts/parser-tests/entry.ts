@@ -34,6 +34,6 @@ export {
   rankInventory, inventoryEmptyMessage, inventoryKeysSummary, inventoryKeysMessage,
 } from '@/lib/keyReference';
 export {
-  pickedDays, formatPickedDays, pickDay, pickedDaysSummary,
+  pickedDays, formatPickedDays, mergeDays, pickDay, pickedDaysSummary,
 } from '@/components/ai/dayPickerValue';
 export { FIELD_SPECS, missingRequired } from '@/ai/fieldSpecs';

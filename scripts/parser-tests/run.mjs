@@ -535,6 +535,13 @@ test('day picker: typed days seed sorted selections and readable summaries', () 
   assert.equal(mod.pickedDaysSummary([], ''), 'No day picked');
 });
 
+test('day picker: typed additions merge sorted without repeats, in the stored format', () => {
+  const ref = new Date(2026, 9, 1);
+  assert.equal(mod.mergeDays('2026-10-08, 2026-10-09', 'also oct 22, 9', true, ref),
+    '2026-10-08, 2026-10-09, 2026-10-22');
+  assert.equal(mod.mergeDays('Oct 8, 9', 'plus the 23rd', true, ref), 'Oct 8, 9, 23');
+});
+
 test('day picker: canonical values round-trip across months and years', () => {
   for (const keys of [
     ['2026-10-31', '2026-11-02'],
