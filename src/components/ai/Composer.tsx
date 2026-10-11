@@ -57,10 +57,10 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
     }
   };
 
-  // Focus on mount, so arriving at AI Mode (the center pane) drops the cursor
-  // straight in the box, ready to type.
+  // Focus on desktop without scrolling; phone and touch layouts wait for a tap.
   useEffect(() => {
-    inputRef.current?.focus();
+    if (window.matchMedia('(max-width: 1023px), (pointer: coarse)').matches) return;
+    inputRef.current?.focus({ preventScroll: true });
   }, []);
 
   const addChip = (spec: ChipSpec) => {
@@ -114,7 +114,7 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
           }}
           rows={1}
           placeholder={phone ? 'Tell me what you need' : 'Tell me what you need. For example: refill for Sarah, HP 65, $34'}
-          className="min-h-[2.75rem] max-h-40 flex-1 resize-none rounded-xl border px-3.5 py-2.5 text-[15px]
+          className="min-h-[2.75rem] max-h-40 flex-1 resize-none rounded-xl border px-3.5 py-2.5 text-base sm:text-[15px]
             leading-relaxed outline-none placeholder:overflow-hidden placeholder:text-ellipsis
             placeholder:whitespace-nowrap border-pub-edge bg-pub-sunk text-pub-ink placeholder:text-pub-muted
             focus:border-pub-accent focus:ring-pub-accent"

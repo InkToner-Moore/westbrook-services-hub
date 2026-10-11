@@ -11,7 +11,7 @@
 // generic ArtifactPanel + ArtifactActions so nothing breaks before a bespoke
 // card exists.
 import React from 'react';
-import { History, PanelRight, PanelRightClose } from 'lucide-react';
+import { ChevronDown, History, PanelRight, PanelRightClose } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAiMode } from '@/ai/context';
 import type { ArtifactState } from '@/ai/types';
@@ -41,6 +41,8 @@ const RegisteredArtifact: React.FC<{ renderer: ArtifactRenderer; kind: string; d
 
 interface ArtifactRailProps {
   onCollapse?: () => void;
+  onBack?: () => void;
+  backLabel?: string;
   // The last non-confirmation artifact that was shown, so the rail can offer a
   // "Show last" reopen when there is nothing live. StaffShell owns this state
   // (a local fallback until A1 promotes lastArtifact/reopenLastArtifact into the
@@ -49,7 +51,13 @@ interface ArtifactRailProps {
   onReopenLast?: () => void;
 }
 
-const ArtifactRail: React.FC<ArtifactRailProps> = ({ onCollapse, lastArtifact, onReopenLast }) => {
+const ArtifactRail: React.FC<ArtifactRailProps> = ({
+  onCollapse,
+  onBack,
+  backLabel = 'Back',
+  lastArtifact,
+  onReopenLast,
+}) => {
   const { themeClasses } = useTheme();
   const { artifact } = useAiMode();
   const hasArtifact = !!artifact && artifact.kind !== 'none';
@@ -58,9 +66,22 @@ const ArtifactRail: React.FC<ArtifactRailProps> = ({ onCollapse, lastArtifact, o
 
   return (
     <div className="flex h-full flex-col">
-      <header className={`flex items-center gap-2 border-b px-4 py-3 ${themeClasses.header}`}>
-        <PanelRight className="h-4 w-4 text-pub-muted" />
-        <span className="font-display text-[15px] font-semibold text-pub-ink">
+      <header className={`flex items-center gap-2 border-b px-4 py-3
+        ${onBack ? 'shrink-0' : ''} ${themeClasses.header}`}>
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className={`inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl px-3
+              text-sm text-pub-muted ${themeClasses.interactive.hover}`}
+          >
+            <ChevronDown className="h-4 w-4" />
+            {backLabel}
+          </button>
+        )}
+        <PanelRight className={`h-4 w-4 text-pub-muted ${onBack ? 'shrink-0' : ''}`} />
+        <span className={`font-display text-[15px] font-semibold text-pub-ink
+          ${onBack ? 'min-w-0 truncate' : ''}`}>
           {hasArtifact ? artifact?.title ?? 'Details' : 'Workspace'}
         </span>
         {canReopen && (

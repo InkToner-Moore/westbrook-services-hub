@@ -118,7 +118,7 @@ const TileRail: React.FC<{ onCollapse?: () => void }> = ({ onCollapse }) => {
         )}
       </div>
 
-      <nav aria-label="Staff tools" className="grid grid-cols-2 gap-2">
+      <nav aria-label="Staff tools" className="grid shrink-0 grid-cols-2 gap-2">
         <HeroTile tile={AI_TILE} active={aiActive} />
         {TOOL_TILES.map((tile, i) => (
           <ToolTile
@@ -130,7 +130,7 @@ const TileRail: React.FC<{ onCollapse?: () => void }> = ({ onCollapse }) => {
         ))}
       </nav>
 
-      <div className="mt-auto">
+      <div className="mt-auto shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:pb-0">
         <div className="mb-3 h-px bg-pub-edge" />
         <UserMenu />
       </div>

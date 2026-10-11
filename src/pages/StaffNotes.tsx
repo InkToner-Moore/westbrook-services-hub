@@ -346,7 +346,7 @@ const StaffNotes = () => {
 
             {/* Notes */}
             {!loading && (
-              <div className="space-y-4 max-h-[600px] overflow-y-auto">
+              <div className="space-y-4 max-h-[600px] overflow-y-auto overscroll-contain">
                 {filteredNotes.map((note) => (
                   <Card key={note.id} className="shadow-none rounded-xl bg-pub-paper border-pub-edge">
                     <CardContent className="p-6">

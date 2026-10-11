@@ -8,7 +8,7 @@
 // See docs/ui-rehaul/DESIGN-SPEC.md and PLAN.md.
 import React, { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { ChevronDown, Menu, PanelRight, PanelLeftOpen, PanelRightOpen, X, Sparkles } from 'lucide-react';
+import { Menu, PanelRight, PanelLeftOpen, PanelRightOpen, X, Sparkles } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAiMode } from '@/ai/context';
 import type { ArtifactState } from '@/ai/types';
@@ -36,6 +36,36 @@ const StaffShell: React.FC = () => {
   const [rightCollapsed, setRightCollapsed] = useState(false);
 
   const hasArtifact = !!artifact && artifact.kind !== 'none';
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const viewport = window.visualViewport;
+    let frame: number | null = null;
+    root.classList.add('staff-shell-active');
+
+    const updateViewport = () => {
+      frame = null;
+      if (!viewport) return;
+      // Pinch zoom shrinks the visual viewport too; only the keyboard should resize the shell.
+      const zoomed = Math.abs(viewport.scale - 1) > 0.01;
+      root.style.setProperty('--staff-vh', `${Math.round(viewport.height * viewport.scale)}px`);
+      if (!zoomed && viewport.offsetTop !== 0) window.scrollTo(0, 0);
+    };
+    const scheduleUpdate = () => {
+      if (frame === null) frame = window.requestAnimationFrame(updateViewport);
+    };
+
+    updateViewport();
+    viewport?.addEventListener('resize', scheduleUpdate);
+    viewport?.addEventListener('scroll', scheduleUpdate);
+    return () => {
+      viewport?.removeEventListener('resize', scheduleUpdate);
+      viewport?.removeEventListener('scroll', scheduleUpdate);
+      if (frame !== null) window.cancelAnimationFrame(frame);
+      root.style.removeProperty('--staff-vh');
+      root.classList.remove('staff-shell-active');
+    };
+  }, []);
 
   // Remember the last real result so the rail can offer a "Show last" reopen
   // after a tool switch clears the live artifact. Confirmation slips are
@@ -92,7 +122,7 @@ const StaffShell: React.FC = () => {
 
   return (
     <ShellContext.Provider value={{ inShell: true, openWorkspace }}>
-      <div className={`flex h-[100dvh] w-full overflow-hidden ${themeClasses.background}`}>
+      <div className={`flex h-[var(--staff-vh,100dvh)] w-full overflow-hidden ${themeClasses.background}`}>
         {/* Left rail - desktop (full, or a slim reopen strip when collapsed) */}
         {leftCollapsed ? (
           <aside className={`hidden w-10 shrink-0 flex-col items-center border-r pt-2 lg:flex ${themeClasses.header}`}>
@@ -152,7 +182,9 @@ const StaffShell: React.FC = () => {
             )}
           </div>
 
-          <main className="min-h-0 flex-1 overflow-auto">
+          <main className={`min-h-0 flex-1 overscroll-contain ${
+            isChatRoute ? 'overflow-hidden' : 'overflow-auto'
+          }`}>
             <Outlet />
           </main>
           {!isChatRoute && cart.length > 0 && (
@@ -188,15 +220,18 @@ const StaffShell: React.FC = () => {
 
         {/* Mobile tile drawer */}
         {railOpen && (
-          <div className="fixed inset-0 z-[80] lg:hidden">
+          <div className="fixed inset-x-0 top-0 z-[80] h-[var(--staff-vh,100dvh)] lg:hidden">
             <div className="absolute inset-0 bg-black/40" onClick={() => setRailOpen(false)} />
-            <div className={`absolute inset-y-0 left-0 w-64 border-r shadow-lg ${themeClasses.header}`}>
-              <div className="flex justify-end p-2">
+            <div className={`absolute inset-y-0 left-0 flex w-64 flex-col overflow-hidden
+              border-r shadow-lg ${themeClasses.header}`}>
+              <div className="flex shrink-0 justify-end p-2">
                 <button type="button" onClick={() => setRailOpen(false)} aria-label="Close menu" className={`rounded-lg p-1.5 ${themeClasses.interactive.hover}`}>
                   <X className="h-5 w-5 text-pub-muted" />
                 </button>
               </div>
-              <TileRail />
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <TileRail />
+              </div>
             </div>
           </div>
         )}
@@ -205,21 +240,16 @@ const StaffShell: React.FC = () => {
             is only hidden when closed, so edits made on a slip survive a trip
             back to the chat to type a change. */}
         {(sheetOpen || hasArtifact) && (
-          <div className={`fixed inset-0 z-[80] xl:hidden ${sheetOpen ? '' : 'hidden'}`}>
+          <div className={`fixed inset-x-0 top-0 z-[80] h-[var(--staff-vh,100dvh)] xl:hidden ${sheetOpen ? '' : 'hidden'}`}>
             <div className="absolute inset-0 bg-black/40" onClick={() => setSheetOpen(false)} />
             <div className="absolute inset-x-0 bottom-0 top-16 flex flex-col rounded-t-2xl border-t shadow-lg bg-pub-paper border-pub-edge">
-              <div className="flex justify-end px-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setSheetOpen(false)}
-                  className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 text-sm text-pub-muted ${themeClasses.interactive.hover}`}
-                >
-                  <ChevronDown className="h-4 w-4" />
-                  {isChatRoute ? 'Back to chat' : 'Back'}
-                </button>
-              </div>
               <div className="min-h-0 flex-1">
-                <ArtifactRail lastArtifact={lastArtifact} onReopenLast={reopenLast} />
+                <ArtifactRail
+                  onBack={() => setSheetOpen(false)}
+                  backLabel={isChatRoute ? 'Back to chat' : 'Back'}
+                  lastArtifact={lastArtifact}
+                  onReopenLast={reopenLast}
+                />
               </div>
             </div>
           </div>

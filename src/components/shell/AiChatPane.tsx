@@ -67,10 +67,18 @@ const AiChatPane: React.FC = () => {
   const { openWorkspace } = useShell();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Keep the newest turn in view, including the thinking indicator.
+  const nearBottom = useRef(true);
+  const lastTurnId = useRef<string | undefined>(undefined);
+
+  // Follow replies only while near the bottom; a new user message always follows.
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const scroller = scrollRef.current;
+    const newest = turns[turns.length - 1];
+    const ownMessage = newest?.role === 'user' && newest.id !== lastTurnId.current;
+    lastTurnId.current = newest?.id;
+    if (scroller && (nearBottom.current || ownMessage)) {
+      scroller.scrollTop = scroller.scrollHeight;
+      nearBottom.current = true;
     }
   }, [turns, busy]);
 
@@ -98,8 +106,8 @@ const AiChatPane: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto flex h-full w-full max-w-2xl flex-col px-4 py-5">
-      <header className="mb-4 flex items-center justify-between">
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-2xl flex-col px-4 py-5">
+      <header className="mb-4 flex shrink-0 items-center justify-between">
         <div className="flex items-center gap-2.5 text-pub-ink">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-pub-edge bg-pub-paper">
             <Sparkles className="h-5 w-5 text-pub-accent" strokeWidth={1.6} />
@@ -117,7 +125,14 @@ const AiChatPane: React.FC = () => {
         </button>
       </header>
 
-      <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto pr-1">
+      <div
+        ref={scrollRef}
+        onScroll={(e) => {
+          const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
+          nearBottom.current = scrollHeight - scrollTop - clientHeight <= 120;
+        }}
+        className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1"
+      >
         {turns.length === 0 && (
           <div className="pt-8 sm:pt-14">
             <p className="font-display font-semibold text-pub-ink"
@@ -205,7 +220,7 @@ const AiChatPane: React.FC = () => {
         )}
       </div>
 
-      <div className="mt-3">
+      <div className="mt-3 shrink-0">
         <CartPanel />
         <Composer
           onSend={sendUtterance}
