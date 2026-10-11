@@ -8,8 +8,8 @@ export function useFormClasses() {
   const { themeClasses } = useTheme();
   const action = 'h-11 w-full rounded-full px-6 text-[15px] transition-colors sm:w-auto ';
   return {
-    input: 'h-11 rounded-lg px-3 text-[15px] md:text-[15px] ' + themeClasses.input,
-    textarea: 'min-h-[96px] rounded-lg px-3 py-2.5 text-[15px] md:text-[15px] ' + themeClasses.input,
+    input: 'h-11 rounded-lg px-3 text-base md:text-[15px] ' + themeClasses.input,
+    textarea: 'min-h-[96px] rounded-lg px-3 py-2.5 text-base md:text-[15px] ' + themeClasses.input,
     mono: 'font-mono tabular-nums',
     primary: action + 'font-semibold ' + themeClasses.button.primary,
     secondary: action + 'font-medium ' + themeClasses.button.secondary,
