@@ -414,12 +414,12 @@ const StaffReceipts = () => {
       }
       icon={Receipt}
     >
-      <div className="border rounded-xl p-5 sm:p-6 bg-pub-paper border-pub-edge">
+      <div className="border rounded-xl p-2 sm:p-6 bg-pub-paper border-pub-edge">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
 
           {/* Shipping Receipt Form */}
           <TabsContent value="shipping" id="receipts-panel-shipping" aria-labelledby="receipts-tab-shipping">
-            <form onSubmit={shippingForm.handleSubmit(addShippingToReceipt)} className="space-y-6">
+            <form onSubmit={shippingForm.handleSubmit(addShippingToReceipt)} className="space-y-3 sm:space-y-6">
               <FormSection>
                 <FieldGrid>
                   <Field label="Receipt number" htmlFor="receiptNumber" span={4}>
@@ -534,7 +534,6 @@ const StaffReceipts = () => {
                           label="Province/state"
                           htmlFor={`shippingForm-shippingItems-${itemIndex}-destinationProvince`}
                           span={2}
-                          half
                         >
                           <Input
                             {...shippingForm.register(`shippingItems.${itemIndex}.destinationProvince`)}
@@ -548,7 +547,6 @@ const StaffReceipts = () => {
                           label="Country"
                           htmlFor={`shippingForm-shippingItems-${itemIndex}-destinationCountry`}
                           span={3}
-                          half
                         >
                           <Input
                             {...shippingForm.register(`shippingItems.${itemIndex}.destinationCountry`)}
@@ -710,7 +708,7 @@ const StaffReceipts = () => {
                                     >
                                       <SelectTrigger
                                         id={`shipping-addon-tax-province-${addonIndex}-${itemIndex}`}
-                                        className={`h-9 w-36 rounded-full px-3.5 text-[13px] ${themeClasses.input}`}
+                                        className={`h-11 w-36 rounded-full px-3.5 text-[13px] sm:h-9 ${themeClasses.input}`}
                                       >
                                         <SelectValue placeholder="Alberta" />
                                       </SelectTrigger>
@@ -805,7 +803,7 @@ const StaffReceipts = () => {
                             <Select onValueChange={(province) => setProvincialTax(province, 'shipping', itemIndex)}>
                               <SelectTrigger
                                 id={`shipping-tax-province-${itemIndex}`}
-                                className={`h-9 w-36 rounded-full px-3.5 text-[13px] ${themeClasses.input}`}
+                                className={`h-11 w-36 rounded-full px-3.5 text-[13px] sm:h-9 ${themeClasses.input}`}
                               >
                                 <SelectValue placeholder="Alberta" />
                               </SelectTrigger>
@@ -897,7 +895,7 @@ const StaffReceipts = () => {
 
           {/* Key Cutting Receipt Form */}
           <TabsContent value="key" id="receipts-panel-key" aria-labelledby="receipts-tab-key">
-            <form onSubmit={keyForm.handleSubmit(addKeyToReceipt)} className="space-y-6">
+            <form onSubmit={keyForm.handleSubmit(addKeyToReceipt)} className="space-y-3 sm:space-y-6">
               <FormSection>
                 <FieldGrid>
                   <Field label="Receipt number" htmlFor="keyReceiptNumber" span={4}>
@@ -1008,15 +1006,13 @@ const StaffReceipts = () => {
               </FormSection>
               <FormSection>
                 <div className="space-y-3">
-                  <div
-                    className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-pub-edge pt-4"
-                  >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <h5 className="text-[13px] font-medium text-pub-ink">Taxes</h5>
                     <div className="flex items-center gap-2">
                       <Select onValueChange={(province) => setProvincialTax(province, 'key')}>
                         <SelectTrigger
                           id="key-tax-province"
-                          className={`h-9 w-36 rounded-full px-3.5 text-[13px] ${themeClasses.input}`}
+                          className={`h-11 w-36 rounded-full px-3.5 text-[13px] sm:h-9 ${themeClasses.input}`}
                         >
                           <SelectValue placeholder="Alberta" />
                         </SelectTrigger>
@@ -1102,7 +1098,7 @@ const StaffReceipts = () => {
             id="receipts-panel-cartridge"
             aria-labelledby="receipts-tab-cartridge"
           >
-            <form onSubmit={cartridgeForm.handleSubmit(addCartridgeToReceipt)} className="space-y-6">
+            <form onSubmit={cartridgeForm.handleSubmit(addCartridgeToReceipt)} className="space-y-3 sm:space-y-6">
               <FormSection>
                 <FieldGrid>
                   <Field label="Receipt number" htmlFor="crReceiptNumber" span={4}>
@@ -1163,7 +1159,9 @@ const StaffReceipts = () => {
                 requirePrice
               />
 
-              <FormSection>
+              <FormSection
+                className={cartridgeForm.formState.errors.cartridges ? '' : 'hidden'}
+              >
                 <FieldGrid>
                   <Field
                     span={12}
@@ -1215,7 +1213,7 @@ const StaffReceipts = () => {
 
           {/* Toner Sale Receipt Form */}
           <TabsContent value="toner" id="receipts-panel-toner" aria-labelledby="receipts-tab-toner">
-            <form onSubmit={tonerForm.handleSubmit(addTonerToReceipt)} className="space-y-6">
+            <form onSubmit={tonerForm.handleSubmit(addTonerToReceipt)} className="space-y-3 sm:space-y-6">
               <FormSection>
                 <FieldGrid>
                   <Field label="Receipt number" htmlFor="tonReceiptNumber" span={4}>
@@ -1356,7 +1354,7 @@ const StaffReceipts = () => {
 
           {/* Packing supplies */}
           <TabsContent value="packing" id="receipts-panel-packing" aria-labelledby="receipts-tab-packing">
-            <form className="space-y-6">
+            <form className="space-y-3 sm:space-y-6">
               <FormSection title="Add a supply">
                 <div className="flex flex-wrap gap-2">
                   {PACKING_PRESETS.filter((p) => !p.custom).map((p) => (

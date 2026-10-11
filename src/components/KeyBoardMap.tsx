@@ -115,7 +115,7 @@ export const KeyBoardMap: React.FC<Props> = ({ board, loading, onSelect, onChang
   };
 
   const chip = (on: boolean) =>
-    `inline-flex min-h-[40px] items-center justify-center rounded-lg border px-3 text-sm font-medium transition-colors ${themeClasses.interactive.focus} ${
+    `inline-flex min-h-11 sm:min-h-[40px] items-center justify-center rounded-lg border px-3 text-sm font-medium transition-colors ${themeClasses.interactive.focus} ${
       on
         ? themeClasses.ink.fill
         : `bg-pub-paper border-pub-edge text-pub-muted ${themeClasses.interactive.hover}`
@@ -139,7 +139,7 @@ export const KeyBoardMap: React.FC<Props> = ({ board, loading, onSelect, onChang
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Find a key or a spot, e.g. SC1 or B12"
+          placeholder="Search keys or spots"
           aria-label="Find a key or a spot on the board"
           className={`min-h-[44px] pl-10 pr-10 ${themeClasses.input}`}
         />
@@ -169,7 +169,7 @@ export const KeyBoardMap: React.FC<Props> = ({ board, loading, onSelect, onChang
                 setRow(r.row);
                 setQuery('');
               }}
-              className={`${chip(!q && currentRow?.row === r.row)} w-10 px-0 font-mono`}
+              className={`${chip(!q && currentRow?.row === r.row)} w-11 sm:w-10 px-0 font-mono`}
             >
               {r.row}
             </button>

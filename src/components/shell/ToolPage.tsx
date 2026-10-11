@@ -21,13 +21,13 @@ export const ToolPageHeader: React.FC<{ tool: ToolKey; subtitle?: string; action
   if (!tile) return null;
   const Icon = tile.icon;
   return (
-    <div className={`${compact ? 'mb-5' : 'mb-7'} flex flex-wrap items-center justify-between gap-3`}>
+    <div className={`${compact ? 'mb-2 sm:mb-5' : 'mb-2 sm:mb-7'} flex flex-wrap items-center justify-between gap-3`}>
       <div className="flex min-w-0 items-center gap-3">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-pub-edge bg-pub-paper">
           <Icon className="h-5 w-5 text-pub-ink" strokeWidth={1.6} />
         </span>
         <div className="min-w-0">
-          <h1 className="font-display text-[28px] font-semibold leading-tight text-pub-ink sm:text-[32px]">{tile.label}</h1>
+          <h1 className="font-display text-[24px] font-semibold leading-tight text-pub-ink sm:text-[32px]">{tile.label}</h1>
           {subtitle && <p className="mt-0.5 text-[15px] text-pub-muted">{subtitle}</p>}
         </div>
       </div>
@@ -44,9 +44,9 @@ export const ToolPage: React.FC<{
   tabs?: React.ReactNode;
   children: React.ReactNode;
 }> = ({ tool, subtitle, actions, tabs, children }) => (
-  <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
+  <div className="mx-auto w-full max-w-5xl px-3 py-2 sm:px-6 sm:py-6">
     <ToolPageHeader tool={tool} subtitle={subtitle} actions={actions} compact={Boolean(tabs)} />
-    {tabs && <div className="mb-5">{tabs}</div>}
+    {tabs && <div className="mb-2 sm:mb-5">{tabs}</div>}
     {children}
   </div>
 );
@@ -76,8 +76,9 @@ export function SegmentedTabs<T extends string>({
   const { themeClasses } = useTheme();
   const buttons = React.useRef<(HTMLButtonElement | null)[]>([]);
   const track = size === 'md' ? 'flex w-full sm:inline-flex sm:w-auto' : 'inline-flex max-w-full';
-  const pad = size === 'sm' ? 'min-h-[36px] px-3 text-[13px]' :
-    'min-h-[44px] flex-1 min-w-0 flex-col justify-center gap-1 px-1 py-2 text-[12px] leading-tight sm:flex-none sm:flex-row sm:gap-2 sm:px-4 sm:py-0 sm:text-sm';
+  const pad = size === 'sm' ? 'min-h-11 sm:min-h-[36px] px-3 text-[13px]' :
+    'min-h-[44px] flex-1 min-w-0 flex-col justify-center gap-1 px-1 py-1 ' +
+    'text-[13px] leading-tight sm:flex-none sm:flex-row sm:gap-2 sm:px-4 sm:py-0 sm:text-sm';
   const onKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
     let next: number;
     switch (event.key) {
@@ -141,7 +142,7 @@ export function FilterChips<T extends string>({ value, onChange, options, label,
         return (
           <button key={option.value} type="button" aria-pressed={value === option.value}
             onClick={() => onChange(option.value)}
-            className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors ${themeClasses.interactive.focus} ${color}`}>
+            className={`inline-flex min-h-11 sm:min-h-[40px] items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors ${themeClasses.interactive.focus} ${color}`}>
             {Icon && <Icon className="h-4 w-4" />}
             {option.label}
             {option.count !== undefined && <span className="tabular-nums">{option.count}</span>}

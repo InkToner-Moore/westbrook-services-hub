@@ -231,26 +231,26 @@ const StaffNotes = () => {
         </div>
       )}
 
-      <div className="rounded-xl border p-4 sm:p-6 bg-pub-paper border-pub-edge">
+      <div className="rounded-xl border p-2 sm:p-6 bg-pub-paper border-pub-edge">
         <div className="flex flex-col gap-6">
           {/* Add/Edit Note Form */}
           {adding && (
             <div>
-              <Card className="bg-pub-sunk border-pub-edge rounded-xl shadow-none">
-                <CardHeader>
+              <Card className="bg-pub-paper border-pub-edge rounded-xl shadow-none">
+                <CardHeader className="p-3 sm:p-6">
                   <CardTitle className="font-display font-semibold text-pub-ink flex items-center gap-2 text-lg">
                     <Plus className="h-5 w-5" />
                     <span>{editingNote ? 'Edit note' : 'Add new note'}</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
                   <form
                     onSubmit={noteForm.handleSubmit(editingNote ?
                       (data) => updateNote(editingNote, data) :
                       addNote
           
           )}
-                  className="space-y-6"
+                  className="space-y-3 sm:space-y-6"
                 >
                   <FormErrorSummary errors={noteValidation.errors} />
 

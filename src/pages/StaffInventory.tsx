@@ -449,7 +449,7 @@ const StaffInventory = () => {
   );
 
   const content = (
-    <div className="border rounded-xl p-4 sm:p-6 bg-pub-paper border-pub-edge">
+    <div className="border rounded-xl p-2 sm:p-6 bg-pub-paper border-pub-edge">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
 
 
@@ -468,9 +468,9 @@ const StaffInventory = () => {
 
             <TabsContent value="keys" id="inventory-panel-keys" aria-labelledby="inventory-tab-keys">
               {addingKey && (
-                <Card className="mb-6 rounded-xl border border-pub-edge bg-pub-paper p-4 sm:p-5 shadow-none">
+                <Card className="mb-6 rounded-xl border border-pub-edge bg-pub-paper p-3 sm:p-5 shadow-none">
                   <CardHeader className="p-0">
-                    <CardTitle className="font-display text-[17px] font-semibold text-pub-ink mb-4">Add a key</CardTitle>
+                    <CardTitle className="font-display text-[17px] font-semibold text-pub-ink mb-2 sm:mb-4">Add a key</CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
                     <form onSubmit={newKeyForm.handleSubmit(addKey)} className="space-y-4">
@@ -478,7 +478,7 @@ const StaffInventory = () => {
                         <Field label="Key" htmlFor="new-key-model" span={8} required error={newKeyForm.formState.errors.model?.message || (newKeyForm.formState.errors.model ? "Key is required" : undefined)}>
                           <Input id="new-key-model" {...newKeyForm.register("model", { required: true })} placeholder="e.g. KW1, SC1, Mailbox 1646" className={kit.input} />
                         </Field>
-                        <Field label="Price before tax" htmlFor="new-key-price" span={4} error={newKeyForm.formState.errors.price?.message}>
+                        <Field label="Price before tax" htmlFor="new-key-price" span={4} half error={newKeyForm.formState.errors.price?.message}>
                           <Input id="new-key-price" {...newKeyForm.register("price")} inputMode="decimal" placeholder="0.00" className={`${kit.input} ${kit.mono}`} />
                         </Field>
                       </FieldGrid>
@@ -496,7 +496,7 @@ const StaffInventory = () => {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-300 text-pub-muted" />
                   <Input
-                    placeholder="Search keys by model..."
+                    placeholder="Search keys"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className={`${kit.input} pl-10 pr-10`}
@@ -653,9 +653,9 @@ const StaffInventory = () => {
 
             <TabsContent value="refills" id="inventory-panel-refills" aria-labelledby="inventory-tab-refills">
               {addingRefill && (
-                <Card className="mb-6 rounded-xl border border-pub-edge bg-pub-paper p-4 sm:p-5 shadow-none">
+                <Card className="mb-6 rounded-xl border border-pub-edge bg-pub-paper p-3 sm:p-5 shadow-none">
                   <CardHeader className="p-0">
-                    <CardTitle className="font-display text-[17px] font-semibold text-pub-ink mb-4">Add a refill</CardTitle>
+                    <CardTitle className="font-display text-[17px] font-semibold text-pub-ink mb-2 sm:mb-4">Add a refill</CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
                     <form onSubmit={newRefillForm.handleSubmit(addRefill)} className="space-y-4">
@@ -690,7 +690,7 @@ const StaffInventory = () => {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors duration-300 text-pub-muted" />
                   <Input
-                    placeholder="Search refills by brand or cartridge..."
+                    placeholder="Search refills"
                     value={refillSearch}
                     onChange={(e) => setRefillSearch(e.target.value)}
                     className={`${kit.input} pl-10 pr-10`}

@@ -25,9 +25,9 @@ export function FormSection({ title, description, action, children, className = 
   action?: ReactNode;
 }) {
   return (
-    <section className={`border-t border-pub-edge pt-6 first:border-t-0 first:pt-0 ${className}`}>
+    <section className={`border-t border-pub-edge pt-3 sm:pt-6 first:border-t-0 first:pt-0 sm:first:pt-0 ${className}`}>
       {title && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <div className="mb-2 sm:mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <div>
             <h3 className="font-display text-[17px] font-semibold leading-tight text-pub-ink">{title}</h3>
             {description && <p className="mt-0.5 text-[13px] text-pub-muted">{description}</p>}
@@ -41,7 +41,7 @@ export function FormSection({ title, description, action, children, className = 
 }
 
 export function FieldGrid({ children, className = '' }: ContainerProps) {
-  return <div className={`grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-12 ${className}`}>{children}</div>;
+  return <div className={`grid grid-cols-2 gap-x-3 gap-y-3 sm:gap-x-4 sm:gap-y-4 sm:grid-cols-12 ${className}`}>{children}</div>;
 }
 
 const spans = {
@@ -87,12 +87,12 @@ export function ItemCard({ title, onRemove, removeLabel = 'Remove item', childre
 }) {
   const { themeClasses } = useTheme();
   return (
-    <div className={`rounded-xl border border-pub-edge bg-pub-paper p-4 sm:p-5 ${className}`}>
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <div className={`rounded-xl border border-pub-edge bg-pub-paper p-3 sm:p-5 ${className}`}>
+      <div className="mb-2 sm:mb-4 flex items-center justify-between gap-3">
         <h4 className="text-sm font-semibold text-pub-ink">{title}</h4>
         {onRemove && (
           <button type="button" onClick={onRemove} aria-label={removeLabel}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ${themeClasses.button.ghost} ${themeClasses.interactive.focus}`}>
+            className={`inline-flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-lg ${themeClasses.button.ghost} ${themeClasses.interactive.focus}`}>
             <Trash2 className="h-4 w-4" />
           </button>
         )}
@@ -110,7 +110,7 @@ export function AddRowButton({ onClick, children, disabled }: {
   const { themeClasses } = useTheme();
   return (
     <button type="button" onClick={onClick} disabled={disabled}
-      className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition-colors ${themeClasses.button.secondary} ${themeClasses.interactive.focus}`}>
+      className={`inline-flex h-11 sm:h-9 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition-colors ${themeClasses.button.secondary} ${themeClasses.interactive.focus}`}>
       <Plus className="h-4 w-4" />
       {children}
     </button>

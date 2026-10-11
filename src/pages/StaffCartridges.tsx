@@ -610,12 +610,12 @@ const StaffCartridges = () => {
           {adding && (
             <div>
               <Card className={`shadow-none ${themeClasses.card.primary}`}>
-                <CardHeader>
-                  <CardTitle className="font-display text-[19px] font-semibold text-pub-ink mb-5">
+                <CardHeader className="p-3 sm:p-6">
+                  <CardTitle className="font-display text-[19px] font-semibold text-pub-ink mb-1 sm:mb-5">
                     New cartridge order
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
                   <form onSubmit={newOrderForm.handleSubmit(addNewOrder)} className="space-y-4">
                     <FormSection title="Customer">
                     <FieldGrid>

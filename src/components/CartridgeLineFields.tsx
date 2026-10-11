@@ -38,7 +38,7 @@ const CartridgeLineFields = ({
       {fields.map((field, index) => (
         <ItemCard key={field.id} title={`Cartridge ${index + 1}`} onRemove={fields.length > 1 ? () => remove(index) : undefined} removeLabel="Remove this cartridge">
           <FieldGrid>
-            <Field label="Brand" span={3} half>
+            <Field label="Brand" span={3}>
               <Select
                 value={watch(`cartridges.${index}.brand`) || undefined}
                 onValueChange={(value) => setValue(`cartridges.${index}.brand`, value)}
@@ -54,7 +54,7 @@ const CartridgeLineFields = ({
               </Select>
             </Field>
 
-            <Field label="Type" span={3} half>
+            <Field label="Type" span={3}>
               <Select
                 value={watch(`cartridges.${index}.type`) || undefined}
                 onValueChange={(value) => setValue(`cartridges.${index}.type`, value)}

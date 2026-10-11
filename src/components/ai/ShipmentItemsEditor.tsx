@@ -85,7 +85,7 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
                 />
               </div>
 
-              <div>
+              <div className="col-span-2 sm:col-span-1">
                 <label className={labelClass}>Destination city</label>
                 <input
                   className={fieldClass}
@@ -95,7 +95,7 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
                 />
               </div>
 
-              <div>
+              <div className="col-span-2 sm:col-span-1">
                 <label className={labelClass}>Province</label>
                 <select
                   className={fieldClass}
@@ -113,7 +113,7 @@ const ShipmentItemsEditor: React.FC<ShipmentItemsEditorProps> = ({
                 </select>
               </div>
 
-              <div>
+              <div className="col-span-2 sm:col-span-1">
                 <label className={labelClass}>Country</label>
                 <input
                   className={fieldClass}
