@@ -42,6 +42,13 @@ offline. Gate at exit: tsc 0, build built, `run.mjs` 46 of 46, `sweep.mjs` 588 o
 with 0 missed and the same 7 known gaps. The layout items were measured in a browser at
 390 and 1440 in light only; Escape, the theme guard and the manager wording of the
 Timesheet pill were not tried in a browser. Items 2 and 3 are still open.
+Later the same session: a span of days fills in ("oct 8-10", "oct 30 to nov 2",
+"mon-fri"; a span needs a month named, so a bare "10-6" stays a time range), which closes
+one known sweep gap (`sweep.mjs` 600 of 606, 0 missed, 6 known gaps). The account email
+breaks after the @; on the 73px desktop rail it still ends in an ellipsis. Then checked
+in a browser on the local dev server: Escape closes the drawer, six bad and good
+`staff-theme-v2` values load without an error, the four layout fixes in dark at 390, and
+the Timesheet pill with the manager wording at 390 and 1440.
 
 **Next session is for:** building, from Parsa's notes after he tries this session's work
 on staging and on his phone. If he brings none, the open items under "Not done" below.
