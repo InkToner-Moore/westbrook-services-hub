@@ -27,3 +27,5 @@ export { receiptIntentToCartLines } from '@/ai/actions/cartLines';
 export { cartTotal } from '@/ai/cart';
 export { parseTimeRange, parseClockTime, parseBreakMinutes, parseDays, describeDays } from '@/lib/shiftParse';
 export { workedMinutes, isAdjusted } from '@/lib/schedule';
+
+export { rankInventory, inventoryEmptyMessage } from '@/lib/keyReference';

@@ -318,3 +318,109 @@ test('shifts: hours count actual times minus the break', () => {
   assert.equal(mod.workedMinutes({ start: '16:00', end: '19:00', actualEnd: '20:00', breakMinutes: 30 }), 210);
   assert.equal(mod.isAdjusted({ start: '16:00', end: '19:00', actualEnd: '', breakMinutes: 0 }), false);
 });
+
+// Inventory relevance is independent of Firestore and UI rendering.
+const inventoryRows = [
+  { id: 't1', model: 'T61', notes: 'model number unknown, do not know', inStock: true },
+  { id: 't2', model: 'T80', notes: 'model number unknown, do not know', inStock: true },
+  { id: 'f1', model: 'H75', inStock: true },
+];
+const fordReferences = [
+  { code: 'H75', fits: 'Ford F150', confidence: 'high', identified: true,
+    equivalents: [{ brand: 'Ilco', ref: '1196', confidence: 'high' }] },
+];
+const rankedIds = (query, rows = inventoryRows, refs = fordReferences) =>
+  mod.rankInventory(rows, refs, query).map((row) => row.id);
+
+test('inventory: Ford queries never admit Toyota notes', () => {
+  assert.deepEqual(rankedIds('ford'), ['f1']);
+  assert.deepEqual(
+    rankedIds('Do we have any ford keys? i do not know the model number.'),
+    ['f1'],
+  );
+  assert.deepEqual(rankedIds('unknown'), []);
+  assert.deepEqual(rankedIds('ford', [], fordReferences), []);
+});
+
+test('inventory: exact short codes precede prefixes, ignoring spaces and dashes', () => {
+  const rows = [
+    { id: 'long', model: 'KW10', inStock: true },
+    { id: 'exact', model: 'KW1', inStock: true },
+    { id: 'cut', model: 'other', cutCode: 'SC-1', inStock: true },
+  ];
+  assert.deepEqual(rankedIds('KW1', rows, []), ['exact', 'long']);
+  assert.equal(rankedIds('kw 1', rows, [])[0], 'exact');
+  assert.deepEqual(rankedIds('sc1', rows, []), ['cut']);
+  assert.deepEqual(rankedIds('W1', rows, []), []);
+});
+
+test('inventory: make references, equivalents, model detail and confidence rank', () => {
+  const rows = [
+    { id: 'medium', model: 'H76', inStock: true },
+    { id: 'otherFord', model: 'H84', inStock: true },
+    { id: 'equivalent', model: '1196', inStock: true },
+    { id: 'ownText', model: 'Ford spare', inStock: true },
+  ];
+  const refs = [
+    ...fordReferences,
+    { code: 'H76', fits: 'Ford', confidence: 'medium' },
+    { code: 'H84', fits: 'Ford Focus', confidence: 'high' },
+  ];
+  assert.deepEqual(rankedIds('ford f150', rows, refs),
+    ['equivalent', 'otherFord', 'medium', 'ownText']);
+  assert.deepEqual(rankedIds('ford', rows, []), ['ownText']);
+  assert.deepEqual(rankedIds('ford', [{ id: 'eq', model: '1196' }], [
+    ...fordReferences, { code: '1196', fits: '', confidence: 'low' },
+  ]), ['eq']);
+  assert.deepEqual(rankedIds('ram', [{ id: 'x', model: 'program' }], []), []);
+});
+
+test('inventory: kind words do not qualify and notes only break qualified ties', () => {
+  const rows = [
+    { id: 'out', model: 'KW1', notes: 'spare', inStock: false },
+    { id: 'in', model: 'KW1', inStock: true },
+    { id: 'notes', model: 'T61', notes: 'KW1 key blank spare', inStock: true },
+  ];
+  assert.deepEqual(rankedIds('keys blanks refills cartridge ink toner', rows, []), []);
+  assert.deepEqual(rankedIds('kw1 spare', rows, []), ['in', 'out']);
+  assert.deepEqual(rankedIds('spare', rows, []), []);
+  assert.deepEqual(rankedIds('kw1 spare', [
+    { id: 'plain', model: 'KW1', inStock: true },
+    { id: 'note', model: 'KW1', notes: 'spare', inStock: true },
+  ], []), ['note', 'plain']);
+});
+
+test('inventory: empty responses use the make and only confident fit hints', () => {
+  assert.equal(mod.inventoryEmptyMessage('ford'), 'No Ford keys on file.');
+  assert.equal(mod.inventoryEmptyMessage('ford', fordReferences),
+    'No Ford keys on file. Ford usually takes H75.');
+  assert.equal(mod.inventoryEmptyMessage('ford', [
+    { code: 'H75', fits: 'Ford', confidence: 'medium' },
+  ]), 'No Ford keys on file.');
+  assert.equal(mod.inventoryEmptyMessage('general motors'), 'No GM keys on file.');
+  assert.equal(mod.inventoryEmptyMessage('vw'), 'No VW keys on file.');
+  assert.equal(mod.inventoryEmptyMessage('do we have any mailbox keys'),
+    'I could not find "mailbox" in the key or refill inventory.');
+});
+
+test('inventory: uncertainty cleanup preserves content and refill routing', async () => {
+  for (const suffix of [
+    'i do not know the model', "i don't know which one",
+    'not sure what model', 'no idea', 'idk the model',
+  ]) {
+    const intent = await provider.parse('do we have any ford keys? ' + suffix);
+    assert.equal(intent.fields.query.value, 'ford', suffix);
+  }
+  for (const u of ['got any toyota keys', 'do we carry honda keys',
+    'what keys do we have for ford']) {
+    assert.equal((await provider.parse(u)).action, 'inventory_lookup', u);
+  }
+  const refill = await provider.parse('do we have hp 65');
+  assert.equal(refill.fields.inventoryKind.value, 'refill');
+  const key = await provider.parse('do we have any house keys');
+  assert.equal(key.fields.query.value, 'house');
+  assert.equal(key.fields.inventoryKind.value, 'key');
+  assert.deepEqual(mod.rankInventory([
+    { brand: 'HP', cartridge: '65' }, { brand: 'Canon', cartridge: '165' },
+  ], [], refill.fields.query.value), [{ brand: 'HP', cartridge: '65' }]);
+});

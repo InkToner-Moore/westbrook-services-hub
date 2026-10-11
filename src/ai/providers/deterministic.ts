@@ -19,6 +19,9 @@ import {
   domainName,
   extractAttachments,
   extractBrand,
+  extractKeyMake,
+  KEY_MAKES,
+  cleanInventoryQuery,
   extractCartridgeStatus,
   extractCity,
   extractEmail,
@@ -275,6 +278,28 @@ const RULES: Rule[] = [
         'how many', 'the price', 'check stock', 'stock check', 'which slot', 'which hook', 'what slot', 'location of',
       ) || /\bany\b.*\bleft\b/i.test(t);
     if (cue) return strong('inventory_lookup', 0.8);
+    const make = extractKeyMake(t);
+    if (make && /\b(?:keys?|blanks?)\b/i.test(t) && !INVENTORY_WRITE_VERB.test(t)) {
+      // Only a bare make/noun phrase may imply stock without a question cue.
+      // Extra tokens (names, codes, amounts, quantities or sale verbs) fall
+      // through to the original routes. Do not strip "for" or sale verbs.
+      const words = t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const bare = KEY_MAKES[make].some((alias) => {
+        const rest = words.replace(new RegExp('\\b' + alias + '\\b'), ' ')
+          .replace(/\b(?:the|a|an|please)\b/g, ' ').trim().split(/\s+/);
+        return rest.length === 1 && /^(?:keys?|blanks?)$/.test(rest[0]);
+      });
+      const stockQuestion = /^(?:any)\b/i.test(words) || /\?\s*$/.test(t) ||
+        /\b(?:is there|are there|in stock|what .*do we have)\b/i.test(t);
+      const saleDetail = /\b(?:cut|copy|duplicate|dupe|make|made|need|needs|want|wants|sold|sell|charge|for|one|two|three|four|five|six|seven|eight|nine|ten|x\d+)\b|\d|[$£€]/i.test(t);
+      // A question with extra free text can contain a customer name. Require
+      // its remaining words to be stock vocabulary or the make itself.
+      const stockOnly = KEY_MAKES[make].some((alias) => words
+        .replace(new RegExp('\\b' + alias + '\\b'), ' ')
+        .replace(/\b(?:keys?|blanks?|any|is|are|there|in|stock|left|the|a|an|please|we|have|do|what)\b/g, ' ')
+        .trim() === '');
+      if (bare || (stockQuestion && !saleDetail && stockOnly)) return strong('inventory_lookup', 0.8);
+    }
     if (hasCue(t, 'in stock') && isQuestion(t)) return strong('inventory_lookup', 0.8);
     if (hasCue(t, 'price') && extractMoney(t) === null && !INVENTORY_WRITE_VERB.test(t) && hasThing(t)) return strong('inventory_lookup', 0.75);
     if (QUESTION_START.test(t) && /^\s*(?:is|are|do|does|have|has|got|any)\b/i.test(t) && hasThing(t) && !pieceHasCourier(t)) return strong('inventory_lookup', 0.75);
@@ -686,24 +711,23 @@ export function populateIntentFields(intent: Intent, text: string): void {
   // Inventory lookup is a read with no confirmation spec; fill a search term the
   // executor uses to match keyInventory / refillInventory. Prefer a brand/model
   // the extractors found, else the salient words left after removing the question
-  // scaffolding. The executor tokenizes and matches, so this need not be exact.
+  // scaffolding and uncertainty clauses.
   if (action === 'inventory_lookup') {
-    const brand = extractBrand(text);
-    const model = extractModel(text);
+    const make = extractKeyMake(text);
+    const brand = make || extractBrand(text);
+    const cleaned = cleanInventoryQuery(text);
+    const model = extractModel(cleaned);
     const bm = [brand, model].filter(Boolean).join(' ');
-    const cleaned = text
-      .toLowerCase()
-      .replace(
-        /\b(?:is|are|do|does|did|we|the|a|an|any|have|carry|got|in|out|of|on|stock|price|priced|cost|costs|how|much|many|for|where|wheres|located|location|whats|what|which|slot|hook|spot|there|left|check|that|this|it)\b/gi,
-        ' ',
-      )
-      .replace(/['?.,]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    const codes = extractKeyItems(text);
-    const query = bm || (codes.length === 1 ? codes[0].model : cleaned);
+    const codes = extractKeyItems(cleaned);
+    // A vehicle model alone loses its make. Printer lookups retain their
+    // established brand/model spelling, while key queries keep all detail.
+    const query = make ? cleaned : bm || (codes.length === 1 ? codes[0].model : cleaned);
     intent.fields = {
       query: query ? explicit(query) : absent(),
+      inventoryKind: /\b(?:keys?|blanks?)\b/i.test(text) || make
+        ? explicit('key')
+        : /\b(?:refills?|cartridges?|ink|toner)\b/i.test(text) || extractBrand(text)
+          ? explicit('refill') : absent(),
       brand: brand ? explicit(brand) : absent(),
       model: model ? explicit(model) : absent(),
     };

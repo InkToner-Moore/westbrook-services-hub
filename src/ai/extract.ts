@@ -211,6 +211,63 @@ export function extractSaleQuantity(text: string): number | null {
 const OTHER_BRANDS = ['Samsung', 'Dell', 'Xerox', 'Kyocera', 'Ricoh', 'Pantum', 'OKI'];
 const ALL_BRANDS = [...CARTRIDGE_BRANDS, ...OTHER_BRANDS];
 
+// Vehicle vocabulary includes the requested common makes and aliases. Lock
+// brands and additional vehicle names come from vetted keyReference fits text.
+// Keep aliases here so routing and reference matching use the same vocabulary.
+export const KEY_MAKES: Record<string, string[]> = {
+  Ford: ['ford'], Toyota: ['toyota'], Honda: ['honda'],
+  Nissan: ['nissan', 'datsun'], GM: ['gm', 'general motors', 'chevy', 'chevrolet'],
+  GMC: ['gmc'], Buick: ['buick'], Cadillac: ['cadillac'], Pontiac: ['pontiac'],
+  Chrysler: ['chrysler'], Dodge: ['dodge'], Jeep: ['jeep'], Ram: ['ram'],
+  Hyundai: ['hyundai'], Kia: ['kia'], Mazda: ['mazda'], Subaru: ['subaru'],
+  VW: ['volkswagen', 'vw'], Mitsubishi: ['mitsubishi'], Lexus: ['lexus'],
+  Acura: ['acura'], Infiniti: ['infiniti'], BMW: ['bmw'],
+  Mercedes: ['mercedes', 'mercedes benz'], Audi: ['audi'], Volvo: ['volvo'],
+  Suzuki: ['suzuki'], Isuzu: ['isuzu'], Saturn: ['saturn'],
+  Lincoln: ['lincoln'], Mercury: ['mercury'], Oldsmobile: ['oldsmobile'],
+  Geo: ['geo'], Daewoo: ['daewoo'], Saab: ['saab'], Yamaha: ['yamaha'],
+  Freightliner: ['freightliner'], International: ['international'],
+  'John Deere': ['john deere'],
+  Kwikset: ['kwikset'], Schlage: ['schlage'], Weiser: ['weiser'],
+  Master: ['master', 'master lock'], Yale: ['yale'], Weslock: ['weslock'],
+  Dexter: ['dexter'], Arrow: ['arrow'], Best: ['best'], Falcon: ['falcon'],
+  Corbin: ['corbin'], Russwin: ['russwin'], Sargent: ['sargent'],
+  Slaymaker: ['slaymaker'], Clinton: ['clinton'], Welch: ['welch'],
+};
+
+// Token boundaries prevent a make such as Ram from matching a longer word.
+export function matchesKeyMake(text: string, make: string): boolean {
+  const aliases = KEY_MAKES[make] ?? [make.toLowerCase()];
+  const words = text.toLowerCase().replace(/[^a-z0-9]+/g, ' ');
+  return aliases.some((alias) => (' ' + words + ' ').includes(' ' + alias + ' '));
+}
+
+export function extractKeyMake(text: string): string | null {
+  return Object.keys(KEY_MAKES).find((make) => matchesKeyMake(text, make)) ?? null;
+}
+
+export const INVENTORY_KIND_WORDS = new Set([
+  'key', 'keys', 'blank', 'blanks', 'refill', 'refills', 'cartridge',
+  'cartridges', 'ink', 'toner',
+]);
+
+const INVENTORY_FILLER = new Set((
+  'is are do does did we the a an any have has carry sell got in out of on stock ' +
+  'price priced cost costs how much many for where wheres located location whats ' +
+  'what which slot hook spot there left check that this it some please i you our us'
+).split(' '));
+
+export function cleanInventoryQuery(text: string): string {
+  return text.toLowerCase()
+    // An uncertain model is not a search term. Stop at punctuation so a later
+    // substantive clause is preserved.
+    .replace(/\b(?:i\s+(?:do\s+not|don't|dont)\s+know|not\s+sure|no\s+idea|idk)\b[^?.;!]*/gi, ' ')
+    .replace(/['?.,!;]/g, ' ')
+    .split(/\s+/)
+    .filter((word) => word && !INVENTORY_FILLER.has(word) && !INVENTORY_KIND_WORDS.has(word))
+    .join(' ');
+}
+
 export function extractBrand(text: string): string | null {
   return ALL_BRANDS.find((b) => hasCue(text, b)) ?? null;
 }
