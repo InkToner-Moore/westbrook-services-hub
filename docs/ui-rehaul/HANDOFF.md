@@ -29,32 +29,45 @@ together; there is no separate customer repo and staff repo.
 
 ## START HERE (written 2026-10-10, exit of the forms and tabs session)
 
-**Next session is for:** Parsa's notes on the forms and tabs once he has looked at
-staging. He asked for "do them all" on judgement and has not seen the result yet. Not a
-numbered plan step.
+**Next session is for:** building, from Parsa's notes on the forms, tabs and the
+grouped shift list once he has looked at staging. He asked for the forms and tabs on
+judgement ("do them all") and has not given a verdict on any of it. Not a numbered plan
+step (`PLAN.md` has no completion markers).
 
 **Where things stand (observed 2026-10-10, at exit):**
-- Branch `staff-forms-tabs` (off `staff-rehaul`), two code commits (`4c0a4bf` the kit
-  and tabs, `0db32ff` the rollout) plus this handoff commit. Tag `staff-pre-forms-tabs`
-  is the state before. **Prod `main` untouched.** Check `git status` and `origin/dev`
-  for whether it reached staging; this section was written before the push.
-- Gate on the final tree: `tsc -p tsconfig.app.json --noEmit` exit 0; `yarn build`
-  built; eslint on every changed file shows only the seven old `no-explicit-any`
-  errors (`StaffCartridges.tsx`, `CartridgeLineFields.tsx`, `ThemeContext.tsx`);
-  `scripts/parser-tests/run.mjs` 30 of 30; dash scan clean. `sweep.mjs` not run
-  (`src/ai` was not touched).
-- Checked in a real browser on the local dev server with the auth bypass: every form
-  below at 1440 and 390 wide in light, four of them in dark; no page scrolls sideways
-  at 390; arrow keys move between tabs. Codex read the whole diff for behaviour
-  changes; its two real findings are fixed (see below).
-- **Not checked:** the Timesheet shift dialog in a browser (it needs a manager PIN,
-  which needs Firestore); the login page; anything with real rows; staging; print.
+- Branch `staff-forms-tabs` (off `staff-rehaul`), tip is this handoff commit; the last
+  code change is `24c3049`. Tree clean, level with its remote. `origin/dev` is
+  fast-forwarded to the branch and the Cloudflare Pages check on `2198942` (same `src`)
+  completed with success, so staging has all of it. **Prod `main` untouched**
+  (`0ffa16c`). Tag `staff-pre-forms-tabs` (pushed) is the state before this session.
+- Open PRs: only **#1 `docs-align-claude-md`** (Sept 1, not this work). Nothing from
+  this branch is in a PR; nothing is merged to `main`.
+- Gate as run at exit: `tsc -p tsconfig.app.json --noEmit` exit 0; `yarn build` built;
+  eslint on every `src` file changed since `staff-rehaul` shows 7 errors, all the old
+  `no-explicit-any` ones (four in `StaffCartridges.tsx`, two in
+  `CartridgeLineFields.tsx`, one in `ThemeContext.tsx`), and 3 react-refresh warnings;
+  `scripts/parser-tests/run.mjs` 30 of 30; dash scan on the changed files clean.
+  `sweep.mjs` not run (`src/ai` was not touched).
+- Checked in a real browser on the local dev server with the auth bypass: the forms
+  listed below at 1440 and 390 wide in light, four in dark; no staff page scrolls
+  sideways at 390; arrow keys move between tabs; the customer footer at 1280 and 390;
+  the grouped Hours list at 1440 and 390 with seven seeded sample shifts.
+- A second reader (Codex) went through the forms and tabs diff for behaviour changes in
+  two passes. Its real findings are fixed (tabs had lost their link to their panels;
+  the shift dialog refused breaks that are not a multiple of 5). The footer link and
+  the Hours list grouping were not given a second read.
+- **Not checked:** the Timesheet shift dialog and the Cartridges receipt dialog in a
+  browser (the first needs a manager PIN, which needs Firestore; the second needs an
+  order); the login page; any list with real rows; anything on staging beyond the build
+  passing; print output; the first code commit (`4c0a4bf`) built on its own.
+- No DEV data or rules changed. No secrets written anywhere.
 
 **Built this session, do NOT rebuild:**
 - `src/components/shell/FormKit.tsx`: `FormSection`, `FieldGrid` (12 columns from
   `sm`, 2 on a phone), `Field` (label, `required`, `optional`, `hint`, `error`, `span`,
   `half`), `ItemCard`, `AddRowButton`, `FormActions`, and `useFormClasses()` for the
-  44px input, textarea, mono and button classes. Every staff form is laid out with it.
+  44px input, textarea, mono and button classes. Every staff form is laid out with it;
+  a new form should be too.
 - `SegmentedTabs` (`shell/ToolPage.tsx`) is the one tab control: ink fill on the active
   tab, equal columns with icon over a short label on a phone (`shortLabel`), arrow
   keys, and `idBase` to tie tabs to panels. Page-level tabs go in `ToolPage`'s `tabs`
@@ -63,30 +76,65 @@ numbered plan step.
 - Rolled out to: the five Receipts forms, Cartridges new order and its receipt dialog,
   Notes (category is now a shadcn Select through RHF `Controller`), Inventory add key
   and add refill, the Directory site dialog, the Timesheet shift dialog and team add
-  row, the manager PIN dialog, login, and the parcel cards on the slip.
+  row, the manager PIN dialog, login, and the parcel cards on the slip
+  (`ShipmentItemsEditor.tsx`). The slip's own ledger rows (`ConfirmationCheck.tsx`)
+  were left as they are on purpose: click-to-edit rows are the slip's identity.
 - Two behaviour changes, both on purpose: Enter saves the shift dialog (it is a form
   now, with `noValidate` so a 12 minute break still saves), and Directory and
   Cartridges show the reason under the field when a submit is refused.
-
-- Added later in the same session, from Parsa's lineup: a footer link on the customer
-  page to the studio site (`STUDIO_URL` in `lib/storeInfo.ts`, the staging address; it
-  must become `studio.inktonermoore.ca` before the page reaches prod), and the Hours
-  tab's shift list is grouped under a bar per week (with the week's total) and a
+- From Parsa's lineup, same session: a footer link on the customer page to the studio
+  site ("Websites for small businesses", `STUDIO_URL` in `lib/storeInfo.ts`), and the
+  Hours tab's shift list grouped under a bar per week (with the week's total) and a
   heading per day. The Schedule tab's List view already had a rule per day and shows
-  one week, so it was left alone.
+  one week, so it was left alone; Parsa was told and may still mean that one.
 
-**Constraints this session found:**
-- To see a list that needs Firestore rows locally, expose the state setter on `window`
-  for one run, seed it from the browser, then delete the line.
+**Constraints this session found (the older lists below still stand):**
 - Wrapping a dialog in a `<form>` turns on the browser's own checks (`step`, `min`).
   Add `noValidate` when the handler already validates.
 - `TabsContent` still comes from Radix on Receipts and Inventory; its `id` and
   `aria-labelledby` are set by hand to match `SegmentedTabs`' `idBase`.
-- The Gemini helper cuts off a long report; ask it for under 900 words.
+- To see a list that needs Firestore rows locally, expose the state setter on `window`
+  for one run, seed it from the browser, then delete the line.
+- A dev server started in the background by a helper is stopped at its time limit
+  (about 30 minutes). Check port 8080 before a browser pass.
+- The Gemini helper cuts off a long report; ask it for under 900 words. Told to edit
+  one file only, Codex copied a shared component into it instead of saying so; name
+  every file a change needs.
+- Codex still writes very long JSX lines. `StaffReceipts.tsx` had a formatting pass;
+  the other rebuilt files did not get more than their old share.
 
-**Still open on the staff side:** the list in the section below, minus the Receipts tab
-strip overflow (fixed). Key receipt lines mark model and price as needed although only
-one complete line is required.
+**Still open on the staff side (act on cold):**
+- Key receipt lines mark model and price as needed on every line, though only one
+  complete line is required. Parsa was asked whether to drop the marker.
+- The Hours tab still shows each total twice ("34h 15m" and "34.25 h"). Ask Parsa.
+- Directory still shows edit and delete icons on every tile.
+- The Purolator wordmark, the standalone deep-link headers, and the Timesheet calendar
+  running to the right edge at 390 wide. (The Receipts tab strip is fixed. The
+  Cartridges search placeholder was shortened; not looked at again at 390.)
+
+**Open questions for Parsa** (answers may arrive mid-session: fold each in as its own
+commit, and never invent one to close a line):
+- His verdict on the forms and tabs, and on the earlier direction (one-colour tiles,
+  ink buttons, display titles). Lands in `DESIGN-SPEC.md` and the files above.
+- Which shift list he meant for the separators, if not the Hours one. Lands in
+  `StaffTimesheet.tsx`.
+- The wording and place of the studio link. Lands in `PublicFooter.tsx`.
+- The key line markers and the Hours totals, above.
+- Carried: the `contact@inktonermoore.ca` mailbox, when the redesign goes to prod, the
+  studio copy and domain, the tracker comma fix on prod, parcel tax leaving Canada, a
+  staging test login in keyvault, stat holidays.
+
+**Working rules:** environment and gate as in the project entry and the sections
+below. For a visual change: `tsc`, `eslint` on the changed files, `yarn build`, the
+dash scan, then a browser pass on the dev server. One commit per change he asks for;
+push the branch and fast-forward `dev` (`git push origin <branch>:dev`) so he can look
+on his phone. Push needs the credential-helper override in the sections below.
+
+**Still placeholder, must not reach a customer:** `STUDIO_URL` points at the studio's
+staging address (`studio.ink-toner-moore.pages.dev`, still `noindex`); it must become
+`studio.inktonermoore.ca` before the customer page reaches prod. The rest is unchanged
+from the sections below: the public email does not receive mail yet, the whole rehaul
+is on staging only, and `purchase` still has no executor.
 
 ## Earlier (written 2026-10-10, exit of the staff rehaul session)
 
