@@ -1,3 +1,4 @@
+import { useShopSettings } from '@/lib/shopSettings';
 import { SegmentedTabs } from "@/components/shell/ToolPage";
 // The receipt artifact card (kind 'receipt'). The slip is the hero: a paper
 // counter slip rendered as HTML (not the PDF iframe, which comes up blank under a
@@ -22,7 +23,6 @@ interface ReceiptCardData {
   labelOnly?: boolean;
 }
 
-const STORE_ADDRESS = ['1200 37 Street SW, Unit 3b', 'Calgary, AB T3C 1S2', '(403) 686-2835'];
 
 const money = (n: number) => `$${(Number.isFinite(n) ? n : 0).toFixed(2)}`;
 
@@ -61,6 +61,7 @@ function isValidOpts(opts: unknown): opts is SimpleReceiptOptions {
 // The paper slip. Reads as something that could be torn off and handed over.
 const Slip: React.FC<{ opts: SimpleReceiptOptions; size: ReceiptSize }> = ({ opts, size }) => {
   const { themeClasses } = useTheme();
+  const settings = useShopSettings();
   const isLabel = size === '4x6';
   const divide = 'divide-pub-edge';
   const rule = 'border-pub-edge';
@@ -84,7 +85,7 @@ const Slip: React.FC<{ opts: SimpleReceiptOptions; size: ReceiptSize }> = ({ opt
           </p>
           {!isLabel && (
             <div className="mt-1 space-y-0.5 text-[11px] text-pub-muted">
-              {STORE_ADDRESS.map((line) => (
+              {[...settings.addressLines, settings.phone].map((line) => (
                 <p key={line}>{line}</p>
               ))}
             </div>

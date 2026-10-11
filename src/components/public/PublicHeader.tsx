@@ -1,10 +1,12 @@
+import { useShopSettings, phoneHref } from "@/lib/shopSettings";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Phone, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
-import { PHONE_DISPLAY, PHONE_HREF } from "@/lib/storeInfo";
+
 
 const PublicHeader = () => {
+  const settings = useShopSettings();
   const { isDarkMode, toggleTheme } = useTheme();
   const [scrolled, setScrolled] = useState(false);
 
@@ -30,12 +32,12 @@ const PublicHeader = () => {
         </Link>
         <div className="flex shrink-0 items-center gap-1 sm:gap-4">
           <a
-            href={PHONE_HREF}
+            href={phoneHref(settings.phone)}
             aria-label="Call (403) 686-2835"
             className="pub-phone flex h-11 min-w-11 items-center justify-center gap-2 rounded-full"
           >
             <Phone size={18} aria-hidden="true" />
-            <span className="pub-phone-text hidden sm:inline tabular-nums">{PHONE_DISPLAY}</span>
+            <span className="pub-phone-text hidden sm:inline tabular-nums">{settings.phone}</span>
           </a>
           <button
             type="button"

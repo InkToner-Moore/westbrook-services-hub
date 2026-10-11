@@ -111,7 +111,8 @@ src/
     firebase.ts        app/auth/db init from VITE_FIREBASE_* env
     firestore.ts       generic CRUD helpers + ID generators (ORD-/NOTE-/REQ-/INV-)
     orderStatus.ts     public order-status mirror (schema + name normalizing)
-    storeInfo.ts       public store facts: phone, email, weekly hours, open-now state
+    shopSettings.ts    cached public shop details store, manager saves to settings/shop
+    storeInfo.ts       maps and studio links, day names, Calgary clock, open-now state
     timesheet.ts       the employees (team) model
     deviceLock.ts      opt-in fingerprint lock over the saved session (device check only)
     installPrompt.ts   install state for the staff app (manifest: public/staff.webmanifest)

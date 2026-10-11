@@ -1,7 +1,9 @@
+import { useShopSettings } from "@/lib/shopSettings";
 import { useEffect, useRef, useState } from "react";
-import { calgaryNow, openState, WEEK, formatHour } from "@/lib/storeInfo";
+import { calgaryNow, openState, DAY_NAMES, formatHour } from "@/lib/storeInfo";
 
 const Hours = () => {
+  const settings = useShopSettings();
   const [now, setNow] = useState(() => calgaryNow());
   const [visible, setVisible] = useState(false);
   const ref = useRef<HTMLElement>(null);
@@ -27,7 +29,10 @@ const Hours = () => {
 
     return () => observer.disconnect();
   }, []);
-  const status = openState(now);
+  const status = openState(now, settings.week);
+  // The bars share one scale: the earliest opening to the latest closing of the week.
+  const first = Math.min(...settings.week.map((d) => d.open));
+  const span = Math.max(...settings.week.map((d) => d.close)) - first;
 
   return (
     <section
@@ -49,13 +54,13 @@ const Hours = () => {
       </div>
       <dl className="lg:col-span-8 min-w-0">
         {[1, 2, 3, 4, 5, 6, 0].map((weekday, index) => {
-          const day = WEEK[weekday];
+          const day = settings.week[weekday];
           const today = weekday === now.weekday;
 
           return (
-            <div key={day.day} className="pub-hour-row border-b border-pub-edge py-4">
+            <div key={DAY_NAMES[weekday]} className="pub-hour-row border-b border-pub-edge py-4">
               <dt className={today ? "font-medium text-pub-ink" : "text-pub-muted"}>
-                {day.day}
+                {DAY_NAMES[weekday]}
                 {today && <span className="ml-2 text-xs text-pub-accent">Today</span>}
               </dt>
               <dd className="pub-hour-time font-mono tabular-nums text-sm whitespace-nowrap">
@@ -68,15 +73,15 @@ const Hours = () => {
                     (today ? "bg-pub-accent" : "bg-pub-ink opacity-[0.22]")
                   }
                   style={{
-                    left: `${((day.open - 10) / 11) * 100}%`,
-                    width: `${((day.close - day.open) / 11) * 100}%`,
+                    left: `${((day.open - first) / span) * 100}%`,
+                    width: `${((day.close - day.open) / span) * 100}%`,
                     animationDelay: `${index * 50}ms`,
                   }}
                 />
-                {today && now.minutes >= 600 && now.minutes <= 1260 && (
+                {today && now.minutes >= first * 60 && now.minutes <= (first + span) * 60 && (
                   <span
                     className="absolute top-1/2 h-[26px] w-0.5 -translate-y-1/2 -translate-x-1/2 bg-pub-ink"
-                    style={{ left: `${((now.minutes - 600) / 660) * 100}%` }}
+                    style={{ left: `${((now.minutes - first * 60) / (span * 60)) * 100}%` }}
                   />
                 )}
               </dd>

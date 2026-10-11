@@ -105,3 +105,18 @@ project instead of prod. Keep `VITE_DEV_BYPASS_AUTH=true` locally for convenienc
 - Create a throwaway record (a note or a cartridge order) on staging and confirm it
   appears in the **dev** Firestore, not prod.
 - Confirm prod (`inktonermoore.ca`) is unchanged and its data is untouched.
+
+## Shop settings rule
+
+The `settings/shop` document holds public shop facts only: phone, email, hours,
+receipt address and thank-you, plus `updatedAt`. The customer page reads it.
+Each Firebase project (dev and prod) needs this rule added in the console.
+Without it, reads fall back to built-in values (or previously cached values)
+and saves are refused.
+
+```
+match /settings/shop {
+  allow read: if true;
+  allow write: if request.auth != null && request.auth.token.manager == true;
+}
+```

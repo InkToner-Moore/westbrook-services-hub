@@ -1,3 +1,4 @@
+import { getShopSettings } from './shopSettings';
 import { jsPDF } from 'jspdf';
 
 // Shared helpers + PDF generator for the store's receipts (cartridge refill,
@@ -69,8 +70,6 @@ export interface SimpleReceiptOptions {
 }
 
 export const STORE_NAME = 'Ink, Toner & Moore';
-export const STORE_ADDRESS = ['1200 37 Street SW, Unit 3b', 'Calgary, AB T3C 1S2', '(403) 686-2835'];
-export const THANK_YOU = 'Thank you for choosing Ink, Toner & Moore at Westbrook Mall.';
 
 // The file name a saved receipt gets, matching the historical scheme.
 export const receiptFileName = (fileNameBase: string, size: ReceiptSize) =>
@@ -159,6 +158,7 @@ const LABEL: Theme = {
 // Build the receipt and return the jsPDF document without saving it, so callers
 // can preview it (doc.output(...)), print it, or save it.
 export const buildSimpleReceiptPdf = (opts: SimpleReceiptOptions, size: ReceiptSize) => {
+  const settings = getShopSettings();
   const t = size === 'letter' ? LETTER : LABEL;
   const doc = new jsPDF({ unit: 'in', orientation: 'portrait', format: size === 'letter' ? 'letter' : [4, 6] });
 
@@ -210,7 +210,7 @@ export const buildSimpleReceiptPdf = (opts: SimpleReceiptOptions, size: ReceiptS
     // Left: store name + address.
     put(STORE_NAME, margin, y, { size: t.storeSize, bold: true, color: INK });
     let leftY = y + t.storeSize / 72 + 0.06;
-    STORE_ADDRESS.forEach((line) => {
+    [...settings.addressLines, settings.phone].forEach((line) => {
       put(line, margin, leftY, { size: t.addrSize, color: MUTED });
       leftY += t.addrSize / 72 + 0.045;
     });
@@ -430,7 +430,7 @@ export const buildSimpleReceiptPdf = (opts: SimpleReceiptOptions, size: ReceiptS
       doc.setLineWidth(0.006);
       doc.line(margin, fy, right, fy);
       const ty = fy + 0.06;
-      put(THANK_YOU, margin, ty, { size: t.footerSize, color: MUTED });
+      put(settings.thankYou, margin, ty, { size: t.footerSize, color: MUTED });
       if (pages > 1) {
         put(`Page ${i} of ${pages}`, right, ty, { size: t.footerSize, color: MUTED, align: 'right' });
       }

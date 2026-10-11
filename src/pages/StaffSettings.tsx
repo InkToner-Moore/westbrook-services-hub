@@ -18,8 +18,10 @@ import { useShell } from '@/components/shell/ShellContext';
 import { ToolPage, SegmentedTabs } from '@/components/shell/ToolPage';
 import { FormSection, FieldGrid, Field, FormActions, useFormClasses } from '@/components/shell/FormKit';
 import { TOOL_TILES } from '@/components/shell/tiles';
-import { PHONE_DISPLAY, EMAIL, WEEK, formatHour } from '@/lib/storeInfo';
-import { GST_RATE, STORE_NAME, STORE_ADDRESS, THANK_YOU } from '@/lib/simpleReceipt';
+import { DAY_NAMES, formatHour } from '@/lib/storeInfo';
+import { GST_RATE, STORE_NAME } from '@/lib/simpleReceipt';
+
+import { useShopSettings, saveShopSettings, type ShopSettings } from '@/lib/shopSettings';
 
 const StaffSettings = () => {
   const { isDarkMode, toggleTheme, themeClasses } = useTheme();
@@ -28,6 +30,53 @@ const StaffSettings = () => {
   const { inShell } = useShell();
   const { hiddenTiles, setVisible } = useHiddenTiles();
   const fc = useFormClasses();
+  const settings = useShopSettings();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<ShopSettings>(settings);
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saveError, setSaveError] = useState('');
+  useEffect(() => { if (!isManager) setEditing(false); }, [isManager]);
+  const startEditing = () => {
+    setDraft({ ...settings, week: settings.week.map((day) => ({ ...day })),
+      addressLines: [...settings.addressLines] });
+    setErrors({});
+    setSaveError('');
+    setEditing(true);
+  };
+  const saveDetails = async () => {
+    if (!isManager || saving) return;
+    const problems: Record<string, string> = {};
+    const checkText = (key: string, value: string, required = true) => {
+      if (required && !value.trim()) problems[key] = 'Enter a value.';
+      else if (value.length > 120) problems[key] = 'Use 120 characters or fewer.';
+    };
+    checkText('phone', draft.phone);
+    const digits = draft.phone.replace(/\D/g, '').length;
+    if (digits !== 10 && digits !== 11) problems.phone = 'Use 10 or 11 digits.';
+    checkText('email', draft.email);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email)) {
+      problems.email = 'Enter a valid email address.';
+    }
+    draft.week.forEach((day, i) => {
+      if (day.close <= day.open) problems[`day${i}`] = 'Closes must be after opens.';
+    });
+    draft.addressLines.forEach((line, i) => checkText(`address${i}`, line, i === 0));
+    checkText('thankYou', draft.thankYou);
+    setErrors(problems);
+    setSaveError('');
+    if (Object.keys(problems).length) return;
+    setSaving(true);
+    try {
+      await saveShopSettings({ ...draft,
+        addressLines: draft.addressLines.filter((line) => line.trim()) });
+      setEditing(false);
+      toast({ title: 'Shop details saved' });
+    } catch {
+      setSaveError('Could not save. Check the connection, '
+        + 'or the settings rule may not be set up in Firebase yet.');
+    } finally { setSaving(false); }
+  };
   const install = useInstallState();
   const uid = user ? userKey(user) : null;
   const [lockAvailable, setLockAvailable] = useState(false);
@@ -212,25 +261,111 @@ const StaffSettings = () => {
           </Button>
         </FormActions>
       </FormSection>
-      <FormSection title="Shop details" description="These are built into the app and cannot be changed here yet.">
-        <FieldGrid>
-          <Field label="Phone"><p className="tabular-nums">{PHONE_DISPLAY}</p></Field>
-          <Field label="Email"><p className="break-all">{EMAIL}</p></Field>
-          <Field label="Weekly hours" span={12}>
-            <dl className="max-w-sm space-y-2">
-              {WEEK.map(({ day, open, close }) => (
-                <div key={day} className="flex flex-wrap justify-between gap-2 text-sm">
-                  <dt>{day}</dt><dd className={fc.mono}>{formatHour(open)} to {formatHour(close)}</dd>
-                </div>
-              ))}
-            </dl>
+      <FormSection title="Shop details"
+        description={!isManager ? 'A manager can change these.' : undefined}>
+        {editing && isManager ? (
+          <form noValidate onSubmit={(event) => { event.preventDefault(); void saveDetails(); }}>
+            <fieldset disabled={saving} className="min-w-0">
+              <FieldGrid>
+                <Field label="Phone" htmlFor="shop-phone" error={errors.phone}>
+                  <input id="shop-phone" inputMode="tel" className={`${fc.input} w-full tabular-nums`}
+                    value={draft.phone}
+                    onChange={(event) => setDraft({ ...draft, phone: event.target.value })} />
+                </Field>
+                <Field label="Email" htmlFor="shop-email" error={errors.email}>
+                  <input id="shop-email" type="email" className={`${fc.input} w-full`}
+                    value={draft.email}
+                    onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
+                </Field>
+                <Field label="Weekly hours" span={12}>
+                  <div className="space-y-3">
+                    {draft.week.map((day, i) => (
+                      <Field key={DAY_NAMES[i]} label={DAY_NAMES[i]} error={errors[`day${i}`]}>
+                        <div className="grid grid-cols-2 gap-3">
+                          {(['open', 'close'] as const).map((kind) => (
+                            <label key={kind} className="min-w-0 text-[13px] text-pub-muted">
+                              {kind === 'open' ? 'Opens' : 'Closes'}
+                              <select className={`${fc.input} mt-1 block w-full`}
+                                value={day[kind]}
+                                onChange={(event) => setDraft({ ...draft,
+                                  week: draft.week.map((entry, index) => index === i
+                                    ? { ...entry, [kind]: Number(event.target.value) } : entry) })}>
+                                {Array.from({ length: 19 }, (_, hour) =>
+                                  hour + (kind === 'open' ? 5 : 6)).map((hour) => (
+                                  <option key={hour} value={hour}>{formatHour(hour)}</option>
+                                ))}
+                                {day[kind] < (kind === 'open' ? 5 : 6) && (
+                                  <option value={day[kind]}>{formatHour(day[kind])}</option>
+                                )}
+                              </select>
+                            </label>
+                          ))}
+                        </div>
+                      </Field>
+                    ))}
+                  </div>
+                </Field>
+                {Array.from({ length: Math.max(2, draft.addressLines.length) }, (_, i) => (
+                  <Field key={i} label={`Address line ${i + 1}`} htmlFor={`shop-address-${i}`}
+                    error={errors[`address${i}`]}>
+                    <input id={`shop-address-${i}`} className={`${fc.input} w-full`}
+                      value={draft.addressLines[i] ?? ''}
+                      onChange={(event) => {
+                        const addressLines = [...draft.addressLines];
+                        addressLines[i] = event.target.value;
+                        setDraft({ ...draft, addressLines });
+                      }} />
+                  </Field>
+                ))}
+                <Field label="Receipt thank-you line" htmlFor="shop-thanks" span={12}
+                  error={errors.thankYou}>
+                  <input id="shop-thanks" className={`${fc.input} w-full`} value={draft.thankYou}
+                    onChange={(event) => setDraft({ ...draft, thankYou: event.target.value })} />
+                </Field>
+              </FieldGrid>
+              <FormActions>
+                <Button type="button" className={fc.secondary} disabled={saving}
+                  onClick={() => setEditing(false)}>Cancel</Button>
+                <Button type="submit" className={fc.primary} disabled={saving}>
+                  {saving ? 'Saving...' : 'Save'}
+                </Button>
+              </FormActions>
+            </fieldset>
+            {saveError && <p role="alert" className="mt-3 text-sm text-pub-muted">{saveError}</p>}
+          </form>
+        ) : (
+          <>
+            <FieldGrid>
+              <Field label="Phone"><p className="tabular-nums">{settings.phone}</p></Field>
+              <Field label="Email"><p className="break-all">{settings.email}</p></Field>
+              <Field label="Weekly hours" span={12}>
+                <dl className="max-w-sm space-y-2">
+                  {settings.week.map(({ open, close }, i) => (
+                    <div key={DAY_NAMES[i]} className="flex flex-wrap justify-between gap-2 text-sm">
+                      <dt>{DAY_NAMES[i]}</dt>
+                      <dd className={fc.mono}>{formatHour(open)} to {formatHour(close)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </Field>
+              <Field label="Receipt address" span={12}>
+                {settings.addressLines.map((line, i) => <p key={i}>{line}</p>)}
+                <p className="tabular-nums">{settings.phone}</p>
+              </Field>
+              <Field label="Receipt thank you" span={12}><p>{settings.thankYou}</p></Field>
+            </FieldGrid>
+            <FormActions>
+              <Button className={fc.secondary} onClick={() => { if (isManager) startEditing(); else promptUnlock(); }}>
+                {isManager ? 'Edit' : 'Manager sign in to edit'}
+              </Button>
+            </FormActions>
+          </>
+        )}
+        <FieldGrid className="mt-4">
+          <Field label="GST rate" hint="Fixed in the app.">
+            <p className={fc.mono}>{GST_RATE * 100}%</p>
           </Field>
-          <Field label="GST rate" span={12}><p className={fc.mono}>{GST_RATE * 100}%</p></Field>
-          <Field label="Receipt header" span={12}>
-            <p>{STORE_NAME}</p>
-            {STORE_ADDRESS.map((line) => <p key={line} className={fc.mono}>{line}</p>)}
-          </Field>
-          <Field label="Receipt thank you" span={12}><p>{THANK_YOU}</p></Field>
+          <Field label="Receipt header" hint="Fixed in the app."><p>{STORE_NAME}</p></Field>
         </FieldGrid>
       </FormSection>
       <FormSection title="Account">

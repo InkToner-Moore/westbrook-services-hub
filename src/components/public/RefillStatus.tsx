@@ -1,8 +1,9 @@
+import { useShopSettings, phoneHref } from "@/lib/shopSettings";
 import { useRef, useState } from "react";
 import { Search, Loader2, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { queryCollection } from "@/lib/firestore";
 import { ORDER_STATUS_COLLECTION, OrderStatusDoc, normalizeLastName } from "@/lib/orderStatus";
-import { PHONE_HREF, PHONE_DISPLAY } from "@/lib/storeInfo";
+
 
 const STATUS_LABELS: Record<string, string> = {
   in_progress: "In progress",
@@ -15,6 +16,7 @@ const STATUS_NEXT: Record<string, string> = {
 };
 
 const RefillStatus = () => {
+  const settings = useShopSettings();
   const [refillLastName, setRefillLastName] = useState("");
   const [refillResults, setRefillResults] = useState<OrderStatusDoc[] | null>(null);
   const [refillError, setRefillError] = useState<string | null>(null);
@@ -152,8 +154,8 @@ const RefillStatus = () => {
               <p className="font-medium text-pub-ink">No refills under that name</p>
               <p className="mt-1">
                 Check the spelling, or call us at{" "}
-                <a href={PHONE_HREF} className="pub-link text-pub-accent inline-flex min-h-11 items-center">
-                  {PHONE_DISPLAY}
+                <a href={phoneHref(settings.phone)} className="pub-link text-pub-accent inline-flex min-h-11 items-center">
+                  {settings.phone}
                 </a>{" "}
                 and we'll look it up.
               </p>

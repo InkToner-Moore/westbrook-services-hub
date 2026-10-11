@@ -1,6 +1,7 @@
+import { useShopSettings, phoneHref } from "@/lib/shopSettings";
 import { useEffect, useState } from "react";
 import { Phone } from "lucide-react";
-import { openState, PHONE_DISPLAY, PHONE_HREF, MAPS_URL } from "@/lib/storeInfo";
+import { calgaryNow, openState, MAPS_URL } from "@/lib/storeInfo";
 import ServiceArt from "./ServiceArt";
 
 const services = [
@@ -11,10 +12,12 @@ const services = [
 ] as const;
 
 const Hero = () => {
-  const [status, setStatus] = useState(() => openState());
+  const settings = useShopSettings();
+  const [now, setNow] = useState(() => calgaryNow());
+  const status = openState(now, settings.week);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setStatus(openState()), 60000);
+    const timer = window.setInterval(() => setNow(calgaryNow()), 60000);
 
     return () => window.clearInterval(timer);
   }, []);
@@ -59,9 +62,9 @@ const Hero = () => {
           Printing, ink and toner, key cutting, and shipping. Your neighbourhood counter inside Westbrook Mall.
         </p>
         <div className="pub-hero-actions mt-8 flex flex-wrap gap-3">
-          <a className="pub-button pub-hero-call bg-pub-ink text-pub-counter" href={PHONE_HREF}>
+          <a className="pub-button pub-hero-call bg-pub-ink text-pub-counter" href={phoneHref(settings.phone)}>
             <Phone size={18} aria-hidden="true" />
-            Call {PHONE_DISPLAY}
+            Call {settings.phone}
           </a>
           <div className="pub-hero-pills grid grid-cols-3 gap-2 sm:flex sm:gap-3">
             <a

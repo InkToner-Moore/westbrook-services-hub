@@ -2,7 +2,8 @@
 // then the user chip and light/dark toggle. Active tools use ink; AI Mode
 // uses the accent. Idle icons sit directly on quiet paper surfaces.
 import React, { useEffect, useState } from 'react';
-import { openState } from '@/lib/storeInfo';
+import { calgaryNow, openState } from '@/lib/storeInfo';
+import { useShopSettings } from '@/lib/shopSettings';
 import { NavLink, useLocation } from 'react-router-dom';
 import { PanelLeftClose, X } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -85,10 +86,12 @@ const TileRail: React.FC<{ onCollapse?: () => void; onClose?: () => void }> = ({
   const { themeClasses } = useTheme();
   const { pathname } = useLocation();
   const { hiddenTiles } = useHiddenTiles();
-  const [status, setStatus] = useState(() => openState());
+  const settings = useShopSettings();
+  const [now, setNow] = useState(() => calgaryNow());
+  const status = openState(now, settings.week);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setStatus(openState()), 60000);
+    const timer = window.setInterval(() => setNow(calgaryNow()), 60000);
     return () => window.clearInterval(timer);
   }, []);
 

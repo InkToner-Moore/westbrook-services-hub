@@ -1,22 +1,14 @@
-export const PHONE_DISPLAY = "(403) 686-2835";
-export const PHONE_HREF = "tel:4036862835";
-export const EMAIL = "contact@inktonermoore.ca";
+import { getShopSettings, type ShopSettings } from './shopSettings';
+
 // The studio (websites for small businesses) is a separate site. This is its staging
 // address; switch it to https://studio.inktonermoore.ca when that domain is live.
 export const STUDIO_URL = "https://studio.ink-toner-moore.pages.dev";
 export const MAPS_URL = "https://www.google.com/maps/search/?api=1&query=Westbrook+Mall+Calgary";
-// One entry per JS weekday, starting with Sunday. Hours use the 24-hour clock.
-export const WEEK = [
-  { day: "Sunday", open: 11, close: 17 },
-  { day: "Monday", open: 10, close: 19 },
-  { day: "Tuesday", open: 10, close: 19 },
-  { day: "Wednesday", open: 10, close: 19 },
-  { day: "Thursday", open: 10, close: 21 },
-  { day: "Friday", open: 10, close: 21 },
-  { day: "Saturday", open: 10, close: 18 },
+export const DAY_NAMES = [
+  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
 ];
 
-export const formatHour = (h: number): string => `${h % 12 || 12} ${h < 12 ? "AM" : "PM"}`;
+export const formatHour = (h: number): string => `${h % 12 || 12} ${h % 24 < 12 ? "AM" : "PM"}`;
 
 // The shop's clock, not the visitor's: another time zone still sees Calgary's today.
 export function calgaryNow(date = new Date()): { weekday: number; minutes: number } {
@@ -34,8 +26,10 @@ export function calgaryNow(date = new Date()): { weekday: number; minutes: numbe
   };
 }
 
-export function openState(now = calgaryNow()): { open: boolean; label: string } {
-  const today = WEEK[now.weekday];
+export function openState(
+  now = calgaryNow(), week: ShopSettings['week'] = getShopSettings().week,
+): { open: boolean; label: string } {
+  const today = week[now.weekday];
   const open = today.open * 60 <= now.minutes && now.minutes < today.close * 60;
   return {
     open,
@@ -43,6 +37,6 @@ export function openState(now = calgaryNow()): { open: boolean; label: string } 
       ? `Open now until ${formatHour(today.close)}`
       : now.minutes < today.open * 60
         ? `Opens today at ${formatHour(today.open)}`
-        : `Closed now. Opens tomorrow at ${formatHour(WEEK[(now.weekday + 1) % 7].open)}`,
+        : `Closed now. Opens tomorrow at ${formatHour(week[(now.weekday + 1) % 7].open)}`,
   };
 }
