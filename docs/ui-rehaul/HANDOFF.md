@@ -63,6 +63,39 @@ The ten ranked items under "Not done" in the next section are dealt with. Do not
   the customer page shows cached values (phone, email, hours). Not checked: a real save
   or a real read, since local Firestore refuses both.
 
+## Shift calendar, vague stock questions, key board audit (written 2026-10-11, same branch)
+
+- The shift slips' Day(s) and Day rows are a calendar (`components/ai/DayPicker.tsx`, pure
+  helpers in `dayPickerValue.ts`, field kind `days`, `multiple` on the add-shift spec). The
+  stored value is ISO local dates, which `parseDays` reads. Checked in a browser at 390 and
+  1440, light and dark. Known gap: a typed "also oct 22" replaces the picked days, it does
+  not add to them (the follow-up path did that before the calendar too).
+- Stock questions by kind: `extractKeyKind` in `extract.ts` maps everyday words (mailbox,
+  padlock, house, car, cabinet, office) to the reference `category`; `rankInventory` also
+  matches reference text (fits, system, keyway), so "master lock keys" and "schlage keys"
+  work. Replies name the count and up to six codes; a bare "keys" gives counts by kind.
+  Make and code questions keep their old order. Routing checked locally; the replies were
+  not seen with real rows (local Firestore refuses reads), so try them on staging.
+- Key board audit (Codex, read-only, over `scripts/keyBoardSeed.json` and the vetted
+  reference; spot-checked against the seed). Nothing was changed: the board lives in
+  Firestore and each fix needs a look at the physical key. 154 of the board's codes have
+  no identified reference. Likely wrong, most certain first:
+  - Notes saved as key names: C5 "nickel", C6 "brass", B33 / C50 / D7 / F30 "same as ...",
+    D34 "mostly B74-P", "one normal B74 also present", I18 and J15 "longer than ...",
+    I15 "Yale key" / "marked SA".
+  - A74 "Inco 100AM" should be Ilco 100AM. E72 "4IE / 41E" and J55 "0IJB / 01JB / OIJB"
+    are one key written two or three ways.
+  - Probable slips, check the stamp: B2 A114F (A1114F), B25 and B26 1365L / 1365V
+    (1635L / 1635V), C48 and C49 T040 / T037 (TO40 / TO37, letter O), the 01122 family at
+    A1 to A3, A24, B28, I12 (O1122, letter O), C26 and C28 BUE1 / BUE2 (BAU1 / BAU2),
+    D42 H064 (H64), H24 R100103M and C65 R1-003M (R1003M), H21 15558 (1558 or 1555B),
+    I12 Y1023 (Y103), J74 CO1O8 (CO108), E2 0089 (CO89), D3 C009 (CO9), E24 TMA8 (TM8).
+  - Unsure: B64 and G69 "KWT" (KW1?), F41 HY-10 / HY-14 and G38 HY12 / HY16 (two different
+    blanks in one slot), F12 JMA SC22, F14 "(C)SC11 145G", C3 01041J, A29 D01M, E92 CO35.
+  - Dictated but missing from the slot: J53 (FIC1, FCS1D, U1-2-2), J54 (#66), J28 (CB11).
+  - 76 codes hang in more than one place (for example KW1 at J57, J71, J72); some of that
+    is colour variants.
+
 ## START HERE (written 2026-10-10, exit of the phone polish session)
 
 **Next session is for:** building. First the phone audit fixes listed under "Not done"
