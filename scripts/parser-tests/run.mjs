@@ -246,6 +246,15 @@ test('shifts: day lists carry the month onto bare numbers', () => {
   assert.equal(d('friday'), '10-09');
   assert.equal(d('nov 3'), '11-03');
   assert.equal(d('nothing here'), '');
+  assert.equal(d('oct 8-10'), '10-08 10-09 10-10');
+  assert.equal(d('oct 8 to 10'), '10-08 10-09 10-10');
+  assert.equal(d('october 8 through 10'), '10-08 10-09 10-10');
+  assert.equal(d('oct 8 thru 10'), '10-08 10-09 10-10');
+  assert.equal(d('oct 8-10, 14'), '10-08 10-09 10-10 10-14');
+  assert.equal(d('oct 30 - nov 2'), '10-30 10-31 11-01 11-02');
+  assert.equal(d('oct 10-8'), '10-10 10-08'); // not a span: ends out of order
+  assert.equal(d('10-6'), '10-10 10-06'); // no month: not a span (the router cuts the time range first)
+  assert.equal(d('mon-fri'), '10-12 10-13 10-14 10-15 10-16');
 });
 
 test('shifts: a planned shift fills the slip', async () => {

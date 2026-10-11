@@ -118,7 +118,8 @@ export function parseBreakMinutes(text: string): number | null {
 // Every day named in free text, as date keys, in the order given, no repeats.
 // Understands "oct 8, oct9, 13, 15" (the month carries on to the bare numbers),
 // "the 5th", "10/8", "2026-10-08", "today", "tomorrow", "yesterday" and weekday
-// names (the next one coming, or "last friday"). A bare number with no month
+// names (the next one coming, or "last friday"). A span fills in every day:
+// "oct 8-10", "oct 30 to nov 2", "mon-fri". A bare number with no month
 // means that day of the current month. Returns [] when no day is named.
 export function parseDays(text: string, ref: Date = new Date()): string[] {
   const out: string[] = [];
@@ -143,12 +144,23 @@ export function parseDays(text: string, ref: Date = new Date()): string[] {
   if (/\btoday\b|\btonight\b/.test(t)) push(today);
   if (/\btomorrow\b/.test(t)) push(plus(1));
   if (/\byesterday\b/.test(t)) push(plus(-1));
+  // A weekday span ("mon-fri", "monday to friday") is every day from the first
+  // weekday coming to the next time the second one comes round.
+  const offset = (mod: string | undefined, name: string) => {
+    const diff = (WEEKDAYS[name] - today.getDay() + 7) % 7;
+    if (mod && mod.trim() === 'last') return diff === 0 ? -7 : diff - 7;
+    if (mod && mod.trim() === 'next') return diff === 0 ? 7 : diff;
+    return diff;
+  };
+  t = t.replace(new RegExp(`\\b(last\\s+|next\\s+|this\\s+)?(${WEEKDAY_RE})\\s*(?:-|\\u2013|to|through|thru)\\s*(${WEEKDAY_RE})\\b`, 'g'), (all, mod, a, b) => {
+    if (WEEKDAYS[a] === WEEKDAYS[b]) return all;
+    const from = offset(mod, a);
+    const len = (WEEKDAYS[b] - WEEKDAYS[a] + 7) % 7;
+    for (let i = 0; i <= len; i++) push(plus(from + i));
+    return ' ';
+  });
   t = t.replace(new RegExp(`\\b(last\\s+|next\\s+|this\\s+)?(${WEEKDAY_RE})\\b`, 'g'), (_, mod, name) => {
-    const target = WEEKDAYS[name];
-    const diff = (target - today.getDay() + 7) % 7;
-    if (mod && mod.trim() === 'last') push(plus(diff === 0 ? -7 : diff - 7));
-    else if (mod && mod.trim() === 'next') push(plus(diff === 0 ? 7 : diff));
-    else push(plus(diff));
+    push(plus(offset(mod, name)));
     return ' ';
   });
 
@@ -156,18 +168,38 @@ export function parseDays(text: string, ref: Date = new Date()): string[] {
   // numbers that follow it; numbers before any month use the current month.
   let month = today.getMonth();
   let year = today.getFullYear();
+  let sawMonth = false;
+  // A span of days after a day number: "-10", " to 10", " through nov 2". It needs
+  // a month named (so a bare "10-6" stays a time range for the caller to cut out).
+  const spanEnd = new RegExp(`\\s*(?:-|\\u2013|to|through|thru)\\s*(?:(${MONTH_RE})\\b\\.?\\s*)?(\\d{1,2})(?:st|nd|rd|th)?\\b(?![\\d:%]|\\s*(?:am|pm|min|mins|minutes?|hours?|hrs?)\\b)`, 'y');
   const tok = new RegExp(`\\b(${MONTH_RE})\\b\\.?|(?<![\\d:.$])\\b(\\d{1,2})(?:st|nd|rd|th)?\\b(?![\\d:%]|\\s*(?:am|pm|min|mins|minutes?|hours?|hrs?)\\b)`, 'g');
   let m: RegExpExecArray | null;
   while ((m = tok.exec(t))) {
     if (m[1]) {
       month = MONTHS[m[1]];
+      sawMonth = true;
       // A month well behind today means next year ("jan 3" said in November).
       year = month < today.getMonth() - 5 ? today.getFullYear() + 1 : today.getFullYear();
     } else {
       const day = Number(m[2]);
       if (day >= 1 && day <= 31) {
         const d = new Date(year, month, day);
-        if (d.getMonth() === month) push(d);
+        if (d.getMonth() === month) {
+          push(d);
+          spanEnd.lastIndex = tok.lastIndex;
+          const e = sawMonth ? spanEnd.exec(t) : null;
+          if (e) {
+            const endMonth = e[1] ? MONTHS[e[1]] : month;
+            const endDay = Number(e[2]);
+            const end = new Date(endMonth < month ? year + 1 : year, endMonth, endDay);
+            if (end.getMonth() === endMonth && end > d && end.getTime() - d.getTime() < 62 * 86400000) {
+              for (let x = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1); x <= end; x = new Date(x.getFullYear(), x.getMonth(), x.getDate() + 1)) push(x);
+              month = endMonth;
+              year = end.getFullYear();
+              tok.lastIndex = spanEnd.lastIndex;
+            }
+          }
+        }
       }
     }
   }

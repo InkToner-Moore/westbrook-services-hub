@@ -650,7 +650,17 @@ export const CORPUS = [
   { u: 'toner refil hp65 $34', a: 'receipt', s: 'refill', f: { price: 34 } },
   { u: 'ship 2 ups parcels to toronto $22 and calgary $30', a: 'receipt', s: 'shipping', items: [{ city: 'Toronto', cost: 22 }, { city: 'Calgary', cost: 30 }] },
   { u: 'ship ups $22 box $5 and box $7', a: 'receipt', s: 'shipping', pack: 2, known: 'a second box of the same kind, or "2 boxes", is not counted' },
-  { u: 'add shift for sue oct 8-10 10-6', a: 'timesheet', op: 'add_shift', f: { days: 'Oct 8, 9, 10' }, known: 'a span of days ("oct 8-10") gives only its two ends' },
+  { u: 'add shift for sue oct 8-10 10-6', a: 'timesheet', op: 'add_shift', f: { days: 'Oct 8, 9, 10', start: '10:00 AM', end: '6:00 PM' } },
+  { u: 'add shift for sue oct 8 to 10 10-6', a: 'timesheet', op: 'add_shift', f: { days: 'Oct 8, 9, 10', start: '10:00 AM', end: '6:00 PM' } },
+  { u: 'add shift for sue october 8 through 12 10-6', a: 'timesheet', op: 'add_shift', f: { days: 'Oct 8, 9, 10, 11, 12', start: '10:00 AM', end: '6:00 PM' } },
+  { u: 'add shift for sue oct 8 thru 10 10-6', a: 'timesheet', op: 'add_shift', f: { days: 'Oct 8, 9, 10', start: '10:00 AM', end: '6:00 PM' } },
+  { u: 'add shift for sue oct 8-10, 14 10-6', a: 'timesheet', op: 'add_shift', f: { days: 'Oct 8, 9, 10, 14', start: '10:00 AM', end: '6:00 PM' } },
+  { u: 'add shift for sue 10-6 oct 8-10', a: 'timesheet', op: 'add_shift', f: { days: 'Oct 8, 9, 10', start: '10:00 AM', end: '6:00 PM' } },
+  { u: 'add shift for sue oct 30 - nov 2 10-6', a: 'timesheet', op: 'add_shift', f: { days: 'Oct 30, 31, Nov 1, 2', start: '10:00 AM', end: '6:00 PM' } },
+  { u: 'add shift for sue oct 8 10-6', a: 'timesheet', op: 'add_shift', f: { days: 'Oct 8', start: '10:00 AM', end: '6:00 PM' } },
+  { u: 'add shift for sue 10-6 oct 8, 9', a: 'timesheet', op: 'add_shift', f: { days: 'Oct 8, 9', start: '10:00 AM', end: '6:00 PM' } },
+  { u: 'add shift for sue mon-fri 10-6', a: 'timesheet', op: 'add_shift', f: { days: 'Oct 12, 13, 14, 15, 16', start: '10:00 AM', end: '6:00 PM' } },
+  { u: 'add shift for sue monday to friday 10-6', a: 'timesheet', op: 'add_shift', f: { days: 'Oct 12, 13, 14, 15, 16', start: '10:00 AM', end: '6:00 PM' } },
 ];
 
 
@@ -701,6 +711,7 @@ export const FOLLOWUPS = [
   { open: 'cut 2 kw1 $5', say: 'three of them instead', edit: true, keys: ['3xKW1'], f: { price: 5 } },
   { open: 'cut 2 sc1 $6', say: 'four of those instead', edit: true, keys: ['4xSC1'], f: { price: 6 } },
   { open: 'add shift for sue 10-6 oct 8, 9', say: 'also oct 22', edit: true, f: { days: 'Oct 8, 9, 22' } },
+  { open: 'add shift for sue 10-6 oct 8, 9', say: 'also oct 22-24', edit: true, f: { days: 'Oct 8, 9, 22, 23, 24' } },
   { open: 'add shift for sue 10-6 oct 8, 9', say: 'and oct 22 too', edit: true, f: { days: 'Oct 8, 9, 22' } },
   { open: 'add shift for sue 10-6 oct 8, 9', say: 'add oct 22', edit: true, f: { days: 'Oct 8, 9, 22' } },
   { open: 'add shift for sue 10-6 oct 8, 9', say: 'plus the 23rd', edit: true, f: { days: 'Oct 8, 9, 23' } },
