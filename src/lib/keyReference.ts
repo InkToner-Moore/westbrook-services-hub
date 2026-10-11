@@ -13,7 +13,10 @@
 // passes disagreed or nothing was found, the row is marked needsReview and carries
 // no confident equivalent, rather than guessing.
 
-import { cleanInventoryQuery, extractKeyMake, matchesKeyMake } from '@/ai/extract';
+import {
+  cleanInventoryQuery, extractKeyMake, matchesKeyMake, extractKeyKind,
+  keyKindDetails, keyKindWords, KEY_KINDS,
+} from '@/ai/extract';
 import { getCollection } from '@/lib/firestore';
 import { normCode } from '@/lib/keyBoard';
 
@@ -134,6 +137,7 @@ export function rankInventory<T extends SearchableInventory>(
   const tokens = searchWords(cleaned);
   if (!tokens.length) return [];
   const make = extractKeyMake(cleaned);
+  const kind = extractKeyKind(cleaned);
   const codeKey = (code: string) => normCode(code).replace(/[\s-]+/g, '');
   const refIndex = new Map<string, KeyReference[]>();
   for (const ref of references) {
@@ -165,7 +169,22 @@ export function rankInventory<T extends SearchableInventory>(
     const refText = fitRefs.map((ref) => ref.fits ?? '').join(' ');
     const ownMake = Boolean(make && matchesKeyMake(primary, make));
     // With a make present, a generic model token cannot admit another make.
-    const qualified = make ? exact || refMake || ownMake : exact || whole > 0 || prefix > 0;
+    const referenceWords = searchWords(keyKindWords(rowRefs.map((ref) =>
+      [ref.fits, ref.brandSystem, ref.keyway, ref.category].filter(Boolean).join(' '),
+    ).join(' ')));
+    const ownWords = searchWords(keyKindWords(identities.join(' ')));
+    const details = kind ? keyKindDetails(cleaned, kind)
+      : searchWords(keyKindWords(cleaned));
+    const allDetails = details.every((token) =>
+      referenceWords.includes(token) || ownWords.includes(token));
+    const categoryRefs = rowRefs.filter((ref) => ref.category === kind);
+    const ownKind = Boolean(kind && KEY_KINDS[kind].some((alias) =>
+      (' ' + keyKindWords(primary) + ' ').includes(' ' + alias + ' ')));
+    const textMatch = rowRefs.length > 0 && allDetails;
+    const qualified = kind
+      ? exact || ((categoryRefs.length > 0 || ownKind) && allDetails)
+      : make ? exact || refMake || ownMake
+        : exact || whole > 0 || prefix > 0 || textMatch;
     const detailTokens = tokens.filter((token) => !make || !matchesKeyMake(token, make));
     const refWords = searchWords(refText);
     const modelDetail = refMake
@@ -173,11 +192,22 @@ export function rankInventory<T extends SearchableInventory>(
     const refConfidence = Math.max(0, ...fitRefs.map((ref) =>
       confidence[ref.confidence ?? 'low'],
     ));
+    const relevantRefs = kind ? categoryRefs : make ? fitRefs : rowRefs;
+    const trusted = relevantRefs.filter((ref) =>
+      !ref.needsReview && ref.confidence !== 'low');
+    const quality = Math.max(0, ...trusted.map((ref) =>
+      confidence[ref.confidence ?? 'low']));
+    const uncertain = relevantRefs.length > 0 && trusted.length === 0;
     const notes = searchWords(row.notes ?? row.priceNote ?? '');
     const noteHits = tokens.filter((token) => notes.includes(token)).length;
     return {
       row, qualified,
-      order: [
+      // A make or code question keeps its old order; rows let in only by their
+      // reference text have no word hits, so they fall to the end of it.
+      order: kind ? [
+        Number(exact), Number(!uncertain), Number(row.inStock === true), quality,
+        whole, prefix, noteHits,
+      ] : [
         Number(exact), Number(refMake), modelDetail,
         refConfidence,
         Number(ownMake), whole, prefix, Number(row.inStock === true), noteHits,
@@ -192,14 +222,55 @@ export function rankInventory<T extends SearchableInventory>(
   }).map((match) => match.row);
 }
 
+export function inventoryKeyLabel(query: string): string {
+  const cleaned = keyKindWords(cleanInventoryQuery(query));
+  return cleaned || 'key';
+}
+
+export function inventoryKeysMessage<T extends SearchableInventory>(
+  rows: T[], query: string,
+): string {
+  const codes = rows.slice(0, 6).map((row) => row.model ?? row.cutCode ?? 'unknown');
+  const more = rows.length > 6 ? ` and ${rows.length - 6} more` : '';
+  return `${rows.length} ${inventoryKeyLabel(query)} keys on file: ${codes.join(', ')}${more}.`;
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  residential: 'house', automotive: 'car', mailbox: 'mailbox', padlock: 'padlock',
+  commercial: 'office', 'cabinet/furniture': 'cabinet',
+};
+
+export function inventoryKeysSummary<T extends SearchableInventory>(
+  rows: T[], references: KeyReference[],
+): string {
+  const index = buildReferenceIndex(references);
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const ref = referenceFor(row.model ?? row.cutCode ?? '', index);
+    const label = CATEGORY_LABELS[ref?.category ?? ''] ?? 'other';
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  const parts = [...counts].map(([label, count]) => `${count} ${label}`);
+  const breakdown = parts.length ? `: ${parts.join(', ')}` : '';
+  return `We have ${rows.length} keys on file${breakdown}. ` +
+    'Ask for a kind, a make or a code.';
+}
+
 export function inventoryEmptyMessage(query: string, references: KeyReference[] = []): string {
   const cleaned = cleanInventoryQuery(query);
   const make = extractKeyMake(cleaned);
-  if (!make) return `I could not find "${cleaned}" in the key or refill inventory.`;
+  const kind = extractKeyKind(cleaned);
+  if (!make && !kind) return `I could not find "${cleaned}" in the key or refill inventory.`;
   const codes = [...new Set(references.filter((ref) =>
     ref.confidence === 'high' && !ref.needsReview &&
-    matchesKeyMake(ref.fits ?? '', make),
+    (kind ? ref.category === kind && keyKindDetails(cleaned, kind).every((word) =>
+      searchWords(keyKindWords([ref.fits, ref.brandSystem, ref.keyway, ref.category]
+        .filter(Boolean).join(' '))).includes(word))
+      : matchesKeyMake(ref.fits ?? '', make!)),
   ).map((ref) => ref.code))].slice(0, 2);
-  const hint = codes.length ? ` ${make} usually takes ${codes.join(' or ')}.` : '';
-  return `No ${make} keys on file.${hint}`;
+  const label = kind ? keyKindWords(inventoryKeyLabel(query)) : make!;
+  const subject = kind ? `${label[0].toUpperCase()}${label.slice(1)} locks usually take`
+    : `${make} usually takes`;
+  const hint = codes.length ? ` ${subject} ${codes.join(' or ')}.` : '';
+  return `No ${label} keys on file.${hint}`;
 }

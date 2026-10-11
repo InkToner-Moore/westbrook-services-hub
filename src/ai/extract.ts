@@ -246,6 +246,44 @@ export function extractKeyMake(text: string): string | null {
   return Object.keys(KEY_MAKES).find((make) => matchesKeyMake(text, make)) ?? null;
 }
 
+export const KEY_KINDS: Record<string, string[]> = {
+  mailbox: ['mailbox', 'mail box', 'mail', 'canada post', 'postal'],
+  padlock: ['padlock', 'lock'],
+  residential: ['house', 'home', 'front door', 'door', 'apartment', 'condo', 'deadbolt'],
+  commercial: ['office', 'commercial', 'store', 'business'],
+  automotive: ['car', 'truck', 'vehicle', 'auto', 'ignition'],
+  'cabinet/furniture': [
+    'filing cabinet', 'cabinet', 'desk', 'drawer', 'filing', 'furniture',
+    'locker', 'toolbox',
+  ],
+};
+
+export function keyKindWords(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\b(mailboxes)\b/g, 'mailbox')
+    .replace(/\b(padlocks|locks|doors|cars|trucks|cabinets|desks|drawers|lockers)\b/g,
+      (word) => word.slice(0, -1)).trim();
+}
+
+export function extractKeyKind(text: string): string | null {
+  const words = ' ' + keyKindWords(text) + ' ';
+  // A specific furniture phrase takes precedence over office or lock.
+  const kinds = ['cabinet/furniture', 'mailbox', 'residential',
+    'commercial', 'automotive', 'padlock'];
+  return kinds.find((kind) => KEY_KINDS[kind].some((alias) =>
+    words.includes(' ' + alias + ' '))) ?? null;
+}
+
+export function keyKindDetails(text: string, kind: string): string[] {
+  let words = ' ' + keyKindWords(cleanInventoryQuery(text)) + ' ';
+  for (const alias of KEY_KINDS[kind] ?? []) {
+    // Postal system names remain details, rather than admitting every mailbox blank.
+    if (alias === 'canada post') continue;
+    words = words.replace(new RegExp('\\b' + alias + '\\b', 'g'), ' ');
+  }
+  return words.match(/[a-z0-9]+/g) ?? [];
+}
+
 export const INVENTORY_KIND_WORDS = new Set([
   'key', 'keys', 'blank', 'blanks', 'refill', 'refills', 'cartridge',
   'cartridges', 'ink', 'toner',

@@ -20,6 +20,9 @@ import {
   extractAttachments,
   extractBrand,
   extractKeyMake,
+  extractKeyKind,
+  KEY_KINDS,
+  keyKindWords,
   KEY_MAKES,
   cleanInventoryQuery,
   extractCartridgeStatus,
@@ -299,6 +302,26 @@ const RULES: Rule[] = [
         .replace(/\b(?:keys?|blanks?|any|is|are|there|in|stock|left|the|a|an|please|we|have|do|what)\b/g, ' ')
         .trim() === '');
       if (bare || (stockQuestion && !saleDetail && stockOnly)) return strong('inventory_lookup', 0.8);
+    }
+    const keyKind = extractKeyKind(t);
+    if (keyKind && /\bkeys?\b/i.test(t) && !INVENTORY_WRITE_VERB.test(t)) {
+      const words = keyKindWords(t);
+      const bare = KEY_KINDS[keyKind].some((alias) => words
+        .replace(new RegExp('\\b' + alias + '\\b'), ' ')
+        .replace(/\b(?:keys?|the|a|an|please|for)\b/g, ' ').trim() === '');
+      const saleWords = 'cut|copy|duplicate|dupe|make|made|need|needs|want|wants|' +
+        'sold|sell|charge|one|two|three|four|five|six|seven|eight|nine|ten|x\\d+';
+      const saleDetail = new RegExp('\\b(?:' + saleWords + ')\\b|\\d|[$£€]', 'i')
+        .test(t);
+      if (bare && !saleDetail) return strong('inventory_lookup', 0.8);
+    }
+    if (/^(?:keys|what keys do we have)[?.!]*$/i.test(t.trim())) {
+      return strong('inventory_lookup', 0.8);
+    }
+    // Preserve other lone-word routes while supporting the requested Weiser shorthand.
+    if (make && KEY_MAKES[make].includes(t.toLowerCase().trim()) &&
+        make === 'Weiser') {
+      return strong('inventory_lookup', 0.8);
     }
     if (hasCue(t, 'in stock') && isQuestion(t)) return strong('inventory_lookup', 0.8);
     if (hasCue(t, 'price') && extractMoney(t) === null && !INVENTORY_WRITE_VERB.test(t) && hasThing(t)) return strong('inventory_lookup', 0.75);
@@ -721,7 +744,9 @@ export function populateIntentFields(intent: Intent, text: string): void {
     const codes = extractKeyItems(cleaned);
     // A vehicle model alone loses its make. Printer lookups retain their
     // established brand/model spelling, while key queries keep all detail.
-    const query = make ? cleaned : bm || (codes.length === 1 ? codes[0].model : cleaned);
+    const query = make || extractKeyKind(text) ? cleaned
+      : bm || (codes.length === 1 ? codes[0].model : cleaned) ||
+        (/\bkeys\b/i.test(text) ? 'keys' : '');
     intent.fields = {
       query: query ? explicit(query) : absent(),
       inventoryKind: /\b(?:keys?|blanks?)\b/i.test(text) || make

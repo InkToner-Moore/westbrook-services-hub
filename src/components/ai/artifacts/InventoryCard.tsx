@@ -554,7 +554,7 @@ const LookupCard: React.FC<{ data: InventoryLookupData }> = ({ data }) => {
           <Search className="mx-auto mb-3 h-9 w-9 text-pub-muted" />
           <p className="text-[15px] font-medium text-pub-ink">No match for "{query}"</p>
           <p className="mt-1 text-[13px] text-pub-muted">
-            Nothing in the key or refill inventory matched. Try a different name.
+            Nothing in the key or refill inventory matched. Try a kind, a make or a code.
           </p>
         </div>
       </div>

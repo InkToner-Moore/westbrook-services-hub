@@ -10,7 +10,7 @@ import {
 } from '@/lib/firestore';
 import type { Intent } from '../types';
 import type { ActionResult } from './types';
-import { cleanInventoryQuery, extractKeyMake } from '../extract';
+import { cleanInventoryQuery, extractKeyMake, extractKeyKind } from '../extract';
 import { NOTE_CATEGORIES } from '../fieldSpecs';
 import {
   getKeyBoard,
@@ -24,6 +24,8 @@ import {
   getKeyReferences,
   rankInventory,
   inventoryEmptyMessage,
+  inventoryKeysMessage,
+  inventoryKeysSummary,
   buildReferenceIndex,
   referenceFor,
   referenceSummary,
@@ -147,7 +149,8 @@ export async function executeInventoryLookup(intent: Intent): Promise<ActionResu
   const query = str(intent, 'query');
   const tokens = cleanInventoryQuery(query).match(/[a-z0-9]+/gi) ?? [];
 
-  if (!query || tokens.length === 0) {
+  const bareKeys = /\bkeys\b/i.test(query) && tokens.length === 0;
+  if (!query || (tokens.length === 0 && !bareKeys)) {
     return {
       message: 'What would you like me to check the stock or price of?',
       artifact: { kind: 'inventory', title: 'Inventory lookup', data: { query, keys: [], refills: [], total: 0 } },
@@ -173,12 +176,14 @@ export async function executeInventoryLookup(intent: Intent): Promise<ActionResu
   } catch {
     references = [];
   }
+  if (bareKeys) return { message: inventoryKeysSummary(keys, references) };
   const make = extractKeyMake(query);
   const printerBrand = str(intent, 'brand') && !make;
   const kind = str(intent, 'inventoryKind');
   const keyMatches = printerBrand || kind === 'refill'
     ? [] : rankInventory(keys, references, query);
-  const refillMatches = make || kind === 'key' ? [] : rankInventory(refills, [], query);
+  const refillMatches = make || extractKeyKind(query) || kind === 'key'
+    ? [] : rankInventory(refills, [], query);
 
   let board: KeyBoardPosition[] = [];
   try {
@@ -200,6 +205,8 @@ export async function executeInventoryLookup(intent: Intent): Promise<ActionResu
   let message: string;
   if (total === 0) {
     message = inventoryEmptyMessage(query, references);
+  } else if (keyMatches.length && (make || extractKeyKind(query) || kind === 'key')) {
+    message = inventoryKeysMessage(keyMatches, query);
   } else {
     const leadKey = keyMatchesWithLocation[0];
     const refHint = leadKey ? referenceSummary(leadKey.reference) : '';

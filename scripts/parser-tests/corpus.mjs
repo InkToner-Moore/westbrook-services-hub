@@ -15,6 +15,28 @@
 //   attach expected side actions: { pay: true, label: true }
 //   known  a string saying why this one is a documented gap (reported, not failed)
 export const CORPUS = [
+  // Vague stock questions, with the sale boundary kept intact.
+  { u: 'mailbox keys', a: 'inventory_lookup' },
+  { u: 'mail box key', a: 'inventory_lookup' },
+  { u: 'padlock keys', a: 'inventory_lookup' },
+  { u: 'house keys', a: 'inventory_lookup' },
+  { u: 'door key', a: 'inventory_lookup' },
+  { u: 'car keys', a: 'inventory_lookup' },
+  { u: 'cabinet keys', a: 'inventory_lookup' },
+  { u: 'desk key', a: 'inventory_lookup' },
+  { u: 'filing cabinet key', a: 'inventory_lookup' },
+  { u: 'office keys', a: 'inventory_lookup' },
+  { u: 'canada post key', a: 'inventory_lookup' },
+  { u: 'master lock keys', a: 'inventory_lookup' },
+  { u: 'schlage keys', a: 'inventory_lookup' },
+  { u: 'weiser', a: 'inventory_lookup' },
+  { u: 'what keys do we have for mailboxes', a: 'inventory_lookup' },
+  { u: 'keys for a filing cabinet', a: 'inventory_lookup' },
+  { u: 'keys', a: 'inventory_lookup' },
+  { u: 'what keys do we have', a: 'inventory_lookup' },
+  { u: '2 mailbox keys 5.99', a: 'receipt', s: 'key' },
+  { u: 'mailbox key for john', a: 'unknown' },
+
   // Fresh clerk sale and stock probes guard the make routing boundary.
   {"u": "cut ford key $15", "a": "receipt", "s": "key", "f": {"keyModel": "ford key", "price": 15}},
   {"u": "copy honda key 8", "a": "receipt", "s": "key", "f": {"keyModel": "honda key", "price": 8}},
