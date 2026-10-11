@@ -368,8 +368,8 @@ function VisualSchedule({
           })}
 
           {weekShifts.length === 0 && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <div className="rounded-lg border px-4 py-3 text-center text-sm bg-pub-sunk border-pub-edge text-pub-muted">
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-start pl-14 sm:justify-center sm:pl-0">
+              <div className="sticky left-14 max-w-[14rem] rounded-lg border px-4 py-3 text-center sm:static sm:max-w-none text-sm bg-pub-sunk border-pub-edge text-pub-muted">
                 No shifts this week.
                 {isManager ? " Use a day's plus button to add one." : ""}
               </div>

@@ -672,7 +672,7 @@ const StaffInventory = () => {
                         <Field label="Colour price" htmlFor="new-refill-priceColour" span={2} half error={newRefillForm.formState.errors.priceColour?.message}>
                           <Input id="new-refill-priceColour" {...newRefillForm.register("priceColour")} inputMode="decimal" placeholder="0.00" className={`${kit.input} ${kit.mono}`} />
                         </Field>
-                        <Field label="XL price" htmlFor="new-refill-priceXl" span={2} half error={newRefillForm.formState.errors.priceXl?.message}>
+                        <Field label="XL price" htmlFor="new-refill-priceXl" span={2} error={newRefillForm.formState.errors.priceXl?.message}>
                           <Input id="new-refill-priceXl" {...newRefillForm.register("priceXl")} inputMode="decimal" placeholder="0.00" className={`${kit.input} ${kit.mono}`} />
                         </Field>
                       </FieldGrid>

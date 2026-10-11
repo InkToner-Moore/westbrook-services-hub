@@ -1356,7 +1356,8 @@ const StaffReceipts = () => {
           <TabsContent value="packing" id="receipts-panel-packing" aria-labelledby="receipts-tab-packing">
             <form className="space-y-3 sm:space-y-6">
               <FormSection title="Add a supply">
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-col sm:block">
+                <div className="order-2 mt-4 flex flex-wrap gap-2 sm:order-none sm:mt-0">
                   {PACKING_PRESETS.filter((p) => !p.custom).map((p) => (
                     <Button
                       key={p.type}
@@ -1371,7 +1372,7 @@ const StaffReceipts = () => {
                     </Button>
                   ))}
                 </div>
-                <FieldGrid className="mt-4">
+                <FieldGrid className="sm:mt-4">
                   <Field label="Custom item" htmlFor="packing-custom-name" span={7}>
                     <Input
                       value={packingCustomName}
@@ -1407,10 +1408,11 @@ const StaffReceipts = () => {
                     </Button>
                   </Field>
                 </FieldGrid>
+                </div>
               </FormSection>
               <FormSection>
                 {packingRows.length === 0 && (
-                  <p className="text-[13px] text-pub-muted">Nothing added yet. Pick a supply above.</p>
+                  <p className="text-[13px] text-pub-muted">Nothing added yet. Pick a supply.</p>
                 )}
                 {packingRows.length > 0 && (
                   <div className="space-y-3">

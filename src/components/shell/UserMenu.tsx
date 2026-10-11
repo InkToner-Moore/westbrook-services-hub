@@ -74,7 +74,7 @@ const UserMenu: React.FC = () => {
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-pub-sunk border-pub-edge">
             <User className="h-4 w-4 text-pub-muted" />
           </span>
-          <span className="truncate text-[12px] font-medium text-pub-muted">{email}</span>
+          <span className="line-clamp-2 break-all text-[12px] font-medium leading-snug text-pub-muted">{email}</span>
         </button>
         <ThemeToggleButton />
       </div>
