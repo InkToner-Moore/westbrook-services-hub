@@ -25,7 +25,7 @@ const Location = () => {
                   rel={row.term === "Address" ? "noopener noreferrer" : undefined}
                   className={
                     `pub-link inline-flex min-h-11 items-center text-lg break-all ` +
-                    (row.term === "Phone" ? "font-mono tabular-nums" : "")
+                    (row.term === "Phone" ? "tabular-nums" : "")
                   }
                 >
                   {row.value}

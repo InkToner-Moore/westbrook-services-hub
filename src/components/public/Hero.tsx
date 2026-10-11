@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Phone } from "lucide-react";
-import { openState, PHONE_HREF, MAPS_URL } from "@/lib/storeInfo";
+import { openState, PHONE_DISPLAY, PHONE_HREF, MAPS_URL } from "@/lib/storeInfo";
 import ServiceArt from "./ServiceArt";
 
 const services = [
@@ -20,7 +20,7 @@ const Hero = () => {
   }, []);
 
   return (
-    <section className="pt-12 sm:pt-20 pb-14 sm:pb-20">
+    <section className="pt-4 sm:pt-20 pb-14 sm:pb-20">
       <p className="pub-hero-status flex items-center gap-2 text-base font-medium">
         <span className={`h-2 w-2 rounded-full ${status.open ? "bg-pub-open" : "bg-pub-muted"}`} />
         {status.label}
@@ -39,7 +39,10 @@ const Hero = () => {
               <li key={service.kind}>
                 <a
                   href={`#service-${service.kind}`}
-                  className={`pub-hero-service pub-hero-service-${service.kind} flex min-h-11 min-w-11 flex-col items-center lg:items-start`}
+                  className={
+                    `pub-hero-service pub-hero-service-${service.kind} flex min-h-11 min-w-11 ` +
+                    "flex-col items-center lg:items-start"
+                  }
                 >
                   <div className="pub-hero-service-art text-pub-ink">
                     <ServiceArt kind={service.kind} />
@@ -56,13 +59,30 @@ const Hero = () => {
           Printing, ink and toner, key cutting, and shipping. Your neighbourhood counter inside Westbrook Mall.
         </p>
         <div className="pub-hero-actions mt-8 flex flex-wrap gap-3">
-          <a className="pub-button bg-pub-ink text-pub-counter" href={PHONE_HREF}>
+          <a className="pub-button pub-hero-call bg-pub-ink text-pub-counter" href={PHONE_HREF}>
             <Phone size={18} aria-hidden="true" />
-            Call (403) 686-2835
+            Call {PHONE_DISPLAY}
           </a>
-          <a className="pub-button pub-secondary" href={MAPS_URL} target="_blank" rel="noopener noreferrer">
-            Get directions
-          </a>
+          <div className="pub-hero-pills grid grid-cols-3 gap-2 sm:flex sm:gap-3">
+            <a
+              className="pub-button pub-secondary"
+              href={MAPS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Get directions"
+            >
+              <span className="sm:hidden">Directions</span>
+              <span className="hidden sm:inline">Get directions</span>
+            </a>
+            <a className="pub-button pub-secondary" href="#parcel-tracker" aria-label="Track a parcel">
+              <span className="sm:hidden">Track parcel</span>
+              <span className="hidden sm:inline">Track a parcel</span>
+            </a>
+            <a className="pub-button pub-secondary" href="#refill-status" aria-label="Check a refill">
+              <span className="sm:hidden">Refill status</span>
+              <span className="hidden sm:inline">Check a refill</span>
+            </a>
+          </div>
         </div>
       </div>
     </section>

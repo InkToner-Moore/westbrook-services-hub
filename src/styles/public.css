@@ -243,7 +243,8 @@
   animation: pub-fade 400ms var(--service-delay) both;
 }
 
-.public-site .pub-service {
+.public-site .pub-service,
+.public-site .pub-tool-anchor {
   scroll-margin-top: 96px;
 }
 
@@ -322,6 +323,34 @@
 
 .public-site .pub-map:is(:hover, :focus-visible) .pub-map-caption {
   transform: translateY(0);
+}
+
+@media (max-width: 639px) {
+  .public-site .pub-scan {
+    margin-top: calc(1rem - 0.16em);
+  }
+
+  .public-site .pub-hero-copy,
+  .public-site .pub-hero-actions {
+    margin-top: 20px;
+  }
+
+  .public-site .pub-hero-services {
+    margin-top: 24px;
+  }
+
+  .public-site .pub-hero-call,
+  .public-site .pub-hero-pills {
+    width: 100%;
+  }
+
+  .public-site .pub-hero-pills .pub-button {
+    min-width: 0;
+    min-height: 44px;
+    padding-inline: 6px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
 }
 
 @media (min-width: 640px) {
