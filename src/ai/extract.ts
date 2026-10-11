@@ -461,6 +461,29 @@ export function extractTracking(text: string): CourierMatch {
     if (!courier) courier = 'FedEx';
   }
 
+  // Clerks may type a courier PIN that does not fit the known tracking patterns.
+  // Keep phone-shaped tokens as phones without calling extractPhone recursively.
+  if (!trackingNumber && (courier || hasCue(text,
+    'ship', 'shipping', 'shipped', 'shipment', 'courier', 'parcel', 'parcels',
+    'drop off', 'dropoff', 'track', 'trace', 'package'))) {
+    const candidates = [...text.matchAll(/(?<![A-Za-z0-9])([A-Za-z0-9]{9,34})(?![A-Za-z0-9])/g)]
+      .filter((m) => {
+        const token = m[1];
+        if ((token.match(/\d/g) ?? []).length < 7 || NOT_A_MODEL.test(token)) return false;
+        if (/^(?:\d{10}|1\d{10})$/.test(token)) return false;
+        const before = text.slice(0, m.index);
+        const after = text.slice(m.index + token.length);
+        // Do not take an order id, money, or a piece of a date/time/phone group.
+        return !/(?:\bORD-\S*|[$.,:/+-])\s*$/i.test(before) &&
+          !/^\s*\$|^[.,:/+-]\d/.test(after);
+      });
+    let longest = '';
+    for (const m of candidates) {
+      if (m[1].length > longest.length) longest = m[1];
+    }
+    trackingNumber = longest ? longest.toUpperCase() : null;
+  }
+
   return { courier, service, trackingNumber };
 }
 

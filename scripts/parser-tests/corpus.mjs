@@ -15,6 +15,99 @@
 //   attach expected side actions: { pay: true, label: true }
 //   known  a string saying why this one is a documented gap (reported, not failed)
 export const CORPUS = [
+  // Unknown tracking formats beside customer phones.
+  {
+    u: 'purolator to edmonton 4035551212 335258857105 $18',
+    a: 'receipt', s: 'shipping',
+    f: {"customerPhone": "4035551212"},
+    items: [{"courier": "Purolator", "trackingNumber": "335258857105", "cost": 18}],
+  },
+  {
+    u: 'fedex to edmonton 123456789012 $18',
+    a: 'receipt', s: 'shipping',
+    f: {"customerPhone": null},
+    items: [{"courier": "FedEx", "trackingNumber": "123456789012", "cost": 18}],
+  },
+  {
+    u: 'fedex to edmonton 4035551212 123456789012 $18',
+    a: 'receipt', s: 'shipping',
+    f: {"customerPhone": "4035551212"},
+    items: [{"courier": "FedEx", "trackingNumber": "123456789012", "cost": 18}],
+  },
+  {
+    u: 'fedex to edmonton 123456789012345 $18',
+    a: 'receipt', s: 'shipping',
+    f: {"customerPhone": null},
+    items: [{"courier": "FedEx", "trackingNumber": "123456789012345", "cost": 18}],
+  },
+  {
+    u: 'fedex to edmonton 123456789012345 4035551212 $18',
+    a: 'receipt', s: 'shipping',
+    f: {"customerPhone": "4035551212"},
+    items: [{"courier": "FedEx", "trackingNumber": "123456789012345", "cost": 18}],
+  },
+  {
+    u: 'canada post to edmonton 1234567890123456 $18',
+    a: 'receipt', s: 'shipping',
+    f: {"customerPhone": null},
+    items: [{"courier": "Canada Post", "trackingNumber": "1234567890123456", "cost": 18}],
+  },
+  {
+    u: 'dhl 1234567890 to edmonton 4035551212 $18',
+    a: 'receipt', s: 'shipping',
+    f: {"customerPhone": "4035551212"},
+    items: [{"courier": "DHL", "trackingNumber": "1234567890", "cost": 18}],
+  },
+  {
+    u: 'ups to red deer JD014600006281234567 22',
+    a: 'receipt', s: 'shipping',
+    f: {"customerPhone": null},
+    items: [{"courier": "UPS", "trackingNumber": "JD014600006281234567", "cost": 22}],
+  },
+  {
+    u: 'purolator to edmonton 33525885710 4035551212 $18',
+    a: 'receipt', s: 'shipping',
+    f: {"customerPhone": "4035551212"},
+    items: [{"courier": "Purolator", "trackingNumber": "33525885710", "cost": 18}],
+  },
+  {
+    u: 'purolator to edmonton 4035551212 $18',
+    a: 'receipt', s: 'shipping',
+    f: {"customerPhone": "4035551212"},
+    items: [{"courier": "Purolator", "trackingNumber": "", "cost": 18}],
+  },
+  {
+    u: 'purolator to edmonton 4035551212 T5J 0N3 $18',
+    a: 'receipt', s: 'shipping',
+    f: {"customerPhone": "4035551212"},
+    items: [{"courier": "Purolator", "trackingNumber": "", "cost": 18}],
+  },
+  {
+    u: 'track 335258857105',
+    a: 'track',
+    f: {"trackingNumber": "335258857105"},
+  },
+  {
+    u: 'note call supplier re invoice 20261004778',
+    a: 'note',
+    f: {"content": "call supplier re invoice 20261004778", "trackingNumber": null},
+  },
+  {
+    u: 'refill for sarah hp 65 4035551212 $34',
+    a: 'receipt', s: 'refill',
+    f: {"customerPhone": "4035551212", "trackingNumber": null, "price": 34},
+  },
+  {
+    u: 'sale 3 pens 4.50',
+    a: 'receipt', s: 'supplies',
+    f: {"trackingNumber": null, "quantity": 3, "price": 4.5},
+  },
+  {
+    u: '2 kw1 keys for mike 4035551212',
+    a: 'receipt', s: 'key',
+    f: {"customerPhone": "4035551212", "trackingNumber": null},
+    keys: ["2xKW1"],
+  },
   // Action-led names and mistyped UPS numbers from the counter.
   { u: 'receipt Sarah fisher halifax 4038362888 1Z97377252837 $33.45 ups express saver', a: 'receipt', s: 'shipping', f: { customerName: 'Sarah Fisher', customerPhone: '4038362888' }, items: [{ courier: 'UPS Express Saver', trackingNumber: '1Z97377252837', city: 'Halifax', province: 'NS', cost: 33.45 }] },
   { u: 'receipt Sarah fisher halifax 4038362888 1Z999AA10123456784 $33.45 ups express saver', a: 'receipt', s: 'shipping', f: { customerName: 'Sarah Fisher', customerPhone: '4038362888' }, items: [{ courier: 'UPS Express Saver', trackingNumber: '1Z999AA10123456784', city: 'Halifax', province: 'NS', cost: 33.45 }] },
