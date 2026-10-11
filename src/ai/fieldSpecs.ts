@@ -11,9 +11,11 @@
 // Visibility:
 //   alwaysShown true  -> always in the check, even blank (an invitation to fill).
 //   alwaysShown false -> "No-show if blank": only appears once it has a value.
+import { parseDays } from '@/lib/shiftParse';
 import type { AiAction, Intent, ReceiptSubtype } from './types';
 
-export type FieldKind = 'text' | 'phone' | 'email' | 'money' | 'date' | 'quantity' | 'toggle' | 'select';
+export type FieldKind =
+  | 'text' | 'phone' | 'email' | 'money' | 'date' | 'quantity' | 'toggle' | 'select' | 'days';
 
 export interface FieldSpec {
   key: string;
@@ -21,6 +23,8 @@ export interface FieldSpec {
   marker: 'required' | 'optional';
   alwaysShown: boolean;
   kind: FieldKind;
+  // For days: toggle several days instead of replacing the one selected day.
+  multiple?: boolean;
   // When true and empty, Confirm is blocked. Kept separate from the marker so a
   // field can read as "needed" (?) without forcing the counter to have it on hand
   // (e.g. a phone at cartridge intake). Only the genuine must-haves block.
@@ -130,7 +134,10 @@ export const FIELD_SPECS: Record<string, FieldSpec[]> = {
   // Plan a shift, or the same shift on several days at once (manager only).
   'timesheet_add_shift': [
     { key: 'employeeName', label: 'Who', marker: 'required', alwaysShown: true, kind: 'text', blocking: true, hint: 'e.g. Sue' },
-    { key: 'days', label: 'Day(s)', marker: 'required', alwaysShown: true, kind: 'text', blocking: true, hint: 'e.g. Oct 8, 9, 15' },
+    {
+      key: 'days', label: 'Day(s)', marker: 'required', alwaysShown: true,
+      kind: 'days', blocking: true, multiple: true,
+    },
     { key: 'start', label: 'Start', marker: 'required', alwaysShown: true, kind: 'text', blocking: true, hint: 'e.g. 10 AM' },
     { key: 'end', label: 'End', marker: 'required', alwaysShown: true, kind: 'text', blocking: true, hint: 'e.g. 5:30 PM' },
     { key: 'note', label: 'Note', marker: 'optional', alwaysShown: false, kind: 'text' },
@@ -139,7 +146,10 @@ export const FIELD_SPECS: Record<string, FieldSpec[]> = {
   // optional: fill only what changed.
   'timesheet_adjust_shift': [
     { key: 'employeeName', label: 'Who', marker: 'required', alwaysShown: true, kind: 'text', blocking: true, hint: 'e.g. Sue' },
-    { key: 'days', label: 'Day', marker: 'required', alwaysShown: true, kind: 'text', blocking: true, hint: 'e.g. Today, Oct 8' },
+    {
+      key: 'days', label: 'Day', marker: 'required', alwaysShown: true,
+      kind: 'days', blocking: true,
+    },
     { key: 'actualStart', label: 'Actually started', marker: 'optional', alwaysShown: true, kind: 'text', hint: 'leave blank if as planned' },
     { key: 'actualEnd', label: 'Actually left', marker: 'optional', alwaysShown: true, kind: 'text', hint: 'leave blank if as planned' },
     { key: 'breakMinutes', label: 'Break (minutes)', marker: 'optional', alwaysShown: true, kind: 'quantity' },
@@ -183,6 +193,7 @@ export function missingRequired(specs: FieldSpec[], intent: Intent): FieldSpec[]
     if (!s.blocking) return false;
     if (s.kind === 'toggle') return false; // toggles always have a boolean value
     const v = intent.fields[s.key]?.value;
+    if (s.kind === 'days') return parseDays(String(v ?? '')).length === 0;
     return v === null || v === undefined || v === '';
   });
 }

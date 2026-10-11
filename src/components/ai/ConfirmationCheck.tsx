@@ -29,6 +29,8 @@ import { GST_RATE, grossFromNet, netFromGross, taxOf } from '@/lib/canadaTax';
 import { isItemComplete, toShipmentItems, type ShipmentItem } from '@/ai/shipping';
 import { packingLabel, packingLineTotal, type PackingItem } from '@/lib/packing';
 import { formatDayHeading } from '@/lib/schedule';
+import { parseDays } from '@/lib/shiftParse';
+import DayPicker from './DayPicker';
 import ShipmentItemsEditor from './ShipmentItemsEditor';
 import IntentSuggestions from './IntentSuggestions';
 import { routeLabel } from '@/ai/intentOptions';
@@ -431,12 +433,16 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
             const fv = fields[spec.key];
             const isGuessed = fv?.source === 'guessed';
             const isOmitted = omitted.has(spec.key);
+            const empty = spec.kind === 'days'
+              ? parseDays(String(fv?.value ?? '')).length === 0 : isBlank(fv?.value);
             return (
-              <li key={spec.key} className="flex items-center justify-between gap-3 py-2">
+              <li key={spec.key}
+                className={spec.kind === 'days' ? 'space-y-2 py-2' :
+                  'flex items-center justify-between gap-3 py-2'}>
                 <div className="flex min-w-0 items-center gap-1.5">
                   <OmitToggle omitted={isOmitted} onToggle={() => toggleOmit(spec.key)} label={spec.label} />
                   {/* The "?" means Confirm is waiting on this line, nothing softer. */}
-                  {spec.blocking && !isOmitted && isBlank(fv?.value) && <NeededMarker />}
+                  {spec.blocking && !isOmitted && empty && <NeededMarker />}
                   <span
                     className={`text-[15px] text-pub-muted ${
                       isOmitted ? 'line-through opacity-50' : ''
@@ -456,7 +462,11 @@ const ConfirmationCheck: React.FC<ConfirmationCheckProps> = ({ intent, specs, dr
                   )}
                 </div>
                 <div className={`text-right ${isOmitted ? 'pointer-events-none line-through opacity-40' : ''}`}>
-                  {renderValue(spec, fv)}
+                  {spec.kind === 'days' ? (
+                    <DayPicker value={String(fv?.value ?? '')} multiple={spec.multiple}
+                      label={spec.label} disabled={isOmitted}
+                      onChange={(value) => setValue(spec.key, value)} />
+                  ) : renderValue(spec, fv)}
                 </div>
               </li>
             );
