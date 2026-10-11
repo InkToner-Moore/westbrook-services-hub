@@ -8,7 +8,7 @@
 // See docs/ui-rehaul/DESIGN-SPEC.md and PLAN.md.
 import React, { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { Menu, PanelRight, PanelLeftOpen, PanelRightOpen, X, Sparkles } from 'lucide-react';
+import { Menu, PanelRight, PanelLeftOpen, PanelRightOpen, Sparkles } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAiMode } from '@/ai/context';
 import type { ArtifactState } from '@/ai/types';
@@ -224,13 +224,8 @@ const StaffShell: React.FC = () => {
             <div className="absolute inset-0 bg-black/40" onClick={() => setRailOpen(false)} />
             <div className={`absolute inset-y-0 left-0 flex w-64 flex-col overflow-hidden
               border-r shadow-lg ${themeClasses.header}`}>
-              <div className="flex shrink-0 justify-end p-2">
-                <button type="button" onClick={() => setRailOpen(false)} aria-label="Close menu" className={`rounded-lg p-1.5 ${themeClasses.interactive.hover}`}>
-                  <X className="h-5 w-5 text-pub-muted" />
-                </button>
-              </div>
               <div className="min-h-0 flex-1 overflow-y-auto">
-                <TileRail />
+                <TileRail onClose={() => setRailOpen(false)} />
               </div>
             </div>
           </div>
