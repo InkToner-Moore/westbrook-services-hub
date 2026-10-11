@@ -117,6 +117,16 @@ const StaffShell: React.FC = () => {
     setRailOpen(false);
   }, [pathname]);
 
+  // Escape closes the phone drawer; the listener lives only while it is open.
+  useEffect(() => {
+    if (!railOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setRailOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [railOpen]);
+
   const openWorkspace = () => {
     setRightCollapsed(false);
     setSheetOpen(true);
