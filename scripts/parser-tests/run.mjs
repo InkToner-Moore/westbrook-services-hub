@@ -400,7 +400,7 @@ test('inventory: empty responses use the make and only confident fit hints', () 
   assert.equal(mod.inventoryEmptyMessage('general motors'), 'No GM keys on file.');
   assert.equal(mod.inventoryEmptyMessage('vw'), 'No VW keys on file.');
   assert.equal(mod.inventoryEmptyMessage('do we have any mailbox keys'),
-    'I could not find "mailbox" in the key or refill inventory.');
+    'No mailbox keys on file.');
 });
 
 test('inventory: uncertainty cleanup preserves content and refill routing', async () => {
@@ -423,4 +423,147 @@ test('inventory: uncertainty cleanup preserves content and refill routing', asyn
   assert.deepEqual(mod.rankInventory([
     { brand: 'HP', cartridge: '65' }, { brand: 'Canon', cartridge: '165' },
   ], [], refill.fields.query.value), [{ brand: 'HP', cartridge: '65' }]);
+});
+
+const kindReferences = [
+  { code: '1646', category: 'mailbox', fits: 'Canada Post mailbox locks',
+    confidence: 'high' },
+  { code: '1647', category: 'mailbox', confidence: 'medium' },
+  { code: '1648', category: 'mailbox', confidence: 'low' },
+  { code: '1649', category: 'mailbox', confidence: 'high', needsReview: true },
+  { code: 'M1', category: 'padlock', brandSystem: 'Master Lock', confidence: 'high' },
+  { code: 'SC1', category: 'residential', brandSystem: 'Schlage',
+    keyway: 'Schlage C', confidence: 'high' },
+];
+
+test('inventory: everyday kinds use word boundaries and specific phrases', () => {
+  const aliases = {
+    mailbox: ['mailbox', 'mail box', 'mail', 'canada post', 'postal', 'mailboxes'],
+    padlock: ['padlock', 'master lock', 'bike lock'],
+    residential: ['house', 'home', 'door', 'front door', 'apartment', 'condo', 'deadbolt'],
+    commercial: ['office', 'commercial', 'store', 'business'],
+    automotive: ['car', 'truck', 'vehicle', 'auto', 'ignition'],
+    'cabinet/furniture': ['cabinet', 'desk', 'drawer', 'filing', 'furniture',
+      'locker', 'toolbox', 'office filing cabinet'],
+  };
+  for (const [kind, words] of Object.entries(aliases)) {
+    for (const word of words) assert.equal(mod.extractKeyKind(word + ' keys'), kind, word);
+  }
+  assert.deepEqual(mod.keyKindDetails('keys for a filing cabinet', 'cabinet/furniture'), []);
+  assert.deepEqual(mod.keyKindDetails('canada post key', 'mailbox'), ['canada', 'post']);
+  assert.deepEqual(mod.keyKindDetails('master lock keys', 'padlock'), ['master']);
+  for (const word of ['cartridge', 'locksmith', 'homework', 'doorway']) {
+    assert.equal(mod.extractKeyKind(word), null, word);
+  }
+});
+
+test('inventory: category and own names qualify, stock and confidence order results', () => {
+  const rows = [
+    { id: 'review', model: '1649', inStock: true },
+    { id: 'low', model: '1648', inStock: true },
+    { id: 'out', model: '1646', inStock: false },
+    { id: 'in', model: '1647', inStock: true },
+    { id: 'own', model: 'Mailbox 1650', inStock: true },
+    { id: 'notes', model: 'T61', notes: 'mailbox', inStock: true },
+  ];
+  assert.deepEqual(rankedIds('mailbox keys', rows, kindReferences),
+    ['in', 'own', 'out', 'review', 'low']);
+  assert.deepEqual(rankedIds('mail box key', rows, kindReferences),
+    rankedIds('mailbox keys', rows, kindReferences));
+  assert.deepEqual(rankedIds('canada post keys', rows, kindReferences), ['out']);
+  assert.deepEqual(rankedIds('mailbox unusual', rows, kindReferences), []);
+});
+
+test('inventory: all reference details match fits, system, keyway or own name', () => {
+  const rows = [{ id: 'm', model: 'M1' }, { id: 's', model: 'SC1' }];
+  assert.deepEqual(rankedIds('master lock', rows, kindReferences), ['m']);
+  assert.deepEqual(rankedIds('schlage', rows, kindReferences), ['s']);
+  assert.deepEqual(rankedIds('schlage c', rows, kindReferences), ['s']);
+  const refs = [{ code: 'A1', fits: 'Acme postal cylinder', brandSystem: 'Example',
+    keyway: 'Section Z', category: 'mailbox', confidence: 'high' }];
+  assert.deepEqual(rankedIds('example section z', [{ id: 'a', model: 'A1' }], refs), ['a']);
+  assert.deepEqual(rankedIds('example section missing', [{ id: 'a', model: 'A1' }], refs), []);
+  // A word of the row's own name still admits it, as before reference text counted.
+  assert.deepEqual(rankedIds('acme missing', [{ id: 'a', model: 'Acme cylinder' }], []), ['a']);
+  assert.deepEqual(rankedIds('acme cylinder', [{ id: 'a', model: 'Acme cylinder' }], []), ['a']);
+});
+
+test('inventory: kind empty hints exclude low, medium and review references', () => {
+  assert.equal(mod.inventoryEmptyMessage('mail box key', kindReferences),
+    'No mail box keys on file. Mail box locks usually take 1646.');
+  assert.equal(mod.inventoryEmptyMessage('canada post key', [
+    { code: 'ESP1', category: 'mailbox', fits: 'ESP locks', confidence: 'high' },
+  ]), 'No canada post keys on file.');
+  assert.equal(mod.inventoryEmptyMessage('desk key', kindReferences),
+    'No desk keys on file.');
+});
+
+test('inventory: messages cap codes and summarize rows once by category', () => {
+  const rows = Array.from({ length: 8 }, (_, i) => ({ model: String(i) }));
+  assert.equal(mod.inventoryKeysMessage(rows, 'mailbox'),
+    '8 mailbox keys on file: 0, 1, 2, 3, 4, 5 and 2 more.');
+  assert.equal(mod.inventoryKeysSummary([
+    { model: '1646' }, { model: '1647' }, { model: 'SC1' }, { model: 'unknown' },
+  ], kindReferences),
+  'We have 4 keys on file: 2 mailbox, 1 house, 1 other. Ask for a kind, a make or a code.');
+  assert.equal(mod.inventoryKeysSummary([], []),
+    'We have 0 keys on file. Ask for a kind, a make or a code.');
+});
+
+test('routing: vague key stock questions preserve sale and customer boundaries', async () => {
+  for (const line of [
+    'mailbox keys', 'mail box key', 'padlock keys', 'house keys', 'door key',
+    'car keys', 'cabinet keys', 'desk key', 'filing cabinet key', 'office keys',
+    'canada post key', 'master lock keys', 'schlage keys', 'weiser',
+    'what keys do we have for mailboxes', 'keys for a filing cabinet',
+    'keys', 'what keys do we have',
+  ]) assert.equal((await route(line)).action, 'inventory_lookup', line);
+  assert.equal((await route('2 mailbox keys 5.99')).action, 'receipt');
+  for (const line of ['mailbox key for john', 'car key for sarah']) {
+    assert.equal((await route(line)).action, 'unknown', line);
+  }
+});
+
+test('day picker: typed days seed sorted selections and readable summaries', () => {
+  const ref = new Date(2026, 9, 1);
+  const days = mod.pickedDays('oct 15, 8, 9', true, ref);
+  assert.deepEqual(days, ['2026-10-08', '2026-10-09', '2026-10-15']);
+  assert.equal(mod.formatPickedDays(days), '2026-10-08, 2026-10-09, 2026-10-15');
+  assert.equal(mod.pickedDaysSummary(days, ''), 'Oct 8, 9 and 15');
+  assert.deepEqual(mod.pickedDays('unreadable', true, ref), []);
+  assert.equal(mod.pickedDaysSummary([], 'unreadable'), 'unreadable');
+  assert.equal(mod.pickedDaysSummary([], ''), 'No day picked');
+});
+
+test('day picker: canonical values round-trip across months and years', () => {
+  for (const keys of [
+    ['2026-10-31', '2026-11-02'],
+    ['2026-12-31', '2027-01-02'],
+    ['2025-01-02', '2027-01-02'],
+  ]) {
+    const value = mod.formatPickedDays([...keys].reverse().concat(keys[0]));
+    assert.equal(value, keys.join(', '));
+    for (const ref of [new Date(2026, 11, 15), new Date(2027, 0, 15)]) {
+      assert.deepEqual(mod.parseDays(value, ref), keys);
+      assert.deepEqual(mod.pickedDays(value, true, ref), keys);
+    }
+  }
+});
+
+test('day picker: multiple toggles, clearing blocks, single replaces', () => {
+  const keys = ['2026-10-08', '2026-10-09'];
+  assert.equal(mod.pickDay(keys, keys[0], true), keys[1]);
+  assert.equal(mod.pickDay([keys[0]], keys[0], true), '');
+  assert.equal(mod.pickDay(keys, '2027-01-02', false), '2027-01-02');
+  assert.equal(mod.pickDay(keys, keys[0], false), keys[0]);
+  assert.deepEqual(mod.pickedDays(keys.join(', '), false), [keys[0]]);
+  assert.deepEqual(mod.parseDays(mod.pickDay(keys, '2027-01-02', false)), ['2027-01-02']);
+  const specs = mod.FIELD_SPECS.timesheet_add_shift.filter((s) => s.key === 'days');
+  assert.equal(specs[0].multiple, true);
+  assert.equal(mod.FIELD_SPECS.timesheet_adjust_shift.find((s) => s.key === 'days').multiple,
+    undefined);
+  for (const value of ['', 'unreadable', keys[0]]) {
+    const missing = mod.missingRequired(specs, { fields: { days: { value } } });
+    assert.equal(missing.length, value === keys[0] ? 0 : 1);
+  }
 });

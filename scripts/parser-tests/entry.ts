@@ -8,6 +8,8 @@ export { DeterministicProvider } from '@/ai/providers/deterministic';
 export { segmentUtterance, probeRoute } from '@/ai/segment';
 export { applyFollowUp, isFollowUp } from '@/ai/followup';
 export {
+  extractKeyKind,
+  keyKindDetails,
   extractMoney,
   extractPhone,
   extractTracking,
@@ -28,4 +30,10 @@ export { cartTotal } from '@/ai/cart';
 export { parseTimeRange, parseClockTime, parseBreakMinutes, parseDays, describeDays } from '@/lib/shiftParse';
 export { workedMinutes, isAdjusted } from '@/lib/schedule';
 
-export { rankInventory, inventoryEmptyMessage } from '@/lib/keyReference';
+export {
+  rankInventory, inventoryEmptyMessage, inventoryKeysSummary, inventoryKeysMessage,
+} from '@/lib/keyReference';
+export {
+  pickedDays, formatPickedDays, pickDay, pickedDaysSummary,
+} from '@/components/ai/dayPickerValue';
+export { FIELD_SPECS, missingRequired } from '@/ai/fieldSpecs';
