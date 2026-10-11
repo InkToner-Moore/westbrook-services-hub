@@ -48,6 +48,21 @@ The ten ranked items under "Not done" in the next section are dealt with. Do not
   in the drawer truncates; the "No shifts this week" pill clips at the right edge of the
   calendar until scrolled.
 
+## Settings fixes and editable shop details (written 2026-10-11, same branch)
+
+- Settings: switches are normal size in label-left rows, "Tools on the rail" is a row of
+  toggle chips, the phone is no longer mono. Checked in a browser at 390 wide, light and dark.
+- Shop details are editable by a signed-in manager: `lib/shopSettings.ts` is a small store
+  (defaults, a localStorage cache `shop-settings-cache`, Firestore `settings/shop`). The
+  customer page, the rail's open-now line, the receipt PDF and the receipt card read it.
+  GST and the shop name stay fixed. Hours are whole hours and every day is open.
+- **Waiting on Parsa:** the `settings/shop` rule (in `docs/ENVIRONMENTS.md`) must be added
+  in the Firebase console for DEV, and for prod before this reaches `main`. Until then
+  reads fall back to the built-in values and Save shows a "could not save" line.
+- Checked locally: the edit form, its validation, the failed-save path, Cancel, and that
+  the customer page shows cached values (phone, email, hours). Not checked: a real save
+  or a real read, since local Firestore refuses both.
+
 ## START HERE (written 2026-10-10, exit of the phone polish session)
 
 **Next session is for:** building. First the phone audit fixes listed under "Not done"
