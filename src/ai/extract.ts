@@ -61,8 +61,8 @@ function cuedTracking(text: string): string | null {
 // from slicing a 10-digit run out of a longer id, like a 16-digit tracking number
 // or the tail of "1Z999AA10123456784", so a real trailing phone is picked instead.
 export function extractPhone(text: string): string | null {
-  const cued = cuedTracking(text);
-  const t = cued ? text.replace(new RegExp(cued, 'i'), ' ') : text;
+  const tracking = extractTracking(text).trackingNumber;
+  const t = tracking ? text.replace(new RegExp(tracking, 'i'), ' ') : text;
   const m = t.match(/(?<![A-Za-z0-9])(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?!\d)/);
   if (!m) return null;
   const digits = m[0].replace(/\D/g, '');
@@ -354,6 +354,14 @@ export function extractName(text: string, opts: { leading?: boolean } = {}): str
   if (actor && actor[1].trim().split(/\s+/).every(isNameWord)) return titleCase(actor[1].trim());
 
   if (!opts.leading) return null;
+  // A city or phone after two words makes an action-led name unambiguous.
+  const actionName = text.match(/^\s*(?:receipt|ship|shipping|refill)\s+(\p{L}[\p{L}\p{M}'’-]*\s+\p{L}[\p{L}\p{M}'’-]*)\s+(.+)$/iu);
+  if (actionName && actionName[1].split(/\s+/).every(isNameWord)) {
+    const after = actionName[2];
+    const city = CANADIAN_CITIES.some((c) => new RegExp(`^${c}\\b`, 'i').test(after));
+    const phone = extractPhone(after);
+    if (city || (phone && after.startsWith(phone))) return titleCase(actionName[1]);
+  }
   // A capitalized "First Last" at the very start, or lowercase words right before
   // a brand or a courier.
   const capital = text.match(/^\s*([A-Z][a-z'’-]+(?:\s+[A-Z][a-z'’-]+){1,2})\b/);
@@ -433,12 +441,15 @@ export function extractTracking(text: string): CourierMatch {
   const compact = text.replace(/\s+/g, ' ');
   const cued = cuedTracking(compact);
   const ups = compact.match(/\b1Z[0-9A-Z]{16}\b/i);
+  // Keep mistyped UPS ids on the slip, but reject short or mostly letter codes.
+  const looseUps = [...compact.matchAll(/\b1Z[0-9A-Z]{8,20}\b/gi)]
+    .find((m) => (m[0].slice(2).match(/\d/g) ?? []).length >= 6);
   const canadaPost = compact.match(/\b([A-Z]{2}\d{9}CA|\d{16})\b/i);
   const fedex = compact.match(/\b(\d{15}|\d{12})\b/);
 
   let trackingNumber: string | null = null;
-  if (ups) {
-    trackingNumber = ups[0].toUpperCase();
+  if (ups || looseUps) {
+    trackingNumber = (ups ?? looseUps)[0].toUpperCase();
     if (!courier) courier = 'UPS';
   } else if (cued) {
     trackingNumber = cued;

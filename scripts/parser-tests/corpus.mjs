@@ -15,6 +15,16 @@
 //   attach expected side actions: { pay: true, label: true }
 //   known  a string saying why this one is a documented gap (reported, not failed)
 export const CORPUS = [
+  // Action-led names and mistyped UPS numbers from the counter.
+  { u: 'receipt Sarah fisher halifax 4038362888 1Z97377252837 $33.45 ups express saver', a: 'receipt', s: 'shipping', f: { customerName: 'Sarah Fisher', customerPhone: '4038362888' }, items: [{ courier: 'UPS Express Saver', trackingNumber: '1Z97377252837', city: 'Halifax', province: 'NS', cost: 33.45 }] },
+  { u: 'receipt Sarah fisher halifax 4038362888 1Z999AA10123456784 $33.45 ups express saver', a: 'receipt', s: 'shipping', f: { customerName: 'Sarah Fisher', customerPhone: '4038362888' }, items: [{ courier: 'UPS Express Saver', trackingNumber: '1Z999AA10123456784', city: 'Halifax', province: 'NS', cost: 33.45 }] },
+  { u: 'ups to calgary 1z12345678 25', a: 'receipt', s: 'shipping', f: { customerName: null, customerPhone: null }, items: [{ courier: 'UPS', trackingNumber: '1Z12345678', city: 'Calgary', province: 'AB', cost: 25 }] },
+  { u: 'ship to calgary 1zAB1234567890CD 25', a: 'receipt', s: 'shipping', f: { customerName: null, customerPhone: null }, items: [{ courier: 'UPS', trackingNumber: '1ZAB1234567890CD', city: 'Calgary', province: 'AB', cost: 25 }] },
+  { u: 'receipt mike chen toronto 4035551212 fedex 28', a: 'receipt', s: 'shipping', f: { customerName: 'Mike Chen', customerPhone: '4035551212' }, items: [{ courier: 'FedEx', trackingNumber: '', city: 'Toronto', province: 'ON', cost: 28 }] },
+  { u: 'ship anna lee calgary purolator 19.50', a: 'receipt', s: 'shipping', f: { customerName: 'Anna Lee' }, items: [{ courier: 'Purolator', trackingNumber: '', city: 'Calgary', province: 'AB', cost: 19.50 }] },
+  { u: 'shipping anna lee 4035551212 ups 19.50', a: 'receipt', s: 'shipping', f: { customerName: 'Anna Lee', customerPhone: '4035551212' }, items: [{ courier: 'UPS', trackingNumber: '', cost: 19.50 }] },
+  { u: 'receipt blue pens 4.50', a: 'receipt', s: 'supplies', f: { customerName: null, trackingNumber: null, price: 4.50 } },
+  { u: 'sale 2 binders 12', a: 'receipt', s: 'supplies', f: { customerName: null, trackingNumber: null, quantity: 2, price: 12 } },
   // Messy counter input.
   {"u": "need 3 copies of my mailbox key please", "a": "receipt", "s": "key", "f": {"keyModel": "mailbox key"}},
   {"u": "lady wants 4 copies of her house key", "a": "receipt", "s": "key", "f": {"keyModel": "house key"}},
