@@ -60,7 +60,7 @@ const QuickActions: React.FC<QuickActionsProps> = ({
   };
 
   const pill = `inline-flex h-11 min-w-0 items-center justify-start gap-2 rounded-full border px-3
-    text-[13px] sm:h-10 sm:text-sm transition-colors disabled:opacity-40
+    text-[14px] sm:h-10 sm:text-sm transition-colors disabled:opacity-40
     ${themeClasses.interactive.focus}`;
   const quiet = `border-pub-edge bg-pub-paper text-pub-ink ${themeClasses.interactive.hover}`;
   const icon = 'h-4 w-4 shrink-0 text-pub-muted';

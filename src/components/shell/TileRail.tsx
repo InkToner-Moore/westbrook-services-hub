@@ -28,7 +28,9 @@ const HeroTile: React.FC<{ tile: Tile; active: boolean }> = ({ tile, active }) =
         <Icon strokeWidth={1.6} className={`h-[22px] w-[22px] ${active ? 'text-current' : tile.idleIcon}`} />
       </span>
       <span className="flex flex-col leading-tight">
-        <span className={`text-[12px] font-medium ${active ? 'text-current' : 'text-pub-ink'}`}>{tile.label}</span>
+        <span className={`text-[13px] font-medium ${active ? 'text-current' : 'text-pub-ink'}`}>
+          {tile.label}
+        </span>
         <span className={`text-[11px] ${active ? 'text-current opacity-75' : 'text-pub-muted'}`}>Ask for anything</span>
       </span>
     </NavLink>
@@ -49,7 +51,7 @@ const ToolTile: React.FC<{ tile: Tile; active: boolean; wide?: boolean }> = ({ t
         <span className="flex h-9 w-9 items-center justify-center rounded-xl">
           <Icon strokeWidth={1.6} className="h-[22px] w-[22px] text-pub-muted" />
         </span>
-        <span className="text-[12px] font-medium text-pub-muted">{tile.label}</span>
+        <span className="text-[13px] font-medium text-pub-muted">{tile.label}</span>
         {tile.soon && <span className="rounded-full px-1.5 text-[9px] font-medium bg-pub-paper border-pub-edge text-pub-muted">Soon</span>}
       </div>
     );
@@ -71,7 +73,9 @@ const ToolTile: React.FC<{ tile: Tile; active: boolean; wide?: boolean }> = ({ t
       <span className="flex h-9 w-9 items-center justify-center rounded-xl">
         <Icon strokeWidth={1.6} className={`h-[22px] w-[22px] ${active ? 'text-current' : tile.idleIcon}`} />
       </span>
-      <span className={`text-[12px] font-medium ${active ? 'text-current' : 'text-pub-ink'}`}>{tile.label}</span>
+      <span className={`text-[13px] font-medium ${active ? 'text-current' : 'text-pub-ink'}`}>
+        {tile.label}
+      </span>
     </NavLink>
   );
 };
@@ -106,7 +110,7 @@ const TileRail: React.FC<{ onCollapse?: () => void; onClose?: () => void }> = ({
               className={`h-1.5 w-1.5 shrink-0 rounded-full ${status.open ? 'bg-pub-open' : 'bg-pub-muted'}`}
               aria-hidden="true"
             />
-            <span className="truncate">{status.label}</span>
+            <span className="min-w-0 leading-tight sm:truncate">{status.label}</span>
           </span>
         </span>
         {onClose && (

@@ -141,7 +141,9 @@ const Composer: React.FC<ComposerProps> = ({ onSend, onTrack, onAddPacking, disa
           type="button"
           onClick={toggleShortcuts}
           aria-expanded={shortcutsOpen}
-          className={`inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-[13px] sm:min-h-[32px] text-pub-muted ${themeClasses.interactive.hover}`}
+          className={'inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 ' +
+            'text-[14px] sm:text-[13px] sm:min-h-[32px] text-pub-muted ' +
+            themeClasses.interactive.hover}
         >
           {shortcutsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
           {shortcutsOpen ? 'Hide shortcuts' : 'Shortcuts'}
