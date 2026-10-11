@@ -255,7 +255,6 @@ const StaffInventory = () => {
   const selectedReviewKind = reviewGroups.some((group) => group.kind === reviewKind)
     ? reviewKind : reviewGroups[0]?.kind;
   const selectedReviews = reviewGroups.find((group) => group.kind === selectedReviewKind)?.alerts ?? [];
-  const reviewWarningCount = reviews.filter((alert) => alert.severity === "warn").length;
 
   useEffect(() => {
     setShownReviews(25);
@@ -445,7 +444,7 @@ const StaffInventory = () => {
       { value: "keys", label: "Keys", shortLabel: "Keys", icon: Key },
       { value: "board", label: "Key board", shortLabel: "Board", icon: MapPin },
       { value: "refills", label: "Refills", shortLabel: "Refills", icon: Droplets },
-      { value: "review", label: "Review", shortLabel: "Review", icon: ClipboardCheck, badge: reviewWarningCount },
+      { value: "review", label: "Review", shortLabel: "Review", icon: ClipboardCheck },
     ]} />
   );
 
