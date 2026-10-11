@@ -15,6 +15,7 @@ import type { ArtifactState } from '@/ai/types';
 import { ShellContext } from './ShellContext';
 import TileRail from './TileRail';
 import ArtifactRail from './ArtifactRail';
+import { useStaffAppMeta } from '@/hooks/useStaffAppMeta';
 import CartPanel from '@/components/ai/CartPanel';
 
 const readFlag = (key: string) => {
@@ -26,6 +27,7 @@ const readFlag = (key: string) => {
 };
 
 const StaffShell: React.FC = () => {
+  useStaffAppMeta();
   const { themeClasses } = useTheme();
   const { artifact, showArtifact, cart } = useAiMode();
   const { pathname } = useLocation();

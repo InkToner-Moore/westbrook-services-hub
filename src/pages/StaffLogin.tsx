@@ -7,9 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Printer, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { useStaffAppMeta } from "@/hooks/useStaffAppMeta";
 import { toast } from "@/hooks/use-toast";
 
 const StaffLogin = () => {
+  useStaffAppMeta();
   const { themeClasses } = useTheme();
   const fc = useFormClasses();
   const [email, setEmail] = useState("");
@@ -72,6 +74,7 @@ const StaffLogin = () => {
               <Field label="Email" htmlFor="email" required>
                 <Input
                   id="email"
+                  name="email"
                   autoComplete="username"
                   type="email"
                   value={email}
@@ -86,6 +89,7 @@ const StaffLogin = () => {
                 <div className="relative">
                   <Input
                     id="password"
+                    name="password"
                     autoComplete="current-password"
                     type={showPassword ? "text" : "password"}
                     value={password}

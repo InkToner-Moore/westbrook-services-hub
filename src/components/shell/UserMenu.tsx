@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, LogOut, Settings } from 'lucide-react';
+import { isStandalone } from '@/lib/installPrompt';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
 import { toast } from '@/hooks/use-toast';
@@ -54,7 +55,7 @@ const UserMenu: React.FC = () => {
     const result = await logout();
     if (result?.success) {
       toast({ title: 'Signed out', description: 'You have left the staff portal.' });
-      navigate('/');
+      navigate(isStandalone() ? '/staff' : '/');
     }
   };
 

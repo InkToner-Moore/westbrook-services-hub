@@ -3,6 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Settings } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useManagerMode } from '@/contexts/ManagerModeContext';
+import {
+  enable, disable, enabledFor, isAvailable, markUnlocked, unlockedWithPassword, userKey, verify,
+} from '@/lib/deviceLock';
+import { useInstallState } from '@/lib/installPrompt';
+import { isStandalone } from '@/lib/installPrompt';
 import { useAuth } from '@/hooks/useAuth';
 import { useHiddenTiles } from '@/hooks/useHiddenTiles';
 import { toast } from '@/hooks/use-toast';
@@ -23,6 +28,50 @@ const StaffSettings = () => {
   const { inShell } = useShell();
   const { hiddenTiles, setVisible } = useHiddenTiles();
   const fc = useFormClasses();
+  const install = useInstallState();
+  const uid = user ? userKey(user) : null;
+  const [lockAvailable, setLockAvailable] = useState(false);
+  const [lockEnabled, setLockEnabled] = useState(() => !!uid && enabledFor(uid));
+  const [lockBusy, setLockBusy] = useState(false);
+  const [lockMessage, setLockMessage] = useState('');
+  const passwordUnlocked = !!uid && unlockedWithPassword(uid);
+  useEffect(() => {
+    let active = true;
+    void isAvailable().then((available) => { if (active) setLockAvailable(available); });
+    return () => { active = false; };
+  }, []);
+  useEffect(() => { setLockEnabled(!!uid && enabledFor(uid)); }, [uid]);
+  const changeDeviceLock = async (value: boolean) => {
+    if (!user || lockBusy) return;
+    setLockBusy(true);
+    setLockMessage('');
+    try {
+      if (value) {
+        const success = await enable(user);
+        setLockEnabled(success);
+        if (!success) setLockMessage('Not turned on.');
+      } else {
+        const result = await verify();
+        if (result.success) { disable(); setLockEnabled(false); }
+        else setLockMessage('That did not work. Try again.');
+      }
+    } catch { setLockMessage('That did not work. Try again.'); }
+    finally { setLockBusy(false); }
+  };
+  const repairDeviceLock = async (enrol: boolean) => {
+    if (!user || !uid || lockBusy || !unlockedWithPassword(uid)) return;
+    setLockBusy(true);
+    setLockMessage('');
+    try {
+      disable();
+      markUnlocked(uid);
+      setLockEnabled(false);
+      const success = enrol && await enable(user);
+      setLockEnabled(success);
+      if (!success) setLockMessage('Fingerprint unlock is off.');
+    } catch { setLockMessage('Fingerprint unlock is off.'); }
+    finally { setLockBusy(false); }
+  };
   const navigate = useNavigate();
   const [phone, setPhone] = useState(() => window.matchMedia('(max-width: 639px)').matches);
   const [shortcuts, setShortcuts] = useState<boolean | null>(() => {
@@ -44,7 +93,7 @@ const StaffSettings = () => {
     const result = await logout();
     if (result?.success) {
       toast({ title: 'Signed out', description: 'You have left the staff portal.' });
-      navigate('/');
+      navigate(isStandalone() ? '/staff' : '/');
     }
   };
 
@@ -54,6 +103,51 @@ const StaffSettings = () => {
         <SegmentedTabs value={isDarkMode ? 'dark' : 'light'} label="Appearance"
           options={[{ value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]}
           onChange={(value) => { if ((value === 'dark') !== isDarkMode) toggleTheme(); }} />
+      </FormSection>
+      <FormSection title="This device">
+        <FieldGrid>
+          <Field label="Install app" span={12}>
+            {install.installed ? (
+              <p className="text-sm">ITM Dashboard is installed on this device.</p>
+            ) : install.canPrompt ? (
+              <Button className={fc.primary} onClick={() => void install.prompt()}>
+                Install ITM Dashboard
+              </Button>
+            ) : (
+              <p className="text-sm">{install.isIos
+                ? 'In Safari, tap Share, then Add to Home Screen.'
+                : 'Open your browser menu and choose Install app or Add to Home screen.'}</p>
+            )}
+          </Field>
+          <Field label="Unlock with fingerprint or Face ID" htmlFor="settings-device-lock" span={12}
+            hint="Asks for your fingerprint or face when the app opens on this device. Your password still works.">
+            {(lockAvailable || !lockEnabled) && (
+              <Switch id="settings-device-lock" className="h-11" checked={lockEnabled}
+                disabled={!lockAvailable || lockBusy} onCheckedChange={(value) => void changeDeviceLock(value)} />
+            )}
+            {lockAvailable && lockEnabled && passwordUnlocked && (
+              <button type="button" disabled={lockBusy}
+                className="block min-h-11 text-left text-sm text-pub-muted underline underline-offset-4"
+                onClick={() => void repairDeviceLock(true)}>
+                Fingerprint not working? Set it up again
+              </button>
+            )}
+            {!lockAvailable && (
+              <p className="mt-1.5 text-[13px] text-pub-muted">
+                This device or browser has no fingerprint or face unlock set up.
+              </p>
+            )}
+            {!lockAvailable && lockEnabled && (passwordUnlocked ? (
+              <Button className={`min-h-11 ${fc.secondary}`} disabled={lockBusy}
+                onClick={() => void repairDeviceLock(false)}>Turn off</Button>
+            ) : (
+              <p className="mt-1.5 text-[13px] text-pub-muted">
+                Sign in with your password to turn this off.
+              </p>
+            ))}
+            {lockMessage && <p role="status" className="mt-1.5 text-[13px] text-pub-muted">{lockMessage}</p>}
+          </Field>
+        </FieldGrid>
       </FormSection>
       <FormSection title="AI Mode">
         <FieldGrid>

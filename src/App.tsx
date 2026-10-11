@@ -19,6 +19,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "./hooks/useAuth";
 import { AiModeProvider } from "./ai/context";
+import DeviceLockGate from "./components/shell/DeviceLockGate";
 import StaffShell from "./components/shell/StaffShell";
 import AiChatPane from "./components/shell/AiChatPane";
 import { registerReceiptSeams } from "./ai/actions/label";
@@ -53,7 +54,13 @@ const AppRoutes = () => {
         <Route
           element={
             <ProtectedRoute>
-              <StaffShell />
+              <DeviceLockGate>
+                <ManagerModeProvider>
+                  <AiModeProvider>
+                    <StaffShell />
+                  </AiModeProvider>
+                </ManagerModeProvider>
+              </DeviceLockGate>
             </ProtectedRoute>
           }
         >
@@ -85,16 +92,7 @@ const App = () => (
         {/* Match Vite's base path (set in vite.config.ts) so routing works
             whether the app is served at the site root or under a subpath. */}
         <BrowserRouter basename={import.meta.env.BASE_URL}>
-          {/* AI Mode state (chat, artifact, open receipt) is shared across the
-              staff shell, so the provider wraps all routes. It renders nothing on
-              public routes or when signed out. */}
-          {/* Manager mode (the shared PIN gate) wraps the app so any staff screen
-              can gate an action behind it. It renders only its dialog until asked. */}
-          <ManagerModeProvider>
-            <AiModeProvider>
-              <AppRoutes />
-            </AiModeProvider>
-          </ManagerModeProvider>
+          <AppRoutes />
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
