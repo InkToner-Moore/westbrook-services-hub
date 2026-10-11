@@ -23,6 +23,7 @@ const UserMenu: React.FC = () => {
   const firstMenuItemRef = useRef<HTMLButtonElement>(null);
 
   const email = user?.email ?? 'Signed in';
+  const atAt = email.indexOf('@');
 
   // Outside click closes the account menu.
   useEffect(() => {
@@ -74,7 +75,17 @@ const UserMenu: React.FC = () => {
           <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-pub-sunk border-pub-edge">
             <User className="h-4 w-4 text-pub-muted" />
           </span>
-          <span className="line-clamp-2 break-all text-[12px] font-medium leading-snug text-pub-muted">{email}</span>
+          <span className="line-clamp-2 [overflow-wrap:anywhere] text-[12px] font-medium leading-snug text-pub-muted">
+            {atAt > 0 ? (
+              <>
+                {email.slice(0, atAt + 1)}
+                <wbr />
+                {email.slice(atAt + 1)}
+              </>
+            ) : (
+              email
+            )}
+          </span>
         </button>
         <ThemeToggleButton />
       </div>
