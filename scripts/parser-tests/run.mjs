@@ -471,6 +471,11 @@ test('inventory: category and own names qualify, stock and confidence order resu
   assert.deepEqual(rankedIds('mail box key', rows, kindReferences),
     rankedIds('mailbox keys', rows, kindReferences));
   assert.deepEqual(rankedIds('canada post keys', rows, kindReferences), ['out']);
+  // No reference mentions canada post: the question falls back to the mailbox kind.
+  const plainMailbox = kindReferences.map((ref) => ({ ...ref, fits: undefined }));
+  assert.deepEqual(rankedIds('canada post keys', rows, plainMailbox),
+    rankedIds('mailbox keys', rows, plainMailbox));
+  assert.notDeepEqual(rankedIds('canada post keys', rows, plainMailbox), []);
   assert.deepEqual(rankedIds('mailbox unusual', rows, kindReferences), []);
 });
 

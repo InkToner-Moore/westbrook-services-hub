@@ -149,7 +149,7 @@ export function rankInventory<T extends SearchableInventory>(
   const compact = (text: string) => normCode(text).toLowerCase().replace(/[\s-]+/g, '');
   const queryCode = compact(cleaned);
   const confidence = { high: 3, medium: 2, low: 1 };
-  return rows.map((row) => {
+  const ranked = rows.map((row) => {
     const primary = row.model ?? [row.brand, row.cartridge].filter(Boolean).join(' ');
     const identities = [primary, row.cutCode ?? ''].filter(Boolean);
     const words = identities.flatMap(searchWords);
@@ -220,6 +220,11 @@ export function rankInventory<T extends SearchableInventory>(
     }
     return 0;
   }).map((match) => match.row);
+  // Nothing mentions canada post, so ask for the mailbox kind instead.
+  if (!ranked.length && kind === 'mailbox' && /\bcanada post\b/.test(keyKindWords(cleaned))) {
+    return rankInventory(rows, references, keyKindWords(cleaned).replace(/\bcanada post\b/g, 'mailbox'));
+  }
+  return ranked;
 }
 
 export function inventoryKeyLabel(query: string): string {

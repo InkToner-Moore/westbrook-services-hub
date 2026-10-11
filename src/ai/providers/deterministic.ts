@@ -308,7 +308,7 @@ const RULES: Rule[] = [
       const words = keyKindWords(t);
       const bare = KEY_KINDS[keyKind].some((alias) => words
         .replace(new RegExp('\\b' + alias + '\\b'), ' ')
-        .replace(/\b(?:keys?|the|a|an|please|for)\b/g, ' ').trim() === '');
+        .replace(/\b(?:keys?|the|a|an|please|for|do|you|we|have|any)\b/g, ' ').trim() === '');
       const saleWords = 'cut|copy|duplicate|dupe|make|made|need|needs|want|wants|' +
         'sold|sell|charge|one|two|three|four|five|six|seven|eight|nine|ten|x\\d+';
       const saleDetail = new RegExp('\\b(?:' + saleWords + ')\\b|\\d|[$£€]', 'i')

@@ -27,6 +27,8 @@ export const CORPUS = [
   { u: 'filing cabinet key', a: 'inventory_lookup' },
   { u: 'office keys', a: 'inventory_lookup' },
   { u: 'canada post key', a: 'inventory_lookup' },
+  { u: 'canada post keys', a: 'inventory_lookup' },
+  { u: 'do you have canada post keys', a: 'inventory_lookup' },
   { u: 'master lock keys', a: 'inventory_lookup' },
   { u: 'schlage keys', a: 'inventory_lookup' },
   { u: 'weiser', a: 'inventory_lookup' },
@@ -35,6 +37,7 @@ export const CORPUS = [
   { u: 'keys', a: 'inventory_lookup' },
   { u: 'what keys do we have', a: 'inventory_lookup' },
   { u: '2 mailbox keys 5.99', a: 'receipt', s: 'key' },
+  { u: '2 canada post keys 5.99', a: 'receipt', s: 'key' },
   { u: 'mailbox key for john', a: 'unknown' },
 
   // Fresh clerk sale and stock probes guard the make routing boundary.
