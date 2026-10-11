@@ -1,5 +1,5 @@
 import { useFormClasses, FieldGrid, Field, FormActions } from "@/components/shell/FormKit";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
   Globe,
   Search,
   ExternalLink,
@@ -104,6 +107,23 @@ const COLOR_OPTIONS: { key: string; label: string; swatch: string }[] = [
   { key: "emerald", label: "Emerald", swatch: "bg-emerald-500" },
 ];
 
+const CHIP_COLORS: Record<string, { chip: string; icon: string }> = {
+  blue: { chip: "bg-blue-100 dark:bg-blue-500/20", icon: "text-blue-700 dark:text-blue-300" },
+  purple: { chip: "bg-purple-100 dark:bg-purple-500/20", icon: "text-purple-700 dark:text-purple-300" },
+  green: { chip: "bg-green-100 dark:bg-green-500/20", icon: "text-green-700 dark:text-green-300" },
+  amber: { chip: "bg-amber-100 dark:bg-amber-500/20", icon: "text-amber-700 dark:text-amber-300" },
+  red: { chip: "bg-red-100 dark:bg-red-500/20", icon: "text-red-700 dark:text-red-300" },
+  cyan: { chip: "bg-cyan-100 dark:bg-cyan-500/20", icon: "text-cyan-700 dark:text-cyan-300" },
+  rose: { chip: "bg-rose-100 dark:bg-rose-500/20", icon: "text-rose-700 dark:text-rose-300" },
+  emerald: { chip: "bg-emerald-100 dark:bg-emerald-500/20", icon: "text-emerald-700 dark:text-emerald-300" },
+};
+const getChipColors = (key: string) =>
+  Object.prototype.hasOwnProperty.call(CHIP_COLORS, key)
+    ? CHIP_COLORS[key]
+    : { chip: "bg-pub-sunk", icon: "text-pub-ink" };
+const hasOrder = (link: DirectoryLink) => Number.isFinite(link.order);
+const normalizeCategory = (category: string) => category.trim().toLowerCase();
+
 interface DirectoryLink {
   id: string;
   name: string;
@@ -113,7 +133,7 @@ interface DirectoryLink {
   iconKey: IconKey;
   colorKey: string;
   isAdmin?: boolean;
-  order: number;
+  order?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -219,6 +239,10 @@ const StaffDirectory = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [links, setLinks] = useState<DirectoryLink[]>([]);
+  const [arranging, setArranging] = useState(false);
+  const [moving, setMoving] = useState(false);
+  const moveInFlight = useRef(false);
+  const numbered = useRef(false);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<DirectoryLink | null>(null);
   const [adding, setAdding] = useState(false);
@@ -240,6 +264,9 @@ const StaffDirectory = () => {
           await Promise.all(seeded.map((l) => setDocument(DIRECTORY_COLLECTION, l.id, l)));
           setLinks(seeded);
         } else {
+          numbered.current = data.every((link) =>
+            hasOrder(link) && link.order > 0 && link.order % 10 === 0) &&
+            new Set(data.map((link) => link.order)).size === data.length;
           setLinks(data);
         }
       } catch (error) {
@@ -253,7 +280,12 @@ const StaffDirectory = () => {
   }, []);
 
   const sortedLinks = useMemo(
-    () => [...links].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+    () => [...links].sort((a, b) => {
+      if (hasOrder(a) && hasOrder(b)) return a.order - b.order;
+      if (hasOrder(a)) return -1;
+      if (hasOrder(b)) return 1;
+      return 0;
+    }),
     [links],
   );
 
@@ -261,11 +293,12 @@ const StaffDirectory = () => {
     const matchesSearch =
       l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       l.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === "all" || l.category === categoryFilter;
+    const matchesCategory = categoryFilter === "all" || normalizeCategory(l.category) === normalizeCategory(categoryFilter);
     return matchesSearch && matchesCategory;
   });
 
   const getCategoryBadge = (category: string) => {
+    category = normalizeCategory(category);
     if (isDarkMode) {
       switch (category) {
         case "admin":
@@ -290,6 +323,59 @@ const StaffDirectory = () => {
     }
   };
 
+  const moveLink = async (link: DirectoryLink, direction: -1 | 1) => {
+    if (moveInFlight.current) return;
+    const index = filteredLinks.findIndex((item) => item.id === link.id);
+    const neighbour = filteredLinks[index + direction];
+    if (!neighbour) return;
+
+    moveInFlight.current = true;
+    setMoving(true);
+    const previous = links;
+    // Number the full list before swapping, even when only a subset is visible.
+    // New unordered links or duplicate orders also need distinct positions.
+    const needsNumbering = !numbered.current || sortedLinks.some((item) => !hasOrder(item)) ||
+      new Set(sortedLinks.map((item) => item.order)).size !== sortedLinks.length;
+    const ordered = sortedLinks.map((item, position) => ({
+      ...item,
+      order: needsNumbering ? (position + 1) * 10 : item.order,
+    }));
+    const first = ordered.find((item) => item.id === link.id);
+    const second = ordered.find((item) => item.id === neighbour.id);
+    [first.order, second.order] = [second.order, first.order];
+    const changed = ordered.filter((item) =>
+      previous.find((old) => old.id === item.id)?.order !== item.order);
+    setLinks(ordered);
+    try {
+      const results = await Promise.allSettled(changed.map((item) =>
+        updateDocument(DIRECTORY_COLLECTION, item.id, { order: item.order })));
+      const failure = results.find((result) => result.status === "rejected");
+      if (failure?.status === "rejected") throw failure.reason;
+      numbered.current = true;
+    } catch (error) {
+      setLinks(previous);
+      console.error("Failed to arrange directory links:", error);
+      toast({ title: "Error", description: "Failed to save site order" });
+      // Helpers write documents individually. Repair any partial save in the
+      // previous full order; missing orders become numbers without moving tiles.
+      const restoreNumbers = sortedLinks.some((item) => !hasOrder(item));
+      const repairs = await Promise.allSettled(sortedLinks.map((item, position) =>
+        updateDocument(DIRECTORY_COLLECTION, item.id, {
+          order: restoreNumbers ? (position + 1) * 10 : item.order,
+        })));
+      if (repairs.some((result) => result.status === "rejected")) {
+        console.error("Failed to restore saved directory order:", repairs);
+        toast({
+          title: "Error",
+          description: "Could not restore saved order. Please try again.",
+        });
+      }
+    } finally {
+      moveInFlight.current = false;
+      setMoving(false);
+    }
+  };
+
   const handleLogout = async () => {
     await logout();
   };
@@ -306,7 +392,9 @@ const StaffDirectory = () => {
       iconKey: values.iconKey,
       colorKey: values.colorKey,
       isAdmin: values.isAdmin,
-      order: (links.reduce((m, l) => Math.max(m, l.order ?? 0), -1)) + 1,
+      ...(links.some(hasOrder) ? {
+        order: Math.max(...links.filter(hasOrder).map((link) => link.order)) + 10,
+      } : {}),
       createdAt: now,
       updatedAt: now,
     };
@@ -396,11 +484,24 @@ const StaffDirectory = () => {
             }))} />
           <Button
             onClick={() => setAdding(true)}
+            disabled={loading || moving}
             size="lg"
             className={`rounded-full font-semibold ${themeClasses.button.primary}`}
           >
             <Plus className="h-4 w-4 mr-2" />
             Add site
+          </Button>
+          <Button
+            onClick={() => setArranging((value) => !value)}
+            disabled={loading}
+            variant={arranging ? "default" : "outline"}
+            size="lg"
+            aria-pressed={arranging}
+            className={`rounded-full font-semibold ${arranging
+              ? themeClasses.button.primary : themeClasses.button.ghost}`}
+          >
+            <ArrowUpDown className="h-4 w-4" />
+            {arranging ? "Done" : "Arrange"}
           </Button>
         </div>
       </div>
@@ -415,71 +516,95 @@ const StaffDirectory = () => {
       {/* Websites Grid */}
       {!loading && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
-          {filteredLinks.map((link) => {
+          {filteredLinks.map((link, index) => {
             const { Icon } = ICON_OPTIONS[link.iconKey] ?? ICON_OPTIONS.link;
+            const colors = getChipColors(link.colorKey);
             return (
               <Card
                 key={link.id}
-                className="shadow-none rounded-xl cursor-pointer group bg-pub-paper border-pub-edge"
-                onClick={() => window.open(link.url, "_blank")}
+                className={`min-w-0 shadow-none rounded-xl bg-pub-paper border-pub-edge ${
+                  arranging ? "" : `cursor-pointer ${themeClasses.interactive.focus}`}`}
+                role={arranging ? undefined : "link"}
+                tabIndex={arranging ? undefined : 0}
+                onClick={() => !arranging && window.open(link.url, "_blank")}
+                onKeyDown={(event) => {
+                  if (!arranging && event.key === "Enter") window.open(link.url, "_blank");
+                }}
               >
                 <CardHeader className="pb-4">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="bg-pub-sunk border border-pub-edge p-3 rounded-xl">
-                      <Icon className="h-6 w-6 text-pub-ink" />
+                    <div className={`${colors.chip} border border-pub-edge p-3 rounded-xl`}>
+                      <Icon className={`h-6 w-6 ${colors.icon}`} />
                     </div>
-                    <div className="flex items-center gap-1">
-                      {link.isAdmin && (
-                        <Badge variant="outline" className={`${getCategoryBadge("admin")} border text-xs`}>
-                          Admin
-                        </Badge>
-                      )}
-                      {/* Edit/delete: stopPropagation so they don't trigger the card's open-link click. */}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={`h-11 w-11 ${themeClasses.button.ghost}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditing(link);
-                        }}
-                        aria-label={`Edit ${link.name}`}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className={`min-h-[44px] min-w-[44px] ${themeClasses.button.ghost} hover:text-red-600`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPendingDelete(link);
-                        }}
-                        aria-label={`Delete ${link.name}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                      <ExternalLink className="h-4 w-4 text-pub-muted" />
-                    </div>
+                    {!arranging && <ExternalLink className="h-4 w-4 text-pub-muted" />}
                   </div>
-                  <CardTitle className="font-display font-semibold text-pub-ink text-lg">
+                  <CardTitle className="font-display font-semibold text-pub-ink text-lg break-words">
                     {link.name}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <p className="text-sm mb-3 text-pub-muted">
+                  <p className="text-sm mb-3 text-pub-muted break-words">
                     {link.description}
                   </p>
                   <div className="flex items-center justify-between gap-2">
-                    {!link.isAdmin && (
-                      <Badge variant="outline" className={`${getCategoryBadge(link.category)} border text-xs capitalize`}>
-                        {link.category}
-                      </Badge>
-                    )}
+                    <Badge
+                      variant="outline"
+                      className={`${getCategoryBadge(link.isAdmin ? "admin" : link.category)} border text-xs capitalize`}
+                    >
+                      {link.isAdmin ? "Admin" : normalizeCategory(link.category)}
+                    </Badge>
                     <div className="ml-auto text-xs font-mono truncate max-w-32 text-pub-muted">
                       {link.url.replace("https://", "").replace("http://", "").replace("www.", "")}
                     </div>
                   </div>
+                  {arranging && (
+                    <div className="mt-4 flex flex-wrap gap-1 border-t border-pub-edge pt-3">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`h-11 w-11 shrink-0 ${themeClasses.button.ghost}`}
+                        disabled={moving || index === 0}
+                        onClick={() => moveLink(link, -1)}
+                        aria-label={`Move ${link.name} earlier`}
+                        title={`Move ${link.name} earlier`}
+                      >
+                        <ChevronLeft />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`h-11 w-11 shrink-0 ${themeClasses.button.ghost}`}
+                        disabled={moving || index === filteredLinks.length - 1}
+                        onClick={() => moveLink(link, 1)}
+                        aria-label={`Move ${link.name} later`}
+                        title={`Move ${link.name} later`}
+                      >
+                        <ChevronRight />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`h-11 w-11 shrink-0 ${themeClasses.button.ghost}`}
+                        disabled={moving}
+                        onClick={() => setEditing(link)}
+                        aria-label={`Edit ${link.name}`}
+                        title={`Edit ${link.name}`}
+                      >
+                        <Pencil />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`h-11 w-11 shrink-0 ${themeClasses.button.ghost} hover:text-red-600`}
+                        disabled={moving}
+                        onClick={() => setPendingDelete(link)}
+                        aria-label={`Delete ${link.name}`}
+                        title={`Delete ${link.name}`}
+                      >
+                        <Trash2 />
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );
@@ -666,6 +791,7 @@ const LinkForm = ({ initial, onSubmit, onCancel }: LinkFormProps) => {
   });
   const iconKey = watch("iconKey");
   const colorKey = watch("colorKey");
+  const colors = getChipColors(colorKey);
   const category = watch("category");
   const isAdmin = watch("isAdmin");
 
@@ -771,10 +897,10 @@ const LinkForm = ({ initial, onSubmit, onCancel }: LinkFormProps) => {
       {/* Live preview so staff can see the site look before saving. */}
       <Field label="Preview" span={12}>
         <div className="flex items-center gap-3 p-3 rounded-xl border border-pub-edge">
-          <div className="bg-pub-sunk border border-pub-edge p-3 rounded-xl">
+          <div className={`${colors.chip} border border-pub-edge p-3 rounded-xl`}>
             {(() => {
               const { Icon } = ICON_OPTIONS[iconKey] ?? ICON_OPTIONS.link;
-              return <Icon className="h-5 w-5 text-pub-ink" />;
+              return <Icon className={`h-5 w-5 ${colors.icon}`} />;
             })()}
           </div>
           <div className="min-w-0">
