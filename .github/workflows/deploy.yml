@@ -9,6 +9,11 @@ permissions:
   pages: write
   id-token: write
 
+env:
+  # The commit of the new customer page that goes live. Changing it on main is the
+  # release step (the push to main runs this workflow).
+  PUBLIC_REF: 9becda7c75a6fa10c5b8a35e45df1779eccd8378
+
 concurrency:
   group: pages
   cancel-in-progress: true
@@ -31,6 +36,7 @@ jobs:
 
       - name: Build
         env:
+          VITE_SPLIT_PUBLIC: "true"
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
           VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
@@ -41,6 +47,43 @@ jobs:
 
       - name: Copy index.html to 404.html for SPA routing
         run: cp dist/index.html dist/404.html
+
+      - name: Record V1 files the customer page must not touch
+        run: sha256sum dist/404.html dist/CNAME > "$RUNNER_TEMP/v1.sha256"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PUBLIC_REF }}
+          path: public-v2
+
+      - name: Install customer page dependencies
+        working-directory: public-v2
+        run: yarn install --frozen-lockfile
+
+      - name: Build customer page
+        working-directory: public-v2
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+        run: yarn build:public
+
+      - name: Copy customer page over V1 build
+        run: |
+          # Only index.html may replace a V1 file.
+          clash=$(cd public-v2/dist-public && find . -type f ! -path ./index.html -exec test -e ../../dist/{} \; -print)
+          if [ -n "$clash" ]; then echo "Would overwrite V1 files: $clash"; exit 1; fi
+          cp -R public-v2/dist-public/. dist/
+
+      - name: Check V1 files are untouched
+        run: |
+          sha256sum -c "$RUNNER_TEMP/v1.sha256"
+          test -d dist/assets
+          # "/" must be the customer page; the staff app there would reload itself forever.
+          grep -q 'assets-public/' dist/index.html
 
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
