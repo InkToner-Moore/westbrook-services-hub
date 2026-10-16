@@ -1,7 +1,7 @@
 import { useShopSettings, phoneHref } from "@/lib/shopSettings";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Phone, Sun, Moon } from "lucide-react";
+import { Phone, Sun, Moon, LogIn } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 
 
@@ -39,6 +39,14 @@ const PublicHeader = () => {
             <Phone size={18} aria-hidden="true" />
             <span className="pub-phone-text hidden sm:inline tabular-nums">{settings.phone}</span>
           </a>
+          <Link
+            to="/staff"
+            aria-label="Staff login"
+            className="pub-ghost flex h-11 min-w-11 items-center justify-center gap-2 rounded-full text-sm text-pub-muted sm:px-3"
+          >
+            <LogIn size={18} aria-hidden="true" />
+            <span className="hidden sm:inline">Staff login</span>
+          </Link>
           <button
             type="button"
             onClick={toggleTheme}
