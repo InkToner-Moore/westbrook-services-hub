@@ -12,7 +12,7 @@ permissions:
 env:
   # The commit of the new customer page that goes live. Changing it on main is the
   # release step (the push to main runs this workflow).
-  PUBLIC_REF: 9becda7c75a6fa10c5b8a35e45df1779eccd8378
+  PUBLIC_REF: 962854dedecdafce4d711cbd6763389404fe4127
 
 concurrency:
   group: pages
