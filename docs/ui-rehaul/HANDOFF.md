@@ -29,6 +29,22 @@ together; there is no separate customer repo and staff repo.
 
 ## START HERE (written 2026-10-11, exit of the phone audit and settings session)
 
+**Update 2026-10-15: the customer page is live on prod, the staff side is still V1.**
+Parsa asked for it. PR #2 (`prod-split`, merged to `main`) changed `deploy.yml`: it
+builds V1 as before, then builds this repo's customer page alone (`yarn
+build:public`: `public.html`, `src/public-main.tsx`, `vite.public.config.ts`) from the
+commit pinned as `PUBLIC_REF` (now `9becda7` on branch `public-prod`) and lays it over
+V1: its `index.html` serves `/`, V1's `404.html` serves every `/staff` URL. The copy
+refuses to replace any other V1 file, and the job fails if `/` is not the customer
+page. V1's `/` route reloads from the server (flag `VITE_SPLIT_PUBLIC`). Tested on the
+`split` preview of the staging Pages project and then live. Releasing a newer customer
+page = change `PUBLIC_REF` on `main` (ask Parsa first). Prod has no `settings/shop`
+rule, so the live page shows the built-in shop details (the read fails quietly).
+Also live: the studio at `https://studio.inktonermoore.ca` (Pages project
+`itm-studio`, a CNAME at Porkbun; see `studio/README.md`), the footer links to it, and
+the customer header has a Staff login link. The domain now has MX records
+(mxrouting), so `contact@` may receive mail; not tested.
+
 **Update 2026-10-11, the carried fixes session** (branch `carried-fixes`, off
 `phone-audit-fixes`, pushed and fast-forwarded to `dev`). Done from the "Not done" list
 below: item 1 (a typed follow-up with "also", "add", "plus", "too" or a leading "and"

@@ -11,7 +11,11 @@ dev   -> Cloudflare Pages         -> DEV Firebase   -> ink-toner-moore.pages.dev
 
 - **Prod** is the live store site. It deploys from `main` via
   `.github/workflows/deploy.yml` and reads/writes the production Firebase project.
-  Nothing about prod is touched by the dev setup.
+  Nothing about prod is touched by the dev setup. Since 2026-10-15 prod is split:
+  `main` is still the V1 app and serves every `/staff` URL (through `404.html`),
+  while `/` is this branch line's customer page, built alone by `yarn build:public`
+  from the commit pinned as `PUBLIC_REF` in `main`'s `deploy.yml`. Changing that pin
+  on `main` is how a newer customer page reaches prod.
 - **Dev (staging)** deploys from the long-lived `dev` branch via Cloudflare Pages and
   reads/writes a *separate* Firebase project. This is where you test, including the
   Firestore-writing AI features that cannot run against the demo config locally.
