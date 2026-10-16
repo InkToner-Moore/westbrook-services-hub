@@ -33,7 +33,7 @@ together; there is no separate customer repo and staff repo.
 Parsa asked for it. PR #2 (`prod-split`, merged to `main`) changed `deploy.yml`: it
 builds V1 as before, then builds this repo's customer page alone (`yarn
 build:public`: `public.html`, `src/public-main.tsx`, `vite.public.config.ts`) from the
-commit pinned as `PUBLIC_REF` (now `9becda7` on branch `public-prod`) and lays it over
+commit pinned as `PUBLIC_REF` (`962854d` on branch `public-prod` since PR #3, which added websites as a fifth service and the studio section) and lays it over
 V1: its `index.html` serves `/`, V1's `404.html` serves every `/staff` URL. The copy
 refuses to replace any other V1 file, and the job fails if `/` is not the customer
 page. V1's `/` route reloads from the server (flag `VITE_SPLIT_PUBLIC`). Tested on the
