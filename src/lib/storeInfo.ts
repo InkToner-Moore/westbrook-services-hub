@@ -1,8 +1,7 @@
 import { getShopSettings, type ShopSettings } from './shopSettings';
 
-// The studio (websites for small businesses) is a separate site. This is its staging
-// address; switch it to https://studio.inktonermoore.ca when that domain is live.
-export const STUDIO_URL = "https://studio.ink-toner-moore.pages.dev";
+// The studio (websites for small businesses) is a separate site.
+export const STUDIO_URL = "https://studio.inktonermoore.ca";
 export const MAPS_URL = "https://www.google.com/maps/search/?api=1&query=Westbrook+Mall+Calgary";
 export const DAY_NAMES = [
   "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
