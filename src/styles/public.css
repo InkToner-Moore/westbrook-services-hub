@@ -253,7 +253,7 @@
 }
 
 .public-site .pub-service-title {
-  font-size: clamp(1.5rem, 3.4vw, 2.75rem);
+  font-size: clamp(1.375rem, 3vw, 2.5rem);
   line-height: 1.12;
   transition: transform 300ms ease-out;
 }

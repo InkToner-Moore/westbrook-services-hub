@@ -38,20 +38,21 @@ const Hero = () => {
           <span className="pub-scan-bar" aria-hidden="true" />
         </div>
         <nav className="pub-hero-services mt-10 lg:mt-0 lg:shrink-0" aria-label="Services">
-          <ul className="grid grid-cols-5 gap-2 sm:gap-3 lg:grid-cols-3 lg:gap-x-8 lg:gap-y-8">
+          {/* On desktop: three on top, and the last two centred under the gaps between them. */}
+          <ul className="grid grid-cols-5 gap-2 sm:gap-3 lg:grid-cols-6 lg:gap-x-8 lg:gap-y-8">
             {services.map((service) => (
-              <li key={service.kind}>
+              <li key={service.kind} className="lg:col-span-2 lg:[&:nth-child(4)]:col-start-2">
                 <a
                   href={`#service-${service.kind}`}
                   className={
                     `pub-hero-service pub-hero-service-${service.kind} flex min-h-11 min-w-11 ` +
-                    "flex-col items-center lg:items-start"
+                    "flex-col items-center"
                   }
                 >
                   <div className="pub-hero-service-art text-pub-ink">
                     <ServiceArt kind={service.kind} />
                   </div>
-                  <span className="mt-2 text-sm sm:text-base font-medium text-pub-ink text-center lg:text-left">
+                  <span className="mt-2 text-sm sm:text-base font-medium text-pub-ink text-center">
                     {service.label}
                   </span>
                 </a>

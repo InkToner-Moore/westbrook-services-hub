@@ -37,29 +37,32 @@ const Services = () => {
             key={service.kind}
             id={`service-${service.kind}`}
             className={
-              `pub-service pub-service-${service.kind} relative grid md:grid-cols-12 ` +
-              "gap-4 md:gap-6 items-center border-t last:border-b border-pub-edge " +
+              `pub-service pub-service-${service.kind} grid lg:grid-cols-12 ` +
+              "gap-4 lg:gap-6 items-center border-t last:border-b border-pub-edge " +
               "py-8 sm:py-10 md:py-12"
             }
           >
-            <h3 className="pub-service-title font-display font-medium pr-24 md:pr-0 md:col-span-5">
+            <h3 className="pub-service-title font-display font-medium lg:col-span-6">
               {service.title}
             </h3>
-            <div className="max-w-[42ch] pr-24 md:col-span-5 md:pr-0">
-              <p className="text-pub-muted">{service.description}</p>
-              {"href" in service && (
-                <a href={service.href} className="pub-link mt-1 inline-flex min-h-11 items-center font-medium">
-                  {service.linkText}
-                </a>
-              )}
-            </div>
-            <div
-              className={
-                "pub-service-art absolute top-8 right-0 h-[72px] w-[72px] md:static md:col-span-2" +
-                " md:h-32 md:w-32 md:justify-self-end text-pub-ink"
-              }
-            >
-              <ServiceArt kind={service.kind} />
+            {/* On a phone the drawing sits beside the description, so the title has the full width. */}
+            <div className="flex items-start justify-between gap-4 lg:contents">
+              <div className="max-w-[42ch] lg:col-span-4">
+                <p className="text-pub-muted">{service.description}</p>
+                {"href" in service && (
+                  <a href={service.href} className="pub-link mt-1 inline-flex min-h-11 items-center font-medium">
+                    {service.linkText}
+                  </a>
+                )}
+              </div>
+              <div
+                className={
+                  "pub-service-art h-[72px] w-[72px] shrink-0 md:h-24 md:w-24 lg:col-span-2" +
+                  " lg:h-32 lg:w-32 lg:justify-self-end text-pub-ink"
+                }
+              >
+                <ServiceArt kind={service.kind} />
+              </div>
             </div>
           </li>
         ))}
