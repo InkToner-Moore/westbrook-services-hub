@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import PublicHome from "./pages/PublicHome";
 import StaffLogin from "./pages/StaffLogin";
@@ -22,13 +23,23 @@ import { Package, Receipt, Printer, StickyNote, Boxes, ClipboardList } from "luc
 
 const queryClient = new QueryClient();
 
+// In the split deploy the customer page is a separate build served by the host at "/".
+// The URL is already "/", so a reload fetches that page from the server. A replace
+// to the same URL would not, when it carries a "#".
+const LeaveToPublicPage = () => {
+  useEffect(() => {
+    window.location.reload();
+  }, []);
+  return null;
+};
+
 const AppRoutes = () => {
   const { user } = useAuth();
 
   return (
     <Routes>
       {/* Public Routes */}
-      <Route path="/" element={<PublicHome />} />
+      <Route path="/" element={import.meta.env.VITE_SPLIT_PUBLIC === "true" ? <LeaveToPublicPage /> : <PublicHome />} />
       
       {/* Staff Authentication */}
       <Route 
