@@ -18,6 +18,15 @@ const drawings = {
     "M46 42 H51 L55 38 H77 L83 48 L78 58 H74 L71 51 L68 58 H65 L62 53 L59 58 H56 L53 51 L50 58 H47 L45.833 54",
     "M54 43 H75",
   ],
+  site: [
+    "M16 22 Q16 18 20 18 H76 Q80 18 80 22 V70 Q80 74 76 74 H20 Q16 74 16 70 Z",
+    "M16 32 H80",
+    "M24 25 H25 M31 25 H32 M38 25 H39",
+    "M24 42 H50 M24 50 H44 M24 58 H48",
+    "M58 40 H72 V58 H58 Z",
+    "M58 52 L63 47 L67 51 L72 46",
+    "M40 74 V80 M56 74 V80 M34 80 H62",
+  ],
   parcel: [
     "M16 32 L48 15 L80 32 V65 L48 82 L16 65 Z",
     "M16 32 L48 49 L80 32 M48 49 V82",
@@ -27,7 +36,7 @@ const drawings = {
   ],
 };
 
-const ServiceArt = ({ kind }: { kind: "cartridge" | "drop" | "key" | "parcel" }) => {
+const ServiceArt = ({ kind }: { kind: keyof typeof drawings }) => {
   return (
     <svg
       viewBox="0 0 96 96"

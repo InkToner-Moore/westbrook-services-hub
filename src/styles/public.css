@@ -216,6 +216,10 @@
   --service-delay: 1120ms;
 }
 
+.public-site .pub-hero-services li:nth-child(5) .pub-hero-service {
+  --service-delay: 1260ms;
+}
+
 .public-site .pub-hero-service-art {
   width: 64px;
   height: 64px;
@@ -339,6 +343,11 @@
     margin-top: 24px;
   }
 
+  .public-site .pub-hero-service-art {
+    width: 52px;
+    height: 52px;
+  }
+
   .public-site .pub-hero-call,
   .public-site .pub-hero-pills {
     width: 100%;
@@ -399,8 +408,8 @@
 
 @media (max-width: 379px) {
   .public-site .pub-hero-service-art {
-    width: 56px;
-    height: 56px;
+    width: 46px;
+    height: 46px;
   }
 }
 

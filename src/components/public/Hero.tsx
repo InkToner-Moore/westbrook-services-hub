@@ -9,6 +9,7 @@ const services = [
   { kind: "drop", label: "Refills" },
   { kind: "key", label: "Key cutting" },
   { kind: "parcel", label: "Shipping" },
+  { kind: "site", label: "Websites" },
 ] as const;
 
 const Hero = () => {
@@ -37,7 +38,7 @@ const Hero = () => {
           <span className="pub-scan-bar" aria-hidden="true" />
         </div>
         <nav className="pub-hero-services mt-10 lg:mt-0 lg:shrink-0" aria-label="Services">
-          <ul className="grid grid-cols-4 gap-3 lg:grid-cols-2 lg:gap-x-10 lg:gap-y-8">
+          <ul className="grid grid-cols-5 gap-2 sm:gap-3 lg:grid-cols-3 lg:gap-x-8 lg:gap-y-8">
             {services.map((service) => (
               <li key={service.kind}>
                 <a
@@ -59,7 +60,7 @@ const Hero = () => {
           </ul>
         </nav>
         <p className="pub-hero-copy mt-8 max-w-[44ch] text-lg sm:text-xl text-pub-muted">
-          Printing, ink and toner, key cutting, and shipping. Your neighbourhood counter inside Westbrook Mall.
+          Printing, ink and toner, keys, shipping, and websites. Your neighbourhood counter inside Westbrook Mall.
         </p>
         <div className="pub-hero-actions mt-8 flex flex-wrap gap-3">
           <a className="pub-button pub-hero-call bg-pub-ink text-pub-counter" href={phoneHref(settings.phone)}>

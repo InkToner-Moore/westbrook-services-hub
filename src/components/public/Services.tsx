@@ -1,4 +1,5 @@
 import ServiceArt from "./ServiceArt";
+import { STUDIO_URL } from "@/lib/storeInfo";
 
 const services = [
   {
@@ -17,6 +18,13 @@ const services = [
     kind: "key",
   },
   { title: "Shipping", description: "Authorized drop-off for UPS, FedEx, and Purolator.", kind: "parcel" },
+  {
+    title: "Websites for small businesses",
+    description: "Simple websites and tools for local businesses, from our studio.",
+    kind: "site",
+    href: STUDIO_URL,
+    linkText: "Visit the studio",
+  },
 ] as const;
 
 const Services = () => {
@@ -37,7 +45,14 @@ const Services = () => {
             <h3 className="pub-service-title font-display font-medium pr-24 md:pr-0 md:col-span-5">
               {service.title}
             </h3>
-            <p className="max-w-[42ch] pr-24 text-pub-muted md:col-span-5 md:pr-0">{service.description}</p>
+            <div className="max-w-[42ch] pr-24 md:col-span-5 md:pr-0">
+              <p className="text-pub-muted">{service.description}</p>
+              {"href" in service && (
+                <a href={service.href} className="pub-link mt-1 inline-flex min-h-11 items-center font-medium">
+                  {service.linkText}
+                </a>
+              )}
+            </div>
             <div
               className={
                 "pub-service-art absolute top-8 right-0 h-[72px] w-[72px] md:static md:col-span-2" +
