@@ -13,8 +13,14 @@ Preview:
 
     python3 -m http.server -d studio 8090
 
-Deploy to https://studio.ink-toner-moore.pages.dev (from the repo root, see
-`docs/ui-rehaul/HANDOFF.md` for the environment):
+Live at https://studio.inktonermoore.ca, the Cloudflare Pages project `itm-studio`
+(DNS: a CNAME `studio` to `itm-studio.pages.dev` at Porkbun). Deploy from the repo
+root (see `docs/ui-rehaul/HANDOFF.md` for the environment):
+
+    wrangler pages deploy studio --project-name itm-studio --branch main
+
+The staging copy at https://studio.ink-toner-moore.pages.dev (Cloudflare marks it
+noindex on its own) is the `studio` branch of the staging project:
 
     wrangler pages deploy studio --project-name ink-toner-moore --branch studio
 
