@@ -14,6 +14,21 @@
 //   segs   how many actions the splitter must find (default: not checked)
 //   attach expected side actions: { pay: true, label: true }
 //   known  a string saying why this one is a documented gap (reported, not failed)
+// Monday to Friday of the coming week (this week from a Monday), as a slip prints
+// them ("Oct 19, 20, 21, 22, 23", or "Oct 30, 31, Nov 1, 2, 3"), so weekday
+// spans do not depend on the day the sweep runs.
+const COMING_MON_FRI = (() => {
+  const today = new Date();
+  const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() + ((8 - today.getDay()) % 7));
+  let last = -1;
+  return [0, 1, 2, 3, 4].map((i) => {
+    const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+    const month = d.getMonth() === last ? '' : d.toLocaleString('en-US', { month: 'short' }) + ' ';
+    last = d.getMonth();
+    return month + d.getDate();
+  }).join(', ');
+})();
+
 export const CORPUS = [
   // Vague stock questions, with the sale boundary kept intact.
   { u: 'mailbox keys', a: 'inventory_lookup' },
@@ -659,8 +674,8 @@ export const CORPUS = [
   { u: 'add shift for sue oct 30 - nov 2 10-6', a: 'timesheet', op: 'add_shift', f: { days: 'Oct 30, 31, Nov 1, 2', start: '10:00 AM', end: '6:00 PM' } },
   { u: 'add shift for sue oct 8 10-6', a: 'timesheet', op: 'add_shift', f: { days: 'Oct 8', start: '10:00 AM', end: '6:00 PM' } },
   { u: 'add shift for sue 10-6 oct 8, 9', a: 'timesheet', op: 'add_shift', f: { days: 'Oct 8, 9', start: '10:00 AM', end: '6:00 PM' } },
-  { u: 'add shift for sue mon-fri 10-6', a: 'timesheet', op: 'add_shift', f: { days: 'Oct 12, 13, 14, 15, 16', start: '10:00 AM', end: '6:00 PM' } },
-  { u: 'add shift for sue monday to friday 10-6', a: 'timesheet', op: 'add_shift', f: { days: 'Oct 12, 13, 14, 15, 16', start: '10:00 AM', end: '6:00 PM' } },
+  { u: 'add shift for sue mon-fri 10-6', a: 'timesheet', op: 'add_shift', f: { employeeName: 'Sue', days: COMING_MON_FRI, start: '10:00 AM', end: '6:00 PM' } },
+  { u: 'add shift for sue monday to friday 10-6', a: 'timesheet', op: 'add_shift', f: { employeeName: 'Sue', days: COMING_MON_FRI, start: '10:00 AM', end: '6:00 PM' } },
 ];
 
 

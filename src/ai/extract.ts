@@ -1027,13 +1027,15 @@ export function extractEmployeeName(text: string): string | null {
   const m10 = text.match(new RegExp(`\\b(?:does|is|did|was)\\s+${nameToken}\\s+(?:work|working|on|in|scheduled)\\b`, 'i'));
   const m9 = text.match(new RegExp(`^\\s*${nameToken}`));
   const candidates = [m1, m2, m3, m4, m5, m6, m7, m10, m8, m9].map((m) => (m?.[1] || '').trim()).filter(Boolean);
+  // A hyphenated token is a stopword when every part is one ("mon-fri").
+  const isStop = (t: string) => t.toLowerCase().split('-').every((part) => TIMESHEET_NAME_STOPWORDS.has(part));
   const raw = candidates.find((c) =>
-    c.split(/\s+/).some((t) => !TIMESHEET_NAME_STOPWORDS.has(t.toLowerCase()) && !/\d/.test(t)),
+    c.split(/\s+/).some((t) => !isStop(t) && !/\d/.test(t)),
   );
   if (!raw) return null;
   const tokens = raw
     .split(/\s+/)
-    .filter((t) => !TIMESHEET_NAME_STOPWORDS.has(t.toLowerCase()) && !/\d/.test(t));
+    .filter((t) => !isStop(t) && !/\d/.test(t));
   if (tokens.length === 0) return null;
   return tokens.map((t) => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()).join(' ');
 }
