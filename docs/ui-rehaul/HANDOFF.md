@@ -35,6 +35,18 @@ numbered plan step (`PLAN.md` has no completion markers).
 
 **Prod is no longer untouched.** Read this before anything that goes near `main`.
 
+**Later on 2026-10-18: prod hosting moved to Cloudflare.** PR #4 (merged with Parsa's
+go-ahead) adds a step to `main`'s deploy that uploads the same `dist/` to the Pages
+project `itm-site` in ITM's account. Parsa switched the DNS by hand: the apex and `www`
+are proxied CNAMEs to `itm-site.pages.dev`, a Redirect Rule sends `www` to the apex,
+Always Use HTTPS is on. Checked against the edge: same bundles, same status codes as
+GitHub. GitHub Pages still deploys as the rollback (`docs/ENVIRONMENTS.md` has the
+steps). Left: `www` validation on `itm-site` was still pending at the check; after about
+a week, with Parsa's OK, a PR drops the GitHub Pages steps and `public/CNAME`. Studio
+did not change. DNS belongs to the GrandITM platform session; leave the zone's other
+records alone. `main` also tracks a `.env` (prod web config, bypass off): worth
+removing someday.
+
 **Where things stand (observed 2026-10-18, at exit):**
 - Branch `public-prod` (off `carried-fixes`, off `phone-audit-fixes`). Tree clean, level
   with its remote. `origin/dev` is fast-forwarded to it, so staging has all of it.

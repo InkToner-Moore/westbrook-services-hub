@@ -5,7 +5,7 @@ pipeline, so you can break things on dev without any risk to the live site.
 
 ```
 BRANCH   HOST                        DATABASE          URL
-main  -> GitHub Pages             -> PROD Firebase  -> inktonermoore.ca
+main  -> Cloudflare Pages itm-site -> PROD Firebase  -> inktonermoore.ca
 dev   -> Cloudflare Pages         -> DEV Firebase   -> ink-toner-moore.pages.dev
 ```
 
@@ -16,6 +16,13 @@ dev   -> Cloudflare Pages         -> DEV Firebase   -> ink-toner-moore.pages.dev
   while `/` is this branch line's customer page, built alone by `yarn build:public`
   from the commit pinned as `PUBLIC_REF` in `main`'s `deploy.yml`. Changing that pin
   on `main` is how a newer customer page reaches prod.
+- **Prod hosting** moved to ITM's own Cloudflare account on 2026-10-18. The same
+  workflow builds once, deploys to GitHub Pages, then uploads the same `dist/` to the
+  Pages project `itm-site` (direct upload, secret `CLOUDFLARE_API_TOKEN`). The zone's
+  apex and `www` are proxied CNAMEs to `itm-site.pages.dev`, and a zone Redirect Rule
+  sends `www` to the apex. GitHub Pages still deploys as the rollback: put back its
+  A/AAAA records on the apex and `www` CNAME to `inktoner-moore.github.io`, grey
+  cloud. Once that is no longer needed, drop the GitHub Pages steps and `public/CNAME`.
 - **Dev (staging)** deploys from the long-lived `dev` branch via Cloudflare Pages and
   reads/writes a *separate* Firebase project. This is where you test, including the
   Firestore-writing AI features that cannot run against the demo config locally.
@@ -38,8 +45,8 @@ feature branch  --(PR / merge)-->  dev   --(test on staging)-->  ok?
 4. When it is good, open a PR from `dev` (or the feature branch) into `main`. Merging
    to `main` auto-deploys prod.
 
-Never point Cloudflare Pages at `main`, and never put prod Firebase values in the
-Cloudflare Pages environment. Prod secrets live only in GitHub Actions.
+Never point the staging Pages project (`ink-toner-moore`) at `main`, and never put
+prod Firebase values in any Cloudflare Pages environment. Prod secrets live only in GitHub Actions.
 
 ## The two Firebase projects
 
