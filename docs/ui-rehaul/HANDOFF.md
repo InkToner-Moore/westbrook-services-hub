@@ -27,44 +27,122 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
-## START HERE (written 2026-10-11, exit of the phone audit and settings session)
+## START HERE (written 2026-10-18, exit of the carried fixes and prod split session)
 
-**Update 2026-10-15: the customer page is live on prod, the staff side is still V1.**
-Parsa asked for it. PR #2 (`prod-split`, merged to `main`) changed `deploy.yml`: it
-builds V1 as before, then builds this repo's customer page alone (`yarn
-build:public`: `public.html`, `src/public-main.tsx`, `vite.public.config.ts`) from the
-commit pinned as `PUBLIC_REF` (`962854d` on branch `public-prod` since PR #3, which added websites as a fifth service and the studio section) and lays it over
-V1: its `index.html` serves `/`, V1's `404.html` serves every `/staff` URL. The copy
-refuses to replace any other V1 file, and the job fails if `/` is not the customer
-page. V1's `/` route reloads from the server (flag `VITE_SPLIT_PUBLIC`). Tested on the
-`split` preview of the staging Pages project and then live. Releasing a newer customer
-page = change `PUBLIC_REF` on `main` (ask Parsa first). Prod has no `settings/shop`
-rule, so the live page shows the built-in shop details (the read fails quietly).
-Also live: the studio at `https://studio.inktonermoore.ca` (Pages project
-`itm-studio`, a CNAME at Porkbun; see `studio/README.md`), the footer links to it, and
-the customer header has a Staff login link. The domain now has MX records
-(mxrouting), so `contact@` may receive mail; not tested.
+**Next session is for:** building, from Parsa's notes after he tries the live customer
+page and staging. If he brings none, the open items under "Not done" below. Not a
+numbered plan step (`PLAN.md` has no completion markers).
 
-**Update 2026-10-11, the carried fixes session** (branch `carried-fixes`, off
-`phone-audit-fixes`, pushed and fast-forwarded to `dev`). Done from the "Not done" list
-below: item 1 (a typed follow-up with "also", "add", "plus", "too" or a leading "and"
-adds to the shift days; without a cue it replaces them, and now keeps every typed day),
-item 5 (the theme read is guarded), and from item 4: Packing's first input (295px on a
-phone, chips moved under the custom row), XL price full width, the drawer email wraps to
-two lines (on the desktop rail too), the empty Timesheet pill stays in view, Escape closes
-the drawer, and "canada post keys" falls back to the mailbox kind when no stocked key's
-reference mentions canada post. "do you have <kind> keys" now reads as a stock question
-offline. Gate at exit: tsc 0, build built, `run.mjs` 46 of 46, `sweep.mjs` 588 of 595
-with 0 missed and the same 7 known gaps. The layout items were measured in a browser at
-390 and 1440 in light only; Escape, the theme guard and the manager wording of the
-Timesheet pill were not tried in a browser. Items 2 and 3 are still open.
-Later the same session: a span of days fills in ("oct 8-10", "oct 30 to nov 2",
-"mon-fri"; a span needs a month named, so a bare "10-6" stays a time range), which closes
-one known sweep gap (`sweep.mjs` 600 of 606, 0 missed, 6 known gaps). The account email
-breaks after the @; on the 73px desktop rail it still ends in an ellipsis. Then checked
-in a browser on the local dev server: Escape closes the drawer, six bad and good
-`staff-theme-v2` values load without an error, the four layout fixes in dark at 390, and
-the Timesheet pill with the manager wording at 390 and 1440.
+**Prod is no longer untouched.** Read this before anything that goes near `main`.
+
+**Where things stand (observed 2026-10-18, at exit):**
+- Branch `public-prod` (off `carried-fixes`, off `phone-audit-fixes`). Tree clean, level
+  with its remote. `origin/dev` is fast-forwarded to it, so staging has all of it.
+  `carried-fixes` is merged into it and needs nothing.
+- **Prod `main` is at `ccf84a8`** (PR #2 then PR #3, both merged by this session with
+  Parsa's go-ahead). Prod serves V2's customer page at `/` and the unchanged V1 staff
+  app at every `/staff` URL. Checked live in a real browser after both releases; the
+  V1 staff bundle hash (`index-DVzs4f8M.js`) did not change with PR #3.
+- Open PRs: only **#1 `docs-align-claude-md`** (Sept 1, not this work).
+- Gate as run at exit: `tsc -p tsconfig.app.json --noEmit` exit 0; `yarn build` built;
+  `yarn build:public` built; `run.mjs` 46 of 46; `sweep.mjs` 600 of 606, 0 missed, 6
+  known gaps; eslint on every `src` file changed since `phone-audit-fixes` shows only
+  the old `any` at `ThemeContext.tsx:6` and two warnings; dash scan clean.
+
+**Built this session, do NOT rebuild:**
+- **The prod split** (PR #2). `main`'s `deploy.yml` builds V1 as before, then checks out
+  this repo at the commit pinned as `PUBLIC_REF` (now `962854d`, on `public-prod`),
+  runs `yarn build:public` (`public.html`, `src/public-main.tsx`,
+  `vite.public.config.ts`, output `dist-public/` with `index.html` and
+  `assets-public/` only) and copies it over V1's `dist/`. Guards: the copy fails if it
+  would replace any V1 file but `index.html`; `404.html` and `CNAME` are checksummed; the
+  job fails if `/` is not the customer page. V1's `/` route reloads from the server when
+  `VITE_SPLIT_PUBLIC` is set (logout and "Back to public site" land on the new page).
+  `src/public-main.tsx` sends `/index.html` to `/` and any other path to the server.
+  `docs/ENVIRONMENTS.md` records it. Rollback is reverting PR #2's merge.
+- **Releasing a newer customer page** = a PR to `main` that moves `PUBLIC_REF` to a
+  commit on `public-prod` (PR #3 is the model). It deploys prod: ask Parsa first, every
+  time. Staff-side V2 work still never reaches prod.
+- **The studio is live at `https://studio.inktonermoore.ca`**: its own Pages project
+  `itm-studio` (production branch `main`, direct upload), custom domain active, CNAME
+  `studio` to `itm-studio.pages.dev` at Porkbun (Parsa added it). `studio/README.md` has
+  both deploy commands. The `noindex` meta is gone; the staging alias still gets
+  `X-Robots-Tag: noindex` from Cloudflare.
+- Customer page: a Staff login link in the header (icon only under 640px); websites as a
+  fifth service (hero chip, service row with a "Visit the studio" link, `site` drawing in
+  `ServiceArt.tsx`, page descriptions); a small studio section above the footer
+  (`StudioBand.tsx`, the CMY plates as its mark); hero labels centred under their icons,
+  on desktop three on top and two under the gaps; service rows stacked up to 1024px with
+  the drawing beside the description, so every title is one line from 360px up (320
+  still wraps "Websites for small businesses"). `STUDIO_URL` is the real domain.
+- Parser and staff fixes (on staging only): a typed follow-up with "also", "add",
+  "plus", "too" or a leading "and" adds to a shift slip's days, without a cue it replaces
+  them with all the typed days; day spans fill in ("oct 8-10", "oct 30 to nov 2",
+  "mon-fri"; a span needs a month named, so "10-6" stays a time range); "mon-fri" is not
+  read as part of a name; "canada post keys" narrows to keys whose reference mentions it,
+  else answers as the mailbox kind; "do you have <kind> keys" is a stock question
+  offline; the theme read is guarded; Escape closes the phone drawer; Packing's first
+  input is higher on a phone; XL price is full width; the account email breaks after the
+  @; the empty Timesheet pill stays in view.
+
+**Not done, carry into the next session:**
+1. Prod has no `settings/shop` rule (text in `docs/ENVIRONMENTS.md`). The live page reads
+   it, is refused quietly and shows the built-in shop details. Parsa adds it in the
+   Firebase console if he wants editing on prod.
+2. A real shop details save on staging, then a receipt PDF with the saved address and
+   thank-you line. Needs a staging login, which no agent has.
+3. The key board suspects listed in the 2026-10-11 section below. Each needs someone to
+   look at the physical key; fixes go in through the Inventory board, not the seed.
+4. Known sweep gaps (6): counted key copies ("cut 2 keys") and refill quantities need a
+   quantity field on those slips (Parsa's call); a second box of the same kind on a
+   shipping line is not counted.
+5. "Websites for small businesses" wraps at 320px wide; and on the 73px desktop rail the
+   account email still ends in an ellipsis.
+
+**Constraints this session found (the older lists below still stand):**
+- A sweep case with a fixed calendar date breaks when the week moves on. Work the
+  expected date out from today, as `COMING_MON_FRI` in `corpus.mjs` does.
+- Codex is back (it ran a review and a build on 2026-10-15). Its earlier quirks below
+  still apply: read every diff for unasked changes.
+- `wrangler pages deploy` needs node on PATH (it failed once without it).
+- The staging Pages project builds every pushed branch as a preview, `main` included;
+  those `main` previews fail (V1 lacks what the staging build expects) and are harmless.
+  Never point its production branch at `main`.
+- The canonical staging URL can lag a few minutes behind a finished `dev` deployment.
+  Check the deployment's own URL, or the served bundle, before telling Parsa it is up.
+- The Playwright tool writes screenshots and logs into the repo (`.playwright-mcp/`, the
+  repo root). Tell helpers to move them to `/tmp` and leave `git status` as found.
+- Scratch clones for testing a deploy get a copy of `.env`; delete them afterwards.
+
+**Open questions for Parsa** (answers may arrive mid-session: fold each in as its own
+commit, and never invent one to close a line):
+- His verdict on the live customer page, the studio section and the header link.
+- Whether to add the prod `settings/shop` rule (item 1).
+- Whether a sixth service comes later. He chose five on 2026-10-15; printing and copies
+  was the recommendation, packing supplies the runner-up.
+- Whether "do you have <kind> keys" should stay a stock question offline.
+- Whether slips get a quantity field (item 4).
+- Still open from the section below: his verdict on the 2026-10-11 work on a real phone,
+  half hours or a closed day in the shop hours, which key board suspects are real, and
+  the older carried list.
+
+**Working rules:** environment and gate as in the project entry and the sections below.
+Before every commit: `tsc`, eslint on the changed files, `yarn build`, `yarn
+build:public` when anything the customer page imports changed, the dash scan, and for
+anything under `src/ai` or `lib/keyReference.ts` both parser scripts, one at a time. A
+misread line goes into `corpus.mjs` first. A visual change gets a browser pass at 390
+and 1280. One commit per change he asks for; push the branch and fast-forward `dev`
+(`git push origin <branch>:dev`) with the credential-helper override below. Anything
+that touches `main` needs his go-ahead first.
+
+**Still placeholder, must not reach a customer:** the whole V2 staff side (staging
+only), `purchase` with no executor, the install manifest and device lock untried on a
+real device. The public email `contact@inktonermoore.ca` now has MX records (mxrouting)
+but nobody has confirmed the mailbox receives mail, and the live page shows it.
+
+## Earlier (written 2026-10-11, exit of the phone audit and settings session)
+
+Its "Not done" items 1, 4 and 5 were done on 2026-10-11 and 2026-10-15 (see START HERE).
 
 **Next session is for:** building, from Parsa's notes after he tries this session's work
 on staging and on his phone. If he brings none, the open items under "Not done" below.
