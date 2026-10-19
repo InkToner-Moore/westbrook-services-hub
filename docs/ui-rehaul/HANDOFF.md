@@ -43,8 +43,10 @@ Always Use HTTPS is on. Checked against the edge: same bundles, same status code
 GitHub. GitHub Pages still deploys as the rollback (`docs/ENVIRONMENTS.md` has the
 steps). Left: `www` validation on `itm-site` was still pending at the check; after about
 a week, with Parsa's OK, a PR drops the GitHub Pages steps and `public/CNAME`. Studio
-did not change. DNS belongs to the GrandITM platform session; leave the zone's other
-records alone. `main` also tracks a `.env` (prod web config, bypass off): worth
+did not change. This repo owns only the apex, `www` and `studio` records; the GrandITM
+platform session owns the rest of the zone (`staging-api`, the `notify.` Resend
+records, MX/SPF/DMARC). Tell that session before any other zone change, and send it a
+line once GitHub Pages is removed so its handoff can drop the rollback note. `main` also tracks a `.env` (prod web config, bypass off): worth
 removing someday.
 
 **Where things stand (observed 2026-10-18, at exit):**
