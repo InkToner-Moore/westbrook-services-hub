@@ -1,3 +1,4 @@
+import CardSalesList from "@/components/CardSalesList";
 import CartridgeLineFields from "@/components/CartridgeLineFields";
 import { useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
@@ -9,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import {
   Receipt,
+  CreditCard,
   Package,
   Key,
   Printer,
@@ -409,6 +411,7 @@ const StaffReceipts = () => {
             { value: "cartridge", label: "Cartridge refill", shortLabel: "Refill", icon: Printer },
             { value: "toner", label: "Toner sale", shortLabel: "Toner", icon: Droplets },
             { value: "packing", label: "Packing", shortLabel: "Packing", icon: Box },
+            { value: "card-sales", label: "Card sales", shortLabel: "Cards", icon: CreditCard },
           ]}
         />
       }
@@ -1505,6 +1508,9 @@ const StaffReceipts = () => {
                 </Button>
               </FormActions>
             </form>
+          </TabsContent>
+          <TabsContent value="card-sales" id="receipts-panel-card-sales" aria-labelledby="receipts-tab-card-sales">
+            <CardSalesList />
           </TabsContent>
         </Tabs>
       </div>

@@ -90,12 +90,32 @@ const PaymentBody: React.FC<{ data: unknown }> = ({ data }) => {
       </div>
 
       <div className="px-4 py-3">
-        {/* The amount is the hero, in mono like a real receipt total. */}
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="text-[13px] text-pub-muted">Amount</span>
-          <span className="font-mono text-2xl font-semibold tabular-nums text-pub-ink">
+        <div>
+          <p className="text-[15px] text-pub-muted">Type this on the card machine</p>
+          <p className="font-display text-5xl font-semibold tabular-nums text-pub-ink">
             ${tx.amount.toFixed(2)}
-          </span>
+          </p>
+        </div>
+
+        <div className="mt-4 space-y-2 text-[15px] text-pub-ink">
+          {tx.items?.map((item, index) => (
+            <div key={index} className="flex justify-between gap-3">
+              <span className="whitespace-pre-line">{item.description}</span>
+              <span className="shrink-0 font-mono tabular-nums">${item.amount.toFixed(2)}</span>
+            </div>
+          ))}
+          {[
+            ['Subtotal', tx.subtotal],
+            ['GST', tx.tax],
+            ['Total', tx.amount],
+          ].map(([label, value]) => (
+            <div key={label} className="flex justify-between gap-3 border-t border-pub-edge pt-2">
+              <span>{label}</span>
+              <span className="font-mono tabular-nums">
+                {typeof value === 'number' ? `$${value.toFixed(2)}` : 'Not saved'}
+              </span>
+            </div>
+          ))}
         </div>
 
         <ul className={`mt-4 divide-y border-t ${divide} ${border}`}>

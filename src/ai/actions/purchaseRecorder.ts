@@ -14,13 +14,18 @@ import type { Intent } from '../types';
 import type { ActionResult } from './types';
 import { registerPurchaseRecorder } from './purchase';
 import { receiptIntentToCartLines } from './cartLines';
-import { cartTotal } from '../cart';
+import { round2 } from '@/lib/simpleReceipt';
+import { routeLabel } from '../intentOptions';
+import { cartSubtotal, cartTotal } from '../cart';
 
 export type TransactionStatus = 'recorded' | 'approved' | 'declined';
 
 export interface TransactionRecord {
   id: string;
   amount: number; // what the customer pays, incl. GST when GST is on
+  subtotal: number;
+  tax: number;
+  items: { description: string; amount: number }[];
   currency: 'CAD';
   status: TransactionStatus;
   method: 'card';
@@ -34,9 +39,13 @@ export interface TransactionRecord {
   updatedAt: string;
 }
 
+// Older records do not have a saved price breakdown.
+export type StoredTransactionRecord = Omit<TransactionRecord, 'subtotal' | 'tax' | 'items'>
+  & Partial<Pick<TransactionRecord, 'subtotal' | 'tax' | 'items'>>;
+
 // What the PaymentCard renders.
 export interface PaymentArtifactData {
-  transaction: TransactionRecord;
+  transaction: StoredTransactionRecord;
 }
 
 function fieldValue(intent: Intent, key: string): unknown {
@@ -72,9 +81,23 @@ export function chargeAmount(intent: Intent): number {
 async function realRecorder(intent: Intent): Promise<ActionResult> {
   const id = generateTransactionId();
   const now = new Date().toISOString();
+  const amount = chargeAmount(intent);
+  const lines = receiptIntentToCartLines(intent);
+  const subtotal = lines.length > 0 ? cartSubtotal(lines) : fieldNum(intent, 'price') ?? 0;
+  const items = lines.length > 0
+    ? lines.map((line) => ({ description: line.description, amount: line.price }))
+    : [{
+      description: fieldStr(intent, 'description') || fieldStr(intent, 'supply')
+        || [fieldStr(intent, 'brand'), fieldStr(intent, 'model')].filter(Boolean).join(' ')
+        || routeLabel(intent.action, intent.subtype) || intent.action,
+      amount: subtotal,
+    }];
   const transaction: TransactionRecord = {
     id,
-    amount: chargeAmount(intent),
+    amount,
+    subtotal,
+    tax: round2(amount - subtotal),
+    items,
     currency: 'CAD',
     status: 'recorded',
     method: 'card',
