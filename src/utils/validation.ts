@@ -90,9 +90,7 @@ export const keyReceiptSchema = z.object({
 export const noteSchema = z.object({
   title: requiredStringSchema('Title', 3),
   content: requiredStringSchema('Content', 10),
-  category: z.enum(['general', 'customer', 'inventory', 'shipping', 'urgent'], {
-    required_error: 'Category is required'
-  }),
+  category: z.string().min(1, 'Category is required'),
 });
 
 // Blog post validation schemas
