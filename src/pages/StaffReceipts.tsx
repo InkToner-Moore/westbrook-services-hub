@@ -406,11 +406,11 @@ const StaffReceipts = () => {
           value={activeTab}
           onChange={setActiveTab}
           options={[
-            { value: "shipping", label: "Shipping", shortLabel: "Shipping", icon: Package },
+            { value: "shipping", label: "Shipping", shortLabel: "Ship", icon: Package },
             { value: "key", label: "Key cutting", shortLabel: "Keys", icon: Key },
             { value: "cartridge", label: "Cartridge refill", shortLabel: "Refill", icon: Printer },
             { value: "toner", label: "Toner sale", shortLabel: "Toner", icon: Droplets },
-            { value: "packing", label: "Packing", shortLabel: "Packing", icon: Box },
+            { value: "packing", label: "Packing", shortLabel: "Pack", icon: Box },
             { value: "card-sales", label: "Card sales", shortLabel: "Cards", icon: CreditCard },
           ]}
         />
