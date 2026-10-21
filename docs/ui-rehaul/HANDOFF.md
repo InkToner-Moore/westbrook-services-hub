@@ -27,7 +27,69 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
-## START HERE (written 2026-10-21, exit of the Cloudflare hosting and inventory session)
+## START HERE (written 2026-10-21, exit of the V2 staff rollout session)
+
+**Next session is for:** whatever Parsa brings after he adds the prod Firestore rules
+and tries `/v2/staff` on prod. Then turn on V1's "Try the new version" button
+(`VITE_OFFER_V2: "true"` in `main`'s `deploy.yml`, a PR to `main`). He gave this
+session full rein on PRs and merges ("take care of PRs and merges yourself").
+
+**Where things stand (observed at exit):**
+- Branch `staff-v2-rollout` (off `public-prod`), pushed; `origin/dev` = it, so
+  staging has everything. Tree clean apart from this handoff.
+- **Prod `main` is at `1d2ee24`** (PR #5 merged, deploy run green on both hosts).
+  `PUBLIC_REF` unchanged (`962854d`). New pin `STAFF_V2_REF` = `5a9f66f`.
+- Live, checked in a real browser: `/` customer page; `/staff` V1 login as before
+  for a device with no choice; `/v2/staff` the V2 login with "Use the old version";
+  the switch both ways; a device set to V2 is sent from `/staff` to `/v2/staff`;
+  `/staff/requests` stays V1 (V2 has no requests page).
+- Gate at the last code commit: `tsc` exit 0, eslint clean on changed files (one
+  react-refresh warning in `PaymentCard.tsx`), `yarn build` built, `run.mjs` 46 of
+  46, `sweep.mjs` 600 of 606 (same 6 gaps), dash scan clean.
+
+**Built this session, do NOT rebuild:**
+- **V2 staff on prod at `/v2/`, opt-in per device** (PR #5 on `main`). Layout,
+  flags and rollback note in `docs/ENVIRONMENTS.md` ("V2 staff on prod"). V1 stays
+  the default at `/staff`. localStorage `staff-app-version` (`v1`/`v2`) is the
+  choice; V1's `src/main.tsx` redirects a `v2` device before rendering, and if V1
+  ever renders a `/v2` URL (GitHub Pages rollback, no nested 404) it resets to `v1`
+  and goes back. V2 (`src/lib/staffVersion.ts`) shows "Use the old version" in the
+  user menu, Settings and login when built with `VITE_V1_STAFF_URL`. V1's "Try the
+  new version" button (dashboard and `StaffHeader`) is behind `VITE_OFFER_V2`, now
+  `"false"`. Releasing newer V2 staff = PR moving `STAFF_V2_REF`.
+- V2 under a base: leaving for the public site uses the real root, `/v2/` redirects
+  to `/`, `staff.webmanifest` URLs are relative.
+- Proxy `ALLOWED_ORIGIN` is a comma list (staging and `https://inktonermoore.ca`),
+  deployed. Its service account is still DEV's: on prod the manager PIN is the
+  staging PIN and `manager`-claim rules stay refused until a prod worker exists.
+- Data safety (his rule: nothing deleted): shift delete archives to
+  `deletedScheduleShifts`, a key board slot with content is copied to
+  `deletedKeyBoard` before set or clear (both refuse if the copy fails); notes keep
+  AI categories on edit in both V1 and V2; `seedKeyBoard.mjs` and
+  `importKeyReference.mjs` are create-only and refuse a non `-dev` project without
+  `--allow-prod`. Audit result (Codex): shared collections are compatible both
+  ways; both versions replace whole docs on edit (old behaviour, last write wins).
+- Card sales (Moneris option 1, staging only): a card payment record keeps
+  `items`, `subtotal`, `tax`; the payment card shows "Type this on the card
+  machine" and the amount; Receipts has a "Card sales" tab by day with CSV.
+
+**Waiting on Parsa:**
+1. Prod Firestore rules for V2's collections (list in `docs/ENVIRONMENTS.md`), and
+   on DEV the two new archive rules, `deletedScheduleShifts` and `deletedKeyBoard`:
+   **without them, deleting a shift and changing a key board slot are refused on
+   staging.**
+2. Then: turn on `VITE_OFFER_V2`, and whether V2 becomes the default later.
+3. A prod Firebase service account for a prod proxy worker (manager PIN, settings).
+4. Moneris: the terminal model, then whether to call Moneris about cloud mode
+   (options and steps were given in chat; option 1 is what was built).
+5. Everything under "Waiting" and "Not done" in the section below still stands
+   (GitHub Pages removal about 2026-10-26, the tracked `.env` on `main`, ...).
+
+**Not checked:** a signed-in session on prod V2 (no agent login); the payment card
+and Card sales list with real rows (local Firestore refuses reads); the V1 note
+edit with an AI category (type-checked only).
+
+## Earlier (written 2026-10-21, exit of the Cloudflare hosting and inventory session)
 
 **Next session is for:** building. Start rolling out the V2 staff side on prod, with an
 easy button in the staff app to switch to V1 and back, because not every staff member is
