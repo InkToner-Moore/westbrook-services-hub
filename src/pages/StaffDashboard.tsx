@@ -14,10 +14,12 @@ import {
   LogOut,
   User,
   Sun,
-  Moon
+  Moon,
+  Sparkles
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { offerV2, switchToV2 } from "@/lib/staffVersion";
 import { toast } from "@/hooks/use-toast";
 
 const StaffDashboard = () => {
@@ -137,6 +139,21 @@ const StaffDashboard = () => {
                 <span className="text-sm font-medium">{user?.email}</span>
               </div>
               
+              {/* Try the new version (shown once the deploy turns it on) */}
+              {offerV2 && (
+                <Button
+                  onClick={switchToV2}
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Try the new version"
+                  title="Try the new version"
+                  className={`rounded-lg p-2 sm:px-4 sm:py-2 transition-all duration-300 hover:scale-105 border ${themeClasses.button.secondary} ${themeClasses.interactive.focus}`}
+                >
+                  <Sparkles className="h-5 w-5 sm:h-4 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Try the new version</span>
+                </Button>
+              )}
+
               {/* Theme Toggle */}
               <Button
                 onClick={toggleTheme}
