@@ -10,10 +10,11 @@
 //
 // Usage:
 //   node scripts/importKeyReference.mjs <service-account.json> [projectId] \
-//     [--input scripts/keyReference.vetted.jsonl] [--identified-only]
+//     [--input scripts/keyReference.vetted.jsonl] [--identified-only] [--overwrite] [--allow-prod]
 //
 // The service account needs Firestore write access (the dev admin SDK SA has it).
-// Idempotent: each doc is written by id, so a re-run overwrites with the same data.
+// Create-only by default: existing ids are skipped. Use --overwrite to replace them.
+// Only project ids ending in "-dev" are allowed unless --allow-prod is passed.
 // --identified-only skips rows nothing could identify (keeps the collection lean).
 
 import { readFileSync } from 'node:fs';
@@ -23,20 +24,28 @@ const argv = process.argv.slice(2);
 const positional = [];
 let inputPath = 'scripts/keyReference.vetted.jsonl';
 let identifiedOnly = false;
+let overwrite = false;
+let allowProd = false;
 for (let i = 0; i < argv.length; i += 1) {
   const a = argv[i];
   if (a === '--input') inputPath = argv[++i];
   else if (a === '--identified-only') identifiedOnly = true;
+  else if (a === '--overwrite') overwrite = true;
+  else if (a === '--allow-prod') allowProd = true;
   else positional.push(a);
 }
 const [saPath, projectArg] = positional;
 if (!saPath) {
-  console.error('Usage: node scripts/importKeyReference.mjs <service-account.json> [projectId] [--input file] [--identified-only]');
+  console.error('Usage: node scripts/importKeyReference.mjs <service-account.json> [projectId] [--input file] [--identified-only] [--overwrite] [--allow-prod]');
   process.exit(1);
 }
 
 const sa = JSON.parse(readFileSync(saPath, 'utf8'));
 const projectId = projectArg || sa.project_id;
+if (!allowProd && !projectId?.endsWith('-dev')) {
+  console.error(`Refusing project ${projectId}: use --allow-prod for a project not ending in -dev.`);
+  process.exit(1);
+}
 
 // Parse the vetted JSONL.
 const raw = readFileSync(inputPath, 'utf8');
@@ -100,8 +109,25 @@ async function main() {
   const chunkSize = 300;
   let written = 0;
   for (let i = 0; i < prepared.length; i += chunkSize) {
-    const chunk = prepared.slice(i, i + chunkSize);
+    let chunk = prepared.slice(i, i + chunkSize);
+    if (!overwrite) {
+      const candidates = await Promise.all(chunk.map(async (d) => {
+        const id = docId(d.code);
+        const res = await fetch(`${base}/keyReference/${encodeURIComponent(id)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          console.log(`skip ${id}, exists`);
+          return null;
+        }
+        if (res.status !== 404) throw new Error(`read ${id}: ${res.status} ${await res.text()}`);
+        return d;
+      }));
+      chunk = candidates.filter((d) => d !== null);
+    }
+    if (chunk.length === 0) continue;
     const writes = chunk.map((d) => ({
+      ...(!overwrite ? { currentDocument: { exists: false } } : {}),
       update: {
         name: `projects/${projectId}/databases/(default)/documents/keyReference/${docId(d.code)}`,
         fields: toFields(d),

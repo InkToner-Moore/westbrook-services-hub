@@ -5,24 +5,30 @@
 // is not consulted again.
 //
 // Usage:
-//   node scripts/seedKeyBoard.mjs <service-account.json> [projectId]
+//   node scripts/seedKeyBoard.mjs <service-account.json> [projectId] [--overwrite] [--allow-prod]
 //
 // The service account needs Firestore write access (the dev admin SDK SA has it).
-// Safe to re-run: each position is written by id, so a second run overwrites with
-// the same seed and does not duplicate. It never touches positions you have since
-// edited beyond re-seeding their original value, so run it only to (re)bootstrap.
+// Create-only by default: existing ids are skipped. Use --overwrite to replace them.
+// Only project ids ending in "-dev" are allowed unless --allow-prod is passed.
 
 import { readFileSync } from 'node:fs';
 import { createSign } from 'node:crypto';
 
-const [, , saPath, projectArg] = process.argv;
+const argv = process.argv.slice(2);
+const overwrite = argv.includes('--overwrite');
+const allowProd = argv.includes('--allow-prod');
+const [saPath, projectArg] = argv.filter((a) => !['--overwrite', '--allow-prod'].includes(a));
 if (!saPath) {
-  console.error('Usage: node scripts/seedKeyBoard.mjs <service-account.json> [projectId]');
+  console.error('Usage: node scripts/seedKeyBoard.mjs <service-account.json> [projectId] [--overwrite] [--allow-prod]');
   process.exit(1);
 }
 
 const sa = JSON.parse(readFileSync(saPath, 'utf8'));
 const projectId = projectArg || sa.project_id;
+if (!allowProd && !projectId?.endsWith('-dev')) {
+  console.error(`Refusing project ${projectId}: use --allow-prod for a project not ending in -dev.`);
+  process.exit(1);
+}
 const seed = JSON.parse(readFileSync(new URL('./keyBoardSeed.json', import.meta.url), 'utf8'));
 
 // Mint an OAuth access token from the service account (RS256-signed JWT grant).
@@ -73,8 +79,25 @@ async function main() {
   const chunkSize = 400;
   let written = 0;
   for (let i = 0; i < docs.length; i += chunkSize) {
-    const chunk = docs.slice(i, i + chunkSize);
+    let chunk = docs.slice(i, i + chunkSize);
+    if (!overwrite) {
+      const candidates = await Promise.all(chunk.map(async (d) => {
+        const id = d.position;
+        const res = await fetch(`${base}/keyBoard/${encodeURIComponent(id)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          console.log(`skip ${id}, exists`);
+          return null;
+        }
+        if (res.status !== 404) throw new Error(`read ${id}: ${res.status} ${await res.text()}`);
+        return d;
+      }));
+      chunk = candidates.filter((d) => d !== null);
+    }
+    if (chunk.length === 0) continue;
     const writes = chunk.map((d) => ({
+      ...(!overwrite ? { currentDocument: { exists: false } } : {}),
       update: {
         name: `projects/${projectId}/databases/(default)/documents/keyBoard/${d.position}`,
         fields: toFields(d),
