@@ -13,6 +13,9 @@ env:
   # The commit of the new customer page that goes live. Changing it on main is the
   # release step (the push to main runs this workflow).
   PUBLIC_REF: 962854dedecdafce4d711cbd6763389404fe4127
+  # The commit of the V2 staff app served at /v2/ (opt-in per device, V1 stays the
+  # default at /staff). Changing it on main releases a newer V2 staff app.
+  STAFF_V2_REF: 5a9f66f7f893490ef48fa8d61c5f2db60defd412
 
 concurrency:
   group: pages
@@ -37,6 +40,9 @@ jobs:
       - name: Build
         env:
           VITE_SPLIT_PUBLIC: "true"
+          # "true" shows "Try the new version" in V1. Off until the prod Firestore
+          # rules for V2's own collections are in (docs/ENVIRONMENTS.md on public-prod).
+          VITE_OFFER_V2: "false"
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
           VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
@@ -77,6 +83,49 @@ jobs:
           clash=$(cd public-v2/dist-public && find . -type f ! -path ./index.html -exec test -e ../../dist/{} \; -print)
           if [ -n "$clash" ]; then echo "Would overwrite V1 files: $clash"; exit 1; fi
           cp -R public-v2/dist-public/. dist/
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.STAFF_V2_REF }}
+          path: staff-v2
+
+      - name: Install V2 staff dependencies
+        working-directory: staff-v2
+        # The checked-out commit tracks a development .env; the build must not read it.
+        run: |
+          rm -f .env
+          yarn install --frozen-lockfile
+
+      - name: Build V2 staff app under /v2/
+        working-directory: staff-v2
+        env:
+          VITE_NODE_ENV: production
+          VITE_DEV_BYPASS_AUTH: "false"
+          VITE_V1_STAFF_URL: /staff
+          VITE_AI_PROXY_URL: https://inktonermoore-ai-proxy.inktonermoore.workers.dev
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+        run: yarn build --base=/v2/
+
+      - name: Copy V2 staff app into /v2/
+        env:
+          PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+        run: |
+          test ! -e dist/v2
+          mkdir dist/v2
+          cp -R staff-v2/dist/. dist/v2/
+          # Only the root _redirects and CNAME count; V2's copies would mislead.
+          rm -f dist/v2/_redirects dist/v2/CNAME
+          # Cloudflare Pages serves the nearest 404.html, so /v2/staff/* opens V2.
+          cp dist/v2/index.html dist/v2/404.html
+          grep -q '/v2/assets/' dist/v2/index.html
+          # The prod Firebase project must be in the bundle, not only the demo fallback.
+          test -n "$PROJECT_ID"
+          grep -lq -- "\"$PROJECT_ID\"" dist/v2/assets/*.js
 
       - name: Check V1 files are untouched
         run: |

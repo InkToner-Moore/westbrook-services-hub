@@ -38,7 +38,7 @@ interface Note {
   id: string;
   title: string;
   content: string;
-  category: "general" | "customer" | "inventory" | "shipping" | "urgent";
+  category: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -193,6 +193,16 @@ const StaffNotes = () => {
     noteForm.setValue('category', note.category);
   };
 
+  // A note saved by the newer app can carry a category this form does not list.
+  // Offer it as an extra option so editing keeps the stored value.
+  const knownCategories = ["general", "customer", "inventory", "shipping", "urgent"];
+  const editingCategory = editingNote ? notesList.list.find(n => n.id === editingNote)?.category : undefined;
+  const extraCategory = editingCategory && !knownCategories.includes(editingCategory) ? editingCategory : null;
+
+  useEffect(() => {
+    if (extraCategory) noteForm.setValue('category', extraCategory);
+  }, [extraCategory]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const cancelEditing = () => {
     setEditingNote(null);
     noteForm.reset();
@@ -266,6 +276,7 @@ const StaffNotes = () => {
                           <option value="inventory">Inventory</option>
                           <option value="shipping">Shipping</option>
                           <option value="urgent">Urgent</option>
+                          {extraCategory && <option value={extraCategory}>{extraCategory}</option>}
                         </select>
                       </div>
 
