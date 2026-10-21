@@ -27,27 +27,140 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
-## START HERE (written 2026-10-18, exit of the carried fixes and prod split session)
+## START HERE (written 2026-10-21, exit of the Cloudflare hosting and inventory session)
+
+**Next session is for:** building. Start rolling out the V2 staff side on prod, with an
+easy button in the staff app to switch to V1 and back, because not every staff member is
+comfortable with V2 yet. Not a numbered `PLAN.md` step (it has no completion markers).
+Plan the URL layout and the data checks below first, ask Parsa the open questions, then
+build.
+
+**Parsa's words (2026-10-21):** "Next session, i want the start rolling in staff v2, but
+not everyone is comfortable, so i want a easy button in the staff to switch to v1 and
+vice versa. I don't think for db you'll have much problems bc any data that is in v2 is
+in sections that doesn't exist in v1. Make sure no data from either version is deleted in
+the mean time."
+
+**Where things stand (observed 2026-10-21, at exit):**
+- Branch `public-prod`, tree clean, level with its remote; `origin/dev` = `public-prod`
+  (`9b8de41`), so staging has everything. This session added docs only (no `src` change).
+- Prod `main` is at `1e920ca` (PR #4 merged; deploy run green, both hosting steps
+  succeeded). `PUBLIC_REF` is still `962854d`.
+- Open PRs: only #1 `docs-align-claude-md` (Sept 1, not this work).
+- Gate as run at exit: `tsc -p tsconfig.app.json --noEmit` exit 0; `yarn build` built;
+  `yarn build:public` built; dash scan on the docs touched clean. eslint and the parser
+  scripts were not run (nothing under `src` changed).
+- Live, resolved through Cloudflare DNS: `https://inktonermoore.ca/` 200,
+  `https://www.inktonermoore.ca/` 301 to the apex, `https://studio.inktonermoore.ca/` 200.
+
+**Built this session, do NOT rebuild:**
+- **Prod is served from ITM's Cloudflare.** PR #4 adds a step to `main`'s deploy that
+  uploads the same `dist/` to the Pages project `itm-site` (account `73a4f935...`,
+  direct upload, repo secret `CLOUDFLARE_API_TOKEN`, which holds the same token as
+  keyvault `westbrook_cloudflare_dev`). Parsa switched the DNS on 2026-10-19: the apex
+  and `www` are proxied CNAMEs to `itm-site.pages.dev`, a wildcard Redirect Rule sends
+  `www` to the apex keeping path and query, Always Use HTTPS is on. Both custom domains
+  are active on `itm-site`. Same bundles and status codes as GitHub. Pages behaves like
+  GitHub here: `/staff/*` gets `404.html` (the V1 app) with a 404 status;
+  `/index.html` and `/404.html` 308 to `/` and `/404`. `docs/ENVIRONMENTS.md` has it
+  and the rollback. A preview deployment `cftest` (demo config) sits on `itm-site`,
+  harmless.
+- **`docs/platform-move/INVENTORY.md`**: every Firebase collection, auth, outside calls
+  and screens, for both V1 (`main`) and V2, written for the GrandITM platform session
+  (which is matching it to its Phoenix backend; it may send work). No realtime
+  listeners, no offline cache, no Cloud Functions, no Storage. Read it before the
+  rollout: it is the map of shared data.
+
+**Rolling out V2 staff: what a fresh agent must know before building**
+- Today prod `/staff/*` is V1, served by `404.html`, and `/` is V2's customer page (the
+  split, PR #2). V2 staff has only ever run on staging against the DEV Firebase. On prod
+  it would hit the PROD Firebase, so every V2-only collection needs its auth-gated rule
+  added to prod in the console first (Parsa's hands): `employees`, `scheduleShifts`,
+  `transactions`, `settings`, `refillInventory`, `deletedRefillInventory`, `keyBoard`,
+  `keyReference`, and the proxy's `accessPins` (admin only). The manager unlock goes
+  and the AI chat go through the proxy worker, whose `ALLOWED_ORIGIN` in
+  `proxy/wrangler.toml` is the staging origin only; prod needs its own origin and a
+  check of which Firebase project the worker's secrets point at.
+- **Parsa's "no shared data" is not quite right.** The inventory lists collections both
+  versions use: `cartridgeOrders`, `orderStatus`, `notes`, `keyInventory`,
+  `directoryLinks` and their `deleted*` archives. Some differ in shape: V2 notes from
+  the AI use other categories (`General, Customer, Supplier, ...` against V1's
+  lowercase `general, customer, ...`), V2 `keyInventory` adds `price`, `notes`,
+  `cutCode`. Before rollout, check each shared collection so a record written by one
+  version opens cleanly in the other (V1 must not crash or silently drop V2 fields on
+  save). Tell Parsa what you find; do not "fix" stored data.
+- **No data from either version may be deleted** (his rule). Check every delete path in
+  V2 (`deleteDocument` callers) archives to its `deleted*` collection first as V1 does,
+  that no seed or setup step overwrites a live document (`setDocument` replaces; a
+  `keyReference` / `keyBoard` seed must never run over prod data), and that nothing
+  migrates or rewrites V1 records.
+- The switch: both staff builds must be on prod at once, with a button in each that
+  goes to the other, remembered per device. The URL layout is the open question below.
+  Releasing anything to prod is a PR to `main` and needs Parsa's go-ahead each time.
+
+**Not done, carry into the next session:**
+1. **GitHub Pages removal**, due about 2026-10-26 (a week after the 10-19 cutover), with
+   Parsa's OK: a PR to `main` dropping the GitHub Pages steps and `public/CNAME`, then
+   turn Pages off in the repo settings. Then send the GrandITM platform session one
+   line that it is gone (it asked).
+2. `main` tracks a `.env` (prod Firebase web config, bypass `false`). Not a leak (the
+   values ship in the bundle), but it should leave the repo; prod needs a PR.
+3. Optionally a dedicated prod Cloudflare token for the `CLOUDFLARE_API_TOKEN` secret
+   instead of the dev-named one (Parsa makes it).
+4. Everything under "Not done" in the 2026-10-18 section below still stands (the prod
+   `settings/shop` rule, a staging shop-details save and receipt check, key board
+   suspects, the 6 sweep gaps, the 320px wrap and rail email ellipsis).
+
+**Constraints this session found (the older lists below still stand):**
+- This repo owns only the apex, `www` and `studio` records in the inktonermoore.ca zone
+  (now on ITM's Cloudflare, NS adele/armando). The GrandITM platform session owns the
+  rest (`staging-api` to Fly, the `notify.` Resend records, MX/SPF/DMARC for MXroute,
+  `demo.` and `ops.`). Tell it before any other zone change. No agent token here can
+  edit DNS (the westbrook token reads Pages and zones only); DNS edits are Parsa's
+  hands in the dashboard. Give him steps in a chat message, not in a `cx run ask`
+  question: he did not see steps that were only referenced from the question.
+- Pages custom domains on this zone need proxied (orange) records.
+- This machine's resolver cached the old GitHub answer for days after the switch. Check
+  the live site with `curl --doh-url https://cloudflare-dns.com/dns-query` or
+  `--resolve`, not the local resolver.
+- A Pages preview deploy's hostname can fail TLS for a few minutes after the first
+  upload. Wait, do not debug.
+- `main` and the commit `PUBLIC_REF` points at both track a `.env`; delete it in
+  scratch clones before building so a test build uses the demo config.
+- Push from this machine needs the credential override:
+  `git -c credential.https://github.com.helper= -c credential.https://github.com.helper='!gh auth git-credential' push ...`
+
+**Open questions for Parsa** (answers may arrive mid-session: fold each in as its own
+commit, and never invent one to close a line):
+- URL layout for the switch. Recommended: V2 at `/staff/*` (the default for everyone),
+  V1 kept whole under its own path (e.g. `/v1/staff/*`), a button in each, and the
+  choice remembered per device. Or V1 stays default and V2 is opt-in first. His call.
+- Whether V2 is the default for everyone from day one, or opt-in per device.
+- The prod Firebase rules for the V2 collections listed above (his hands in the
+  console), and the prod config for the proxy's manager unlock.
+- The GitHub Pages removal date (item 1).
+- The open questions in the 2026-10-18 section below.
+
+**Working rules:** environment and gate as in the project entry and the sections below.
+Before every commit: `tsc`, eslint on the changed files, `yarn build`, `yarn
+build:public` when anything the customer page imports changed, the dash scan, and for
+anything under `src/ai` or `lib/keyReference.ts` both parser scripts, one at a time. One
+commit per change he asks for; push the branch and fast-forward `dev`. Anything that
+touches `main` needs his go-ahead first. A new working branch for the rollout, off
+`public-prod`.
+
+**Still placeholder, must not reach a customer:** the whole V2 staff side until the
+rollout checks above are done, `purchase` with no executor (Moneris not wired), the
+install manifest and device lock untried on a real device. Nobody has confirmed
+`contact@inktonermoore.ca` receives mail, and the live page shows it.
+
+## Earlier (written 2026-10-18, exit of the carried fixes and prod split session)
 
 **Next session is for:** building, from Parsa's notes after he tries the live customer
 page and staging. If he brings none, the open items under "Not done" below. Not a
 numbered plan step (`PLAN.md` has no completion markers).
 
 **Prod is no longer untouched.** Read this before anything that goes near `main`.
-
-**Later on 2026-10-18: prod hosting moved to Cloudflare.** PR #4 (merged with Parsa's
-go-ahead) adds a step to `main`'s deploy that uploads the same `dist/` to the Pages
-project `itm-site` in ITM's account. Parsa switched the DNS by hand: the apex and `www`
-are proxied CNAMEs to `itm-site.pages.dev`, a Redirect Rule sends `www` to the apex,
-Always Use HTTPS is on. Checked against the edge: same bundles, same status codes as
-GitHub. GitHub Pages still deploys as the rollback (`docs/ENVIRONMENTS.md` has the
-steps). Left: `www` validation on `itm-site` was still pending at the check; after about
-a week, with Parsa's OK, a PR drops the GitHub Pages steps and `public/CNAME`. Studio
-did not change. This repo owns only the apex, `www` and `studio` records; the GrandITM
-platform session owns the rest of the zone (`staging-api`, the `notify.` Resend
-records, MX/SPF/DMARC). Tell that session before any other zone change, and send it a
-line once GitHub Pages is removed so its handoff can drop the rollback note. `main` also tracks a `.env` (prod web config, bypass off): worth
-removing someday.
 
 **Where things stand (observed 2026-10-18, at exit):**
 - Branch `public-prod` (off `carried-fixes`, off `phone-audit-fixes`). Tree clean, level
