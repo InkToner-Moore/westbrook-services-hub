@@ -14,7 +14,7 @@ import { handleManager } from './manager.js';
 //
 // Secrets / vars (set with `wrangler secret put` or in wrangler.toml [vars]):
 //   ANTHROPIC_API_KEY (secret, required) the Anthropic API key
-//   ALLOWED_ORIGIN   (var, required)     exact staging origin allowed via CORS
+//   ALLOWED_ORIGIN   (var, required)     allowed origins via CORS, comma-separated
 //   ANTHROPIC_MODEL  (var, optional)     defaults to claude-haiku-5-5
 //   GEMINI_API_KEY   (secret, optional)  Google AI Studio key for the fallback router
 //   GEMINI_MODEL     (var, optional)     defaults to gemini-flash-lite-latest
@@ -301,9 +301,11 @@ async function askGemini(env, userText) {
 
 export default {
   async fetch(request, env) {
-    const allowed = env.ALLOWED_ORIGIN || '';
+    // ALLOWED_ORIGIN is one origin or a comma-separated list (staging and prod).
+    const allowedList = (env.ALLOWED_ORIGIN || '').split(',').map((o) => o.trim()).filter(Boolean);
+    const allowed = allowedList.length > 0;
     const origin = request.headers.get('Origin') || '';
-    const corsOrigin = origin && origin === allowed ? origin : allowed;
+    const corsOrigin = origin && allowedList.includes(origin) ? origin : allowedList[0] || '';
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders(corsOrigin) });
@@ -311,8 +313,8 @@ export default {
     if (request.method !== 'POST') {
       return json({ error: 'method_not_allowed' }, 405, corsOrigin);
     }
-    // Reject cross-origin callers that are not the configured staging site.
-    if (allowed && origin && origin !== allowed) {
+    // Reject cross-origin callers that are not one of the configured sites.
+    if (allowed && origin && !allowedList.includes(origin)) {
       return json({ error: 'forbidden_origin' }, 403, corsOrigin);
     }
 

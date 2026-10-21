@@ -3,10 +3,10 @@ name = "inktonermoore-ai-proxy"
 main = "src/worker.js"
 compatibility_date = "2024-11-01"
 
-# Public vars (not secrets). Set ALLOWED_ORIGIN to the exact staging origin that is
-# allowed to call this proxy. ANTHROPIC_MODEL is optional; the default is used if unset.
+# Public vars (not secrets). ALLOWED_ORIGIN lists the exact origins allowed to call
+# this proxy, comma-separated: staging and prod. ANTHROPIC_MODEL is optional; the default is used if unset.
 [vars]
-ALLOWED_ORIGIN = "https://ink-toner-moore.pages.dev"
+ALLOWED_ORIGIN = "https://ink-toner-moore.pages.dev,https://inktonermoore.ca"
 ANTHROPIC_MODEL = "claude-haiku-5-5"
 
 # ANTHROPIC_API_KEY is a SECRET: never put it here. Set it once with
