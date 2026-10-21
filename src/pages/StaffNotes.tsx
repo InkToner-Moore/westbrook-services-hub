@@ -41,10 +41,12 @@ interface Note {
   id: string;
   title: string;
   content: string;
-  category: "general" | "customer" | "inventory" | "shipping" | "urgent";
+  category: string;
   createdAt: string;
   updatedAt: string;
 }
+
+const CLASSIC_CATEGORIES = ['general', 'customer', 'inventory', 'shipping', 'urgent'];
 
 const NOTES_COLLECTION = 'notes';
 const DELETED_NOTES_COLLECTION = 'deletedNotes';
@@ -67,6 +69,8 @@ const StaffNotes = () => {
     maxHistorySize: 20,
     enableShortcuts: true
   });
+
+  const storedCategory = notesList.list.find(note => note.id === editingNote)?.category;
 
   // Load notes from Firestore on mount
   useEffect(() => {
@@ -269,6 +273,9 @@ const StaffNotes = () => {
                       <Select name={field.name} value={field.value} onValueChange={field.onChange}>
                         <SelectTrigger ref={field.ref} onBlur={field.onBlur} className={kit.input}><SelectValue /></SelectTrigger>
                         <SelectContent>
+                          {storedCategory && !CLASSIC_CATEGORIES.includes(storedCategory) && (
+                            <SelectItem value={storedCategory}>{storedCategory}</SelectItem>
+                          )}
                           <SelectItem value="general">General</SelectItem>
                           <SelectItem value="customer">Customer</SelectItem>
                           <SelectItem value="inventory">Inventory</SelectItem>
