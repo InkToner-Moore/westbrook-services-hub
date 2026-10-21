@@ -1,6 +1,6 @@
 import { useFormClasses, Field } from "@/components/shell/FormKit";
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { useStaffAppMeta } from "@/hooks/useStaffAppMeta";
 import { toast } from "@/hooks/use-toast";
+
+import { canSwitchToV1, switchToV1, publicSiteRoot } from "@/lib/staffVersion";
 
 const StaffLogin = () => {
   useStaffAppMeta();
@@ -48,13 +50,13 @@ const StaffLogin = () => {
     <div className="min-h-screen flex items-center justify-center p-4 transition-colors bg-pub-counter">
       <div className="relative z-10 w-full max-w-md">
         {/* Back to public site link */}
-        <Link 
-          to="/" 
+        <a
+          href={publicSiteRoot()}
           className="inline-flex items-center space-x-2 transition-colors mb-6 group text-pub-muted hover:text-pub-ink"
         >
           <ArrowLeft className="h-4 w-4 transition-transform" />
           <span>Back to public site</span>
-        </Link>
+        </a>
 
         <Card className="bg-pub-paper border border-pub-edge rounded-2xl shadow-none">
           <CardHeader className="text-center">
@@ -119,6 +121,12 @@ const StaffLogin = () => {
                 {loading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
+            {canSwitchToV1() && (
+              <button type="button" onClick={switchToV1}
+                className={`mt-4 block min-h-11 w-full text-center text-sm text-pub-muted underline underline-offset-4 hover:text-pub-ink ${themeClasses.interactive.focus}`}>
+                Use the old version
+              </button>
+            )}
 
             <div className="mt-6 text-center">
               <p className="text-sm transition-colors text-pub-muted">

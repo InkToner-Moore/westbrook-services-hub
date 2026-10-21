@@ -5,7 +5,8 @@
 // See DESIGN-SPEC.md.
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, LogOut, Settings } from 'lucide-react';
+import { User, LogOut, Settings, History } from 'lucide-react';
+import { canSwitchToV1, switchToV1, leaveToPublicSite } from '@/lib/staffVersion';
 import { isStandalone } from '@/lib/installPrompt';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -56,7 +57,8 @@ const UserMenu: React.FC = () => {
     const result = await logout();
     if (result?.success) {
       toast({ title: 'Signed out', description: 'You have left the staff portal.' });
-      navigate(isStandalone() ? '/staff' : '/');
+      if (isStandalone()) navigate('/staff');
+      else leaveToPublicSite(navigate);
     }
   };
 
@@ -114,6 +116,17 @@ const UserMenu: React.FC = () => {
             <Settings className="h-4 w-4" />
             Settings
           </button>
+          {canSwitchToV1() && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={switchToV1}
+              className={`flex min-h-[44px] w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium text-pub-muted ${themeClasses.interactive.hover} ${themeClasses.interactive.focus}`}
+            >
+              <History className="h-4 w-4" />
+              Use the old version
+            </button>
+          )}
           <button
             type="button"
             role="menuitem"

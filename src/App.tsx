@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -33,13 +34,18 @@ registerPurchaseSeams();
 
 const queryClient = new QueryClient();
 
+const PublicSiteRedirect = () => {
+  useEffect(() => { window.location.replace("/"); }, []);
+  return null;
+};
+
 const AppRoutes = () => {
   const { user } = useAuth();
 
   return (
     <Routes>
       {/* Public portal */}
-      <Route path="/" element={<PublicHome />} />
+      <Route path="/" element={import.meta.env.BASE_URL !== "/" ? <PublicSiteRedirect /> : <PublicHome />} />
 
       {/* Staff portal */}
       <Route path="/staff">

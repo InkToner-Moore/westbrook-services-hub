@@ -7,6 +7,7 @@ import {
   enable, disable, enabledFor, isAvailable, markUnlocked, unlockedWithPassword, userKey, verify,
 } from '@/lib/deviceLock';
 import { useInstallState } from '@/lib/installPrompt';
+import { canSwitchToV1, switchToV1, leaveToPublicSite } from '@/lib/staffVersion';
 import { isStandalone } from '@/lib/installPrompt';
 import { useAuth } from '@/hooks/useAuth';
 import { useHiddenTiles } from '@/hooks/useHiddenTiles';
@@ -142,7 +143,8 @@ const StaffSettings = () => {
     const result = await logout();
     if (result?.success) {
       toast({ title: 'Signed out', description: 'You have left the staff portal.' });
-      navigate(isStandalone() ? '/staff' : '/');
+      if (isStandalone()) navigate('/staff');
+      else leaveToPublicSite(navigate);
     }
   };
 
@@ -368,6 +370,14 @@ const StaffSettings = () => {
           <Field label="Receipt header" hint="Fixed in the app."><p>{STORE_NAME}</p></Field>
         </FieldGrid>
       </FormSection>
+      {canSwitchToV1() && (
+        <FormSection title="Version"
+          description="Not comfortable with the new screens yet? Switch this device back to the old version. You can come back any time.">
+          <FormActions>
+            <Button className={fc.secondary} onClick={switchToV1}>Use the old version</Button>
+          </FormActions>
+        </FormSection>
+      )}
       <FormSection title="Account">
         <p className="mb-3 break-all text-sm">Signed in as {user?.email ?? 'Signed in'}</p>
         <FormActions><Button className={fc.secondary} onClick={handleLogout}>Log out</Button></FormActions>
