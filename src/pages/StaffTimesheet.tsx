@@ -675,6 +675,11 @@ const StaffTimesheet = () => {
       return;
     }
     try {
+      await setDocument('deletedScheduleShifts', shift.id, {
+        ...shift,
+        deletedAt: new Date().toISOString(),
+        originalId: shift.id,
+      });
       await deleteDocument(SCHEDULE_COLLECTION, shift.id);
       setShifts((prev) => prev.filter((s) => s.id !== shift.id));
       toast({ title: "Shift removed", description: `${shift.employeeName}, ${formatDayHeading(shift.date)}` });

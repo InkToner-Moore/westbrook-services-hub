@@ -12,7 +12,7 @@
 // matching against the priced keyInventory and for spotting the same blank in two
 // places.
 
-import { getCollection, setDocument, updateDocument } from '@/lib/firestore';
+import { getCollection, getDocument, setDocument, updateDocument } from '@/lib/firestore';
 
 export const KEY_BOARD_COLLECTION = 'keyBoard';
 
@@ -107,6 +107,17 @@ export function boardLocationFor(model: string, index: Map<string, string[]>): s
 
 const nowIso = () => new Date().toISOString();
 
+async function archivePosition(positionId: string): Promise<void> {
+  const current = await getDocument<KeyBoardPosition>(KEY_BOARD_COLLECTION, positionId);
+  if (current && (current.models?.length || current.codes?.length || current.notes?.length)) {
+    await setDocument('deletedKeyBoard', `${positionId}-${Date.now()}`, {
+      ...current,
+      deletedAt: nowIso(),
+      originalId: positionId,
+    });
+  }
+}
+
 // Write a recorded blank into a position (create or overwrite). Used by the board
 // editor and by AI Mode ("put SC1 in B3").
 export async function setPositionModels(
@@ -126,6 +137,7 @@ export async function setPositionModels(
     notes: opts?.notes ?? '',
     updatedAt: nowIso(),
   };
+  await archivePosition(doc.position);
   await setDocument(KEY_BOARD_COLLECTION, doc.position, doc);
   return doc;
 }
@@ -145,6 +157,7 @@ export async function clearPosition(position: string): Promise<KeyBoardPosition>
     notes: '',
     updatedAt: nowIso(),
   };
+  await archivePosition(doc.position);
   await setDocument(KEY_BOARD_COLLECTION, doc.position, doc);
   return doc;
 }
