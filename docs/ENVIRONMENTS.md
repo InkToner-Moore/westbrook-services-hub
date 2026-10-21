@@ -131,3 +131,45 @@ match /settings/shop {
   allow write: if request.auth != null && request.auth.token.manager == true;
 }
 ```
+
+## V2 staff on prod (opt-in at /v2/)
+
+Since 2026-10-21 `main`'s deploy also builds the V2 staff app from the commit
+pinned as `STAFF_V2_REF` (on `staff-v2-rollout` or later), with `--base=/v2/`, into
+`dist/v2/`. Cloudflare Pages serves the nearest `404.html`, so `/v2/staff/*` opens
+V2 and `/staff/*` stays V1. GitHub Pages only has the root `404.html`, so on the
+rollback host `/v2/staff/*` deep links fall through to V1's not-found page.
+
+- Each device chooses. localStorage `staff-app-version` = `v2` makes V1 send
+  `/staff/...` to `/v2/staff/...` before it renders; no key or `v1` stays on V1.
+- V2 (built with `VITE_V1_STAFF_URL=/staff`) shows "Use the old version" in the
+  user menu, Settings and on its login page. It sets `v1` and goes to `/staff`.
+- V1's "Try the new version" button only shows when the deploy sets
+  `VITE_OFFER_V2: "true"`. It is `"false"` until the rules below are on prod.
+- Releasing a newer V2 staff app is a PR to `main` that moves `STAFF_V2_REF`.
+- The AI proxy and the manager unlock go through the same worker as staging
+  (`ALLOWED_ORIGIN` lists both origins). Its service account is the DEV project's,
+  so on prod the manager PIN is the staging PIN, and anything gated on a `manager`
+  token claim in prod rules (like `settings/shop` writes) stays refused. A prod
+  worker with the prod service account fixes both; Parsa owes that key.
+
+Prod Firestore rules V2 needs, added in the console before `VITE_OFFER_V2` goes on
+(V1 never touches these collections). Copy the DEV project's rule for any of them
+that is stricter there:
+
+```
+match /employees/{id}             { allow read, write: if request.auth != null; }
+match /scheduleShifts/{id}        { allow read, write: if request.auth != null; }
+match /deletedScheduleShifts/{id} { allow read, write: if request.auth != null; }
+match /transactions/{id}          { allow read, write: if request.auth != null; }
+match /refillInventory/{id}       { allow read, write: if request.auth != null; }
+match /deletedRefillInventory/{id} { allow read, write: if request.auth != null; }
+match /keyBoard/{id}              { allow read, write: if request.auth != null; }
+match /deletedKeyBoard/{id}       { allow read, write: if request.auth != null; }
+match /keyReference/{id}          { allow read: if request.auth != null; }
+```
+
+Plus the `settings/shop` rule above. `deletedScheduleShifts` and `deletedKeyBoard`
+are new archives (a removed shift or a replaced key board slot is copied there
+first), so DEV needs those two rules as well, or deleting a shift and changing a
+board slot are refused there.
