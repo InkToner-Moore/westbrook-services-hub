@@ -82,8 +82,8 @@ sales. He was given the two DEV archive rules (`deletedScheduleShifts`,
 `deletedKeyBoard`) to add; not confirmed.
 
 **Waiting on Parsa:**
-1. Confirm the two DEV archive rules are in: **without them, deleting a shift and
-   changing a key board slot are refused on staging.**
+1. Done: Parsa added the two DEV archive rules (`deletedScheduleShifts`,
+   `deletedKeyBoard`) the same day. Not yet exercised by a real delete.
 2. Whether V2 becomes the default later (flip the `main.tsx` logic or the default).
 3. A prod Firebase service account for a prod proxy worker (manager PIN, settings).
 4. Moneris: the terminal model, then whether to call Moneris about cloud mode
