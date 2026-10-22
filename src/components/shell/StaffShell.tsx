@@ -8,7 +8,7 @@
 // See docs/ui-rehaul/DESIGN-SPEC.md and PLAN.md.
 import React, { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { Menu, PanelRight, PanelLeftOpen, PanelRightOpen, Sparkles } from 'lucide-react';
+import { Menu, PanelRight, PanelLeftOpen, PanelRightOpen, Sparkles, History } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAiMode } from '@/ai/context';
 import type { ArtifactState } from '@/ai/types';
@@ -17,6 +17,7 @@ import TileRail from './TileRail';
 import ArtifactRail from './ArtifactRail';
 import { useStaffAppMeta } from '@/hooks/useStaffAppMeta';
 import CartPanel from '@/components/ai/CartPanel';
+import { canSwitchToV1, switchToV1 } from '@/lib/staffVersion';
 
 const readFlag = (key: string) => {
   try {
@@ -37,6 +38,7 @@ const StaffShell: React.FC = () => {
   const [leftCollapsed, setLeftCollapsed] = useState(() => readFlag('shell-left-collapsed'));
   const [rightCollapsed, setRightCollapsed] = useState(false);
 
+  const showVersionSwitch = canSwitchToV1();
   const hasArtifact = !!artifact && artifact.kind !== 'none';
 
   useEffect(() => {
@@ -156,19 +158,19 @@ const StaffShell: React.FC = () => {
 
         {/* Center + mobile chrome */}
         <div className="flex min-w-0 flex-1 flex-col">
-          {/* Mobile top bar */}
-          <div className={`flex items-center justify-between border-b px-3 py-2 lg:hidden ${themeClasses.header}`}>
+          {/* Shared top bar stays above every staff tool, including AI Mode. */}
+          <div className={`flex shrink-0 items-center gap-2 border-b px-3 py-2 ${showVersionSwitch ? '' : 'lg:hidden'} ${themeClasses.header}`}>
             <button
               type="button"
               onClick={() => setRailOpen(true)}
               aria-label="Open menu"
-              className={`flex h-11 w-11 items-center justify-center rounded-xl ${themeClasses.interactive.hover}`}
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl lg:hidden ${themeClasses.interactive.hover}`}
             >
               <Menu className="h-5 w-5 text-pub-muted" />
             </button>
-            <span className="flex items-center gap-1.5 text-sm font-semibold text-pub-ink">
-              <Sparkles className="h-4 w-4 text-pub-accent" />
-              Ink, Toner &amp; Moore
+            <span className="flex min-w-0 flex-1 items-center gap-1.5 text-sm font-semibold text-pub-ink lg:invisible">
+              <Sparkles className="h-4 w-4 shrink-0 text-pub-accent" />
+              <span className="truncate">Ink, Toner &amp; Moore</span>
             </span>
             {/* With something waiting, the button names it; an icon alone hides a
                 slip that still needs a Confirm. */}
@@ -176,7 +178,7 @@ const StaffShell: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSheetOpen(true)}
-                className={`inline-flex h-11 max-w-[9.5rem] items-center gap-1.5 rounded-xl px-3 text-sm font-medium ${themeClasses.button.secondary}`}
+                className={`inline-flex h-11 max-w-[9.5rem] shrink-0 lg:hidden items-center gap-1.5 rounded-xl px-3 text-sm font-medium ${themeClasses.button.secondary}`}
               >
                 <PanelRight className="h-4 w-4 shrink-0" />
                 <span className="truncate">{artifact?.kind === 'confirmation' ? 'Open slip' : 'Open result'}</span>
@@ -186,10 +188,22 @@ const StaffShell: React.FC = () => {
                 type="button"
                 onClick={() => setSheetOpen(true)}
                 aria-label="Open workspace"
-                className={`relative flex h-11 w-11 items-center justify-center rounded-xl ${themeClasses.interactive.hover}`}
+                className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl lg:hidden ${themeClasses.interactive.hover}`}
               >
                 <PanelRight className="h-5 w-5 text-pub-muted" />
                 {showDot && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-pub-accent" />}
+              </button>
+            )}
+            {showVersionSwitch && (
+              <button
+                type="button"
+                onClick={switchToV1}
+                aria-label="Use the old version"
+                title="Use the old version"
+                className={`inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm font-medium ${themeClasses.button.secondary} ${themeClasses.interactive.focus}`}
+              >
+                <History className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>Old version</span>
               </button>
             )}
           </div>
