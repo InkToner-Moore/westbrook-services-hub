@@ -37,7 +37,7 @@ session full rein on PRs and merges ("take care of PRs and merges yourself").
 **Where things stand (observed at exit):**
 - Branch `staff-v2-rollout` (off `public-prod`), pushed; `origin/dev` = it, so
   staging has everything. Tree clean apart from this handoff.
-- **Prod `main` is at `1d2ee24`** (PR #5 merged, deploy run green on both hosts).
+- **Prod `main`**: PR #5 then PR #6 merged, both deploys green on both hosts.
   `PUBLIC_REF` unchanged (`962854d`). New pin `STAFF_V2_REF` = `5a9f66f`.
 - Live, checked in a real browser: `/` customer page; `/staff` V1 login as before
   for a device with no choice; `/v2/staff` the V2 login with "Use the old version";
@@ -73,12 +73,18 @@ session full rein on PRs and merges ("take care of PRs and merges yourself").
   `items`, `subtotal`, `tax`; the payment card shows "Type this on the card
   machine" and the amount; Receipts has a "Card sales" tab by day with CSV.
 
+**Later the same day:** Parsa published the prod Firestore rules (V2 block as in
+`docs/ENVIRONMENTS.md`; prod `scheduleShifts` is plain auth-gated, looser than DEV's
+manager-claim rule on purpose, since no prod worker can mint a manager claim yet).
+PR #6 merged: `VITE_OFFER_V2: "true"` and `STAFF_V2_REF` = `a51bfb3` (archives, card
+sales). Deploy green; the live V1 bundle has the button, the live V2 bundle has card
+sales. He was given the two DEV archive rules (`deletedScheduleShifts`,
+`deletedKeyBoard`) to add; not confirmed.
+
 **Waiting on Parsa:**
-1. Prod Firestore rules for V2's collections (list in `docs/ENVIRONMENTS.md`), and
-   on DEV the two new archive rules, `deletedScheduleShifts` and `deletedKeyBoard`:
-   **without them, deleting a shift and changing a key board slot are refused on
-   staging.**
-2. Then: turn on `VITE_OFFER_V2`, and whether V2 becomes the default later.
+1. Confirm the two DEV archive rules are in: **without them, deleting a shift and
+   changing a key board slot are refused on staging.**
+2. Whether V2 becomes the default later (flip the `main.tsx` logic or the default).
 3. A prod Firebase service account for a prod proxy worker (manager PIN, settings).
 4. Moneris: the terminal model, then whether to call Moneris about cloud mode
    (options and steps were given in chat; option 1 is what was built).
