@@ -81,11 +81,19 @@ sales). Deploy green; the live V1 bundle has the button, the live V2 bundle has 
 sales. He was given the two DEV archive rules (`deletedScheduleShifts`,
 `deletedKeyBoard`) to add; not confirmed.
 
+**Data copied to prod (2026-10-21, Parsa's choice):** `scripts/copyDevToProd.mjs`
+(create-only, `exists:false` precondition) copied DEV to prod: keyBoard 691,
+keyReference 343, refillInventory 130; a second dry run shows all present. Nothing
+else copied (team, shifts, transactions stay DEV only). Firebase admin service
+accounts are in keyvault as `westbrook_firebase_dev` (FIREBASE_SA_DEV) and
+`westbrook_firebase_prod` (FIREBASE_SA_PROD). PR #7 put "Old version" in V2's top
+bar (always visible) and released it.
+
 **Waiting on Parsa:**
 1. Done: Parsa added the two DEV archive rules (`deletedScheduleShifts`,
    `deletedKeyBoard`) the same day. Not yet exercised by a real delete.
 2. Whether V2 becomes the default later (flip the `main.tsx` logic or the default).
-3. A prod Firebase service account for a prod proxy worker (manager PIN, settings).
+3. A prod proxy worker: the prod service account is now in keyvault, so this can be built (manager PIN and `settings/shop` saves on prod).
 4. Moneris: the terminal model, then whether to call Moneris about cloud mode
    (options and steps were given in chat; option 1 is what was built).
 5. Everything under "Waiting" and "Not done" in the section below still stands
