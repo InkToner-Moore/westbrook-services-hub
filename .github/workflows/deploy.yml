@@ -15,7 +15,7 @@ env:
   PUBLIC_REF: 962854dedecdafce4d711cbd6763389404fe4127
   # The commit of the V2 staff app served at /v2/ (opt-in per device, V1 stays the
   # default at /staff). Changing it on main releases a newer V2 staff app.
-  STAFF_V2_REF: 5a9f66f7f893490ef48fa8d61c5f2db60defd412
+  STAFF_V2_REF: a51bfb30c472fd2d5e3c0a66518d7e77a4340892
 
 concurrency:
   group: pages
@@ -40,9 +40,9 @@ jobs:
       - name: Build
         env:
           VITE_SPLIT_PUBLIC: "true"
-          # "true" shows "Try the new version" in V1. Off until the prod Firestore
-          # rules for V2's own collections are in (docs/ENVIRONMENTS.md on public-prod).
-          VITE_OFFER_V2: "false"
+          # "true" shows "Try the new version" in V1 (needs the prod Firestore rules
+          # for V2's own collections, docs/ENVIRONMENTS.md on public-prod).
+          VITE_OFFER_V2: "true"
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
           VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
