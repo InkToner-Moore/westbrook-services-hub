@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { createSign } from 'node:crypto';
 
 const usage = 'Usage: node scripts/copyDevToProd.mjs <dev-sa.json> <prod-sa.json> <collection> [<collection>...] [--write]';
-const allowedCollections = new Set(['keyBoard', 'keyReference', 'refillInventory']);
+const allowedCollections = new Set(['keyBoard', 'keyReference', 'refillInventory', 'keyInventory']);
 
 // Mint an OAuth access token from the service account (RS256-signed JWT grant).
 async function getAccessToken(sa) {
@@ -50,7 +50,7 @@ async function main() {
     throw new Error(`Refusing PROD project ${prod.project_id}: project_id must be nonempty and must not end in -dev.`);
   }
   for (const collection of requestedCollections) {
-    if (!allowedCollections.has(collection)) throw new Error(`Refusing collection ${collection}: allowed collections are keyBoard, keyReference, refillInventory.`);
+    if (!allowedCollections.has(collection)) throw new Error(`Refusing collection ${collection}: allowed collections are keyBoard, keyReference, refillInventory, keyInventory.`);
   }
 
   const [devToken, prodToken] = await Promise.all([getAccessToken(dev), getAccessToken(prod)]);

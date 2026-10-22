@@ -83,7 +83,10 @@ sales. He was given the two DEV archive rules (`deletedScheduleShifts`,
 
 **Data copied to prod (2026-10-21, Parsa's choice):** `scripts/copyDevToProd.mjs`
 (create-only, `exists:false` precondition) copied DEV to prod: keyBoard 691,
-keyReference 343, refillInventory 130; a second dry run shows all present. Nothing
+keyReference 343, refillInventory 130, and (asked for later) keyInventory 398; a second dry
+run shows all present. Prod key stock is now identical to DEV: its two old V1 keys (m1
+`INV-JFKYC1`, KW1 `INV-PLGK4Z`) were archived to `deletedKeyInventory` and removed, at
+Parsa's request. V1 shows the same 398 keys. Nothing
 else copied (team, shifts, transactions stay DEV only). Firebase admin service
 accounts are in keyvault as `westbrook_firebase_dev` (FIREBASE_SA_DEV) and
 `westbrook_firebase_prod` (FIREBASE_SA_PROD). PR #7 put "Old version" in V2's top
