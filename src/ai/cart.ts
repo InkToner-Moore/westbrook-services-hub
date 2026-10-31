@@ -6,6 +6,7 @@ import {
   formatReceiptDate,
   generateReceiptNumber,
   round2,
+  SHIPPING_FOOTNOTE,
   type ReceiptItem,
   type SimpleReceiptOptions,
 } from '@/lib/simpleReceipt';
@@ -81,6 +82,7 @@ export function buildCartReceiptOpts(
     items,
     price: subtotal,
     taxLines: taxLines.length ? taxLines : undefined,
+    footnote: lines.some((l) => l.source === 'shipping') ? SHIPPING_FOOTNOTE : undefined,
     fileNameBase: `receipt-${receiptNumber}`,
   };
 }

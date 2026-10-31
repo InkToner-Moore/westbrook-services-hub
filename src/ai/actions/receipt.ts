@@ -8,6 +8,7 @@ import {
   formatReceiptDate,
   generateReceiptNumber,
   round2,
+  SHIPPING_FOOTNOTE,
   type ReceiptItem,
   type ReceiptRow,
   type SimpleReceiptOptions,
@@ -22,13 +23,6 @@ import {
   toShipmentItems,
   type ShipmentItem,
 } from '../shipping';
-
-// Small print printed on every shipping receipt (brief: final-sale terms).
-const SHIPPING_FOOTNOTE: string[] = [
-  'All shipping sales are final. There are no refunds once a shipment is dropped off with the carrier.',
-  "It is the customer's responsibility to make sure their shipping information is correct and checked, including names, addresses, and any commercial invoices or customs paperwork.",
-  'Ink, Toner & Moore is not responsible for shipments once they are handed to the carrier and has no refund policy. If something goes wrong, we will do our best to work with the carrier (for example Purolator, FedEx, or UPS) to help however we can.',
-];
 
 // One shipment item as a printed line: courier and destination stacked under the
 // description, cost on the right.

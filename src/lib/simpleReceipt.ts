@@ -28,6 +28,14 @@ export const generateReceiptNumber = (prefix: string) => {
   return `${prefix}${yy}${mm}${dd}${hh}${mi}`;
 };
 
+// Small print on any receipt that includes shipping: the charge is final and the
+// customer checks the details before leaving the counter.
+export const SHIPPING_FOOTNOTE: string[] = [
+  'All shipping charges are final. Shipping and service fees are not refundable.',
+  'Please check every detail on this receipt before you leave the counter, including names, addresses, and any customs or commercial invoice paperwork. We cannot make changes once a shipment is with the carrier.',
+  'Ink, Toner & Moore is not responsible for a shipment once it is handed to the carrier. If something goes wrong, we will do our best to help you work it out with the carrier.',
+];
+
 // Format an ISO date (yyyy-mm-dd) as "May 13, 2026"; returns the input on failure.
 export const formatReceiptDate = (iso?: string) => {
   if (!iso) return '';
