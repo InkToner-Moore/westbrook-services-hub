@@ -345,7 +345,20 @@ const StaffReceipts = () => {
     pdf.text('SHIPPING DETAILS', 20, 110);
     
     let yPos = 120;
+    // A long receipt runs onto another page instead of off the bottom of this one.
+    const ensureRoom = (height: number) => {
+      if (yPos + height > 272) {
+        pdf.addPage();
+        yPos = 20;
+      }
+    };
     data.shippingItems.forEach((item, index) => {
+      const addOnsHeight = item.addOns.length > 0
+        ? 8 + item.addOns.reduce((h, addon) => h + 6 + addon.taxes.length * 5, 0)
+        : 0;
+      const taxesHeight = item.taxes.length > 0 ? 8 + item.taxes.length * 6 : 0;
+      ensureRoom(40 + addOnsHeight + taxesHeight);
+
       // Package header with border
       pdf.setFillColor(240, 240, 240);
       pdf.rect(15, yPos - 3, 170, 8, 'F');
@@ -422,6 +435,7 @@ const StaffReceipts = () => {
     });
     
     // Pricing section
+    ensureRoom(30);
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
     pdf.text('TOTAL CHARGES', 20, yPos);
