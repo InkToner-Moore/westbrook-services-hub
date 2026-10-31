@@ -68,8 +68,8 @@ const Services = () => {
         ))}
       </ul>
       <p className="mt-6 max-w-[60ch] text-pub-muted">
-        <span className="font-medium text-pub-ink">Also at the counter:</span> printing, faxing, scanning,
-        photocopying, card lamination, and cartridge recycling.
+        <span className="font-medium text-pub-ink">Also at the counter:</span> printing, faxing, photocopying,
+        card lamination, and cartridge recycling.
       </p>
     </section>
   );
