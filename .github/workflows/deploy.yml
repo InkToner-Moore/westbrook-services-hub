@@ -12,10 +12,10 @@ permissions:
 env:
   # The commit of the new customer page that goes live. Changing it on main is the
   # release step (the push to main runs this workflow).
-  PUBLIC_REF: 962854dedecdafce4d711cbd6763389404fe4127
+  PUBLIC_REF: 3a137b04fc11151b86f4e9e09a7c4dd37f3d4736
   # The commit of the V2 staff app served at /v2/ (opt-in per device, V1 stays the
   # default at /staff). Changing it on main releases a newer V2 staff app.
-  STAFF_V2_REF: 4a468331c974ae8f349ed52cc029afefde09feb4
+  STAFF_V2_REF: 3a137b04fc11151b86f4e9e09a7c4dd37f3d4736
 
 concurrency:
   group: pages

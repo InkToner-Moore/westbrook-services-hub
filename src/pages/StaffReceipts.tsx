@@ -345,7 +345,20 @@ const StaffReceipts = () => {
     pdf.text('SHIPPING DETAILS', 20, 110);
     
     let yPos = 120;
+    // A long receipt runs onto another page instead of off the bottom of this one.
+    const ensureRoom = (height: number) => {
+      if (yPos + height > 272) {
+        pdf.addPage();
+        yPos = 20;
+      }
+    };
     data.shippingItems.forEach((item, index) => {
+      const addOnsHeight = item.addOns.length > 0
+        ? 8 + item.addOns.reduce((h, addon) => h + 6 + addon.taxes.length * 5, 0)
+        : 0;
+      const taxesHeight = item.taxes.length > 0 ? 8 + item.taxes.length * 6 : 0;
+      ensureRoom(40 + addOnsHeight + taxesHeight);
+
       // Package header with border
       pdf.setFillColor(240, 240, 240);
       pdf.rect(15, yPos - 3, 170, 8, 'F');
@@ -422,6 +435,7 @@ const StaffReceipts = () => {
     });
     
     // Pricing section
+    ensureRoom(30);
     pdf.setFontSize(12);
     pdf.setFont('helvetica', 'bold');
     pdf.text('TOTAL CHARGES', 20, yPos);
@@ -444,7 +458,32 @@ const StaffReceipts = () => {
     pdf.setFont('helvetica', 'bold');
     pdf.text(`TOTAL:`, 20, yPos);
     pdf.text(`$${data.total.toFixed(2)}`, 150, yPos);
-    
+
+    // Shipping terms: the charge is final and the customer checks the details
+    // before leaving the counter. Starts a new page if it would reach the footer.
+    const terms = [
+      'All shipping charges are final. Shipping and service fees are not refundable.',
+      'Please check every detail on this receipt before you leave the counter, including names, addresses, and any customs or commercial invoice paperwork. We cannot make changes once a shipment is with the carrier.',
+      'Ink, Toner & Moore is not responsible for a shipment once it is handed to the carrier. If something goes wrong, we will do our best to help you work it out with the carrier.',
+    ];
+    pdf.setFontSize(8);
+    pdf.setFont('helvetica', 'normal');
+    const termLines = terms.map((t) => pdf.splitTextToSize(t, 165) as string[]);
+    const termsHeight = 6 + termLines.reduce((h, l) => h + l.length * 4 + 2, 0);
+    yPos += 14;
+    if (yPos + termsHeight > 272) {
+      pdf.addPage();
+      yPos = 20;
+    }
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('PLEASE NOTE', 20, yPos);
+    yPos += 6;
+    pdf.setFont('helvetica', 'normal');
+    termLines.forEach((lines) => {
+      pdf.text(lines, 20, yPos);
+      yPos += lines.length * 4 + 2;
+    });
+
     // Footer
     pdf.setFontSize(8);
     pdf.setFont('helvetica', 'normal');
