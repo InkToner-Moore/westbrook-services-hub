@@ -11,7 +11,7 @@ export interface ShopSettings {
 
 export const DEFAULT_SHOP_SETTINGS: ShopSettings = {
   phone: '(403) 686-2835',
-  email: 'contact@inktonermoore.ca',
+  email: 'inktonerandmoore@gmail.com',
   week: [
     { open: 11, close: 17 },
     { open: 10, close: 19 },
