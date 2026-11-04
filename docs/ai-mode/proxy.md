@@ -125,9 +125,11 @@ Firestore rules that require `request.auth.token.manager == true` then allow the
 write. See `src/lib/managerAuth.ts` and `src/contexts/ManagerModeContext.tsx`.
 
 Endpoints (all POST, JSON, same CORS as routing):
-`/manager/status` -> `{pinSet}`; `/manager/set-pin {newPin, currentPin?}` (change
-needs the current PIN); `/manager/unlock {pin, uid}` -> `{token}`;
-`/manager/lock {uid}` -> a claimless `{token}`.
+`/manager/status` -> `{pinSet}`; `/manager/set-pin {idToken, newPin, currentPin?}`
+(change needs the current PIN); `/manager/unlock {idToken, pin}` -> `{token}`;
+`/manager/lock {idToken}` -> a claimless `{token}`. `idToken` is the caller's
+Firebase ID token; the worker verifies it against Google's keys for the project
+and mints only for its uid (401 `not_signed_in` otherwise).
 
 PIN hashes live in the Firestore `accessPins` collection (locked to admin-only in
 the rules; clients never read them), hashed with a server pepper. Each record has a
@@ -138,6 +140,8 @@ them):
 ```sh
 # the Firebase Admin service account JSON for the project, as one line
 node -e "process.stdout.write(JSON.stringify(require('./sa.json')))" | npx wrangler secret put FIREBASE_SA
+# the prod project's account, used for requests from https://inktonermoore.ca
+npx wrangler secret put FIREBASE_SA_PROD
 # a random, stable pepper mixed into every PIN hash
 npx wrangler secret put PIN_PEPPER
 ```

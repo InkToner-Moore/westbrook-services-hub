@@ -148,10 +148,12 @@ rollback host `/v2/staff/*` deep links fall through to V1's not-found page.
   `VITE_OFFER_V2: "true"`. It is `"false"` until the rules below are on prod.
 - Releasing a newer V2 staff app is a PR to `main` that moves `STAFF_V2_REF`.
 - The AI proxy and the manager unlock go through the same worker as staging
-  (`ALLOWED_ORIGIN` lists both origins). Its service account is the DEV project's,
-  so on prod the manager PIN is the staging PIN, and anything gated on a `manager`
-  token claim in prod rules (like `settings/shop` writes) stays refused. A prod
-  worker with the prod service account fixes both; Parsa owes that key.
+  (`ALLOWED_ORIGIN` lists both origins). The worker picks the Firebase project by
+  the calling site: `https://inktonermoore.ca` uses the `FIREBASE_SA_PROD` secret
+  (keyvault `westbrook_firebase_prod`), anything else `FIREBASE_SA` (DEV). Prod
+  `accessPins/manager` was copied create-only from DEV on 2026-11-04, so the prod
+  manager PIN is the staging PIN until someone changes it on prod (same
+  `PIN_PEPPER`).
 
 Prod Firestore rules V2 needs, added in the console before `VITE_OFFER_V2` goes on
 (V1 never touches these collections). Copy the DEV project's rule for any of them
