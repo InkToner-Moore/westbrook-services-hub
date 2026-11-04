@@ -15,7 +15,7 @@ env:
   PUBLIC_REF: d08f1a379d2314a0636231de4f3ad2a89e4d5f23
   # The commit of the V2 staff app served at /v2/ (opt-in per device, V1 stays the
   # default at /staff). Changing it on main releases a newer V2 staff app.
-  STAFF_V2_REF: d08f1a379d2314a0636231de4f3ad2a89e4d5f23
+  STAFF_V2_REF: 1445873f97e57c838ad9a1c78ddf93600a00460a
 
 concurrency:
   group: pages
