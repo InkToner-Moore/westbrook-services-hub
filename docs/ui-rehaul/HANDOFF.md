@@ -27,7 +27,129 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
-## START HERE (written 2026-10-21, exit of the V2 staff rollout session)
+## START HERE (written 2026-11-04, exit of the receipts, email and manager PIN session)
+
+**Next session is for:** whatever Parsa brings after trying the manager PIN on prod
+`/v2/staff`. If he brings nothing, the carried items below: GitHub Pages removal
+first (it now actively breaks releases, see Constraints). Not a numbered `PLAN.md`
+step (`PLAN.md` has no completion markers). Building, not planning.
+
+**Where things stand (observed 2026-11-04, at exit):**
+- Branch `receipt-terms-no-scan` (off `staff-v2-rollout`), tip is this handoff commit;
+  the last code commit is `1445873`. Tree clean, level with its remote, `origin/dev` =
+  `1445873`, so staging has all of it.
+- **Prod `main` is at `893c0fa`** (PRs #9, #10, #11, #12 merged this session, Parsa's
+  go-ahead each time). `PUBLIC_REF` = `d08f1a3`, `STAFF_V2_REF` = `1445873`. Live on
+  Cloudflare `itm-site`, checked in the served bundles. GitHub Pages (the rollback
+  host) last got `893c0fa` too (that run was green on every step).
+- Open PRs: #8 `sec/jspdf-dompurify` (Oct 23, jspdf 4 and friends, not looked at in
+  a browser, merging deploys prod: Parsa's call) and #1 `docs-align-claude-md` (Sept 1).
+- Gate at exit: `tsc -p tsconfig.app.json --noEmit` exit 0; eslint on every `src` and
+  `proxy` file changed this session clean; `yarn build` and `yarn build:public` built;
+  `run.mjs` 46 of 46; `sweep.mjs` 599 of 606, **1 missed**, 6 known gaps; dash scan
+  clean. The miss is `"add shift for sue 10-6 oct 8, 9  >>  plus the 23rd"`, and it
+  misses the same way at `da8b884` (before this session), so it is calendar drift (oct
+  8 is now in the past), not a regression. Rewrite that case with a date worked out
+  from today, as `COMING_MON_FRI` in `corpus.mjs` does.
+
+**Built this session, do NOT rebuild:**
+- Customer page: "scanning" is gone from the "Also at the counter" line in
+  `Services.tsx` (the shop does not scan). Live.
+- Shipping terms on receipts. `SHIPPING_FOOTNOTE` in `lib/simpleReceipt.ts` (final
+  charge, no refund on shipping or service, check every detail before leaving the
+  counter, not responsible once with the carrier). Printed on the AI shipping receipt
+  and on the combined cart receipt whenever a line has `source === 'shipping'`
+  (`ai/cart.ts`). V1 has the same words hand-drawn in `generateShippingPDF` in its
+  `StaffReceipts.tsx` on `main`, plus page breaks (`ensureRoom`): before this, a V1
+  shipping receipt with three or more packages drew its totals off the page. V1 PDFs
+  were rendered and looked at with 1, 3 and 6 packages; the V2 footnote was not printed.
+- The default shop email is `inktonerandmoore@gmail.com` (`DEFAULT_SHOP_SETTINGS` in
+  `lib/shopSettings.ts`), "for now", because `contact@inktonermoore.ca` has no
+  confirmed mailbox. Prod has no `settings/shop` doc, so the default is what shows.
+  Parsa said "inktonermoore.com"; the site is `.ca`, read as a slip.
+- **Manager PIN on prod.** A right PIN looped on prod because the worker held only
+  the DEV service account and minted DEV custom tokens. Now (`proxy/src/manager.js`):
+  the worker picks `FIREBASE_SA_PROD` for origin `https://inktonermoore.ca`, else
+  `FIREBASE_SA`; signing keys are cached per account; set-pin, unlock and lock
+  require the caller's Firebase ID token, verified against Google's securetoken JWKS
+  for that project, and mint only for its `sub`. Before this, any uid in the body got
+  a token with no check (a hole on DEV, and it would have been on prod). The client
+  (`lib/managerAuth.ts`) sends `idToken`, and a failed custom-token sign-in or token
+  refresh returns an error instead of hanging. Worker deployed; secret
+  `FIREBASE_SA_PROD` set from keyvault `westbrook_firebase_prod`. Prod
+  `accessPins/manager` copied create-only from DEV (same pepper, so same PIN). Codex
+  reviewed the worker change (one finding, fixed). Probed from both origins: status
+  reads the right project, unlock and lock without a token get 401.
+  `docs/ENVIRONMENTS.md` and `docs/ai-mode/proxy.md` describe it.
+
+**Not checked:** a real manager unlock on prod or staging (no agent login; Parsa was
+asked to try it); a printed V2 receipt with the footnote; `settings/shop` writes on
+prod (prod has no rule for it, so a manager save there is still refused).
+
+**Not done, carry into the next session:**
+1. **GitHub Pages removal**, overdue (due about 2026-10-26), with Parsa's OK: a PR to
+   `main` dropping the Pages steps and `public/CNAME`, then Pages off in the repo
+   settings, then one line to the GrandITM platform session that it is gone. Offered
+   to Parsa on 2026-11-04, no answer yet.
+2. The sweep case above (calendar drift).
+3. PR #8 (security bumps): needs a receipt PDF tried on staging before Parsa merges.
+4. No rate limiting on `/manager/unlock` (noted in `docs/ai-mode/proxy.md`). Now that
+   it guards prod, throttling is worth adding.
+5. Everything under "Waiting on Parsa" and "Not done" in the 2026-10-21 sections below
+   still stands, except the prod proxy worker (done here).
+
+**Constraints this session found (the older lists below still stand):**
+- **The deploy runs the GitHub Pages step before the Cloudflare step.** When
+  `actions/deploy-pages` times out (it did on 2026-11-04), Cloudflare is skipped and
+  prod does not change, though the PR is merged. Re-running the failed job then fails
+  on a duplicate `github-pages` artifact, and the workflow has no
+  `workflow_dispatch`. Recovery: merge an empty commit to `main` through a PR (#12 is
+  the model). After every release, check `itm-site`'s newest deployment through the
+  Cloudflare API (`/accounts/<id>/pages/projects/itm-site/deployments`), not just the
+  run's exit.
+- Check a live release with a string unique to the change. `idToken:` matched
+  Firebase SDK code in the old bundle and gave a false "it is live".
+- `wrangler pages deployment list --json` printed nothing parseable here; use the
+  Cloudflare API with the keyvault token instead.
+- The staging Pages project emails Parsa a failure for every branch cut from `main`
+  (the release branches). Harmless, as noted before, but he notices them; tell him.
+- `keyvault run a b -- ...` with two keys of different env var names works (used for
+  `FIREBASE_SA_DEV` plus `FIREBASE_SA_PROD`, and the Cloudflare token plus the prod
+  account). Feed an account to a script that wants a file with
+  `<(printenv FIREBASE_SA_PROD)`, never a file on disk.
+- Moving `PUBLIC_REF` or `STAFF_V2_REF`: before the PR, list what changes between the
+  old and new pin in what ships (for the customer page, the esbuild metafile of
+  `src/public-main.tsx` intersected with `git diff --name-only`). Parsa asked "will
+  anything else change?"; answer that with evidence.
+- V1 edits go in a throwaway worktree off `origin/main` (outside the repo, e.g.
+  `/tmp`), removed afterwards; it gets a copy of `.env`.
+
+**Open questions for Parsa** (answers may arrive mid-session: fold each in as its own
+commit, and never invent one to close a line):
+- Does the manager PIN work on prod `/v2/staff` now? Lands in `proxy/src/manager.js`
+  or `lib/managerAuth.ts` if not.
+- GitHub Pages removal now (item 1)?
+- When the `inktonermoore.ca` mailbox works, switch the email back
+  (`lib/shopSettings.ts`, then move `PUBLIC_REF` and `STAFF_V2_REF`).
+- PR #8.
+- Still open from the sections below: V2 as the default, Moneris, the prod
+  `settings/shop` rule, the key board suspects, slip quantities, and the rest.
+
+**Working rules:** as in the 2026-10-21 and 2026-10-18 sections below. Before every
+commit: `tsc`, eslint on the changed files, `yarn build`, `yarn build:public` when the
+customer page's imports changed, the dash scan, and both parser scripts (one at a
+time) for `src/ai` or `lib/keyReference.ts`. One commit per change he asks for; push
+the branch and fast-forward `dev`. A release is a PR to `main` moving a pin (plus V1
+edits when asked), merged by the agent once Parsa has said to deploy. The worker is
+deployed by hand (`cd proxy && keyvault run westbrook_cloudflare_dev -- npx
+--no-install wrangler deploy`, `CLOUDFLARE_ACCOUNT_ID` set); it serves staging and
+prod at once, so a worker change is live on prod the moment it deploys.
+
+**Still placeholder, must not reach a customer:** `purchase` with no executor
+(Moneris not wired), the install manifest and device lock untried on a real device.
+The public email is now the Gmail, which works.
+
+## Earlier (written 2026-10-21, exit of the V2 staff rollout session)
 
 **Next session is for:** whatever Parsa brings after he adds the prod Firestore rules
 and tries `/v2/staff` on prod. Then turn on V1's "Try the new version" button
