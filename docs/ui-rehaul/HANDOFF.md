@@ -37,7 +37,7 @@ step (`PLAN.md` has no completion markers). Building, not planning.
 **Where things stand (observed 2026-11-04, at exit):**
 - Branch `receipt-terms-no-scan` (off `staff-v2-rollout`), tip is this handoff commit;
   the last code commit is `1445873`. Tree clean, level with its remote, `origin/dev` =
-  `1445873`, so staging has all of it.
+  the branch tip, so staging has all of it.
 - **Prod `main` is at `893c0fa`** (PRs #9, #10, #11, #12 merged this session, Parsa's
   go-ahead each time). `PUBLIC_REF` = `d08f1a3`, `STAFF_V2_REF` = `1445873`. Live on
   Cloudflare `itm-site`, checked in the served bundles. GitHub Pages (the rollback
