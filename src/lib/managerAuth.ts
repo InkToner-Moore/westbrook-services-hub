@@ -33,6 +33,16 @@ async function post(path: string, body: Record<string, unknown>) {
   return { ok: res.ok, status: res.status, data: data as Record<string, unknown> };
 }
 
+// The signed-in user's ID token. The worker verifies it and only ever mints a
+// token for the uid inside it.
+async function idToken(): Promise<string | null> {
+  try {
+    return (await auth.currentUser?.getIdToken()) ?? null;
+  } catch {
+    return null; // a failed refresh reads as signed out
+  }
+}
+
 // Whether a manager PIN has been set for the shop yet.
 export async function fetchPinStatus(): Promise<boolean> {
   const { ok, data } = await post('/manager/status', {});
@@ -45,7 +55,9 @@ export async function setManagerPin(
   newPin: string,
   currentPin?: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  const { ok, data } = await post('/manager/set-pin', { newPin, currentPin });
+  const token = await idToken();
+  if (!token) return { ok: false, error: 'not_signed_in' };
+  const { ok, data } = await post('/manager/set-pin', { idToken: token, newPin, currentPin });
   if (ok && data.ok) return { ok: true };
   return { ok: false, error: (data.error as string) || 'set_failed' };
 }
@@ -53,20 +65,24 @@ export async function setManagerPin(
 // Verify the PIN with the worker and, on success, upgrade this browser session to
 // a manager session (the ID token gains the manager claim).
 export async function unlockManagerSession(pin: string): Promise<{ ok: boolean; error?: string }> {
-  const uid = auth.currentUser?.uid;
-  if (!uid) return { ok: false, error: 'not_signed_in' };
-  const { ok, data } = await post('/manager/unlock', { pin, uid });
+  const token = await idToken();
+  if (!token) return { ok: false, error: 'not_signed_in' };
+  const { ok, data } = await post('/manager/unlock', { idToken: token, pin });
   if (!ok || !data.token) return { ok: false, error: (data.error as string) || 'unlock_failed' };
-  await signInWithCustomToken(auth, data.token as string);
-  await auth.currentUser?.getIdToken(true); // refresh so the claim is live now
+  try {
+    await signInWithCustomToken(auth, data.token as string);
+    await auth.currentUser?.getIdToken(true); // refresh so the claim is live now
+  } catch {
+    return { ok: false, error: 'sign_in_failed' };
+  }
   return { ok: true };
 }
 
 // Drop the manager claim from this session (no PIN needed to give up privilege).
 export async function lockManagerSession(): Promise<void> {
-  const uid = auth.currentUser?.uid;
-  if (!uid) return;
-  const { ok, data } = await post('/manager/lock', { uid });
+  const token = await idToken();
+  if (!token) return;
+  const { ok, data } = await post('/manager/lock', { idToken: token });
   if (ok && data.token) {
     await signInWithCustomToken(auth, data.token as string);
     await auth.currentUser?.getIdToken(true);

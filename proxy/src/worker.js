@@ -330,7 +330,7 @@ export default {
     const pathname = new URL(request.url).pathname;
     if (pathname.startsWith('/manager/')) {
       try {
-        const { status, body } = await handleManager(pathname, payload, env);
+        const { status, body } = await handleManager(pathname, payload, env, origin);
         return json(body, status, corsOrigin);
       } catch {
         return json({ error: 'manager_failed' }, 500, corsOrigin);

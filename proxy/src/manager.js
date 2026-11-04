@@ -14,18 +14,28 @@
 // PINs with their own roles can be added later without changing this contract.
 //
 // Secrets (wrangler secret put):
-//   FIREBASE_SA   the dev/prod service account JSON (one line)
-//   PIN_PEPPER    a random string mixed into every PIN hash
+//   FIREBASE_SA       the DEV service account JSON (one line), used for staging
+//   FIREBASE_SA_PROD  the prod service account JSON, used for PROD_ORIGIN
+//   PIN_PEPPER        a random string mixed into every PIN hash
+//
+// The caller's site picks the Firebase project: a request from PROD_ORIGIN uses
+// the prod account, anything else the DEV one. The caller must also send its own
+// Firebase ID token, verified here against that project, and a token is only ever
+// minted for the uid inside it. Without that check anyone with the worker URL
+// could mint a session for any uid.
 //
 // Endpoints (all POST, JSON):
-//   /manager/status  {}                       -> { pinSet }
-//   /manager/set-pin { newPin, currentPin? }  -> { ok } | { error }
-//   /manager/unlock  { pin, uid }             -> { token } | { error }
-//   /manager/lock    { uid }                  -> { token }
+//   /manager/status  {}                                -> { pinSet }
+//   /manager/set-pin { idToken, newPin, currentPin? }  -> { ok } | { error }
+//   /manager/unlock  { idToken, pin }                  -> { token } | { error }
+//   /manager/lock    { idToken }                       -> { token }
 
 const IDENTITY_TOOLKIT_AUD =
   'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit';
 const MANAGER_PIN_DOC = 'manager'; // accessPins/manager holds the shop manager PIN
+const PROD_ORIGIN = 'https://inktonermoore.ca';
+const SECURETOKEN_JWKS =
+  'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
 
 // ---- encoding helpers --------------------------------------------------------
 
@@ -60,18 +70,73 @@ function hashPin(pin, pepper) {
 
 // ---- RS256 signing (JWT) -----------------------------------------------------
 
-let cachedKey = null;
+// One imported key per service account (DEV and prod share the worker).
+const cachedKeys = new Map();
 async function signingKey(sa) {
-  if (!cachedKey) {
-    cachedKey = await crypto.subtle.importKey(
+  let key = cachedKeys.get(sa.client_email);
+  if (!key) {
+    key = await crypto.subtle.importKey(
       'pkcs8',
       pemToArrayBuffer(sa.private_key),
       { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
       false,
       ['sign'],
     );
+    cachedKeys.set(sa.client_email, key);
   }
-  return cachedKey;
+  return key;
+}
+
+// ---- Firebase ID token check ---------------------------------------------------
+
+function b64urlDecode(text) {
+  const b64 = text.replace(/-/g, '+').replace(/_/g, '/');
+  const bin = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+// Returns the uid of a valid Firebase ID token for `project`, or '' when the
+// token is missing, expired, for another project, or not signed by Google.
+async function verifiedUid(idToken, project) {
+  if (typeof idToken !== 'string') return '';
+  const parts = idToken.split('.');
+  if (parts.length !== 3) return '';
+  let header;
+  let claims;
+  try {
+    header = JSON.parse(new TextDecoder().decode(b64urlDecode(parts[0])));
+    claims = JSON.parse(new TextDecoder().decode(b64urlDecode(parts[1])));
+  } catch {
+    return '';
+  }
+  if (header.alg !== 'RS256' || !header.kid) return '';
+  const now = Math.floor(Date.now() / 1000);
+  if (claims.aud !== project) return '';
+  if (claims.iss !== `https://securetoken.google.com/${project}`) return '';
+  if (typeof claims.sub !== 'string' || !claims.sub) return '';
+  if (!(claims.exp > now) || !(claims.iat <= now + 300)) return '';
+
+  const res = await fetch(SECURETOKEN_JWKS);
+  if (!res.ok) return '';
+  const { keys } = await res.json();
+  const jwk = (keys || []).find((k) => k.kid === header.kid);
+  if (!jwk) return '';
+  const key = await crypto.subtle.importKey(
+    'jwk',
+    jwk,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['verify'],
+  );
+  const ok = await crypto.subtle.verify(
+    'RSASSA-PKCS1-v1_5',
+    key,
+    b64urlDecode(parts[2]),
+    new TextEncoder().encode(`${parts[0]}.${parts[1]}`),
+  );
+  return ok ? claims.sub : '';
 }
 
 async function signJwt(sa, claims) {
@@ -162,11 +227,12 @@ function validPin(pin) {
 }
 
 // Returns { status, body }. worker.js applies CORS and serialises.
-export async function handleManager(pathname, payload, env) {
-  if (!env.FIREBASE_SA) return { status: 500, body: { error: 'not_configured' } };
+export async function handleManager(pathname, payload, env, origin) {
+  const saJson = origin === PROD_ORIGIN ? env.FIREBASE_SA_PROD : env.FIREBASE_SA;
+  if (!saJson) return { status: 500, body: { error: 'not_configured' } };
   let sa;
   try {
-    sa = JSON.parse(env.FIREBASE_SA);
+    sa = JSON.parse(saJson);
   } catch {
     return { status: 500, body: { error: 'bad_sa' } };
   }
@@ -179,6 +245,10 @@ export async function handleManager(pathname, payload, env) {
   if (pathname === '/manager/status') {
     return { status: 200, body: { pinSet: !!managerRec?.pinHash } };
   }
+
+  // Everything below acts for a signed-in staff user of this project.
+  const uid = await verifiedUid(payload?.idToken, project);
+  if (!uid) return { status: 401, body: { error: 'not_signed_in' } };
 
   if (pathname === '/manager/set-pin') {
     const newPin = payload?.newPin;
@@ -196,8 +266,6 @@ export async function handleManager(pathname, payload, env) {
   }
 
   if (pathname === '/manager/unlock') {
-    const uid = typeof payload?.uid === 'string' ? payload.uid : '';
-    if (!uid) return { status: 400, body: { error: 'no_uid' } };
     if (!managerRec?.pinHash) return { status: 409, body: { error: 'no_pin_set' } };
     const pin = payload?.pin;
     const hash = validPin(pin) ? await hashPin(pin, pepper) : '';
@@ -207,8 +275,6 @@ export async function handleManager(pathname, payload, env) {
   }
 
   if (pathname === '/manager/lock') {
-    const uid = typeof payload?.uid === 'string' ? payload.uid : '';
-    if (!uid) return { status: 400, body: { error: 'no_uid' } };
     // Dropping privilege needs no PIN: mint a plain token for the same uid.
     const customToken = await mintCustomToken(sa, uid, { manager: false });
     return { status: 200, body: { token: customToken } };
