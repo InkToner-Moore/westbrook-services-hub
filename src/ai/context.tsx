@@ -31,6 +31,7 @@ import { routeLabel } from './intentOptions';
 // not lose a half-built receipt to an accidental reload. It clears when the tab
 // or browser is closed, which is the right lifetime for a walk-up counter.
 const CART_KEY = 'ai-open-receipt';
+const CART_CUSTOMER_KEY = 'ai-open-receipt-customer';
 const readCart = (): CartLine[] => {
   try {
     const raw = sessionStorage.getItem(CART_KEY);
@@ -38,6 +39,16 @@ const readCart = (): CartLine[] => {
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
+  }
+};
+
+const readCartCustomer = (): CartCustomer => {
+  try {
+    const raw = sessionStorage.getItem(CART_CUSTOMER_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
   }
 };
 
@@ -183,6 +194,7 @@ interface AiModeContextValue {
   // One item is just a one-item receipt; there is no separate mode.
   cart: CartLine[];
   addCartLines: (lines: CartLine[]) => void;
+  mergeCartCustomer: (c: CartCustomer) => void;
   removeCartLine: (id: string) => void;
   clearCart: () => void;
   // Build the receipt for the whole cart and open it as an Artifact, returning
@@ -202,7 +214,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Customer captured from confirmed receipt intents, so the finished receipt
   // carries their name/phone/email even though Finish is a single tap with no
   // form. Filled field by field; a later receipt only fills what is still blank.
-  const [cartCustomer, setCartCustomer] = useState<CartCustomer>({});
+  const [cartCustomer, setCartCustomer] = useState<CartCustomer>(readCartCustomer);
   const [busy, setBusy] = useState(false);
   // Confirmations still to review when one utterance held several actions. The
   // active slip lives in `artifact`; these wait behind it and surface one at a
@@ -234,6 +246,14 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Storage unavailable; the in-memory receipt still works for this session.
     }
   }, [cart]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(CART_CUSTOMER_KEY, JSON.stringify(cartCustomer));
+    } catch {
+      // Storage unavailable; the in-memory customer still works for this session.
+    }
+  }, [cartCustomer]);
 
   const addUserTurn = useCallback((text: string) => {
     const turn: ChatTurn = { id: nextId('u'), role: 'user', text, createdAt: Date.now() };
@@ -291,6 +311,13 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const addCartLines = useCallback((lines: CartLine[]) => {
     if (!lines.length) return;
     setCart((prev) => [...prev, ...lines]);
+  }, []);
+  const mergeCartCustomer = useCallback((c: CartCustomer) => {
+    setCartCustomer((prev) => ({
+      name: prev.name || c.name?.trim() || undefined,
+      phone: prev.phone || c.phone?.trim() || undefined,
+      email: prev.email || c.email?.trim() || undefined,
+    }));
   }, []);
   const removeCartLine = useCallback((id: string) => {
     setCart((prev) => prev.filter((l) => l.id !== id));
@@ -588,11 +615,11 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           const v = f[k]?.value;
           return v == null ? '' : String(v).trim();
         };
-        setCartCustomer((prev) => ({
-          name: prev.name || pick('customerName') || undefined,
-          phone: prev.phone || pick('customerPhone') || undefined,
-          email: prev.email || pick('customerEmail') || undefined,
-        }));
+        mergeCartCustomer({
+          name: pick('customerName'),
+          phone: pick('customerPhone'),
+          email: pick('customerEmail'),
+        });
         const count = cart.length + lines.length;
         addAssistantTurn(
           `Added to the receipt. ${count} ${count === 1 ? 'item' : 'items'} so far. Finish it from the open receipt when you are ready.`,
@@ -616,7 +643,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       await runAttachments();
       activateNext();
     },
-    [updateTurnIntent, setTurnStatus, addAssistantTurn, addCartLines, cart, addResult, activateNext],
+    [updateTurnIntent, setTurnStatus, addAssistantTurn, addCartLines, mergeCartCustomer, cart, addResult, activateNext],
   );
 
   const dismissArtifactIntent = useCallback(
@@ -654,6 +681,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       hideArtifact,
       cart,
       addCartLines,
+      mergeCartCustomer,
       removeCartLine,
       clearCart,
       finalizeCart,
@@ -679,6 +707,7 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       hideArtifact,
       cart,
       addCartLines,
+      mergeCartCustomer,
       removeCartLine,
       clearCart,
       finalizeCart,

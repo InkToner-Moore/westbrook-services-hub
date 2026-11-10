@@ -158,7 +158,7 @@ const nextCartLineId = () => `sr-${(receiptCartLineId += 1)}`;
 
 const StaffReceipts = () => {
   const kit = useFormClasses();
-  const { addCartLines } = useAiMode();
+  const { addCartLines, mergeCartCustomer } = useAiMode();
   const { themeClasses } = useTheme();
   const checkboxClass = "border-pub-edge data-[state=checked]:bg-pub-ink data-[state=checked]:text-pub-paper";
   const [activeTab, setActiveTab] = useState("shipping");
@@ -278,6 +278,7 @@ const StaffReceipts = () => {
       return;
     }
     addCartLines(lines);
+    mergeCartCustomer({ name: data.customerName, phone: data.customerPhone, email: data.customerEmail });
     addedToast();
   };
 
@@ -300,6 +301,7 @@ const StaffReceipts = () => {
       return;
     }
     addCartLines(lines);
+    mergeCartCustomer({ name: data.customerName, phone: data.customerPhone });
     addedToast();
   };
 
@@ -319,7 +321,7 @@ const StaffReceipts = () => {
         const price = round2(item.shippingCost || 0);
         lines.push({
           id: nextCartLineId(),
-          description: [item.courier?.trim() || "Shipment", dest ? `To: ${dest}` : ""].filter(Boolean).join("\n"),
+          description: [item.courier?.trim() || "Shipment", item.trackingNumber?.trim() ? `Tracking: ${item.trackingNumber.trim()}` : "", dest ? `To: ${dest}` : ""].filter(Boolean).join("\n"),
           price,
           taxLines: taxToLines(price, item.taxes),
           source: "shipping",
@@ -342,6 +344,7 @@ const StaffReceipts = () => {
       return;
     }
     addCartLines(lines);
+    mergeCartCustomer({ name: data.customerName, phone: data.customerPhone });
     addedToast();
   };
 
@@ -367,6 +370,7 @@ const StaffReceipts = () => {
       return;
     }
     addCartLines(lines);
+    mergeCartCustomer({ name: data.customerName, phone: data.customerPhone });
     addedToast();
   };
 
