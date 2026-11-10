@@ -199,7 +199,7 @@ interface AiModeContextValue {
   clearCart: () => void;
   // Build the receipt for the whole cart and open it as an Artifact, returning
   // its result so the caller can attach chat download/print controls.
-  finalizeCart: (customer?: CartCustomer) => ActionResult | null;
+  finalizeCart: (customer?: CartCustomer, extras?: { footnote?: string[] }) => ActionResult | null;
 }
 
 const AiModeContext = createContext<AiModeContextValue | undefined>(undefined);
@@ -328,12 +328,12 @@ export const AiModeProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const finalizeCart = useCallback(
-    (customer?: CartCustomer): ActionResult | null => {
+    (customer?: CartCustomer, extras?: { footnote?: string[] }): ActionResult | null => {
       if (cart.length === 0) return null;
       // Use the explicitly passed customer, else what we captured across the
       // confirmed receipts.
       const who = { ...cartCustomer, ...(customer ?? {}) };
-      const opts = buildCartReceiptOpts(cart, who);
+      const opts = buildCartReceiptOpts(cart, who, extras?.footnote);
       const result: ActionResult = {
         message: `Here is the combined receipt with ${cart.length} ${
           cart.length === 1 ? 'item' : 'items'

@@ -62,12 +62,15 @@ export function cartTotal(lines: CartLine[]): number {
 export function buildCartReceiptOpts(
   lines: CartLine[],
   customer: CartCustomer = {},
+  extraFootnote?: string[],
 ): SimpleReceiptOptions {
   const subtotal = cartSubtotal(lines);
   const taxLines = aggregateCartTax(lines);
   const receiptNumber = generateReceiptNumber('RC');
   const todayIso = new Date().toISOString().split('T')[0];
   const items: ReceiptItem[] = lines.map((l) => ({ description: l.description, price: round2(l.price || 0) }));
+
+  const footnote = extraFootnote?.map((p) => p.trim()).filter(Boolean);
 
   return {
     title: 'Sales Receipt',
@@ -82,7 +85,7 @@ export function buildCartReceiptOpts(
     items,
     price: subtotal,
     taxLines: taxLines.length ? taxLines : undefined,
-    footnote: lines.some((l) => l.source === 'shipping') ? SHIPPING_FOOTNOTE : undefined,
+    footnote: lines.some((l) => l.source === 'shipping') ? SHIPPING_FOOTNOTE : footnote?.length ? footnote : undefined,
     fileNameBase: `receipt-${receiptNumber}`,
   };
 }

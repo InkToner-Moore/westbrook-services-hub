@@ -4,24 +4,41 @@
 // the open receipt while adding to it from anywhere. Finish builds one combined
 // receipt and opens it in the artifact rail. sessionStorage persistence and all
 // cart math live in the shared AiMode context; this is display only.
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { ChevronDown, ChevronUp, Receipt, Trash2, X } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAiMode } from '@/ai/context';
 import { cartTotal } from '@/ai/cart';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { SHIPPING_FOOTNOTE } from '@/lib/simpleReceipt';
 
 const CartPanel: React.FC<{ className?: string }> = ({ className = 'mb-3' }) => {
   const { themeClasses } = useTheme();
   const { cart, removeCartLine, clearCart, finalizeCart, addResult } = useAiMode();
   const [collapsed, setCollapsed] = useState(true);
 
+  const [addTerms, setAddTerms] = useState(false);
+  const [termsText, setTermsText] = useState(SHIPPING_FOOTNOTE.join('\n\n'));
+  const termsId = useId();
+  const hasShipping = cart.some((l) => l.source === 'shipping');
+  const resetTerms = () => {
+    setAddTerms(false);
+    setTermsText(SHIPPING_FOOTNOTE.join('\n\n'));
+  };
+
   if (cart.length === 0) return null;
 
   const total = cartTotal(cart);
 
   const handleFinish = () => {
-    const result = finalizeCart();
+    const result = !hasShipping && addTerms
+      ? finalizeCart(undefined, {
+          footnote: termsText.split(/\n\s*\n/).map((p) => p.replace(/\s+/g, ' ').trim()).filter(Boolean),
+        })
+      : finalizeCart();
     if (result) addResult(result);
+    resetTerms();
   };
 
   return (
@@ -75,6 +92,31 @@ const CartPanel: React.FC<{ className?: string }> = ({ className = 'mb-3' }) => 
               </li>
             ))}
           </ul>
+          <div className="mt-3">
+            <div className="flex min-h-[44px] items-center gap-2">
+              <Checkbox
+                id={termsId}
+                checked={hasShipping || addTerms}
+                disabled={hasShipping}
+                onCheckedChange={(checked) => setAddTerms(checked === true)}
+                className="border-pub-edge data-[state=checked]:bg-pub-ink data-[state=checked]:text-pub-paper"
+              />
+              <label htmlFor={termsId} className="flex min-h-[44px] flex-1 cursor-pointer items-center text-sm text-pub-ink">
+                Add terms to this receipt
+              </label>
+            </div>
+            {hasShipping ? (
+              <p className="text-xs text-pub-muted">Always printed when the receipt has shipping.</p>
+            ) : addTerms ? (
+              <Textarea
+                rows={5}
+                value={termsText}
+                onChange={(event) => setTermsText(event.target.value)}
+                aria-label="Terms text"
+                className="border-pub-edge bg-pub-paper text-base text-pub-ink sm:text-sm"
+              />
+            ) : null}
+          </div>
           <div className="mt-3 flex items-center gap-2">
             <button
               type="button"
@@ -85,7 +127,10 @@ const CartPanel: React.FC<{ className?: string }> = ({ className = 'mb-3' }) => 
             </button>
             <button
               type="button"
-              onClick={clearCart}
+              onClick={() => {
+                clearCart();
+                resetTerms();
+              }}
               title="Clear the receipt"
               aria-label="Clear the receipt"
               className={`flex min-h-[44px] items-center justify-center rounded-xl border px-3 ${themeClasses.button.secondary}`}
