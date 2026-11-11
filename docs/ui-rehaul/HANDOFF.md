@@ -27,6 +27,30 @@ together; there is no separate customer repo and staff repo.
    direction. It tried the proxy deploy listed under "Waiting on Parsa" below and could
    not: the Cloudflare login on this machine is still expired.
 
+## Update (written 2026-11-10, receipts customer and terms session)
+
+Branch `receipt-customer-terms` (off `receipt-terms-no-scan`); `origin/dev` = its tip.
+**Prod `main`**: PR #13 merged, `STAFF_V2_REF` = `4e1468c`; deploy green on both hosts,
+and the live `/v2` bundle holds "Add terms to this receipt". `PUBLIC_REF` unchanged.
+
+- Fixed: the Receipts page tabs (Shipping, Keys, Cartridge, Toner) never passed the
+  customer to the open receipt, so finished receipts had no name or phone; the shipping
+  line dropped the tracking number. `mergeCartCustomer` in `ai/context.tsx` (first one
+  named wins, persisted in sessionStorage `ai-open-receipt-customer`).
+- Terms: a receipt with a shipping line always prints `SHIPPING_FOOTNOTE` (box locked
+  on, text not editable). Other receipts print terms only when "Add terms to this
+  receipt" is ticked on the open receipt (`CartPanel.tsx`), with the text editable for
+  that receipt (`finalizeCart(customer, { footnote })`, `buildCartReceiptOpts`).
+- V1 needed nothing: it prints the terms only in `generateShippingPDF`, and no other V1
+  receipt can hold shipping lines. Parsa asked that V1 not change.
+- Checked: tsc, eslint, both builds, `run.mjs` 46/46, `sweep.mjs` same 1 calendar-drift
+  miss; a browser run on the dev server with three PDFs read. Not checked: a printed
+  receipt on staging or prod.
+- Seen, not fixed: two receipts made in the same minute share a receipt number
+  (`generateReceiptNumber` is date and minute based).
+- MXroute webmail (`mail.inktonermoore.ca`) branding: Parsa set it; the manifest now has
+  "ITM Mail" and icons. Not this repo.
+
 ## START HERE (written 2026-11-04, exit of the receipts, email and manager PIN session)
 
 **Next session is for:** whatever Parsa brings after trying the manager PIN on prod
